@@ -16,7 +16,7 @@
     bool inDashboard = !inProduction && !inStaff && !inInventory && !inSales && !inFleet && !inSettings;
 }
 <!DOCTYPE html>
-<html lang="en" data-theme="corporate">
+<html lang="en" data-theme="bakeryflow">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -41,7 +41,7 @@
     <!-- Immediate Theme Application from LocalStorage to prevent flash -->
     <script>
         (function () {
-            const savedTheme = localStorage.getItem('erp_theme') || 'corporate';
+            const savedTheme = localStorage.getItem('erp_theme') || 'bakeryflow';
             document.documentElement.setAttribute('data-theme', savedTheme);
         })();
     </script>

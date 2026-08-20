@@ -23,11 +23,11 @@
             </p>
         </div>
         <div class="flex gap-2">
-            <button type="button" onclick="setErpTheme('bakeryflow')" class="btn btn-sm btn-neutral rounded-xl text-xs gap-1.5 font-bold shadow-xs">
-                <i class="fa-solid fa-wand-magic-sparkles text-xs"></i> Apply BakeryFlow Theme
+            <button type="button" onclick="setErpTheme('bakeryflow')" class="btn btn-sm btn-primary rounded-xl text-xs gap-1.5 font-bold shadow-xs">
+                <i class="fa-solid fa-wand-magic-sparkles text-xs"></i> Reset to BakeryFlow Artisan
             </button>
             <button type="button" onclick="setErpTheme('corporate')" class="btn btn-sm btn-outline rounded-xl text-xs gap-1.5">
-                <i class="fa-solid fa-rotate-left text-xs"></i> Reset to Corporate
+                <i class="fa-solid fa-rotate-left text-xs"></i> Corporate
             </button>
         </div>
     </div>
@@ -42,7 +42,7 @@
                 <div>
                     <div class="text-xs uppercase font-bold opacity-60">Currently Active System Theme</div>
                     <div class="text-xl font-black flex items-center gap-2 mt-0.5">
-                        <span id="activeThemeDisplay" class="capitalize">corporate</span>
+                        <span id="activeThemeDisplay" class="capitalize">bakeryflow</span>
                         <span class="badge badge-success badge-sm font-bold gap-1 text-[10px]">
                             <i class="fa-solid fa-circle text-[7px]"></i> Live
                         </span>
@@ -412,7 +412,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        const currentTheme = localStorage.getItem('erp_theme') || 'corporate';
+        const currentTheme = localStorage.getItem('erp_theme') || 'bakeryflow';
         updateActiveThemeUI(currentTheme);
     });
 </script>
