@@ -66,15 +66,27 @@
                         <div class="form-control w-full">
                             <label class="label pb-1.5">
                                 <span class="label-text font-bold text-xs text-base-content">
-                                    Customer / Account <span class="text-error">*</span>
+                                    Customer / Account Name <span class="text-error">*</span>
                                 </span>
                             </label>
-                            <select asp-for="OrderInput.CustomerId" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary" required>
+                            <input type="text" 
+                                   asp-for="OrderInput.CustomerName" 
+                                   list="customersDatalist" 
+                                   id="customerNameInput"
+                                   oninput="onCustomerInput(this.value)"
+                                   class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" 
+                                   placeholder="Select client or type new customer name..." 
+                                   required />
+                            <input type="hidden" asp-for="OrderInput.CustomerId" id="selectedCustomerIdInput" />
+                            
+                            <datalist id="customersDatalist">
                                 @foreach (var c in Model.Customers)
                                 {
-                                    <option value="@c.Id">@c.Name (@c.Category) - Code: @c.MemberCode</option>
+                                    <option value="@c.Name" data-id="@c.Id" data-category="@c.Category" data-code="@c.MemberCode">
+                                        @c.Name (@c.Category) — Code: @c.MemberCode
+                                    </option>
                                 }
-                            </select>
+                            </datalist>
                         </div>
 
                         <div class="form-control w-full">
@@ -460,5 +472,25 @@
         // Render initial empty basket
         renderBasket();
     });
+
+    function onCustomerInput(val) {
+        const datalist = document.getElementById('customersDatalist');
+        const hiddenId = document.getElementById('selectedCustomerIdInput');
+        let matchedId = 0;
+
+        if (datalist && val) {
+            const options = datalist.querySelectorAll('option');
+            for (let opt of options) {
+                if (opt.value.toLowerCase() === val.toLowerCase().trim()) {
+                    matchedId = parseInt(opt.getAttribute('data-id')) || 0;
+                    break;
+                }
+            }
+        }
+
+        if (hiddenId) {
+            hiddenId.value = matchedId;
+        }
+    }
 </script>
 }

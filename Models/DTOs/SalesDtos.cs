@@ -14,8 +14,8 @@ namespace Manufacture.Models.DTOs
     public class CreateOrderDto
     {
         public string OrderType { get; set; } = "ImmediateSale"; // ImmediateSale / PreOrder
-        [Required]
         public int CustomerId { get; set; }
+        [Required]
         public string CustomerName { get; set; } = string.Empty;
         public string CustomerCategory { get; set; } = "WalkIn";
         public string PosTerminalCode { get; set; } = "POS-01";

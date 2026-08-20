@@ -31,7 +31,27 @@ namespace Manufacture.Pages.Sales.Orders
             Recipes = _productionService.GetAllRecipes();
 
             if (!string.IsNullOrEmpty(orderType)) OrderInput.OrderType = orderType;
-            if (customerId.HasValue) OrderInput.CustomerId = customerId.Value;
+            
+            if (customerId.HasValue)
+            {
+                OrderInput.CustomerId = customerId.Value;
+                var cust = Customers.FirstOrDefault(c => c.Id == customerId.Value);
+                if (cust != null)
+                {
+                    OrderInput.CustomerName = cust.Name;
+                    OrderInput.CustomerCategory = cust.Category.ToString();
+                }
+            }
+            else
+            {
+                var defaultCust = Customers.FirstOrDefault();
+                if (defaultCust != null)
+                {
+                    OrderInput.CustomerId = defaultCust.Id;
+                    OrderInput.CustomerName = defaultCust.Name;
+                    OrderInput.CustomerCategory = defaultCust.Category.ToString();
+                }
+            }
         }
 
         public IActionResult OnPost()

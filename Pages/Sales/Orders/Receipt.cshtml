@@ -1,190 +1,397 @@
 @page "{id:int}"
 @model Manufacture.Pages.Sales.Orders.ReceiptModel
 @{
-    ViewData["Title"] = $"Slip - {Model.Order.OrderNumber}";
+    ViewData["Title"] = $"Loading Slip - {Model.Order.OrderNumber}";
 }
 
-<!-- No-Print Action Bar -->
-<div class="no-print space-y-4 max-w-xl mx-auto mb-6">
-    <div class="flex items-center justify-between">
-        <a asp-page="/Sales/Orders/Index" class="btn btn-sm btn-ghost gap-1">
-            <i class="fa-solid fa-arrow-left"></i> Back to Orders
-        </a>
-        <div class="flex gap-2">
-            <button onclick="window.print()" class="btn btn-sm btn-primary gap-2">
-                <i class="fa-solid fa-print"></i> Print Slip (Thermal 80mm)
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar (No Print) -->
+    <div class="no-print flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Sales/Orders/Index" class="hover:underline">Order Register</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">@Model.Order.OrderNumber</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                    <i class="fa-solid fa-receipt text-primary"></i> Order & Loading Slip
+                </h1>
+                <span class="badge badge-neutral badge-sm font-mono font-bold">@Model.Order.OrderNumber</span>
+            </div>
+            <p class="text-xs opacity-70 mt-0.5">
+                Counter receipt verification, warehouse gate pass, and store loader sign-off.
+            </p>
+        </div>
+
+        <!-- Action Controls -->
+        <div class="flex items-center gap-2">
+            <a asp-page="/Sales/Orders/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Orders
+            </a>
+            <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-plus text-xs"></i> New Sale
+            </a>
+            <button onclick="window.print()" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 text-xs shadow-xs">
+                <i class="fa-solid fa-print text-xs"></i> Print Slip (Thermal 80mm)
             </button>
         </div>
     </div>
 
-    <!-- Print-to-Load Compliance Banner -->
-    @if (!Model.Order.IsPrintedForLoading)
-    {
-        <div class="alert alert-warning py-3 text-xs flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <i class="fa-solid fa-triangle-exclamation text-lg"></i>
-                <span><strong>Loading Rule:</strong> Goods cannot be loaded or released until this slip is printed and signed!</span>
-            </div>
-            <form method="post" asp-page-handler="MarkPrinted" asp-route-id="@Model.Order.Id">
-                <button type="submit" class="btn btn-xs btn-neutral">Mark as Printed</button>
-            </form>
-        </div>
-    }
-    else
-    {
-        <div class="alert alert-success py-2 text-xs flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <i class="fa-solid fa-circle-check text-lg"></i>
-                <span>Order form printed at @Model.Order.PrintedAt?.ToString("HH:mm - yyyy-MM-dd"). Authorized for loading.</span>
-            </div>
-        </div>
-    }
+    <!-- Full-Width Responsive 2-Column Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        
+        <!-- Left Section: Workflow, Loading Sign-off & Details (7 Cols) -->
+        <div class="lg:col-span-7 space-y-6 no-print">
+            
+            <!-- 1. Print & Loading Compliance Banner -->
+            @if (!Model.Order.IsPrintedForLoading)
+            {
+                <div class="alert alert-warning shadow-xs rounded-2xl py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div class="flex items-center gap-2.5">
+                        <i class="fa-solid fa-triangle-exclamation text-lg shrink-0"></i>
+                        <div>
+                            <strong class="font-bold">Gate Loading Rule:</strong>
+                            <p class="opacity-90 mt-0.5">Goods cannot be loaded or released from the factory floor until this slip is printed and verified.</p>
+                        </div>
+                    </div>
+                    <form method="post" asp-page-handler="MarkPrinted" asp-route-id="@Model.Order.Id" class="shrink-0">
+                        <button type="submit" class="btn btn-xs btn-neutral rounded-lg font-bold shadow-2xs">
+                            Mark as Printed
+                        </button>
+                    </form>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-success shadow-xs rounded-2xl py-3.5 flex items-center justify-between text-xs">
+                    <div class="flex items-center gap-2.5">
+                        <i class="fa-solid fa-circle-check text-lg shrink-0 text-success"></i>
+                        <span>
+                            Slip printed at <strong>@Model.Order.PrintedAt?.ToString("HH:mm - yyyy-MM-dd")</strong>. Authorized for factory loading.
+                        </span>
+                    </div>
+                    <span class="badge badge-success badge-xs font-bold">Printed</span>
+                </div>
+            }
 
-    <!-- Loader Verification & Dispatch Action -->
-    @if (Model.Order.Status != OrderStatus.Dispatched)
-    {
-        <div class="card bg-base-100 border border-base-300 shadow-xs">
-            <div class="card-body p-4">
-                <h3 class="font-bold text-xs uppercase tracking-wider text-base-content/60 mb-2">Store Loader Sign-Off & Dispatch</h3>
-                <form method="post" asp-page-handler="DispatchOrder" asp-route-id="@Model.Order.Id" class="flex gap-2">
-                    <input type="text" name="LoaderName" class="input input-sm input-bordered flex-1" placeholder="Loader's Full Name (e.g. Kelechi Nnamdi)" required />
-                    <button type="submit" class="btn btn-sm btn-success text-white gap-1" @(Model.Order.IsPrintedForLoading ? "" : "disabled")>
-                        <i class="fa-solid fa-truck-fast"></i> Verify & Dispatch
+            <!-- 2. Store Loader Sign-Off & Dispatch Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-4">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-truck-fast"></i>
+                            </div>
+                            <span>Store Loader Sign-Off & Dispatch</span>
+                        </div>
+                        <span class="badge @(Model.Order.Status == OrderStatus.Dispatched ? "badge-success" : "badge-warning") badge-xs font-bold">
+                            @Model.Order.Status
+                        </span>
+                    </div>
+
+                    @if (Model.Order.Status != OrderStatus.Dispatched)
+                    {
+                        <p class="text-xs opacity-70 leading-relaxed">
+                            Once the loader recounts the bread batches on the factory floor, enter their name below to finalize dispatch.
+                        </p>
+                        <form method="post" asp-page-handler="DispatchOrder" asp-route-id="@Model.Order.Id" class="space-y-3">
+                            <div class="flex flex-col sm:flex-row gap-2">
+                                <input type="text" 
+                                       name="LoaderName" 
+                                       class="input input-bordered input-sm flex-1 bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" 
+                                       placeholder="Loader's Full Name (e.g. Kelechi Nnamdi)" 
+                                       required />
+                                
+                                <button type="submit" 
+                                        class="btn btn-sm btn-neutral rounded-xl font-bold px-4 text-xs shadow-xs gap-1.5 text-success" 
+                                        @(Model.Order.IsPrintedForLoading ? "" : "disabled")>
+                                    <i class="fa-solid fa-circle-check text-xs"></i> Verify & Dispatch
+                                </button>
+                            </div>
+                            @if (!Model.Order.IsPrintedForLoading)
+                            {
+                                <div class="text-[11px] text-error flex items-center gap-1">
+                                    <i class="fa-solid fa-circle-exclamation text-[10px]"></i> Print the loading slip before confirming factory dispatch.
+                                </div>
+                            }
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="p-4 rounded-xl bg-success/10 border border-success/20 space-y-1 text-xs">
+                            <div class="font-bold text-success flex items-center gap-1.5">
+                                <i class="fa-solid fa-circle-check"></i> Goods Successfully Dispatched & Released
+                            </div>
+                            <div class="opacity-80">
+                                Verified and physically loaded by: <strong class="text-base-content font-bold">@Model.Order.VerifiedByLoaderName</strong> at @Model.Order.LoadedAt?.ToString("yyyy-MM-dd HH:mm")
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- 3. Order Details & Line Items Breakdown Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+                <div class="card-body p-6 space-y-4">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-bread-slice"></i>
+                            </div>
+                            <span>Booked Loaf Quantities & Settlement</span>
+                        </div>
+                        <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.Order.Items.Sum(i => i.Quantity) Total Loaves</span>
+                    </div>
+
+                    <!-- Customer & Terminal Info Grid -->
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-base-200 border border-base-300 p-4 rounded-xl text-xs">
+                        <div>
+                            <span class="opacity-60 text-[10px] uppercase font-bold block">Customer:</span>
+                            <span class="font-bold text-base-content">@Model.Order.CustomerName</span>
+                        </div>
+                        <div>
+                            <span class="opacity-60 text-[10px] uppercase font-bold block">Category:</span>
+                            <span class="font-bold text-base-content">@Model.Order.CustomerCategory</span>
+                        </div>
+                        <div>
+                            <span class="opacity-60 text-[10px] uppercase font-bold block">Order Type:</span>
+                            <span class="font-mono font-bold text-primary">@Model.Order.Type</span>
+                        </div>
+                        <div>
+                            <span class="opacity-60 text-[10px] uppercase font-bold block">Checkout Terminal:</span>
+                            <span class="font-mono text-base-content">@Model.Order.PosTerminalCode</span>
+                        </div>
+                        <div>
+                            <span class="opacity-60 text-[10px] uppercase font-bold block">Sales Rep:</span>
+                            <span class="text-base-content">@(Model.Order.SalesRepName ?? "Sales Rep")</span>
+                        </div>
+                        <div>
+                            <span class="opacity-60 text-[10px] uppercase font-bold block">Payment Method:</span>
+                            <span class="badge badge-ghost border border-base-300 text-[10px] font-mono font-bold">@Model.Order.PaymentMethod</span>
+                        </div>
+                    </div>
+
+                    <!-- Items Table -->
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm w-full text-xs">
+                            <thead>
+                                <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                                    <th class="py-2.5 pl-4">Product Name</th>
+                                    <th class="text-center">Quantity</th>
+                                    <th class="text-right">Unit Price</th>
+                                    <th class="text-right pr-4">Total Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-base-200">
+                                @foreach (var item in Model.Order.Items)
+                                {
+                                    <tr class="hover:bg-base-200/60 transition-colors">
+                                        <td class="font-bold text-base-content py-2.5 pl-4">@item.ProductName</td>
+                                        <td class="font-mono font-bold text-center py-2.5">@item.Quantity</td>
+                                        <td class="font-mono opacity-80 text-right py-2.5">₦@item.UnitPrice.ToString("N0")</td>
+                                        <td class="font-mono font-black text-right pr-4 py-2.5 text-base-content">₦@item.TotalPrice.ToString("N0")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot class="bg-base-200/60 font-mono text-xs border-t border-base-300">
+                                <tr>
+                                    <td colspan="3" class="text-right py-2 opacity-70">Subtotal:</td>
+                                    <td class="text-right font-bold py-2 pr-4 text-base-content">₦@Model.Order.SubTotal.ToString("N0")</td>
+                                </tr>
+                                @if (Model.Order.Discount > 0)
+                                {
+                                    <tr>
+                                        <td colspan="3" class="text-right py-2 text-error">Discount:</td>
+                                        <td class="text-right font-bold py-2 pr-4 text-error">-₦@Model.Order.Discount.ToString("N0")</td>
+                                    </tr>
+                                }
+                                <tr class="font-bold text-sm bg-primary/10 border-t border-primary/20">
+                                    <td colspan="3" class="text-right py-2.5 text-primary font-black uppercase text-xs">Net Total:</td>
+                                    <td class="text-right py-2.5 pr-4 text-primary font-black text-base">₦@Model.Order.TotalAmount.ToString("N0")</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" class="text-right py-2 text-success font-bold">Amount Paid (@Model.Order.PaymentMethod):</td>
+                                    <td class="text-right font-bold py-2 pr-4 text-success">₦@Model.Order.AmountPaid.ToString("N0")</td>
+                                </tr>
+                                @if (Model.Order.BalanceDue > 0)
+                                {
+                                    <tr class="text-error font-bold">
+                                        <td colspan="3" class="text-right py-2">Balance Owing:</td>
+                                        <td class="text-right font-black py-2 pr-4">₦@Model.Order.BalanceDue.ToString("N0")</td>
+                                    </tr>
+                                }
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Section: Printable Thermal 80mm Slip Preview (5 Cols) -->
+        <div class="lg:col-span-5 space-y-4 lg:sticky lg:top-20">
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                
+                <div class="no-print flex items-center justify-between border-b border-base-200 pb-3">
+                    <div class="font-bold text-xs uppercase tracking-wider opacity-60">
+                        Thermal 80mm Slip Preview
+                    </div>
+                    <button onclick="window.print()" class="btn btn-xs btn-neutral rounded-lg font-bold gap-1 shadow-2xs">
+                        <i class="fa-solid fa-print text-[10px]"></i> Print
                     </button>
-                </form>
-                @if (!Model.Order.IsPrintedForLoading)
-                {
-                    <span class="text-[11px] text-error">Print slip first before loader can confirm dispatch.</span>
-                }
+                </div>
+
+                <!-- 80mm Thermal Receipt Canvas -->
+                <div id="printableSlip" class="bg-white text-black p-5 border border-dashed border-gray-400 shadow-xs font-mono text-xs rounded-xl mx-auto w-full max-w-sm">
+                    
+                    <!-- Header -->
+                    <div class="text-center border-b border-dashed border-gray-400 pb-3 mb-3">
+                        <div class="text-base font-black uppercase tracking-wider text-black">BAKEFLOW BAKERY</div>
+                        <div class="text-[10px] text-gray-600">Factory: 14 Industrial Avenue, Lagos</div>
+                        <div class="text-[10px] text-gray-600">Tel: +234 800-BAKERY (225379)</div>
+                        <div class="mt-2 text-xs font-bold bg-gray-100 text-black py-1 uppercase rounded-sm">
+                            @(Model.Order.Type == OrderType.PreOrder ? "★ ADVANCE PRE-ORDER SLIP ★" : "★ DISPATCH & LOADING SLIP ★")
+                        </div>
+                    </div>
+
+                    <!-- Order Info -->
+                    <div class="space-y-1 text-[11px] border-b border-dashed border-gray-400 pb-2 mb-2 text-black">
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">SLIP NO:</span>
+                            <span class="font-bold">@Model.Order.OrderNumber</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">DATE:</span>
+                            <span>@Model.Order.OrderDate.ToString("yyyy-MM-dd HH:mm")</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">DELIVERY:</span>
+                            <span class="font-bold">@Model.Order.TargetDeliveryDate.ToString("yyyy-MM-dd")</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">POS / REP:</span>
+                            <span>@Model.Order.PosTerminalCode (@(Model.Order.SalesRepName ?? "Rep"))</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">CLIENT:</span>
+                            <span class="font-bold uppercase truncate max-w-[140px]">@Model.Order.CustomerName</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-600">CATEGORY:</span>
+                            <span>@Model.Order.CustomerCategory</span>
+                        </div>
+                    </div>
+
+                    <!-- Items Table -->
+                    <div class="border-b border-dashed border-gray-400 pb-2 mb-2 text-black">
+                        <div class="font-bold text-[10px] uppercase flex justify-between border-b border-gray-300 pb-1 mb-1 text-gray-700">
+                            <span>ITEM DESCRIPTION</span>
+                            <span>QTY x PRICE</span>
+                            <span class="text-right">TOTAL</span>
+                        </div>
+
+                        @foreach (var item in Model.Order.Items)
+                        {
+                            <div class="flex justify-between py-0.5 text-[11px]">
+                                <div class="truncate max-w-[110px] font-bold">@item.ProductName</div>
+                                <div>@item.Quantity x @item.UnitPrice.ToString("N0")</div>
+                                <div class="text-right font-bold">₦@item.TotalPrice.ToString("N0")</div>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Totals & Payment -->
+                    <div class="space-y-1 text-[11px] border-b border-dashed border-gray-400 pb-2 mb-3 text-black">
+                        <div class="flex justify-between">
+                            <span>SUBTOTAL:</span>
+                            <span>₦@Model.Order.SubTotal.ToString("N0")</span>
+                        </div>
+                        @if (Model.Order.Discount > 0)
+                        {
+                            <div class="flex justify-between text-red-600">
+                                <span>DISCOUNT:</span>
+                                <span>-₦@Model.Order.Discount.ToString("N0")</span>
+                            </div>
+                        }
+                        <div class="flex justify-between font-black text-sm border-t border-gray-300 pt-1">
+                            <span>NET TOTAL:</span>
+                            <span>₦@Model.Order.TotalAmount.ToString("N0")</span>
+                        </div>
+                        <div class="flex justify-between font-bold">
+                            <span>PAID (@Model.Order.PaymentMethod.ToString().ToUpper()):</span>
+                            <span>₦@Model.Order.AmountPaid.ToString("N0")</span>
+                        </div>
+                        @if (Model.Order.BalanceDue > 0)
+                        {
+                            <div class="flex justify-between font-black text-red-600">
+                                <span>BALANCE OWING:</span>
+                                <span>₦@Model.Order.BalanceDue.ToString("N0")</span>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Mandatory Verification & Signature Section for Loaders -->
+                    <div class="border border-gray-400 p-2.5 text-[10px] space-y-2 bg-gray-50 mb-3 text-black rounded-sm">
+                        <div class="font-bold uppercase text-center border-b border-gray-300 pb-1 text-black">
+                            LOADER VERIFICATION & SIGN-OFF
+                        </div>
+                        <div class="text-[9px] text-gray-700 leading-tight">
+                            RULE: Loaders must physically recount loaves and sign before releasing goods from factory floor.
+                        </div>
+                        <div class="pt-2 flex justify-between">
+                            <span>Records Clerk: ________________</span>
+                        </div>
+                        <div class="pt-2 flex justify-between">
+                            <span>Loader Sign: ___________________</span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(Model.Order.VerifiedByLoaderName))
+                        {
+                            <div class="text-green-700 font-bold mt-1 text-[9px]">
+                                ✓ VERIFIED BY: @Model.Order.VerifiedByLoaderName.ToUpper()
+                            </div>
+                        }
+                    </div>
+
+                    <!-- Barcode / Footer -->
+                    <div class="text-center text-[9px] text-gray-500 pt-1">
+                        <div class="font-mono tracking-widest text-xs font-bold mb-1 text-black">|||||||||||||||||||||||||||||||||</div>
+                        <div>Thank you for your business!</div>
+                        <div>Quality Freshly Baked Every Day</div>
+                    </div>
+                </div>
+
+                <!-- Print CTA Button (No Print) -->
+                <div class="no-print pt-2">
+                    <button onclick="window.print()" class="btn btn-neutral w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
+                        <i class="fa-solid fa-print text-xs"></i> Print Thermal Receipt Slip
+                    </button>
+                </div>
+
             </div>
         </div>
-    }
-    else
-    {
-        <div class="card bg-base-100 border border-success/30 bg-success/5 shadow-xs p-4 text-xs flex justify-between items-center">
-            <div>
-                <span class="font-bold text-success"><i class="fa-solid fa-circle-check"></i> Dispatched & Released</span>
-                <div class="text-base-content/70">Verified by Loader: <strong>@Model.Order.VerifiedByLoaderName</strong> at @Model.Order.LoadedAt?.ToString("HH:mm - yyyy-MM-dd")</div>
-            </div>
-            <span class="badge badge-success font-bold">COMPLETED</span>
-        </div>
-    }
-</div>
 
-<!-- 80mm Thermal Receipt / Loading Form Layout -->
-<div class="max-w-xs mx-auto bg-white text-black p-5 border border-gray-300 shadow-md font-mono text-xs rounded-sm">
-    <!-- Header -->
-    <div class="text-center border-b border-dashed border-gray-400 pb-3 mb-3">
-        <div class="text-base font-black uppercase tracking-wider">BAKEFLOW BAKERY</div>
-        <div class="text-[10px] text-gray-600">Factory: 14 Industrial Avenue, Lagos</div>
-        <div class="text-[10px] text-gray-600">Tel: +234 800-BAKERY (225379)</div>
-        <div class="mt-2 text-xs font-bold bg-gray-100 py-1 uppercase">
-            @(Model.Order.Type == OrderType.PreOrder ? "★ ADVANCE PRE-ORDER SLIP ★" : "★ DISPATCH & LOADING SLIP ★")
-        </div>
-    </div>
-
-    <!-- Order Info -->
-    <div class="space-y-1 text-[11px] border-b border-dashed border-gray-400 pb-2 mb-2">
-        <div class="flex justify-between">
-            <span class="text-gray-600">SLIP NO:</span>
-            <span class="font-bold">@Model.Order.OrderNumber</span>
-        </div>
-        <div class="flex justify-between">
-            <span class="text-gray-600">DATE:</span>
-            <span>@Model.Order.OrderDate.ToString("yyyy-MM-dd HH:mm")</span>
-        </div>
-        <div class="flex justify-between">
-            <span class="text-gray-600">DELIVERY:</span>
-            <span class="font-bold">@Model.Order.TargetDeliveryDate.ToString("yyyy-MM-dd")</span>
-        </div>
-        <div class="flex justify-between">
-            <span class="text-gray-600">POS / REP:</span>
-            <span>@Model.Order.PosTerminalCode (@(Model.Order.SalesRepName ?? "Rep"))</span>
-        </div>
-        <div class="flex justify-between">
-            <span class="text-gray-600">CLIENT:</span>
-            <span class="font-bold uppercase truncate max-w-[140px]">@Model.Order.CustomerName</span>
-        </div>
-        <div class="flex justify-between">
-            <span class="text-gray-600">CATEGORY:</span>
-            <span>@Model.Order.CustomerCategory</span>
-        </div>
-    </div>
-
-    <!-- Items Table -->
-    <div class="border-b border-dashed border-gray-400 pb-2 mb-2">
-        <div class="font-bold text-[10px] uppercase flex justify-between border-b border-gray-300 pb-1 mb-1">
-            <span>ITEM DESCRIPTION</span>
-            <span>QTY x PRICE</span>
-            <span class="text-right">TOTAL</span>
-        </div>
-
-        @foreach (var item in Model.Order.Items)
-        {
-            <div class="flex justify-between py-0.5 text-[11px]">
-                <div class="truncate max-w-[110px] font-bold">@item.ProductName</div>
-                <div>@item.Quantity x @item.UnitPrice.ToString("N0")</div>
-                <div class="text-right font-bold">₦@item.TotalPrice.ToString("N0")</div>
-            </div>
-        }
-    </div>
-
-    <!-- Totals & Payment -->
-    <div class="space-y-1 text-[11px] border-b border-dashed border-gray-400 pb-2 mb-3">
-        <div class="flex justify-between">
-            <span>SUBTOTAL:</span>
-            <span>₦@Model.Order.SubTotal.ToString("N0")</span>
-        </div>
-        @if (Model.Order.Discount > 0)
-        {
-            <div class="flex justify-between text-red-600">
-                <span>DISCOUNT:</span>
-                <span>-₦@Model.Order.Discount.ToString("N0")</span>
-            </div>
-        }
-        <div class="flex justify-between font-black text-sm border-t border-gray-300 pt-1">
-            <span>NET TOTAL:</span>
-            <span>₦@Model.Order.TotalAmount.ToString("N0")</span>
-        </div>
-        <div class="flex justify-between font-bold">
-            <span>PAID (@Model.Order.PaymentMethod.ToString().ToUpper()):</span>
-            <span>₦@Model.Order.AmountPaid.ToString("N0")</span>
-        </div>
-        @if (Model.Order.BalanceDue > 0)
-        {
-            <div class="flex justify-between font-black text-red-600">
-                <span>BALANCE OWING:</span>
-                <span>₦@Model.Order.BalanceDue.ToString("N0")</span>
-            </div>
-        }
-    </div>
-
-    <!-- Mandatory Verification & Signature Section for Loaders -->
-    <div class="border border-gray-400 p-2 text-[10px] space-y-2 bg-gray-50 mb-3">
-        <div class="font-bold uppercase text-center border-b border-gray-300 pb-1">
-            LOADER VERIFICATION & SIGN-OFF
-        </div>
-        <div class="text-[9px] text-gray-700 leading-tight">
-            RULE: Loaders must physically recount loaves and sign before releasing goods from factory floor.
-        </div>
-        <div class="pt-2 flex justify-between">
-            <span>Records Clerk: ________________</span>
-        </div>
-        <div class="pt-2 flex justify-between">
-            <span>Loader Sign: ___________________</span>
-        </div>
-        @if (!string.IsNullOrEmpty(Model.Order.VerifiedByLoaderName))
-        {
-            <div class="text-green-700 font-bold mt-1 text-[9px]">
-                ✓ VERIFIED BY: @Model.Order.VerifiedByLoaderName.ToUpper()
-            </div>
-        }
-    </div>
-
-    <!-- Barcode / Footer -->
-    <div class="text-center text-[9px] text-gray-500 pt-1">
-        <div class="font-mono tracking-widest text-xs font-bold mb-1">|||||||||||||||||||||||||||||||||</div>
-        <div>Thank you for your business!</div>
-        <div>Quality Freshly Baked Every Day</div>
     </div>
 </div>
+
+<style>
+@@media print {
+    .no-print {
+        display: none !important;
+    }
+    body {
+        background: white !important;
+        color: black !important;
+    }
+    #printableSlip {
+        border: none !important;
+        box-shadow: none !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+}
+</style>

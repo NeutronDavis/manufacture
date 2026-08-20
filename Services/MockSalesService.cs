@@ -214,18 +214,31 @@ namespace Manufacture.Services
 
         public Order CreateOrder(CreateOrderDto dto, int? currentUserId, string? currentUserName)
         {
-            var customer = GetCustomerById(dto.CustomerId);
+            Customer? customer = null;
+            if (dto.CustomerId > 0)
+            {
+                customer = GetCustomerById(dto.CustomerId);
+            }
+            if (customer == null && !string.IsNullOrWhiteSpace(dto.CustomerName))
+            {
+                customer = _customers.FirstOrDefault(c => c.Name.Equals(dto.CustomerName, StringComparison.OrdinalIgnoreCase));
+            }
+
+            var resolvedCustomerName = !string.IsNullOrWhiteSpace(dto.CustomerName)
+                ? dto.CustomerName.Trim()
+                : (customer?.Name ?? "Walk-In Counter Customer");
+
             var orderType = Enum.TryParse<OrderType>(dto.OrderType, true, out var ot) ? ot : OrderType.ImmediateSale;
             var payMethod = Enum.TryParse<PaymentMethod>(dto.PaymentMethod, true, out var pm) ? pm : PaymentMethod.Cash;
-            var custCategory = Enum.TryParse<CustomerCategory>(dto.CustomerCategory, true, out var cc) ? cc : (customer?.Category ?? CustomerCategory.WalkIn);
+            var custCategory = customer?.Category ?? (Enum.TryParse<CustomerCategory>(dto.CustomerCategory, true, out var cc) ? cc : CustomerCategory.WalkIn);
 
             var order = new Order
             {
                 Id = _orders.Any() ? _orders.Max(o => o.Id) + 1 : 1,
                 OrderNumber = $"ORD-{DateTime.UtcNow:yyyyMMdd}-{_orders.Count + 1:000}",
                 Type = orderType,
-                CustomerId = dto.CustomerId,
-                CustomerName = customer?.Name ?? dto.CustomerName,
+                CustomerId = customer?.Id ?? dto.CustomerId,
+                CustomerName = resolvedCustomerName,
                 CustomerCategory = custCategory,
                 SalesRepUserId = currentUserId,
                 SalesRepName = currentUserName ?? "Sales Rep",
