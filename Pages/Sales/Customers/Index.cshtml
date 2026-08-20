@@ -1,0 +1,75 @@
+@page
+@model Manufacture.Pages.Sales.Customers.IndexModel
+@{
+    ViewData["Title"] = "Clients, Supermarkets & Vendors";
+}
+
+<div class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs breadcrumbs mb-1">
+                <ul>
+                    <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
+                    <li><a asp-page="/Sales/Index">Sales</a></li>
+                    <li class="font-semibold text-primary">Customers & Vendors</li>
+                </ul>
+            </div>
+            <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
+                <i class="fa-solid fa-store text-primary"></i> Clients, Supermarkets & Vendor Directory
+            </h1>
+            <p class="text-sm text-base-content/60">Manage supermarket accounts, vendor wholesaler codes, and credit receivable ledgers</p>
+        </div>
+        <a asp-page="/Sales/Customers/Create" class="btn btn-primary gap-2">
+            <i class="fa-solid fa-plus"></i> Register Client / Vendor
+        </a>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 shadow-xs">
+        <div class="card-body p-5">
+            <div class="overflow-x-auto">
+                <table class="table table-sm table-zebra">
+                    <thead>
+                        <tr class="bg-base-200/70">
+                            <th>Member / Client Code</th>
+                            <th>Customer Name</th>
+                            <th>Category</th>
+                            <th>Phone Contact</th>
+                            <th>Delivery Address</th>
+                            <th>Outstanding Balance</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in Model.Customers)
+                        {
+                            <tr>
+                                <td class="font-mono text-xs font-bold text-primary">@c.MemberCode</td>
+                                <td class="font-bold text-xs">@c.Name</td>
+                                <td>
+                                    <span class="badge badge-outline badge-xs">@c.Category</span>
+                                </td>
+                                <td class="text-xs">@c.PhoneNumber</td>
+                                <td class="text-xs text-base-content/70 max-w-xs truncate">@c.Address</td>
+                                <td>
+                                    @if (c.OutstandingBalance > 0)
+                                    {
+                                        <span class="font-bold text-xs text-error font-mono">₦@c.OutstandingBalance.ToString("N0")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-xs text-success font-semibold">₦0.00 (Clear)</span>
+                                    }
+                                </td>
+                                <td class="text-right">
+                                    <a asp-page="/Sales/Orders/Create" asp-route-customerId="@c.Id" class="btn btn-xs btn-outline btn-primary">
+                                        <i class="fa-solid fa-cart-plus"></i> Create Order
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

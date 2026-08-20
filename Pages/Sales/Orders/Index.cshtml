@@ -1,0 +1,121 @@
+@page
+@model Manufacture.Pages.Sales.Orders.IndexModel
+@{
+    ViewData["Title"] = "All Sales Orders & Loading Register";
+}
+
+<div class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs breadcrumbs mb-1">
+                <ul>
+                    <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
+                    <li><a asp-page="/Sales/Index">Sales</a></li>
+                    <li class="font-semibold text-primary">Orders</li>
+                </ul>
+            </div>
+            <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
+                <i class="fa-solid fa-receipt text-primary"></i> Order Register & Dispatch Status
+            </h1>
+            <p class="text-sm text-base-content/60">Complete audit trail of POS sales, pre-orders, and loading slips</p>
+        </div>
+        <div class="flex gap-2">
+            <a asp-page="/Sales/Orders/PreOrders" class="btn btn-sm btn-outline btn-warning gap-1">
+                <i class="fa-solid fa-clock-rotate-left"></i> Pre-Orders Only
+            </a>
+            <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-primary gap-1">
+                <i class="fa-solid fa-cart-plus"></i> New Order
+            </a>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 shadow-xs">
+        <div class="card-body p-5">
+            <div class="overflow-x-auto">
+                <table class="table table-sm table-zebra">
+                    <thead>
+                        <tr class="bg-base-200/70">
+                            <th>Order Number</th>
+                            <th>Date / Type</th>
+                            <th>Customer & Code</th>
+                            <th>Items Breakdown</th>
+                            <th>Payment Channel</th>
+                            <th>Net Total</th>
+                            <th>Paid / Balance</th>
+                            <th>Print Slip</th>
+                            <th>Dispatch Status</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var o in Model.Orders)
+                        {
+                            <tr>
+                                <td class="font-mono text-xs font-bold text-primary">@o.OrderNumber</td>
+                                <td class="text-xs">
+                                    <div class="font-semibold">@o.OrderDate.ToString("yyyy-MM-dd HH:mm")</div>
+                                    <span class="badge badge-outline badge-xs">@o.Type</span>
+                                </td>
+                                <td>
+                                    <div class="font-bold text-xs">@o.CustomerName</div>
+                                    <span class="badge badge-ghost badge-xs">@o.CustomerCategory</span>
+                                </td>
+                                <td class="text-xs max-w-xs">
+                                    @foreach (var item in o.Items)
+                                    {
+                                        <div><span class="font-bold">@item.Quantity</span>x @item.ProductName</div>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge badge-neutral badge-xs font-mono">@o.PaymentMethod</span>
+                                </td>
+                                <td class="font-mono text-xs font-bold">₦@o.TotalAmount.ToString("N0")</td>
+                                <td class="text-xs font-mono">
+                                    <div class="text-emerald-600 font-semibold">Paid: ₦@o.AmountPaid.ToString("N0")</div>
+                                    @if (o.BalanceDue > 0)
+                                    {
+                                        <div class="text-rose-600 font-bold">Due: ₦@o.BalanceDue.ToString("N0")</div>
+                                    }
+                                </td>
+                                <td>
+                                    @if (o.IsPrintedForLoading)
+                                    {
+                                        <span class="badge badge-success badge-xs font-bold gap-1">
+                                            <i class="fa-solid fa-check"></i> Printed
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-warning badge-xs font-bold gap-1">
+                                            <i class="fa-solid fa-clock"></i> Unprinted
+                                        </span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (o.Status == OrderStatus.Dispatched)
+                                    {
+                                        <span class="badge badge-neutral badge-xs">Dispatched</span>
+                                        <div class="text-[10px] text-base-content/60">By: @o.VerifiedByLoaderName</div>
+                                    }
+                                    else if (o.Status == OrderStatus.ReadyToLoad)
+                                    {
+                                        <span class="badge badge-info badge-xs">Ready To Load</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-ghost badge-xs">@o.Status</span>
+                                    }
+                                </td>
+                                <td class="text-right space-x-1">
+                                    <a asp-page="/Sales/Orders/Receipt" asp-route-id="@o.Id" class="btn btn-xs btn-outline btn-primary" title="Print Loading Slip / Receipt">
+                                        <i class="fa-solid fa-print"></i> Slip
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

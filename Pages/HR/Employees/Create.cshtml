@@ -1,0 +1,299 @@
+@page
+@model Manufacture.Pages.HR.Employees.CreateModel
+@{
+    ViewData["Title"] = "Add New Employee";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/HR/StaffDirectory" class="hover:underline">Staff Directory</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Add New Employee</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-user-plus text-primary"></i> Add New Employee
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Register employee employment details, salary terms, emergency contacts, and verified guarantor credentials.
+            </p>
+        </div>
+        <div>
+            <a asp-page="/HR/StaffDirectory" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Directory
+            </a>
+        </div>
+    </div>
+
+    <!-- Standard 2-Column Full-Width Form Layout -->
+    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        
+        <!-- Left Section (~70% width, 8 Cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- 1. Employee Employment & Personal Details -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-regular fa-user"></i>
+                            </div>
+                            <span>1. Employment & Personal Information</span>
+                        </div>
+                        <span class="badge badge-neutral badge-xs font-bold uppercase tracking-wider">Required</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Full Name <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="EmployeeInput.FullName" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" placeholder="e.g. Sarah Jenkins" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Staff ID / Code <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="EmployeeInput.StaffCode" class="input input-bordered input-sm w-full font-mono uppercase bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" placeholder="e.g. EMP-8492" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Department <span class="text-error">*</span></span>
+                            </label>
+                            <select asp-for="EmployeeInput.Department" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
+                                <option value="Production">Production (Bakery Floor)</option>
+                                <option value="Sales">Front of House / Sales</option>
+                                <option value="Logistics">Logistics & Fleet</option>
+                                <option value="Store">Store & Inventory</option>
+                                <option value="Administration">Administration & HR</option>
+                            </select>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Designation / Role <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="EmployeeInput.Designation" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. Head Baker" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Monthly Base Salary (₦) <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="number" step="1000" min="0" asp-for="EmployeeInput.BaseSalary" id="salaryInput" oninput="updateSalaryPreview()" class="input input-bordered input-sm w-full font-mono font-bold bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" value="120000" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Phone Number <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="tel" asp-for="EmployeeInput.PhoneNumber" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-mono" placeholder="+234 80..." required />
+                        </div>
+
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Email Address <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="email" asp-for="EmployeeInput.Email" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-mono" placeholder="s.jenkins@artisan.co" required />
+                        </div>
+
+                        <div class="sm:col-span-3 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Residential Address <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="EmployeeInput.Address" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="Residential Street Address, City" required />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Emergency Contact -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-base-200 text-base-content border border-base-300 flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-phone"></i>
+                            </div>
+                            <span>2. Next of Kin & Emergency Contact</span>
+                        </div>
+                        <span class="badge badge-soft badge-xs font-semibold">Safety Record</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Contact Name <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="EmployeeInput.EmergencyContactName" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. John Jenkins" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Contact Phone <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="tel" asp-for="EmployeeInput.EmergencyContactPhone" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-mono" placeholder="+234 81..." required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Relationship <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="EmployeeInput.EmergencyRelationship" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. Spouse / Brother / Father" required />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Mandatory Verified Guarantor -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-user-shield"></i>
+                            </div>
+                            <span>3. Mandatory Verified Guarantor</span>
+                        </div>
+                        <span class="badge badge-success badge-xs font-bold">Bakery Compliance</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Guarantor Full Name <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="EmployeeInput.GuarantorName" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. Chief Raymond Adeleke" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Guarantor Phone <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="tel" asp-for="EmployeeInput.GuarantorPhone" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-mono" placeholder="+234 80..." required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Guarantor Occupation / Title <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="EmployeeInput.GuarantorOccupation" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. Civil Servant / Business Owner" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Guarantor Physical Address <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="EmployeeInput.GuarantorAddress" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="Permanent Residence Address" required />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Side Sticky Confirmation & Metrics (4 Cols) -->
+        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+            
+            <!-- Summary & Actions Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-file-contract text-primary"></i> Wage & Compliance
+                    </h2>
+                    <span class="badge badge-success badge-xs font-bold">New Record</span>
+                </div>
+
+                <!-- 3 Live Calculated Metrics -->
+                <div class="space-y-2.5 text-xs font-mono">
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Monthly Base:</span>
+                        <span class="font-bold text-base-content" id="displayBaseSalary">₦120,000</span>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Estimated Annual Cost:</span>
+                        <span class="font-bold text-base-content" id="displayAnnualCost">₦1,440,000</span>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Guarantor Check:</span>
+                        <span class="font-bold text-success flex items-center gap-1">
+                            <i class="fa-solid fa-circle-check text-xs"></i> Required
+                        </span>
+                    </div>
+                </div>
+
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    Saving this staff profile registers the employee into the automated monthly payroll engine and directory.
+                </p>
+
+                <div class="space-y-2 pt-2 border-t border-base-200">
+                    <button type="submit" class="btn btn-neutral w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
+                        <i class="fa-solid fa-circle-check text-success text-xs"></i> Save Employee Profile
+                    </button>
+                    
+                    <a asp-page="/HR/StaffDirectory" class="btn btn-ghost w-full rounded-xl text-xs font-semibold">
+                        Cancel
+                    </a>
+                </div>
+            </div>
+
+            <!-- Policy Alert -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 text-xs space-y-2">
+                <div class="font-bold text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-primary"></i> HR Policy Reminder
+                </div>
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    Staff members must provide a verified physical guarantor before being assigned custody of inventory or cash terminals.
+                </p>
+            </div>
+
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    function updateSalaryPreview() {
+        const val = parseFloat(document.getElementById('salaryInput').value) || 0;
+        document.getElementById('displayBaseSalary').innerText = '₦' + val.toLocaleString('en-US');
+        document.getElementById('displayAnnualCost').innerText = '₦' + (val * 12).toLocaleString('en-US');
+    }
+</script>
+}

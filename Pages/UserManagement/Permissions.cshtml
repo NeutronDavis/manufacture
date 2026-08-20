@@ -1,0 +1,147 @@
+@page
+@model Manufacture.Pages.UserManagement.PermissionsModel
+@{
+    ViewData["Title"] = "Role-Based Access Control (RBAC) Matrix";
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs breadcrumbs mb-1 opacity-60">
+                <ul>
+                    <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
+                    <li><a asp-page="/UserManagement/Index">User Management</a></li>
+                    <li class="font-semibold text-primary">RBAC Matrix</li>
+                </ul>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-shield-halved text-primary"></i> Role-Based Access Control (RBAC) Matrix
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Granular View, Print, Edit, and Delete privileges across all bakery management modules
+            </p>
+        </div>
+        <a asp-page="/UserManagement/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-1 text-xs">
+            <i class="fa-solid fa-arrow-left text-xs"></i> User Directory
+        </a>
+    </div>
+
+    <!-- RBAC Matrix Table -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+        <div class="card-body p-6 space-y-4">
+            <div class="overflow-x-auto">
+                <table class="table table-sm w-full text-xs">
+                    <thead>
+                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                            <th class="py-3 pl-4">Module / Feature Area</th>
+                            <th class="text-center">Super Admin</th>
+                            <th class="text-center">Production Mgr</th>
+                            <th class="text-center">Store Keeper</th>
+                            <th class="text-center">Sales Rep (POS)</th>
+                            <th class="text-center">Vendor / Client</th>
+                            <th class="text-center pr-4">HR & Payroll</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-base-200">
+                        <tr class="hover:bg-base-200/60 transition-colors">
+                            <td class="font-bold py-3 pl-4">
+                                <div class="text-base-content">Recipe Builder & Unit Costing</div>
+                                <span class="text-[10px] opacity-60">Ingredients, packaging & margin formulas</span>
+                            </td>
+                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">View, Edit, Del</span></td>
+                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">View, Edit</span></td>
+                            <td class="text-center"><span class="badge badge-neutral badge-xs">View Only</span></td>
+                            <td class="text-center"><span class="badge badge-neutral badge-xs">View Only</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center pr-4"><span class="opacity-30">—</span></td>
+                        </tr>
+                        <tr class="hover:bg-base-200/60 transition-colors">
+                            <td class="font-bold py-3 pl-4">
+                                <div class="text-base-content">Batch Production Logger</div>
+                                <span class="text-[10px] opacity-60">Flour bags, oven yields & variance</span>
+                            </td>
+                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">View, Edit, Del</span></td>
+                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">View, Edit</span></td>
+                            <td class="text-center"><span class="badge badge-neutral badge-xs">View Only</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center pr-4"><span class="opacity-30">—</span></td>
+                        </tr>
+                        <tr class="hover:bg-base-200/60 transition-colors">
+                            <td class="font-bold py-3 pl-4">
+                                <div class="text-base-content">Raw Material Store & Requests</div>
+                                <span class="text-[10px] opacity-60">Stock inventory, reorder alerts & issue approval</span>
+                            </td>
+                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">View, Edit, Del</span></td>
+                            <td class="text-center"><span class="badge badge-primary badge-xs">Request Only</span></td>
+                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">View, Issue, Edit</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center pr-4"><span class="opacity-30">—</span></td>
+                        </tr>
+                        <tr class="hover:bg-base-200/60 transition-colors">
+                            <td class="font-bold py-3 pl-4">
+                                <div class="text-base-content">POS Checkout & Cash Routing</div>
+                                <span class="text-[10px] opacity-60">Instant sale, Cash/Transfer/POS routing</span>
+                            </td>
+                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">Full Access</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">Create, Print</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center pr-4"><span class="opacity-30">—</span></td>
+                        </tr>
+                        <tr class="hover:bg-base-200/60 transition-colors">
+                            <td class="font-bold py-3 pl-4">
+                                <div class="text-base-content">Pre-Order Booking Portal</div>
+                                <span class="text-[10px] opacity-60">Supermarket next-day orders & aggregation</span>
+                            </td>
+                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">Full Access</span></td>
+                            <td class="text-center"><span class="badge badge-neutral badge-xs">View Targets</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center"><span class="badge badge-primary badge-xs">Book Order</span></td>
+                            <td class="text-center"><span class="badge badge-primary badge-xs font-bold">Book Own Order</span></td>
+                            <td class="text-center pr-4"><span class="opacity-30">—</span></td>
+                        </tr>
+                        <tr class="hover:bg-base-200/60 transition-colors">
+                            <td class="font-bold py-3 pl-4">
+                                <div class="text-base-content">Print-to-Load Dispatch Slips</div>
+                                <span class="text-[10px] opacity-60">Vehicle loading gate-pass verification</span>
+                            </td>
+                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">Full Access</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">Print Once</span></td>
+                            <td class="text-center"><span class="badge badge-neutral badge-xs">View Slip</span></td>
+                            <td class="text-center pr-4"><span class="opacity-30">—</span></td>
+                        </tr>
+                        <tr class="hover:bg-base-200/60 transition-colors">
+                            <td class="font-bold py-3 pl-4">
+                                <div class="text-base-content">Staff & Payroll Engine</div>
+                                <span class="text-[10px] opacity-60">Guarantors, salary advances & monthly wage run</span>
+                            </td>
+                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">Full Access</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center pr-4"><span class="badge badge-success badge-xs font-bold">Manage & Disburse</span></td>
+                        </tr>
+                        <tr class="hover:bg-base-200/60 transition-colors">
+                            <td class="font-bold py-3 pl-4">
+                                <div class="text-base-content">Logistics & Fuel Logs</div>
+                                <span class="text-[10px] opacity-60">Vehicles, odometer & fuel expenditure</span>
+                            </td>
+                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">Full Access</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center"><span class="opacity-30">—</span></td>
+                            <td class="text-center pr-4"><span class="opacity-30">—</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

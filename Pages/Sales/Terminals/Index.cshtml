@@ -1,0 +1,82 @@
+@page
+@model Manufacture.Pages.Sales.Terminals.IndexModel
+@{
+    ViewData["Title"] = "POS Terminals & Account Mapping";
+}
+
+<div class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs breadcrumbs mb-1">
+                <ul>
+                    <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
+                    <li><a asp-page="/Sales/Index">Sales</a></li>
+                    <li class="font-semibold text-primary">Terminals</li>
+                </ul>
+            </div>
+            <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
+                <i class="fa-solid fa-desktop text-primary"></i> POS Terminals & Multi-Account Mapping
+            </h1>
+            <p class="text-sm text-base-content/60">Dedicated terminal registers mapped to specific Cash, Transfer, and Bank accounts</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        @foreach (var term in Model.Terminals)
+        {
+            <div class="card bg-base-100 border border-base-300 shadow-xs flex flex-col justify-between">
+                <div class="card-body p-5 space-y-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="badge badge-primary font-mono font-bold">@term.TerminalCode</span>
+                            <h2 class="text-lg font-bold text-base-content mt-1">@term.TerminalName</h2>
+                        </div>
+                        <span class="badge badge-success badge-sm font-semibold">Active</span>
+                    </div>
+
+                    <div class="p-3 bg-base-200/50 rounded-xl space-y-2 text-xs">
+                        <div class="font-semibold text-base-content/70 flex items-center justify-between">
+                            <span>Assigned Sales Rep:</span>
+                            <span class="font-bold text-base-content">@(term.AssignedUserName ?? "Unassigned")</span>
+                        </div>
+                    </div>
+
+                    <!-- Multi-Account 3-Channel Mapping -->
+                    <div class="space-y-2 text-xs">
+                        <div class="text-xs font-bold uppercase tracking-wider text-base-content/50">Dedicated Account Channels</div>
+                        <div class="p-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 flex items-center gap-2">
+                            <i class="fa-solid fa-money-bill-wave text-emerald-600"></i>
+                            <div>
+                                <div class="font-bold text-emerald-700">Cash Drawer</div>
+                                <div class="font-mono text-[11px]">@term.CashAccountName</div>
+                            </div>
+                        </div>
+                        <div class="p-2.5 rounded-lg border border-blue-500/30 bg-blue-500/5 flex items-center gap-2">
+                            <i class="fa-solid fa-building-columns text-blue-600"></i>
+                            <div>
+                                <div class="font-bold text-blue-700">Transfer Account</div>
+                                <div class="font-mono text-[11px]">@term.TransferAccountName</div>
+                            </div>
+                        </div>
+                        <div class="p-2.5 rounded-lg border border-purple-500/30 bg-purple-500/5 flex items-center gap-2">
+                            <i class="fa-solid fa-credit-card text-purple-600"></i>
+                            <div>
+                                <div class="font-bold text-purple-700">POS Machine Bank</div>
+                                <div class="font-mono text-[11px]">@term.PosBankAccountName</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 border-t border-base-200 bg-base-100 flex justify-between items-center rounded-b-box">
+                    <a asp-page="/Sales/Terminals/Assign" asp-route-id="@term.Id" class="btn btn-sm btn-outline btn-primary gap-1">
+                        <i class="fa-solid fa-user-gear"></i> Reassign Rep
+                    </a>
+                    <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-primary">
+                        <i class="fa-solid fa-cash-register"></i> Use POS
+                    </a>
+                </div>
+            </div>
+        }
+    </div>
+</div>

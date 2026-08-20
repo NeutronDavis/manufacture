@@ -1,0 +1,99 @@
+@page
+@model Manufacture.Pages.Production.Recipes.IndexModel
+@{
+    ViewData["Title"] = "Product Recipes & Costing";
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs text-slate-400 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:text-slate-600">Home</a>
+                <span>&gt;</span>
+                <a asp-page="/Production/Index" class="hover:text-slate-600">Manufacturing</a>
+                <span>&gt;</span>
+                <span class="text-slate-700">Recipes & Costing</span>
+            </div>
+            <h1 class="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-calculator text-emerald-600"></i> Product Recipe Builder & Cost Engine
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">
+                Ingredient-level pricing, packaging nylon costs, and automated margin calculation
+            </p>
+        </div>
+        <a asp-page="/Production/Recipes/Create" class="btn btn-sm btn-neutral bg-stone-900 hover:bg-black text-white border-0 rounded-xl gap-2 font-bold px-4 shadow-xs">
+            <i class="fa-solid fa-plus text-xs"></i> Build New Recipe
+        </a>
+    </div>
+
+    <!-- Grid of Recipe Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        @foreach (var recipe in Model.Recipes)
+        {
+            <div class="card bg-white border border-slate-200 shadow-xs hover:border-emerald-500/50 transition-all rounded-2xl flex flex-col justify-between">
+                <div class="card-body p-6 space-y-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="badge badge-neutral badge-xs font-mono font-bold">@recipe.Code</span>
+                            <h2 class="text-lg font-black text-slate-800 mt-1">@recipe.Name</h2>
+                        </div>
+                        <span class="badge @(recipe.MarginPercentage >= 25 ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200") font-bold text-xs">
+                            @recipe.MarginPercentage% Margin
+                        </span>
+                    </div>
+
+                    <p class="text-xs text-slate-500 line-clamp-2">@recipe.Description</p>
+
+                    <!-- Cost Breakdown Summary -->
+                    <div class="space-y-2 bg-slate-50 p-4 rounded-xl text-xs font-mono">
+                        <div class="flex justify-between text-slate-600">
+                            <span>Raw Ingredients Cost:</span>
+                            <span class="font-bold text-slate-800">₦@recipe.IngredientsCost.ToString("N2")</span>
+                        </div>
+                        <div class="flex justify-between text-slate-600">
+                            <span>Nylon Packaging:</span>
+                            <span class="font-bold text-slate-800">₦@recipe.PackagingCost.ToString("N2")</span>
+                        </div>
+                        <div class="flex justify-between text-slate-600">
+                            <span>Labor & Baking Overhead:</span>
+                            <span class="font-bold text-slate-800">₦@recipe.LaborAndOverheadPerUnit.ToString("N2")</span>
+                        </div>
+                        <div class="divider my-1 border-slate-200"></div>
+                        <div class="flex justify-between font-bold text-xs text-slate-800">
+                            <span>Total Unit Cost:</span>
+                            <span>₦@recipe.TotalUnitCost.ToString("N2")</span>
+                        </div>
+                        <div class="flex justify-between font-bold text-xs text-emerald-700">
+                            <span>Selling Price:</span>
+                            <span>₦@recipe.SellingPrice.ToString("N2")</span>
+                        </div>
+                        <div class="flex justify-between text-xs font-bold text-emerald-600">
+                            <span>Profit per Loaf:</span>
+                            <span>+₦@recipe.MarginAmount.ToString("N2")</span>
+                        </div>
+                    </div>
+
+                    <div class="text-[11px] text-slate-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-list-check text-emerald-600"></i> Contains @recipe.Ingredients.Count raw materials
+                    </div>
+                </div>
+
+                <div class="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center rounded-b-2xl">
+                    <a asp-page="/Production/Recipes/Details" asp-route-id="@recipe.Id" class="btn btn-xs btn-outline border-slate-300 text-slate-700 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 rounded-lg">
+                        <i class="fa-solid fa-eye"></i> View Formula
+                    </a>
+                    <div class="flex gap-1">
+                        <a asp-page="/Production/Recipes/Edit" asp-route-id="@recipe.Id" class="btn btn-xs btn-square btn-ghost text-slate-500 hover:text-emerald-700" title="Edit Recipe">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </a>
+                        <form method="post" asp-page-handler="ToggleStatus" asp-route-id="@recipe.Id" onsubmit="return confirm('Toggle recipe active status?');">
+                            <button type="submit" class="btn btn-xs btn-square btn-ghost text-rose-500 hover:bg-rose-50" title="Deactivate">
+                                <i class="fa-solid fa-power-off"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

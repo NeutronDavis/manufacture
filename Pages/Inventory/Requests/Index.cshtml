@@ -1,0 +1,127 @@
+@page
+@model Manufacture.Pages.Inventory.Requests.IndexModel
+@{
+    ViewData["Title"] = "Store Release Requisitions";
+}
+
+<div class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs breadcrumbs mb-1">
+                <ul>
+                    <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
+                    <li><a asp-page="/Inventory/Index">Inventory</a></li>
+                    <li class="font-semibold text-primary">Store Releases</li>
+                </ul>
+            </div>
+            <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
+                <i class="fa-solid fa-clipboard-check text-primary"></i> Store Release & Raw Material Issuance
+            </h1>
+            <p class="text-sm text-base-content/60">Digital approval and stock deduction workflow between Production and Store Keeper</p>
+        </div>
+        <a asp-page="/Inventory/Requests/Create" class="btn btn-primary gap-2">
+            <i class="fa-solid fa-plus"></i> New Material Requisition
+        </a>
+    </div>
+
+    <div class="space-y-4">
+        @foreach (var req in Model.Requests)
+        {
+            <div class="card bg-base-100 border border-base-300 shadow-xs">
+                <div class="card-body p-5">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-base-200 pb-3 mb-3">
+                        <div>
+                            <span class="badge badge-primary badge-sm font-mono font-bold">@req.RequestNumber</span>
+                            <span class="font-bold text-sm ml-2">@req.Purpose</span>
+                            <div class="text-xs text-base-content/60 mt-1">
+                                Requested By: <strong>@req.RequestedBy</strong> &bull; Dept: @req.Department &bull; @req.RequestedAt.ToString("yyyy-MM-dd HH:mm")
+                            </div>
+                        </div>
+
+                        <div>
+                            @if (req.Status == StoreRequestStatus.Issued)
+                            {
+                                <span class="badge badge-success font-bold gap-1"><i class="fa-solid fa-check"></i> Stock Issued</span>
+                            }
+                            else if (req.Status == StoreRequestStatus.Pending)
+                            {
+                                <span class="badge badge-warning font-bold gap-1"><i class="fa-solid fa-clock"></i> Awaiting Approval</span>
+                            }
+                            else if (req.Status == StoreRequestStatus.Rejected)
+                            {
+                                <span class="badge badge-error font-bold gap-1"><i class="fa-solid fa-xmark"></i> Rejected</span>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Items requested table -->
+                    <div class="overflow-x-auto">
+                        <table class="table table-xs">
+                            <thead>
+                                <tr class="bg-base-200/50">
+                                    <th>Material / Item</th>
+                                    <th>Unit</th>
+                                    <th>Requested Quantity</th>
+                                    <th>Issued Quantity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in req.Items)
+                                {
+                                    <tr>
+                                        <td class="font-semibold text-xs">@item.ItemName</td>
+                                        <td class="text-xs">@item.Unit</td>
+                                        <td class="font-mono font-bold text-xs">@item.RequestedQuantity</td>
+                                        <td class="font-mono font-bold text-xs @(req.Status == StoreRequestStatus.Issued ? "text-emerald-600" : "text-base-content/50")">
+                                            @(req.Status == StoreRequestStatus.Issued ? item.IssuedQuantity.ToString() : "—")
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Actions & Approval Trail -->
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pt-3 border-t border-base-200 mt-3 text-xs">
+                        <div>
+                            @if (req.Status == StoreRequestStatus.Issued)
+                            {
+                                <span class="text-emerald-700 font-semibold">
+                                    <i class="fa-solid fa-circle-check"></i> Approved & Issued by @req.ApprovedBy at @req.ApprovedAt?.ToString("yyyy-MM-dd HH:mm")
+                                </span>
+                            }
+                            else if (req.Status == StoreRequestStatus.Rejected)
+                            {
+                                <span class="text-error font-semibold">
+                                    <i class="fa-solid fa-circle-xmark"></i> Rejected by @req.ApprovedBy. Reason: @req.RejectionReason
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-warning font-semibold">
+                                    <i class="fa-solid fa-hourglass-half"></i> Store Keeper approval required to deduct materials from stock.
+                                </span>
+                            }
+                        </div>
+
+                        @if (req.Status == StoreRequestStatus.Pending)
+                        {
+                            <div class="flex gap-2">
+                                <form method="post" asp-page-handler="Approve" asp-route-id="@req.Id">
+                                    <button type="submit" class="btn btn-xs btn-success text-white gap-1">
+                                        <i class="fa-solid fa-check"></i> Approve & Issue Stock
+                                    </button>
+                                </form>
+                                <form method="post" asp-page-handler="Reject" asp-route-id="@req.Id">
+                                    <button type="submit" class="btn btn-xs btn-error text-white gap-1" onclick="return confirm('Reject this material request?');">
+                                        <i class="fa-solid fa-xmark"></i> Reject
+                                    </button>
+                                </form>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

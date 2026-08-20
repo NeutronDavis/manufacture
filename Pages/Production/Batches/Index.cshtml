@@ -1,0 +1,123 @@
+@page
+@model Manufacture.Pages.Production.Batches.IndexModel
+@{
+    ViewData["Title"] = "Production Batches & Output Log";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Production/Index" class="hover:underline">Production</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Batches</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-layer-group text-primary"></i> Production Batches & Output Logger
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Log flour bags mixed, oven batches, and record output variances (extra vs short loaves).
+            </p>
+        </div>
+        <a asp-page="/Production/Batches/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 text-xs shadow-xs">
+            <i class="fa-solid fa-plus text-xs"></i> Record New Batch
+        </a>
+    </div>
+
+    <!-- Batch KPI Stats -->
+    <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+        <div class="stat p-5">
+            <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-industry"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Batches</div>
+            <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.Batches.Count</div>
+            <div class="stat-desc opacity-70">Completed runs today</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-bread-slice"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Baked Loaves</div>
+            <div class="stat-value text-2xl font-black font-mono text-success">@Model.Batches.Sum(b => b.ActualQuantity).ToString("N0")</div>
+            <div class="stat-desc opacity-70">Dispatched to POS store</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-warning text-2xl"><i class="fa-solid fa-scale-balanced"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Flour Mixed</div>
+            <div class="stat-value text-2xl font-black font-mono text-warning">@Model.Batches.Sum(b => b.FlourBagsUsed).ToString("N1") Bags</div>
+            <div class="stat-desc opacity-70">50kg flour bags consumed</div>
+        </div>
+    </div>
+
+    <!-- Batches Table Card -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+        <div class="card-body p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-list text-primary"></i> Batch Output Records
+                </h2>
+                <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.Batches.Count Batches</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="table table-sm w-full text-xs">
+                    <thead>
+                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                            <th class="py-3 pl-4">Batch #</th>
+                            <th>Date / Shift</th>
+                            <th>Recipe Product</th>
+                            <th>Baker In Charge</th>
+                            <th>Flour Used</th>
+                            <th>Target Qty</th>
+                            <th>Actual Loaves</th>
+                            <th>Variance</th>
+                            <th>Status</th>
+                            <th class="pr-4">Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-base-200">
+                        @foreach (var batch in Model.Batches)
+                        {
+                            <tr class="hover:bg-base-200/60 transition-colors">
+                                <td class="font-mono text-xs font-black text-primary py-3 pl-4">@batch.BatchNumber</td>
+                                <td>
+                                    <div class="font-semibold text-base-content">@batch.ProductionDate.ToString("yyyy-MM-dd")</div>
+                                    <span class="text-[10px] opacity-60">@batch.Shift</span>
+                                </td>
+                                <td class="font-bold text-base-content">@batch.RecipeName</td>
+                                <td class="opacity-80">@batch.BakerInCharge</td>
+                                <td class="font-mono font-bold text-base-content">@batch.FlourBagsUsed bags</td>
+                                <td class="font-mono opacity-70">@batch.TargetQuantity</td>
+                                <td class="font-mono font-black text-base-content">@batch.ActualQuantity</td>
+                                <td>
+                                    @if (batch.Variance > 0)
+                                    {
+                                        <span class="badge badge-success badge-xs font-bold gap-1">
+                                            +@batch.Variance extra
+                                        </span>
+                                    }
+                                    else if (batch.Variance < 0)
+                                    {
+                                        <span class="badge badge-error badge-xs font-bold gap-1">
+                                            @batch.Variance short
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-neutral badge-xs font-mono">0 (Exact)</span>
+                                    }
+                                </td>
+                                <td>
+                                    <span class="badge badge-soft badge-xs font-semibold">@batch.Status</span>
+                                </td>
+                                <td class="text-xs opacity-70 max-w-xs truncate pr-4">@batch.Notes</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

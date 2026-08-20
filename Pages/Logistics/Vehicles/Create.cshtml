@@ -1,0 +1,166 @@
+@page
+@model Manufacture.Pages.Logistics.Vehicles.CreateModel
+@{
+    ViewData["Title"] = "Register Vehicle";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Logistics/Vehicles/Index" class="hover:underline">Fleet & Logistics</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Register Vehicle</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-truck-moving text-primary"></i> Register Delivery Vehicle
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Add company delivery van, distribution truck, or dispatch motorcycle to active fleet.
+            </p>
+        </div>
+        <div>
+            <a asp-page="/Logistics/Vehicles/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Fleet
+            </a>
+        </div>
+    </div>
+
+    <!-- Standard 2-Column Full-Width Form Layout -->
+    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        
+        <!-- Left Section (~70% width, 8 Cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-van-shuttle"></i>
+                            </div>
+                            <span>Vehicle Specifications & Driver Assignment</span>
+                        </div>
+                        <span class="badge badge-neutral badge-xs font-bold uppercase tracking-wider">Fleet Asset</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Plate Registration Number <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="VehicleInput.RegistrationNumber" class="input input-bordered input-sm w-full font-mono uppercase bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" placeholder="e.g. KJA-102-XY" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Vehicle Make & Model <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="VehicleInput.MakeAndModel" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. Toyota HiAce 2.7 Delivery Van" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Vehicle Type</span>
+                            </label>
+                            <select asp-for="VehicleInput.Type" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
+                                <option value="Van">Delivery Van</option>
+                                <option value="Truck">Heavy Supply Truck</option>
+                                <option value="Motorcycle">Dispatch Motorcycle</option>
+                                <option value="Sedan">Admin Car</option>
+                            </select>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Fuel Type</span>
+                            </label>
+                            <select asp-for="VehicleInput.FuelType" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
+                                <option value="PMS (Petrol)">PMS (Petrol)</option>
+                                <option value="AGO (Diesel)">AGO (Diesel)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Assigned Driver Name <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="VehicleInput.AssignedDriverName" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" placeholder="e.g. Usman Danjuma" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Driver Phone Number <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="tel" asp-for="VehicleInput.DriverPhoneNumber" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-mono" placeholder="+234 80..." required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Tank Capacity (Litres)</span>
+                            </label>
+                            <input type="number" step="1" min="1" asp-for="VehicleInput.TankCapacityLitres" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" value="70" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Current Odometer (KM)</span>
+                            </label>
+                            <input type="number" step="1" min="0" asp-for="VehicleInput.CurrentOdometerKm" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" value="100000" required />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sticky Section (~30% width, 4 Cols) -->
+        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-truck-ramp-box text-primary"></i> Fleet Status
+                    </h2>
+                    <span class="badge badge-success badge-xs font-bold">Active</span>
+                </div>
+
+                <div class="space-y-2.5 text-xs font-mono">
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Fleet Category:</span>
+                        <span class="font-bold text-base-content font-sans">Distribution</span>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Fuel Tracking:</span>
+                        <span class="font-bold text-success flex items-center gap-1 font-sans">
+                            <i class="fa-solid fa-circle-check text-xs"></i> Enabled
+                        </span>
+                    </div>
+                </div>
+
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    Registering this vehicle allows drivers and logistics coordinators to log fuel purchases and route dispatch trips.
+                </p>
+
+                <div class="space-y-2 pt-2 border-t border-base-200">
+                    <button type="submit" class="btn btn-neutral w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
+                        <i class="fa-solid fa-circle-check text-success text-xs"></i> Register Vehicle
+                    </button>
+
+                    <a asp-page="/Logistics/Vehicles/Index" class="btn btn-ghost w-full rounded-xl text-xs font-semibold">
+                        Cancel
+                    </a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>

@@ -1,0 +1,290 @@
+@page
+@model Manufacture.Pages.Sales.Orders.CreateModel
+@{
+    ViewData["Title"] = "New POS Sale & Pre-Order";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs text-slate-400 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:text-slate-600">Home</a>
+                <span>&gt;</span>
+                <a asp-page="/Sales/Orders/Index" class="hover:text-slate-600">Sales & POS</a>
+                <span>&gt;</span>
+                <span class="text-slate-700">New Order</span>
+            </div>
+            <h1 class="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-cash-register text-emerald-600"></i> Point of Sale & Order Entry
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">
+                Instant walk-in counter POS checkout or scheduled advance pre-orders for supermarkets
+            </p>
+        </div>
+        <div>
+            <a asp-page="/Sales/Orders/Index" class="text-xs text-slate-500 hover:text-emerald-700 font-semibold flex items-center gap-1.5">
+                <i class="fa-solid fa-arrow-left text-[10px]"></i> Back to Orders
+            </a>
+        </div>
+    </div>
+
+    <!-- 2-Column Form Layout -->
+    <form method="post" id="posForm" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left Main Column (approx 70% width) -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- Card 1: Channel & Customer -->
+            <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-4">
+                    <div class="flex items-center gap-2 font-bold text-slate-800 text-sm">
+                        <div class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-store"></i>
+                        </div>
+                        <span>Channel & Customer Account</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-700">Order Flow Type <span class="text-rose-500">*</span></label>
+                            <select asp-for="OrderInput.OrderType" id="orderTypeSelect" class="select select-sm select-bordered w-full rounded-lg text-xs">
+                                <option value="ImmediateSale">Immediate Counter Sale (Walk-in)</option>
+                                <option value="PreOrder">Advance Pre-Order (Supermarket)</option>
+                            </select>
+                        </div>
+
+                        <div class="space-y-1.5 sm:col-span-2">
+                            <label class="text-xs font-semibold text-slate-700">Customer / Account <span class="text-rose-500">*</span></label>
+                            <select asp-for="OrderInput.CustomerId" class="select select-sm select-bordered w-full rounded-lg text-xs" required>
+                                @foreach (var c in Model.Customers)
+                                {
+                                    <option value="@c.Id">@c.Name (@c.Category) - Code: @c.MemberCode</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-700">POS Register Terminal</label>
+                            <select asp-for="OrderInput.PosTerminalCode" class="select select-sm select-bordered w-full rounded-lg text-xs font-mono">
+                                @foreach (var t in Model.Terminals)
+                                {
+                                    <option value="@t.TerminalCode">@t.TerminalCode - @t.TerminalName</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-700">Scheduled Dispatch Date</label>
+                            <input type="date" asp-for="OrderInput.TargetDeliveryDate" class="input input-sm input-bordered w-full rounded-lg text-xs font-mono" value="@DateTime.UtcNow.ToString("yyyy-MM-dd")" />
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-700">Remarks / Slip Note</label>
+                            <input type="text" asp-for="OrderInput.Notes" class="input input-sm input-bordered w-full rounded-lg text-xs" placeholder="e.g. Double nylon bag" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Product Basket -->
+            <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div class="flex items-center gap-2 font-bold text-slate-800 text-sm">
+                            <div class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-bread-slice"></i>
+                            </div>
+                            <span>Product Basket & Quantities</span>
+                        </div>
+                        <span class="text-[11px] text-slate-400">Select loaves to add to ticket</span>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm w-full text-xs">
+                            <thead>
+                                <tr class="text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-100">
+                                    <th>PRODUCT</th>
+                                    <th>UNIT PRICE</th>
+                                    <th class="w-36 text-center">ORDER QUANTITY</th>
+                                    <th class="text-right">LINE TOTAL</th>
+                                </tr>
+                            </thead>
+                            <tbody id="basketBody" class="divide-y divide-slate-100">
+                                @for (int i = 0; i < Model.Recipes.Count; i++)
+                                {
+                                    var r = Model.Recipes[i];
+                                    <tr class="hover:bg-slate-50/60">
+                                        <td class="py-2.5">
+                                            <input type="hidden" name="OrderInput.Items[@i].RecipeId" value="@r.Id" />
+                                            <input type="hidden" name="OrderInput.Items[@i].ProductName" value="@r.Name" />
+                                            <div class="font-bold text-slate-800">@r.Name</div>
+                                            <span class="badge badge-ghost badge-xs font-mono text-[10px]">@r.Code</span>
+                                        </td>
+                                        <td class="font-mono text-slate-700 py-2.5">
+                                            <input type="hidden" name="OrderInput.Items[@i].UnitPrice" value="@r.SellingPrice" class="unit-price" />
+                                            ₦@r.SellingPrice.ToString("N0")
+                                        </td>
+                                        <td class="py-2.5 text-center">
+                                            <input type="number" min="0" 
+                                                   name="OrderInput.Items[@i].Quantity" 
+                                                   value="@(i == 0 ? "20" : "0")" 
+                                                   class="input input-xs input-bordered w-24 text-center font-mono font-bold qty-input rounded-lg" 
+                                                   oninput="calculateTotal()" />
+                                        </td>
+                                        <td class="text-right font-mono font-bold text-slate-800 py-2.5 row-total">
+                                            ₦0.00
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Payment Routing -->
+            <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-4">
+                    <div class="flex items-center gap-2 font-bold text-slate-800 text-sm">
+                        <div class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-wallet"></i>
+                        </div>
+                        <span>Payment Channel & Settlement</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-700">Payment Channel <span class="text-rose-500">*</span></label>
+                            <select asp-for="OrderInput.PaymentMethod" id="paymentMethodSelect" class="select select-sm select-bordered w-full rounded-lg text-xs" onchange="onPaymentMethodChanged()" required>
+                                <option value="Cash">Cash Account (Till Drawer)</option>
+                                <option value="BankTransfer">Direct Bank Transfer</option>
+                                <option value="PosBank">POS Terminal Card / Bank</option>
+                                <option value="CreditOwing">Credit / Unpaid Owing</option>
+                            </select>
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-700">Discount Allowed (₦)</label>
+                            <input type="number" step="100" min="0" asp-for="OrderInput.Discount" id="discountInput" class="input input-sm input-bordered w-full rounded-lg text-xs font-mono" value="0" oninput="calculateTotal()" />
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-700">Amount Tendered / Paid (₦) <span class="text-rose-500">*</span></label>
+                            <input type="number" step="100" min="0" asp-for="OrderInput.AmountPaid" id="amountPaidInput" class="input input-sm input-bordered w-full rounded-lg text-xs font-mono font-bold text-emerald-700" oninput="calculateTotal()" required />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sticky Column (approx 30% width) -->
+        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+            
+            <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-4">
+                    <div class="font-bold text-slate-800 text-sm">Submit Sale</div>
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        Completing this order will generate a printable 80mm thermal loading slip for dispatch verification.
+                    </p>
+
+                    <button type="submit" class="btn btn-sm btn-neutral bg-stone-900 hover:bg-black text-white w-full border-0 rounded-xl font-bold py-2.5 shadow-xs gap-2">
+                        <i class="fa-solid fa-receipt"></i> Process Sale & Generate Slip
+                    </button>
+
+                    <div class="text-center pt-1">
+                        <a asp-page="/Sales/Orders/Index" class="text-xs text-slate-500 hover:text-slate-800 font-medium">Cancel</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Order Summary Card -->
+            <div class="rounded-2xl p-6 bg-slate-100/70 border border-slate-200 shadow-xs space-y-4 text-xs font-mono">
+                <div class="font-bold tracking-wider uppercase text-slate-600 text-[11px]">
+                    ORDER SETTLEMENT SUMMARY
+                </div>
+
+                <div class="space-y-2 text-slate-700">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Subtotal:</span>
+                        <span class="font-bold text-slate-800" id="displaySubtotal">₦0.00</span>
+                    </div>
+
+                    <div class="flex justify-between text-rose-600">
+                        <span>Discount:</span>
+                        <span class="font-bold" id="displayDiscount">-₦0.00</span>
+                    </div>
+
+                    <div class="divider my-1 border-slate-200"></div>
+
+                    <div class="flex justify-between font-bold text-sm text-emerald-800">
+                        <span>Net Order Total:</span>
+                        <span id="displayNetTotal">₦0.00</span>
+                    </div>
+
+                    <div class="flex justify-between font-bold text-rose-600">
+                        <span>Balance Due:</span>
+                        <span id="displayBalanceDue">₦0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    function calculateTotal() {
+        let subtotal = 0;
+        const rows = document.querySelectorAll('#basketBody tr');
+        
+        rows.forEach(row => {
+            const qtyInput = row.querySelector('.qty-input');
+            const unitPriceInput = row.querySelector('.unit-price');
+            const rowTotal = row.querySelector('.row-total');
+            
+            const qty = parseInt(qtyInput?.value) || 0;
+            const price = parseFloat(unitPriceInput?.value) || 0;
+            const itemTotal = qty * price;
+            
+            subtotal += itemTotal;
+            if (rowTotal) {
+                rowTotal.innerText = '₦' + itemTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+        });
+
+        const discount = parseFloat(document.getElementById('discountInput')?.value) || 0;
+        const netTotal = Math.max(0, subtotal - discount);
+        
+        const paidInput = document.getElementById('amountPaidInput');
+        const paymentMethod = document.getElementById('paymentMethodSelect')?.value;
+
+        if (paymentMethod === 'CreditOwing') {
+            paidInput.value = 0;
+        } else if (paidInput.value == 0 && netTotal > 0 && paymentMethod !== 'CreditOwing') {
+            paidInput.value = netTotal;
+        }
+
+        const paid = parseFloat(paidInput?.value) || 0;
+        const balanceDue = Math.max(0, netTotal - paid);
+
+        document.getElementById('displaySubtotal').innerText = '₦' + subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('displayDiscount').innerText = '-₦' + discount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('displayNetTotal').innerText = '₦' + netTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('displayBalanceDue').innerText = '₦' + balanceDue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function onPaymentMethodChanged() {
+        const method = document.getElementById('paymentMethodSelect').value;
+        const paidInput = document.getElementById('amountPaidInput');
+        if (method === 'CreditOwing') {
+            paidInput.value = 0;
+        } else {
+            calculateTotal();
+        }
+        calculateTotal();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        calculateTotal();
+    });
+</script>

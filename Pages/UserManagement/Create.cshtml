@@ -1,0 +1,108 @@
+@page
+@model Manufacture.Pages.UserManagement.CreateModel
+@{
+    ViewData["Title"] = "Create User Account";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs text-slate-400 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:text-slate-600">Home</a>
+                <span>&gt;</span>
+                <a asp-page="/UserManagement/Index" class="hover:text-slate-600">User Management</a>
+                <span>&gt;</span>
+                <span class="text-slate-700">Create User</span>
+            </div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-user-plus text-stone-900"></i> Create User Account
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">
+                Assign system role, credentials, and 6-digit numeric PIN for quick shift terminal access
+            </p>
+        </div>
+        <div>
+            <a asp-page="/UserManagement/Index" class="text-xs text-slate-500 hover:text-slate-900 font-semibold flex items-center gap-1.5">
+                <i class="fa-solid fa-arrow-left text-[10px]"></i> Back to Users
+            </a>
+        </div>
+    </div>
+
+    <!-- Standard 2-Column Full-Width Form Layout -->
+    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        
+        <!-- Left Section (~70% width, 8 Cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            <div class="erp-card p-6 space-y-4">
+                <div class="flex items-center gap-2 font-bold text-slate-900 text-sm border-b border-slate-100 pb-3">
+                    <div class="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-xs">
+                        <i class="fa-solid fa-id-badge"></i>
+                    </div>
+                    <span>User Account & Security Credentials</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="sm:col-span-2">
+                        <label class="erp-label">Full Name <span class="text-rose-500">*</span></label>
+                        <input type="text" asp-for="UserInput.Name" class="erp-input" placeholder="e.g. Babatunde Alabi" required />
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="erp-label">Email Address <span class="text-rose-500">*</span></label>
+                        <input type="email" asp-for="UserInput.Email" class="erp-input" placeholder="babatunde@bakery.com" required />
+                    </div>
+
+                    <div>
+                        <label class="erp-label">Password <span class="text-rose-500">*</span></label>
+                        <input type="password" asp-for="UserInput.Password" class="erp-input" placeholder="••••••••" required />
+                    </div>
+
+                    <div>
+                        <label class="erp-label">6-Digit PIN Code <span class="text-rose-500">*</span></label>
+                        <input type="password" maxlength="6" pattern="[0-9]{6}" asp-for="UserInput.PinCode" class="erp-input font-mono tracking-widest text-center" placeholder="123456" required />
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="erp-label">Assigned System Role <span class="text-rose-500">*</span></label>
+                        <select asp-for="UserInput.Role" class="erp-select" required>
+                            <option value="SuperAdmin">Super Admin (Full Enterprise Control)</option>
+                            <option value="ProductionManager">Production Manager (Recipes, Batches, Floor Shift)</option>
+                            <option value="StoreManager">Store Manager (Inventory, Raw Materials, Stock Issues)</option>
+                            <option value="SalesRep">Sales Representative (POS Terminals, Counter Sales, Pre-Orders)</option>
+                            <option value="Vendor">External Vendor / Supermarket Client (Pre-Orders Portal)</option>
+                            <option value="HrPayrollManager">HR & Payroll Manager (Staff Records, Salary Advances, Payroll Run)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sticky Section (~30% width, 4 Cols) -->
+        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+            <div class="erp-card p-6 space-y-4">
+                <div class="font-bold text-slate-900 text-sm">Actions</div>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    User will immediately be able to sign in via standard password or numeric touch keypad PIN.
+                </p>
+
+                <button type="submit" class="btn-obsidian w-full py-2.5">
+                    <i class="fa-solid fa-check text-xs"></i> Create User Profile
+                </button>
+
+                <div class="text-center pt-1">
+                    <a asp-page="/UserManagement/Index" class="text-xs text-slate-500 hover:text-slate-900 font-medium">Cancel</a>
+                </div>
+            </div>
+
+            <div class="erp-card p-6 bg-slate-50/70 border border-slate-200 text-xs space-y-2">
+                <div class="font-bold uppercase tracking-wider text-slate-500 text-[10px]">
+                    PIN AUTHENTICATION NOTE
+                </div>
+                <p class="text-slate-600">
+                    6-Digit PIN codes allow instant terminal switching on the POS register touchscreens without typing full email credentials.
+                </p>
+            </div>
+        </div>
+    </form>
+</div>

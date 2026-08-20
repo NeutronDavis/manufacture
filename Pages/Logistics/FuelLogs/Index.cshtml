@@ -1,0 +1,68 @@
+@page
+@model Manufacture.Pages.Logistics.FuelLogs.IndexModel
+@{
+    ViewData["Title"] = "Daily Fuel & Expense Logs";
+}
+
+<div class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs breadcrumbs mb-1">
+                <ul>
+                    <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
+                    <li><a asp-page="/Logistics/Index">Logistics</a></li>
+                    <li class="font-semibold text-primary">Fuel Logs</li>
+                </ul>
+            </div>
+            <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
+                <i class="fa-solid fa-gas-pump text-warning"></i> Daily Fuel & Vehicle Operating Expenses
+            </h1>
+            <p class="text-sm text-base-content/60">Log petrol/diesel purchases, receipt tracking, and delivery route mileage</p>
+        </div>
+        <a asp-page="/Logistics/FuelLogs/Create" class="btn btn-primary gap-2">
+            <i class="fa-solid fa-plus"></i> New Fuel Log
+        </a>
+    </div>
+
+    <!-- Fuel Logs Table -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs">
+        <div class="card-body p-5">
+            <div class="overflow-x-auto">
+                <table class="table table-sm table-zebra">
+                    <thead>
+                        <tr class="bg-base-200/70">
+                            <th>Date</th>
+                            <th>Vehicle Plate</th>
+                            <th>Driver</th>
+                            <th>Litres</th>
+                            <th>Price / Litre</th>
+                            <th>Total Cost (₦)</th>
+                            <th>Odometer (KM)</th>
+                            <th>Petrol Station & Receipt</th>
+                            <th>Delivery Route</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var log in Model.FuelLogs)
+                        {
+                            <tr>
+                                <td class="text-xs font-semibold">@log.Date.ToString("yyyy-MM-dd")</td>
+                                <td class="font-mono text-xs font-bold text-primary">@log.VehicleRegNumber</td>
+                                <td class="text-xs">@log.DriverName</td>
+                                <td class="font-mono text-xs">@log.LitresDispensed L</td>
+                                <td class="font-mono text-xs">₦@log.PricePerLitre.ToString("N0")</td>
+                                <td class="font-mono text-xs font-bold text-emerald-600">₦@log.TotalCost.ToString("N0")</td>
+                                <td class="font-mono text-xs">@log.OdometerReadingKm.ToString("N0") km</td>
+                                <td class="text-xs">
+                                    <div class="font-semibold">@log.PetrolStation</div>
+                                    <span class="font-mono text-[10px] text-base-content/60">Receipt: @log.ReceiptNumber</span>
+                                </td>
+                                <td class="text-xs text-base-content/70 max-w-xs truncate">@log.RouteDescription</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

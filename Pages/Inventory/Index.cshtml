@@ -1,0 +1,118 @@
+@page
+@model Manufacture.Pages.Inventory.IndexModel
+@{
+    ViewData["Title"] = "Warehouse Inventory";
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-boxes-stacked text-primary"></i> Raw Materials & Store Inventory
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Monitor flour bags, sugar, yeast, packaging stock levels, and store release requests
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <a asp-page="/Inventory/Requests/Create" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-3.5 text-xs">
+                <i class="fa-solid fa-clipboard-question text-xs"></i> Request Materials
+            </a>
+            <a asp-page="/Inventory/Items/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 text-xs shadow-xs">
+                <i class="fa-solid fa-plus text-xs"></i> Add Stock Item
+            </a>
+        </div>
+    </div>
+
+    <!-- Stock Health Stats using daisyUI stats component -->
+    <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+        <div class="stat p-5">
+            <div class="stat-figure text-primary text-2xl">
+                <i class="fa-solid fa-box"></i>
+            </div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Tracked Items</div>
+            <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.Items.Count</div>
+            <div class="stat-desc opacity-70">Active warehouse SKUs</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure @(Model.LowStockCount > 0 ? "text-error" : "text-success") text-2xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Below Reorder Threshold</div>
+            <div class="stat-value text-2xl font-black font-mono @(Model.LowStockCount > 0 ? "text-error" : "text-success")">@Model.LowStockCount</div>
+            <div class="stat-desc @(Model.LowStockCount > 0 ? "text-error font-semibold" : "opacity-70")">Restock alerts active</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-success text-2xl">
+                <i class="fa-solid fa-vault"></i>
+            </div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Stock Value</div>
+            <div class="stat-value text-2xl font-black font-mono text-success">
+                ₦@Model.Items.Sum(i => i.QuantityInStock * i.UnitCostPrice).ToString("N0")
+            </div>
+            <div class="stat-desc opacity-70">Estimated raw inventory valuation</div>
+        </div>
+    </div>
+
+    <!-- Inventory Table -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+        <div class="card-body p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-list text-primary"></i> Stock Items & Reorder Levels
+                </h2>
+                <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.Items.Count Items</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="table table-sm w-full text-xs">
+                    <thead>
+                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                            <th>Item Code</th>
+                            <th>Item Description</th>
+                            <th>Category</th>
+                            <th>Current Stock</th>
+                            <th>Unit Cost (₦)</th>
+                            <th>Reorder Level</th>
+                            <th>Status</th>
+                            <th class="text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-base-200">
+                        @foreach (var item in Model.Items)
+                        {
+                            var isLow = item.QuantityInStock <= item.ReorderThreshold;
+                            <tr class="hover:bg-base-200/60 transition-colors">
+                                <td class="font-mono text-xs font-bold text-base-content">@item.ItemCode</td>
+                                <td class="font-bold text-base-content">@item.Name</td>
+                                <td><span class="badge badge-soft badge-xs font-semibold">@item.Category</span></td>
+                                <td class="font-mono text-xs font-black @(isLow ? "text-error" : "text-base-content")">
+                                    @item.QuantityInStock.ToString("N0") @item.Unit
+                                </td>
+                                <td class="font-mono text-base-content">₦@item.UnitCostPrice.ToString("N0")</td>
+                                <td class="font-mono opacity-70">@item.ReorderThreshold.ToString("N0") @item.Unit</td>
+                                <td>
+                                    @if (isLow)
+                                    {
+                                        <span class="badge badge-error badge-xs font-bold gap-1">● Reorder Needed</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-success badge-xs font-bold gap-1">● In Stock</span>
+                                    }
+                                </td>
+                                <td class="text-right">
+                                    <a asp-page="/Inventory/Items/Edit" asp-route-id="@item.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg">
+                                        Edit
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

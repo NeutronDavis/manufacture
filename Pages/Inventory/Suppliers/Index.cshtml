@@ -1,0 +1,62 @@
+@page
+@model Manufacture.Pages.Inventory.Suppliers.IndexModel
+@{
+    ViewData["Title"] = "Suppliers & Vendors Directory";
+}
+
+<div class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs breadcrumbs mb-1">
+                <ul>
+                    <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
+                    <li><a asp-page="/Inventory/Index">Inventory</a></li>
+                    <li class="font-semibold text-primary">Suppliers</li>
+                </ul>
+            </div>
+            <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
+                <i class="fa-solid fa-handshake text-primary"></i> Suppliers & Vendor Directory
+            </h1>
+            <p class="text-sm text-base-content/60">Flour mills, sugar refineries, yeast importers and nylon packaging suppliers with direct contacts</p>
+        </div>
+        <a asp-page="/Inventory/Suppliers/Create" class="btn btn-primary gap-2">
+            <i class="fa-solid fa-plus"></i> Add New Supplier
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        @foreach (var s in Model.Suppliers)
+        {
+            <div class="card bg-base-100 border border-base-300 shadow-xs">
+                <div class="card-body p-5 space-y-3">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="badge badge-outline badge-xs mb-1">@s.SupplyCategory</span>
+                            <h2 class="font-bold text-base text-base-content">@s.Name</h2>
+                        </div>
+                        <span class="badge badge-success badge-xs">Verified Partner</span>
+                    </div>
+
+                    <div class="space-y-1.5 text-xs text-base-content/80">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-user text-primary w-4 text-center"></i>
+                            <span>Contact Person: <strong>@s.ContactPerson</strong></span>
+                        </div>
+                        <div class="flex items-center gap-2 font-mono">
+                            <i class="fa-solid fa-phone text-primary w-4 text-center"></i>
+                            <a href="tel:@s.PhoneNumber" class="link link-hover font-bold text-primary">@s.PhoneNumber</a>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-envelope text-primary w-4 text-center"></i>
+                            <span>@s.Email</span>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <i class="fa-solid fa-location-dot text-primary w-4 text-center mt-0.5"></i>
+                            <span>@s.Address</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

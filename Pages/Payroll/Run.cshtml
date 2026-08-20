@@ -1,0 +1,302 @@
+@page
+@model Manufacture.Pages.Payroll.RunModel
+@{
+    ViewData["Title"] = "Process Monthly Payroll Run";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Payroll/Index" class="hover:underline">Payroll</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Process Payroll</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-gears text-primary"></i> Process Monthly Payroll Run
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Auto-applies monthly salary advance repayment deductions and allows custom shift bonuses or disciplinary adjustments.
+            </p>
+        </div>
+        <div>
+            <a asp-page="/Payroll/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Payroll
+            </a>
+        </div>
+    </div>
+
+    <!-- Top KPI Summary Bar using daisyUI stats component -->
+    <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+        <div class="stat p-5">
+            <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-users"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Active Personnel</div>
+            <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.Employees.Count</div>
+            <div class="stat-desc opacity-70">Eligible staff for payroll</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-base-content text-2xl"><i class="fa-solid fa-wallet"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Base Salary</div>
+            <div class="stat-value text-2xl font-black font-mono text-base-content" id="statBaseSalary">
+                ₦@Model.Employees.Sum(e => e.BaseSalary).ToString("N0")
+            </div>
+            <div class="stat-desc opacity-70">Contractual fixed wages</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-warning text-2xl"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Active Loan Recoveries</div>
+            <div class="stat-value text-2xl font-black font-mono text-warning">
+                ₦@Model.ActiveAdvances.Sum(a => a.MonthlyDeductionAmount).ToString("N0")
+            </div>
+            <div class="stat-desc">
+                <span class="badge badge-warning badge-xs font-bold uppercase">
+                    @Model.ActiveAdvances.Count ACTIVE ADVANCES
+                </span>
+            </div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-money-bill-transfer"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Estimated Net Payout</div>
+            <div class="stat-value text-2xl font-black font-mono text-success" id="statNetPayout">
+                ₦0
+            </div>
+            <div class="stat-desc text-success font-semibold">Live calculated estimate</div>
+        </div>
+    </div>
+
+    <!-- Standard 2-Column Full-Width Form Layout -->
+    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        
+        <!-- Left Section: Employee Payroll Matrix (~70% width, 8 Cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+                <div class="card-body p-6 space-y-5">
+                    
+                    <!-- Card Header & Period Selection -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-base-200 pb-4">
+                        <div>
+                            <div class="font-black text-sm text-base-content flex items-center gap-2">
+                                <i class="fa-solid fa-table-list text-primary"></i> Staff Compensation & Adjustments
+                            </div>
+                            <p class="text-[11px] opacity-70 mt-0.5">
+                                Set variable bonuses, disciplinary penalties, and review advance deductions
+                            </p>
+                        </div>
+                        
+                        <!-- Month & Year Selectors -->
+                        <div class="flex items-center gap-2">
+                            <select asp-for="ProcessInput.Month" class="select select-bordered select-sm bg-base-200 border-base-300 rounded-xl text-xs font-bold focus:bg-base-100 focus:border-primary">
+                                @for (int m = 1; m <= 12; m++)
+                                {
+                                    <option value="@m">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m)</option>
+                                }
+                            </select>
+
+                            <input type="number" asp-for="ProcessInput.Year" class="input input-bordered input-sm w-20 font-mono font-bold bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" />
+                        </div>
+                    </div>
+
+                    <!-- Staff Adjustment Table -->
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm w-full text-xs">
+                            <thead>
+                                <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                                    <th class="py-3 pl-3">Staff Member</th>
+                                    <th>Dept</th>
+                                    <th>Base Salary</th>
+                                    <th>Loan Recovery</th>
+                                    <th class="text-center w-28">Shift Bonus (₦)</th>
+                                    <th class="text-center w-28">Penalties (₦)</th>
+                                    <th class="w-36 pr-3">Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-base-200">
+                                @for (int i = 0; i < Model.Employees.Count; i++)
+                                {
+                                    var emp = Model.Employees[i];
+                                    var activeAdvance = Model.ActiveAdvances.FirstOrDefault(a => a.EmployeeId == emp.Id);
+                                    var advanceDeduction = activeAdvance?.MonthlyDeductionAmount ?? 0;
+                                    var initials = !string.IsNullOrEmpty(emp.FullName) 
+                                        ? string.Concat(emp.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => s[0])) 
+                                        : "EM";
+
+                                    <tr class="hover:bg-base-200/60 transition-colors payroll-row" data-base="@emp.BaseSalary" data-advance="@advanceDeduction">
+                                        <td class="py-3 pl-3">
+                                            <input type="hidden" name="ProcessInput.Adjustments[@i].EmployeeId" value="@emp.Id" />
+                                            <div class="flex items-center gap-2.5">
+                                                <div class="avatar placeholder">
+                                                    <div class="bg-base-200 text-base-content border border-base-300 rounded-full w-8 shadow-xs">
+                                                        <span class="text-[10px] font-bold font-mono">@initials.ToUpper()</span>
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <div class="font-bold text-xs text-base-content">@emp.FullName</div>
+                                                    <div class="font-mono text-[10px] opacity-60">@emp.StaffCode</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-soft badge-xs font-semibold">@emp.Department</span>
+                                        </td>
+                                        <td class="font-mono text-base-content font-bold">
+                                            ₦@emp.BaseSalary.ToString("N0")
+                                        </td>
+                                        <td>
+                                            @if (activeAdvance != null)
+                                            {
+                                                <div>
+                                                    <span class="badge badge-warning badge-xs font-mono font-bold gap-1">
+                                                        -₦@advanceDeduction.ToString("N0")
+                                                    </span>
+                                                    <div class="text-[9px] opacity-60 font-mono mt-0.5">Bal: ₦@activeAdvance.RemainingBalance.ToString("N0")</div>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-[11px] opacity-40 font-mono">— None</span>
+                                            }
+                                        </td>
+                                        <td class="text-center">
+                                            <input type="number" step="500" min="0" 
+                                                   name="ProcessInput.Adjustments[@i].PerformanceBonus" 
+                                                   value="5000" 
+                                                   class="input input-bordered input-xs w-24 text-center font-mono text-success font-bold bg-base-200 border-base-300 focus:bg-base-100 focus:border-primary rounded-lg bonus-input" 
+                                                   oninput="recalculatePayrollTotals()" />
+                                        </td>
+                                        <td class="text-center">
+                                            <input type="number" step="500" min="0" 
+                                                   name="ProcessInput.Adjustments[@i].DisciplinaryDeductions" 
+                                                   value="0" 
+                                                   class="input input-bordered input-xs w-24 text-center font-mono text-error font-bold bg-base-200 border-base-300 focus:bg-base-100 focus:border-primary rounded-lg penalty-input" 
+                                                   oninput="recalculatePayrollTotals()" />
+                                        </td>
+                                        <td class="pr-3">
+                                            <input type="text" 
+                                                   name="ProcessInput.Adjustments[@i].Notes" 
+                                                   value="Shift performance" 
+                                                   placeholder="Remarks..." 
+                                                   class="input input-bordered input-xs w-full bg-base-200 border-base-300 focus:bg-base-100 focus:border-primary rounded-lg text-xs" />
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sticky Section (~30% width, 4 Cols) -->
+        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+            
+            <!-- Execution Forecast Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-calculator text-primary"></i> Payout Summary
+                    </h2>
+                    <span class="badge badge-success badge-xs font-bold">Ready</span>
+                </div>
+
+                <!-- 4 Live Calculation Metrics -->
+                <div class="space-y-2.5 text-xs font-mono">
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Total Base Salary:</span>
+                        <span class="font-bold text-base-content" id="cardBaseSalary">₦0</span>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Total Shift Bonuses:</span>
+                        <span class="font-bold text-success" id="cardTotalBonuses">+₦0</span>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Advance Deductions:</span>
+                        <span class="font-bold text-warning" id="cardTotalAdvances">-₦0</span>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Penalties / Deductions:</span>
+                        <span class="font-bold text-error" id="cardTotalPenalties">-₦0</span>
+                    </div>
+
+                    <div class="p-4 rounded-xl bg-primary text-primary-content flex items-center justify-between font-black text-sm shadow-xs">
+                        <span class="font-sans text-xs uppercase tracking-wider">Net Disbursement:</span>
+                        <span class="text-lg font-mono" id="cardNetTotal">₦0</span>
+                    </div>
+                </div>
+
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    Executing payroll will recalculate all employee pay components, apply advance loan deductions, and generate the official monthly disbursement sheet.
+                </p>
+
+                <div class="space-y-2 pt-2 border-t border-base-200">
+                    <button type="submit" class="btn btn-neutral w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
+                        <i class="fa-solid fa-play text-success text-xs"></i> Execute Payroll Run
+                    </button>
+
+                    <a asp-page="/Payroll/Index" class="btn btn-ghost w-full rounded-xl text-xs font-semibold">
+                        Cancel
+                    </a>
+                </div>
+            </div>
+
+            <!-- Workflow Tip Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 text-xs space-y-2">
+                <div class="font-bold text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-primary"></i> Automated Loan Deductions
+                </div>
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    When you run payroll, monthly advance deductions will be subtracted automatically from each staff member's remaining loan balance.
+                </p>
+            </div>
+
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    function recalculatePayrollTotals() {
+        const rows = document.querySelectorAll('.payroll-row');
+        let totalBase = 0;
+        let totalBonuses = 0;
+        let totalAdvances = 0;
+        let totalPenalties = 0;
+
+        rows.forEach(row => {
+            const base = parseFloat(row.getAttribute('data-base')) || 0;
+            const advance = parseFloat(row.getAttribute('data-advance')) || 0;
+            const bonus = parseFloat(row.querySelector('.bonus-input')?.value) || 0;
+            const penalty = parseFloat(row.querySelector('.penalty-input')?.value) || 0;
+
+            totalBase += base;
+            totalAdvances += advance;
+            totalBonuses += bonus;
+            totalPenalties += penalty;
+        });
+
+        const gross = totalBase + totalBonuses;
+        const totalDeductions = totalAdvances + totalPenalties;
+        const net = gross - totalDeductions;
+
+        document.getElementById('statBaseSalary').innerText = '₦' + totalBase.toLocaleString('en-US');
+        document.getElementById('statNetPayout').innerText = '₦' + net.toLocaleString('en-US');
+
+        document.getElementById('cardBaseSalary').innerText = '₦' + totalBase.toLocaleString('en-US');
+        document.getElementById('cardTotalBonuses').innerText = '+₦' + totalBonuses.toLocaleString('en-US');
+        document.getElementById('cardTotalAdvances').innerText = '-₦' + totalAdvances.toLocaleString('en-US');
+        document.getElementById('cardTotalPenalties').innerText = '-₦' + totalPenalties.toLocaleString('en-US');
+        document.getElementById('cardNetTotal').innerText = '₦' + net.toLocaleString('en-US');
+    }
+
+    document.addEventListener('DOMContentLoaded', recalculatePayrollTotals);
+</script>
+}

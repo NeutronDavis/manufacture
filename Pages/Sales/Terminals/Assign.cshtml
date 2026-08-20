@@ -1,0 +1,44 @@
+@page "{id:int}"
+@model Manufacture.Pages.Sales.Terminals.AssignModel
+@{
+    ViewData["Title"] = $"Assign Rep - {Model.Terminal.TerminalCode}";
+}
+
+<div class="space-y-6 max-w-lg mx-auto">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
+                <i class="fa-solid fa-user-plus text-primary"></i> Assign Terminal Operator
+            </h1>
+            <p class="text-sm text-base-content/60">Terminal: <span class="font-mono font-bold">@Model.Terminal.TerminalCode - @Model.Terminal.TerminalName</span></p>
+        </div>
+        <a asp-page="/Sales/Terminals/Index" class="btn btn-sm btn-ghost gap-1">
+            <i class="fa-solid fa-arrow-left"></i> Cancel
+        </a>
+    </div>
+
+    <form method="post" class="card bg-base-100 border border-base-300 shadow-xs">
+        <div class="card-body p-6 space-y-4">
+            <div class="fieldset">
+                <label class="fieldset-label font-semibold">Select Sales Representative</label>
+                <select name="SelectedUserId" class="select select-bordered w-full" required>
+                    <option value="">-- Select Rep --</option>
+                    @foreach (var user in Model.EligibleUsers)
+                    {
+                        <option value="@user.Id" selected="@(user.Id == Model.Terminal.AssignedUserId)">
+                            @user.Name (@user.Role) - PIN: @user.PinCode
+                        </option>
+                    }
+                </select>
+                <span class="text-xs text-base-content/60">The selected sales rep will be authorized to collect cash/card on this terminal register.</span>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-4 border-t border-base-200">
+                <a asp-page="/Sales/Terminals/Index" class="btn btn-ghost">Cancel</a>
+                <button type="submit" class="btn btn-primary gap-2">
+                    <i class="fa-solid fa-check"></i> Save Assignment
+                </button>
+            </div>
+        </div>
+    </form>
+</div>

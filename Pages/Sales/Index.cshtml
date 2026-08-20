@@ -1,0 +1,122 @@
+@page
+@model Manufacture.Pages.Sales.IndexModel
+@{
+    ViewData["Title"] = "Sales & POS Hub";
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-cash-register text-stone-900"></i> Sales & POS Operations Hub
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">
+                POS Terminals, Multi-Account Cash/Transfer routing, Pre-Orders, and Dispatch verification
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <a asp-page="/Sales/Orders/PreOrders" class="btn btn-sm btn-outline border-slate-300 text-slate-700 hover:bg-slate-100 rounded-xl gap-2 font-semibold px-3.5 text-xs">
+                <i class="fa-solid fa-clock-rotate-left text-xs"></i> View Pre-Orders
+            </a>
+            <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-neutral bg-stone-900 hover:bg-black text-white border-0 rounded-xl gap-2 font-bold px-4 text-xs shadow-xs">
+                <i class="fa-solid fa-cart-plus text-xs"></i> New POS Sale
+            </a>
+        </div>
+    </div>
+
+    <!-- Multi-Account POS Terminals Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        @foreach (var term in Model.Terminals)
+        {
+            <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="badge bg-stone-900 text-white border-0 text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg">@term.TerminalCode</span>
+                            <h2 class="font-bold text-sm text-slate-900 mt-1.5">@term.TerminalName</h2>
+                        </div>
+                        <span class="badge bg-emerald-50 text-emerald-700 border-0 text-[10px] font-bold px-2 py-0.5">● Active</span>
+                    </div>
+
+                    <div class="text-xs text-slate-500">
+                        <i class="fa-solid fa-user-tie text-slate-400"></i> Assigned Rep: <strong class="text-slate-900">@(term.AssignedUserName ?? "Unassigned")</strong>
+                    </div>
+
+                    <div class="space-y-1.5 p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-xs font-mono">
+                        <div class="text-emerald-700 font-semibold flex items-center gap-1.5"><i class="fa-solid fa-money-bill-wave text-[10px]"></i> @term.CashAccountName</div>
+                        <div class="text-blue-700 font-semibold flex items-center gap-1.5"><i class="fa-solid fa-building-columns text-[10px]"></i> @term.TransferAccountName</div>
+                        <div class="text-purple-700 font-semibold flex items-center gap-1.5"><i class="fa-solid fa-credit-card text-[10px]"></i> @term.PosBankAccountName</div>
+                    </div>
+
+                    <div class="flex justify-between items-center pt-3 border-t border-slate-100">
+                        <a asp-page="/Sales/Terminals/Assign" asp-route-id="@term.Id" class="btn btn-xs btn-outline border-slate-300 text-slate-700 rounded-lg text-xs">
+                            <i class="fa-solid fa-user-plus text-[10px]"></i> Assign Rep
+                        </a>
+                        <a asp-page="/Sales/Orders/Create" class="btn btn-xs btn-neutral bg-stone-900 hover:bg-black text-white border-0 rounded-lg text-xs font-bold">
+                            Sell on @term.TerminalCode
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <!-- Recent Sales & Orders Table -->
+    <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl overflow-hidden">
+        <div class="card-body p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h2 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-receipt text-slate-500"></i> Recent Sales Orders & Loading Slips
+                </h2>
+                <a asp-page="/Sales/Orders/Index" class="btn btn-xs btn-outline border-slate-200 text-slate-700 rounded-xl">View All Orders &rarr;</a>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="table table-sm w-full text-xs">
+                    <thead>
+                        <tr class="text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-100 bg-slate-50/50">
+                            <th>Order #</th>
+                            <th>Date / Time</th>
+                            <th>Customer</th>
+                            <th>Sales Rep</th>
+                            <th>Amount (₦)</th>
+                            <th>Method</th>
+                            <th>Status</th>
+                            <th class="text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @foreach (var order in Model.RecentOrders)
+                        {
+                            <tr class="hover:bg-slate-50/60 transition-colors">
+                                <td class="font-mono text-xs font-bold text-slate-900">@order.OrderNumber</td>
+                                <td class="text-slate-500">@order.OrderDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td class="font-bold text-slate-900">@order.CustomerName</td>
+                                <td class="text-slate-700 font-medium">@order.SalesRepName</td>
+                                <td class="font-mono text-xs font-black text-slate-900">₦@order.TotalAmount.ToString("N0")</td>
+                                <td>
+                                    <span class="badge bg-blue-50 text-blue-700 border-0 text-[10px] font-semibold">@order.PaymentMethod</span>
+                                </td>
+                                <td>
+                                    @if (order.IsPrintedForLoading)
+                                    {
+                                        <span class="badge bg-emerald-50 text-emerald-700 border-0 text-[10px] font-bold px-2 py-0.5">● Printed</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-amber-50 text-amber-700 border-0 text-[10px] font-bold px-2 py-0.5">● Unprinted</span>
+                                    }
+                                </td>
+                                <td class="text-right">
+                                    <a asp-page="/Sales/Orders/Receipt" asp-route-id="@order.Id" class="btn btn-xs btn-outline border-slate-300 text-slate-700 rounded-lg">
+                                        Receipt
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

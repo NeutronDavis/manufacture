@@ -1,0 +1,76 @@
+@page
+@model Manufacture.Pages.Payroll.Advances.IndexModel
+@{
+    ViewData["Title"] = "Salary Advances & Staff Loans";
+}
+
+<div class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs breadcrumbs mb-1">
+                <ul>
+                    <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
+                    <li><a asp-page="/Payroll/Index">Payroll</a></li>
+                    <li class="font-semibold text-primary">Salary Advances</li>
+                </ul>
+            </div>
+            <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
+                <i class="fa-solid fa-hand-holding-dollar text-warning"></i> Staff Salary Advances & Loan Ledger
+            </h1>
+            <p class="text-sm text-base-content/60">Track cash advances, repayment schedules, and remaining balances auto-deducted on monthly payroll</p>
+        </div>
+        <a asp-page="/Payroll/Advances/Create" class="btn btn-primary gap-2">
+            <i class="fa-solid fa-plus"></i> Grant Salary Advance
+        </a>
+    </div>
+
+    <!-- Advances Table -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs">
+        <div class="card-body p-5">
+            <div class="overflow-x-auto">
+                <table class="table table-sm table-zebra">
+                    <thead>
+                        <tr class="bg-base-200/70">
+                            <th>Date</th>
+                            <th>Staff Code</th>
+                            <th>Employee Name</th>
+                            <th>Purpose / Reason</th>
+                            <th>Principal Loan (₦)</th>
+                            <th>Monthly Deduction (₦)</th>
+                            <th>Total Repaid (₦)</th>
+                            <th>Remaining Loan (₦)</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var adv in Model.Advances)
+                        {
+                            <tr>
+                                <td class="text-xs">@adv.RequestDate.ToString("yyyy-MM-dd")</td>
+                                <td class="font-mono text-xs font-bold text-primary">@adv.StaffCode</td>
+                                <td class="font-bold text-xs">@adv.EmployeeName</td>
+                                <td class="text-xs text-base-content/70 max-w-xs truncate">@adv.Reason</td>
+                                <td class="font-mono text-xs font-bold">₦@adv.PrincipalAmount.ToString("N0")</td>
+                                <td class="font-mono text-xs font-semibold">₦@adv.MonthlyDeductionAmount.ToString("N0")/mo</td>
+                                <td class="font-mono text-xs text-emerald-600 font-bold">₦@adv.TotalRepaid.ToString("N0")</td>
+                                <td class="font-mono text-xs font-black @(adv.RemainingBalance > 0 ? "text-error" : "text-success")">
+                                    ₦@adv.RemainingBalance.ToString("N0")
+                                </td>
+                                <td>
+                                    @if (adv.IsFullyRepaid)
+                                    {
+                                        <span class="badge badge-success badge-xs font-bold gap-1"><i class="fa-solid fa-check"></i> Settled</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-warning badge-xs font-bold">Active Loan</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,118 @@
+@page "{id:int}"
+@model Manufacture.Pages.Production.Recipes.DetailsModel
+@{
+    ViewData["Title"] = $"{Model.Recipe.Name} - Recipe Formula";
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs text-slate-400 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:text-slate-600">Home</a>
+                <span>&gt;</span>
+                <a asp-page="/Production/Recipes/Index" class="hover:text-slate-600">Recipes</a>
+                <span>&gt;</span>
+                <span class="text-slate-700">@Model.Recipe.Name</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <h1 class="text-2xl font-black text-slate-800 tracking-tight">@Model.Recipe.Name</h1>
+                <span class="badge badge-neutral font-mono font-bold text-xs">@Model.Recipe.Code</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">@Model.Recipe.Description</p>
+        </div>
+        <div class="flex gap-2">
+            <a asp-page="/Production/Recipes/Edit" asp-route-id="@Model.Recipe.Id" class="btn btn-sm btn-outline border-slate-300 rounded-xl gap-1 text-xs">
+                <i class="fa-solid fa-pen-to-square"></i> Edit Formula
+            </a>
+            <a asp-page="/Production/Batches/Create" asp-route-recipeId="@Model.Recipe.Id" class="btn btn-sm bg-emerald-600 hover:bg-emerald-700 text-white border-0 rounded-xl gap-1 text-xs font-bold shadow-xs">
+                <i class="fa-solid fa-layer-group"></i> Plan Batch
+            </a>
+        </div>
+    </div>
+
+    <!-- Financial Metrics Bar -->
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
+            <div class="card-body p-4 text-center">
+                <div class="text-[10px] uppercase font-bold text-slate-400">Raw Ingredients Cost</div>
+                <div class="text-xl font-black text-slate-800 font-mono mt-1">₦@Model.Recipe.IngredientsCost.ToString("N2")</div>
+            </div>
+        </div>
+        <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
+            <div class="card-body p-4 text-center">
+                <div class="text-[10px] uppercase font-bold text-slate-400">Total Unit Cost</div>
+                <div class="text-xl font-black text-slate-800 font-mono mt-1">₦@Model.Recipe.TotalUnitCost.ToString("N2")</div>
+            </div>
+        </div>
+        <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
+            <div class="card-body p-4 text-center">
+                <div class="text-[10px] uppercase font-bold text-slate-400">Selling Price</div>
+                <div class="text-xl font-black text-emerald-600 font-mono mt-1">₦@Model.Recipe.SellingPrice.ToString("N2")</div>
+            </div>
+        </div>
+        <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
+            <div class="card-body p-4 text-center">
+                <div class="text-[10px] uppercase font-bold text-slate-400">Profit Margin %</div>
+                <div class="text-xl font-black text-emerald-600 font-mono mt-1">@Model.Recipe.MarginPercentage%</div>
+                <div class="text-[11px] text-emerald-600 font-semibold">+₦@Model.Recipe.MarginAmount.ToString("N2")/loaf</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ingredients Breakdown Table -->
+    <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
+        <div class="card-body p-6 space-y-4">
+            <div class="flex items-center gap-2 font-bold text-slate-800 text-sm border-b border-slate-100 pb-3">
+                <div class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">
+                    <i class="fa-solid fa-flask"></i>
+                </div>
+                <span>Ingredient Formulation & Portion Cost (Per Loaf)</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="table table-sm w-full text-xs">
+                    <thead>
+                        <tr class="text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-100">
+                            <th class="py-2">#</th>
+                            <th class="py-2">Ingredient Name</th>
+                            <th class="py-2">Portion Qty per Loaf</th>
+                            <th class="py-2">Raw Unit Cost</th>
+                            <th class="py-2 text-right">Total Ingredient Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @for (int i = 0; i < Model.Recipe.Ingredients.Count; i++)
+                        {
+                            var ing = Model.Recipe.Ingredients[i];
+                            <tr class="hover:bg-slate-50/60">
+                                <td class="text-slate-400 py-2.5">@(i + 1)</td>
+                                <td class="font-bold text-slate-800 py-2.5">@ing.IngredientName</td>
+                                <td class="font-mono text-slate-600 py-2.5">@ing.QuantityPerUnit @ing.Unit</td>
+                                <td class="font-mono text-slate-600 py-2.5">₦@ing.IngredientUnitCost.ToString("N2") / @ing.Unit</td>
+                                <td class="font-mono font-bold text-right py-2.5 text-slate-800">₦@ing.TotalCost.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="bg-slate-50 font-mono text-xs border-t border-slate-200">
+                        <tr>
+                            <td colspan="4" class="text-right py-2 text-slate-600">Ingredients Subtotal:</td>
+                            <td class="text-right font-bold py-2 text-slate-900">₦@Model.Recipe.IngredientsCost.ToString("N2")</td>
+                        </tr>
+                        <tr>
+                            <td colspan="4" class="text-right py-2 text-slate-600 text-[11px]">Packaging Nylon & Bread Tag:</td>
+                            <td class="text-right py-2 text-slate-900 text-[11px]">₦@Model.Recipe.PackagingCost.ToString("N2")</td>
+                        </tr>
+                        <tr>
+                            <td colspan="4" class="text-right py-2 text-slate-600 text-[11px]">Labor, Oven Fuel & Overhead:</td>
+                            <td class="text-right py-2 text-slate-900 text-[11px]">₦@Model.Recipe.LaborAndOverheadPerUnit.ToString("N2")</td>
+                        </tr>
+                        <tr class="font-bold text-slate-900 bg-emerald-50 text-sm">
+                            <td colspan="4" class="text-right py-2.5 text-emerald-800">Total Base Cost Price per Unit:</td>
+                            <td class="text-right py-2.5 text-emerald-800 font-black">₦@Model.Recipe.TotalUnitCost.ToString("N2")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,308 @@
+@page "{id:int}"
+@model Manufacture.Pages.Production.Recipes.EditModel
+@{
+    ViewData["Title"] = $"Edit Recipe - {Model.RecipeInput.Name}";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs text-slate-400 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:text-slate-600">Home</a>
+                <span>&gt;</span>
+                <a asp-page="/Production/Recipes/Index" class="hover:text-slate-600">Recipes</a>
+                <span>&gt;</span>
+                <span class="text-slate-700">Edit Recipe</span>
+            </div>
+            <h1 class="text-2xl font-black text-slate-800 tracking-tight">
+                Edit Recipe: @Model.RecipeInput.Name
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">
+                Update batch quantities, material proportions, and target pricing.
+            </p>
+        </div>
+        <div>
+            <a asp-page="/Production/Recipes/Details" asp-route-id="@Model.RecipeInput.Id" class="text-xs text-slate-500 hover:text-emerald-700 font-semibold flex items-center gap-1.5">
+                <i class="fa-solid fa-arrow-left text-[10px]"></i> Cancel & View
+            </a>
+        </div>
+    </div>
+
+    <!-- 2-Column Form Layout -->
+    <form method="post" id="recipeForm" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <input type="hidden" asp-for="RecipeInput.Id" />
+        
+        <!-- Left Main Column (approx 70% width) -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- Card 1: Product Recipe Details -->
+            <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-4">
+                    <div class="flex items-center gap-2 font-bold text-slate-800 text-sm">
+                        <div class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-tag"></i>
+                        </div>
+                        <span>Product Recipe Details</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-700">Product Name <span class="text-rose-500">*</span></label>
+                            <input type="text" asp-for="RecipeInput.Name" class="input input-sm input-bordered w-full rounded-lg text-xs" required />
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-700">Product Category / Code</label>
+                            <input type="text" asp-for="RecipeInput.Code" class="input input-sm input-bordered w-full rounded-lg text-xs font-mono uppercase" required />
+                        </div>
+
+                        <div class="space-y-1.5 sm:col-span-2">
+                            <label class="text-xs font-semibold text-slate-700">Description</label>
+                            <textarea asp-for="RecipeInput.Description" class="textarea textarea-sm textarea-bordered w-full rounded-lg text-xs" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Batch Yield & Pricing Target -->
+            <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-4">
+                    <div class="flex items-center gap-2 font-bold text-slate-800 text-sm">
+                        <div class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-layer-group"></i>
+                        </div>
+                        <span>Batch Yield & Pricing Target</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-700">Batch Yield Quantity (Loaves) <span class="text-rose-500">*</span></label>
+                            <input type="number" min="1" id="batchYieldInput" value="50" class="input input-sm input-bordered w-full rounded-lg text-xs font-mono font-bold" oninput="recalcAll()" required />
+                        </div>
+
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-semibold text-slate-700">Nylon Packaging Wrapper Cost per Unit (₦) <span class="text-rose-500">*</span></label>
+                            <input type="number" step="0.5" min="0" asp-for="RecipeInput.PackagingCost" id="packagingCostInput" class="input input-sm input-bordered w-full rounded-lg text-xs font-mono" oninput="recalcAll()" required />
+                        </div>
+
+                        <div class="space-y-1.5 sm:col-span-2">
+                            <label class="text-xs font-semibold text-slate-700">Target Unit Selling Price (₦) <span class="text-rose-500">*</span></label>
+                            <input type="number" step="10" min="1" asp-for="RecipeInput.SellingPrice" id="sellingPriceInput" class="input input-sm input-bordered w-full rounded-lg text-xs font-mono font-bold text-emerald-700 text-sm" oninput="recalcAll()" required />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Raw Ingredients Recipe Formula -->
+            <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">
+                                <i class="fa-solid fa-flask"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-800 text-sm">Raw Ingredients Recipe Formula</div>
+                                <div class="text-[11px] text-slate-400">Select items directly from Store Inventory and set batch usage ratios</div>
+                            </div>
+                        </div>
+
+                        <button type="button" onclick="addIngredientRow()" class="btn btn-xs btn-neutral bg-stone-900 hover:bg-black text-white border-0 gap-1.5 rounded-xl font-bold px-3 shadow-xs">
+                            <i class="fa-solid fa-plus text-[10px]"></i> Add Ingredient
+                        </button>
+                    </div>
+
+                    <!-- Ingredients Dynamic Table -->
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm w-full text-xs" id="ingredientsTable">
+                            <thead>
+                                <tr class="text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-100">
+                                    <th class="font-bold py-2">STORE INVENTORY MATERIAL</th>
+                                    <th class="font-bold py-2 w-48 text-center">QUANTITY USED / BATCH</th>
+                                    <th class="font-bold py-2 text-right">LINE COST (₦)</th>
+                                    <th class="font-bold py-2 w-12 text-center">ACTION</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ingredientsBody" class="divide-y divide-slate-100">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sticky Column -->
+        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+            
+            <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-4">
+                    <div class="font-bold text-slate-900 text-sm">Actions</div>
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        Updates to this recipe formula will immediately take effect across production calculations.
+                    </p>
+
+                    <button type="submit" class="btn btn-sm btn-neutral bg-stone-900 hover:bg-black text-white w-full border-0 rounded-xl font-bold py-2.5 shadow-xs gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> Update Product Recipe
+                    </button>
+
+                    <div class="text-center pt-1">
+                        <a asp-page="/Production/Recipes/Details" asp-route-id="@Model.RecipeInput.Id" class="text-xs text-slate-500 hover:text-slate-900 font-medium">Cancel</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recipe Costing Estimate Card -->
+            <div class="rounded-2xl p-6 bg-amber-50/70 border border-amber-200/80 shadow-xs space-y-4 text-xs font-mono">
+                <div class="font-bold tracking-wider uppercase text-amber-800 text-[11px]">
+                    RECIPE COSTING ESTIMATE
+                </div>
+
+                <div class="space-y-2.5 text-slate-700">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-600">Batch Ingredients Total:</span>
+                        <span class="font-bold text-slate-900" id="summaryBatchTotal">₦0.00</span>
+                    </div>
+
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-600">est. unit cost per Loaf:</span>
+                        <span class="font-bold text-amber-800 text-sm" id="summaryUnitCost">₦0.00</span>
+                    </div>
+
+                    <div class="flex justify-between items-center pt-2 border-t border-amber-200/60">
+                        <span class="text-slate-600 font-semibold">Est. Profit Margin:</span>
+                        <span class="font-bold text-emerald-600 text-sm" id="summaryMargin">+₦0.00</span>
+                    </div>
+                </div>
+
+                <div class="text-[10px] text-slate-500 leading-relaxed font-sans pt-1 border-t border-amber-200/60">
+                    Prices are pulled live from Store Inventory. Adding ingredients dynamically updates production cost and profit margin calculations.
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    const inventoryMaterials = [
+        { id: 1, name: "Golden Penny Flour (50kg)", unit: "Bag", costPerUnit: 58000 },
+        { id: 2, name: "Refined Sugar (50kg)", unit: "Bag", costPerUnit: 48000 },
+        { id: 3, name: "Instant Dry Yeast (500g)", unit: "Pack", costPerUnit: 4200 },
+        { id: 4, name: "Vegetable Bakery Shortening (15kg)", unit: "Bucket", costPerUnit: 33000 },
+        { id: 5, name: "Dangote Pure Iodized Salt (25kg)", unit: "Bag", costPerUnit: 10000 },
+        { id: 6, name: "Purified Water (1000L)", unit: "Tank", costPerUnit: 2000 }
+    ];
+
+    let rowsData = [
+        @foreach (var ing in Model.RecipeInput.Ingredients)
+        {
+            <text>{ materialId: @ing.IngredientId, qty: @ing.QuantityPerUnit },</text>
+        }
+    ];
+
+    if (rowsData.length === 0) {
+        rowsData = [{ materialId: 1, qty: 0.5 }, { materialId: 2, qty: 0.1 }];
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById('ingredientsBody');
+        tbody.innerHTML = '';
+
+        rowsData.forEach((row, idx) => {
+            const material = inventoryMaterials.find(m => m.id === row.materialId) || inventoryMaterials[0];
+            const lineCost = (parseFloat(row.qty) || 0) * material.costPerUnit;
+
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50/60 transition-colors';
+            tr.innerHTML = `
+                <td class="py-2">
+                    <input type="hidden" name="RecipeInput.Ingredients[${idx}].IngredientId" value="${material.id}" />
+                    <input type="hidden" name="RecipeInput.Ingredients[${idx}].IngredientName" value="${material.name}" />
+                    <input type="hidden" name="RecipeInput.Ingredients[${idx}].Unit" value="${material.unit}" />
+                    <input type="hidden" name="RecipeInput.Ingredients[${idx}].IngredientUnitCost" value="${material.costPerUnit}" />
+                    <select class="select select-xs select-bordered w-full rounded-lg text-xs" onchange="onMaterialChange(${idx}, this.value)">
+                        ${inventoryMaterials.map(m => `
+                            <option value="${m.id}" ${m.id === material.id ? 'selected' : ''}>
+                                ${m.name} [₦${m.costPerUnit.toLocaleString()}/${m.unit}]
+                            </option>
+                        `).join('')}
+                    </select>
+                </td>
+                <td class="py-2">
+                    <div class="flex items-center justify-center gap-2">
+                        <input type="number" step="0.01" min="0" value="${row.qty}" 
+                               name="RecipeInput.Ingredients[${idx}].QuantityPerUnit"
+                               class="input input-xs input-bordered w-20 text-center font-mono font-bold rounded-lg text-xs" 
+                               oninput="onQtyChange(${idx}, this.value)" />
+                        <span class="badge badge-ghost badge-xs font-mono text-[10px]">${material.unit}</span>
+                    </div>
+                </td>
+                <td class="py-2 text-right font-mono font-bold text-xs text-slate-800">
+                    ₦${lineCost.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </td>
+                <td class="py-2 text-center">
+                    <button type="button" onclick="removeIngredientRow(${idx})" class="btn btn-ghost btn-xs text-rose-500 hover:bg-rose-50 rounded-md font-black text-sm px-2" title="Remove ingredient">
+                        &times;
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        recalcAll();
+    }
+
+    function addIngredientRow() {
+        const nextId = (rowsData.length % inventoryMaterials.length) + 1;
+        rowsData.push({ materialId: nextId, qty: 1.0 });
+        renderTable();
+    }
+
+    function removeIngredientRow(index) {
+        if (rowsData.length <= 1) {
+            alert("A recipe must have at least one ingredient.");
+            return;
+        }
+        rowsData.splice(index, 1);
+        renderTable();
+    }
+
+    function onMaterialChange(index, newMaterialId) {
+        rowsData[index].materialId = parseInt(newMaterialId);
+        renderTable();
+    }
+
+    function onQtyChange(index, newQty) {
+        rowsData[index].qty = parseFloat(newQty) || 0;
+        recalcAll();
+    }
+
+    function recalcAll() {
+        let batchTotal = 0;
+        const batchYield = parseFloat(document.getElementById('batchYieldInput')?.value) || 50;
+        const packagingPerLoaf = parseFloat(document.getElementById('packagingCostInput')?.value) || 15;
+        const targetSellingPrice = parseFloat(document.getElementById('sellingPriceInput')?.value) || 1200;
+
+        rowsData.forEach(row => {
+            const material = inventoryMaterials.find(m => m.id === row.materialId) || inventoryMaterials[0];
+            const line = (parseFloat(row.qty) || 0) * material.costPerUnit;
+            batchTotal += line;
+        });
+
+        const ingredientsCostPerLoaf = batchYield > 0 ? (batchTotal / batchYield) : 0;
+        const estUnitCost = ingredientsCostPerLoaf + packagingPerLoaf;
+        const profitMargin = targetSellingPrice - estUnitCost;
+        const profitMarginPct = targetSellingPrice > 0 ? ((profitMargin / targetSellingPrice) * 100) : 0;
+
+        document.getElementById('summaryBatchTotal').innerText = '₦' + batchTotal.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        document.getElementById('summaryUnitCost').innerText = '₦' + estUnitCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        
+        const sign = profitMargin >= 0 ? '+' : '-';
+        document.getElementById('summaryMargin').innerText = `${sign}₦${Math.abs(profitMargin).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} (${profitMarginPct.toFixed(1)}%)`;
+        document.getElementById('summaryMargin').className = profitMargin >= 0 ? 'font-bold text-emerald-600 text-sm' : 'font-bold text-rose-600 text-sm';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        renderTable();
+    });
+</script>

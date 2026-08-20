@@ -1,0 +1,292 @@
+﻿Meeting Summary Report
+Context:
+
+
+The discussion focused on refining the operations, production tracking, inventory management, and Point of Sale (POS) structure for a bakery/food production business. The goal is to establish precise tracking of production costs down to the individual item level, streamline order fulfillment across various roles (sales reps, vendors, store managers), and ensure accurate financial aggregation on the management dashboard.
+
+
+Key Discussion Areas
+Production & Cost Tracking:
+
+
+Recipe-Based Costing: The system needs to calculate the exact production cost of a single item (e.g., one Jumbo bread) based on raw ingredient costs (flour, sugar, nylon packaging, etc.) rather than just whole batches.
+
+
+Production Flow: The production manager should know precise quantities expected and produced based on incoming pre-orders. When production completes, quantities are tracked and recorded (e.g., 60, 80, 130, 400 loaves/bags).
+
+
+Order Placement & Fulfillment:
+
+
+Pre-Orders & Placeholder Orders: Sales representatives and vendors place pre-orders ahead of time (e.g., placing tomorrow's orders today) so production knows exact demand.
+
+
+Loading & Dispatch Verification: Dispatched goods cannot be loaded or released unless the dispatch/records staff prints and signs the order form for the loaders.
+
+
+User Roles, POS, & Access Management:
+
+
+POS Identification: Sales representatives and vendors will be assigned specific POS IDs (with linked Cash, Transfer, and Bank accounts).
+
+
+Authentication: Simplified login for field/sales personnel using a unique 6-digit numeric passcode/password instead of complex text passwords.
+
+
+Data Retention & Soft Deletion: When an employee leaves, their account should be "soft deleted" (deactivated) to maintain historical transaction reporting while revoking active access. Their POS ID can then be reassigned.
+
+
+Payroll, HR, & Fleet Management:
+
+
+Staff Records & Payroll: Tracking employee details, guarantors, salary structures, deductions, advances, bonuses, and performance incentives on a dedicated payroll sheet.
+
+
+Vehicle & Fuel Tracking: Daily recording of fuel expenses and logistics metrics for company delivery vehicles.
+
+
+Complete Feature List Discussed
+Below is the structured list of all features mentioned during the meeting:
+
+
+1. Recipe & Cost Calculation Module
+Ingredient-Level Costing: Input raw ingredient prices (e.g., flour, sugar, water, packaging/nylon) and auto-calculate the production cost per unit item.
+
+
+Recipe Builder: Group ingredients into specific product recipes (e.g., Jumbo Bread, Medium, 61 Bread) to dynamically output base unit cost prices.
+
+
+Margin & Selling Price Calculator: Compare unit cost price against custom selling prices to auto-calculate profit margins before saving product records.
+
+
+2. Production Management
+Pre-Order Production Aggregation: Automatically feed pre-orders placed by sales reps and vendors into the production dashboard so managers know exact target quantities.
+
+
+Production Output Logger: Track completed batch quantities and record variances (e.g., tracking extra or short loaves like 60 vs 62).
+
+
+3. Order & Dispatch System
+Pre-Order / Placeholder Ordering: Sales reps and external vendors can place pre-orders for future delivery dates.
+
+
+Print-to-Load Authorization: Enforce a rule where loaders cannot issue stock without a printed, signed order slip from record clerks.
+
+
+Thermal Printing Integration: Native support for printing physical receipts/order slips via thermal receipt printers.
+
+
+4. Sales & POS (Point of Sale)
+Multi-Account POS Mapping: Each POS channel/rep maps to three dedicated payment channels:
+
+
+Cash Account
+
+
+Transfer Account
+
+
+Bank/POS Account
+
+
+Customer Category Management: Separate sales flows for:
+
+
+Walk-in Customers
+
+
+Sales Representatives
+
+
+External Vendors (Wholesalers/Distributors)
+
+
+Field/Supermarket Pre-Orders: Self-service or registered pre-order portal for major clients (e.g., supermarkets) using assigned Member/Section IDs.
+
+
+5. Dashboard & Financial Aggregation
+Executive Overview Dashboard: Aggregate real-time sales metrics across all sales reps, POS terminals, and customer types.
+
+
+Payment Split Breakdown: Track sales totals filtered by payment method (Cash, Bank Transfer, Unpaid/Credit/Owing).
+
+
+Role-Based Dashboards: Specific simplified interfaces for Managers, Production Staff, Store Keepers, and Sales Reps.
+
+
+6. Inventory & Store Management
+Raw Material Requisition: Store staff receive production requests, verify available stock, and issue raw materials.
+
+
+Restock Request & Supplier Directory: Store managers can initiate reorder requests and view a directory of suppliers/vendors with direct contact details.
+
+
+7. HR, Payroll, & Employee Management
+Employee Directory: Maintain comprehensive staff records (contact info, emergency contacts, guarantors).
+
+
+Dynamic Payroll Builder: Manage base salaries along with variable additions/deductions:
+
+
+Cash Advances / Salary Loans (with auto-deduction logic)
+
+
+Performance Bonuses & Incentives
+
+
+Deductions (disciplinary or loss-related)
+
+
+Export Options: Ability to export payroll sheets and financial reports to Excel.
+
+
+8. Vehicle & Logistics Tracking
+Daily Fuel & Expense Log: Track daily fuel consumption and vehicle-related operating costs per delivery van/car.
+
+
+9. User Access & System Security
+Role-Based Access Control (RBAC): Granular permission settings (View, Print, Edit, Delete) managed by Super Users.
+
+
+Numeric Passcode Login: Support for fast 6-digit numeric passwords for quick login on mobile/POS devices.
+
+
+Soft Delete Account Management: Deactivate departing staff without purging their historical transaction logs from company reports.
+
+Meeting Summary Report
+Objective
+The primary objective of the meeting was to outline the functional requirements, workflow, and feature set for a production, inventory, and sales management system tailored for a bakery/production facility.
+
+
+Key Discussion Points
+Production & Recipe Management:
+
+
+Understanding unit cost calculations for individual products based on raw material inputs (e.g., flour, sugar, water).
+
+
+Managing production batches (e.g., mixing flour per batch) vs. individual product yields (e.g., jumbo bread, medium bread).
+
+
+Pre-calculating ingredient costs, packaging (nylon/wrappers), and auto-calculating unit production cost versus the selling price to determine profit margins.
+
+
+Sales Representatives, Vendors, & Ordering Workflow:
+
+
+Differentiating between Sales Reps (internal staff using POS terminals), Vendors (distributors/wholesalers), and Walk-in Customers.
+
+
+Sales reps and vendors placing advance orders/pre-orders so production managers can accurately forecast daily batch quantities (e.g., knowing how many bags of flour to mix).
+
+
+Generating printed order slips for loaders upon order fulfillment. Loaders only release goods matching signed, printed receipts.
+
+
+Store & Inventory Release:
+
+
+Production managers requesting raw materials from the store manager.
+
+
+Dashboard-based approval workflows for store releases rather than rely solely on email/notifications.
+
+
+Restocking requests and managing supplier/vendor contacts directly within the system.
+
+
+Human Resources & Payroll:
+
+
+Employee records management (personal info, contact details, guarantor details).
+
+
+Advanced payroll management factoring in base salary, bonuses, deductions, performance incentives, and salary advances.
+
+
+Automatic monthly debiting/deduction of salary advances from payroll.
+
+
+Fleet & Expense Management:
+
+
+Tracking company delivery vehicles and daily fuel consumption/logistics expenses.
+
+
+Authentication, Role Management, & Security:
+
+
+Role-Based Access Control (RBAC) allowing admins to view, edit, print, or soft-delete user permissions.
+
+
+Simplified PIN/Integer-based authentication for sales reps (e.g., 6-digit numeric login code) to streamline access on mobile/POS devices.
+
+
+Soft-deletion of deactivated accounts to preserve historical transaction reports while revoking user access.
+
+
+Detailed List of System Features Discussed
+1. Production & Recipe Management
+Ingredient Cost Calculator: Track raw material costs down to the exact quantity used per unit product (e.g., cost of flour per single loaf).
+
+
+Recipe Builder: Group ingredients (flour, sugar, yeast, packaging/nylon) into recipes to automatically aggregate total unit production cost.
+
+
+Auto Margin Calculation: System automatically calculates total production cost vs. user-entered selling price.
+
+
+Batch Production Tracking: Link mixer batch yields to finished product quantities.
+
+
+2. Sales, POS & Order Management
+Advance Pre-Ordering: Allow sales reps and external vendors to place orders ahead of time to inform production planning.
+
+
+POS Terminal Assignment: Assign specific POS terminals/accounts to sales reps, mapping unique Cash, Transfer, and Bank accounts to each terminal.
+
+
+Receipt & Dispatch Printing: Print physical order receipts for store loaders to verify and dispatch goods; untracked/unprinted orders cannot be loaded.
+
+
+Sales Dashboard: Aggregate real-time sales data, cash vs. transfer splits, total orders, and outstanding balances.
+
+
+Vendor & Supermarket Registration: Register external vendors/supermarkets with unique IDs/account numbers before allowing order placement.
+
+
+3. Inventory & Store Management
+Store Release Workflow: Digital request and approval process for raw material issuance from store to production.
+
+
+Reorder & Restock Requests: Low-stock alerts and requisition tools for store keepers.
+
+
+Supplier/Vendor Directory: Maintain supplier lists with contact numbers and supply history.
+
+
+4. HR & Payroll
+Employee Database: Store employee personal details, contact info, and guarantor records.
+
+
+Dynamic Payroll Builder: Manage base salaries, bonuses, behavior incentives, deductions, and salary advance repayments.
+
+
+Salary Advance Tracking: Automatically log cash advances/loans and deduct them from monthly payroll.
+
+
+5. Logistics & Operational Expenses
+Vehicle & Fleet Tracker: Log company delivery vehicles and record daily fuel logs and maintenance expenses.
+
+
+6. User Management & Security
+Role-Based Access Control (RBAC): Granular permissions for Super Admin, Production Manager, Store Manager, and Sales Reps.
+
+
+Numeric PIN Login: 6-digit integer authentication for quick login by non-desk staff / POS operators.
+
+
+Soft Delete Account Archiving: Deactivate former employees while retaining complete historical sales and production audit trails.
+
+
+Thermal Printer Support: Integration with receipt/thermal printers for loading slips and sales vouchers.

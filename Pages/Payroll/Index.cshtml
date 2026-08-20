@@ -1,0 +1,113 @@
+@page
+@model Manufacture.Pages.Payroll.IndexModel
+@{
+    ViewData["Title"] = "Monthly Payroll Management";
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-money-check-dollar text-primary"></i> Monthly Payroll Sheet & Deductions
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Base wages, shift bonuses, disciplinary penalties, and automated salary advance loan repayments
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <a asp-page="/Payroll/Advances/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-3.5 text-xs">
+                <i class="fa-solid fa-hand-holding-dollar text-xs"></i> Salary Advances
+            </a>
+            <a asp-page="/Payroll/Run" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 text-xs shadow-xs">
+                <i class="fa-solid fa-gears text-xs"></i> Process Monthly Payroll
+            </a>
+        </div>
+    </div>
+
+    <!-- Payroll Summary Stats using daisyUI stats component -->
+    <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+        <div class="stat p-5">
+            <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-briefcase"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Gross Salary</div>
+            <div class="stat-value text-xl font-black font-mono text-base-content">₦@Model.PayrollRecords.Sum(p => p.GrossSalary).ToString("N0")</div>
+            <div class="stat-desc opacity-70">Base + performance bonuses</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-warning text-2xl"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Advance Deductions</div>
+            <div class="stat-value text-xl font-black font-mono text-warning">₦@Model.PayrollRecords.Sum(p => p.AdvanceDeduction).ToString("N0")</div>
+            <div class="stat-desc opacity-70">Auto-recovered loan principal</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-error text-2xl"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Statutory Tax & Levies</div>
+            <div class="stat-value text-xl font-black font-mono text-error">₦@Model.PayrollRecords.Sum(p => p.TaxAndLevies).ToString("N0")</div>
+            <div class="stat-desc opacity-70">PAYE & state withholdings</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-money-bill-transfer"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Net Wage Disbursement</div>
+            <div class="stat-value text-xl font-black font-mono text-success">₦@Model.PayrollRecords.Sum(p => p.NetSalary).ToString("N0")</div>
+            <div class="stat-desc text-success font-semibold">Total bank transfer bill</div>
+        </div>
+    </div>
+
+    <!-- Payroll Table -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+        <div class="card-body p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-table-list text-primary"></i> Current Staff Payroll Breakdown
+                </h2>
+                <span class="badge badge-neutral badge-xs font-mono font-bold">@DateTime.UtcNow.ToString("MMMM yyyy")</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="table table-sm w-full text-xs">
+                    <thead>
+                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                            <th>Staff Member</th>
+                            <th>Department</th>
+                            <th>Base (₦)</th>
+                            <th>Bonuses (₦)</th>
+                            <th>Advances (₦)</th>
+                            <th>Tax & Deductions (₦)</th>
+                            <th>Net Pay (₦)</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-base-200">
+                        @foreach (var rec in Model.PayrollRecords)
+                        {
+                            <tr class="hover:bg-base-200/60 transition-colors">
+                                <td>
+                                    <div class="font-bold text-base-content">@rec.EmployeeName</div>
+                                    <div class="text-[10px] opacity-60 font-mono">@rec.StaffCode</div>
+                                </td>
+                                <td><span class="badge badge-soft badge-xs font-semibold">@rec.Department</span></td>
+                                <td class="font-mono text-base-content">₦@rec.BaseSalary.ToString("N0")</td>
+                                <td class="font-mono text-success font-bold">+₦@rec.PerformanceBonus.ToString("N0")</td>
+                                <td class="font-mono text-warning font-bold">-₦@rec.AdvanceDeduction.ToString("N0")</td>
+                                <td class="font-mono text-error font-bold">-₦@((rec.TaxAndLevies + rec.DisciplinaryDeductions).ToString("N0"))</td>
+                                <td class="font-mono text-xs font-black text-success">₦@rec.NetSalary.ToString("N0")</td>
+                                <td>
+                                    @if (rec.PaymentStatus == "Paid")
+                                    {
+                                        <span class="badge badge-success badge-xs font-bold gap-1">● Disbursed</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-warning badge-xs font-bold gap-1">● Pending</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

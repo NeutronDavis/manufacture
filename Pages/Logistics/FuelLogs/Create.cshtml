@@ -1,0 +1,162 @@
+@page
+@model Manufacture.Pages.Logistics.FuelLogs.CreateModel
+@{
+    ViewData["Title"] = "Record Fuel Purchase";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Logistics/FuelLogs/Index" class="hover:underline">Fuel Logs</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Record Fuel Expense</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-gas-pump text-primary"></i> Record Fuel Purchase
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Log vehicle fuel receipts, litres dispensed, pump station invoices, and delivery route coverage.
+            </p>
+        </div>
+        <div>
+            <a asp-page="/Logistics/FuelLogs/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Fuel Logs
+            </a>
+        </div>
+    </div>
+
+    <!-- Standard 2-Column Full-Width Form Layout -->
+    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        
+        <!-- Left Section (~70% width, 8 Cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-receipt"></i>
+                            </div>
+                            <span>Fuel Receipt & Dispenser Data</span>
+                        </div>
+                        <span class="badge badge-neutral badge-xs font-bold uppercase tracking-wider">Fleet Expense</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Select Delivery Vehicle <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <select asp-for="LogInput.VehicleId" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary" required>
+                                <option value="">-- Choose Vehicle --</option>
+                                @foreach (var v in Model.Vehicles)
+                                {
+                                    <option value="@v.Id">@v.RegistrationNumber - @v.MakeAndModel (Driver: @v.AssignedDriverName)</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Litres Dispensed <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="number" step="0.5" min="1" asp-for="LogInput.LitresDispensed" id="litresInput" class="input input-bordered input-sm w-full font-mono font-bold bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" oninput="calcFuelTotal()" placeholder="e.g. 50" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Price per Litre (₦) <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="number" step="10" min="100" asp-for="LogInput.PricePerLitre" id="priceInput" class="input input-bordered input-sm w-full font-mono font-bold bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary text-primary" oninput="calcFuelTotal()" value="980" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Current Odometer (KM) <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="number" step="1" min="0" asp-for="LogInput.OdometerReadingKm" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. 142650" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Petrol Station Name <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="LogInput.PetrolStation" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. NNPC Mega Station, Ikeja" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Receipt / Invoice #</span>
+                            </label>
+                            <input type="text" asp-for="LogInput.ReceiptNumber" class="input input-bordered input-sm w-full font-mono uppercase bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. RCT-88192" />
+                        </div>
+
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Delivery Route Covered</span>
+                            </label>
+                            <input type="text" asp-for="LogInput.RouteDescription" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. Ikeja - Maryland - Victoria Island Supermarket Supply" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sticky Section (~30% width, 4 Cols) -->
+        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-money-bill-wave text-primary"></i> Fuel Bill Total
+                    </h2>
+                    <span class="badge badge-success badge-xs font-bold">Live Calc</span>
+                </div>
+
+                <div class="p-4 rounded-xl bg-base-200 border border-base-300 flex justify-between items-center text-xs">
+                    <span class="font-bold opacity-70">Total Cost:</span>
+                    <span class="text-2xl font-black text-base-content font-mono" id="displayFuelTotal">₦0.00</span>
+                </div>
+
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    Recording fuel purchases tracks vehicle consumption efficiency, distance-per-litre, and fleet running operational expenses.
+                </p>
+
+                <div class="space-y-2 pt-2 border-t border-base-200">
+                    <button type="submit" class="btn btn-neutral w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
+                        <i class="fa-solid fa-circle-check text-success text-xs"></i> Save Fuel Log
+                    </button>
+
+                    <a asp-page="/Logistics/FuelLogs/Index" class="btn btn-ghost w-full rounded-xl text-xs font-semibold">
+                        Cancel
+                    </a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    function calcFuelTotal() {
+        const litres = parseFloat(document.getElementById('litresInput').value) || 0;
+        const price = parseFloat(document.getElementById('priceInput').value) || 0;
+        const total = litres * price;
+        document.getElementById('displayFuelTotal').innerText = '₦' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    document.addEventListener('DOMContentLoaded', calcFuelTotal);
+</script>
+}

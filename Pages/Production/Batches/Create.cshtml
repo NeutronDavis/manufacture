@@ -1,0 +1,301 @@
+@page
+@model Manufacture.Pages.Production.Batches.CreateModel
+@{
+    ViewData["Title"] = "Record Production Batch";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Production/Batches/Index" class="hover:underline">Batches</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Record Batch</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-layer-group text-primary"></i> Record Production Batch
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Log flour mixing batches, oven yield outputs, and record real-time actual vs target loaf variances.
+            </p>
+        </div>
+        <div>
+            <a asp-page="/Production/Batches/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Batches
+            </a>
+        </div>
+    </div>
+
+    <!-- Standard 2-Column Full-Width Form Layout -->
+    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        
+        <!-- Left Main Form Area (8 Cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    
+                    <!-- Section Title -->
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-industry"></i>
+                            </div>
+                            <span>Dough Mixing & Oven Output Parameters</span>
+                        </div>
+                        <span class="badge badge-neutral badge-xs font-bold uppercase tracking-wider">Shift Log</span>
+                    </div>
+
+                    <!-- Input Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        
+                        <!-- Bread Product / Recipe -->
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Bread Product / Recipe <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <select asp-for="BatchInput.RecipeId" id="recipeSelect" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary" required onchange="updateRecipeEstimate()">
+                                <option value="">-- Choose Product Recipe --</option>
+                                @foreach (var r in Model.Recipes)
+                                {
+                                    <option value="@r.Id" data-price="@r.SellingPrice">
+                                        @r.Name (@r.Code) - ₦@r.SellingPrice.ToString("N0")
+                                    </option>
+                                }
+                            </select>
+                        </div>
+
+                        <!-- Production Shift -->
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Production Shift</span>
+                            </label>
+                            <select asp-for="BatchInput.Shift" id="shiftSelect" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary" onchange="calculateVariance()">
+                                <option value="Morning Shift">Morning Shift (5:00 AM - 1:00 PM)</option>
+                                <option value="Afternoon Shift">Afternoon Shift (1:00 PM - 9:00 PM)</option>
+                                <option value="Night Shift">Night Shift (9:00 PM - 5:00 AM)</option>
+                            </select>
+                        </div>
+
+                        <!-- Baker In Charge -->
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Baker / Mixer in Charge <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="BatchInput.BakerInCharge" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. Emeka Obi" required />
+                        </div>
+
+                        <!-- Flour Bags Mixed -->
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Flour Bags Mixed (50kg bags) <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="number" step="0.1" min="0.1" asp-for="BatchInput.FlourBagsUsed" id="flourBagsInput" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" placeholder="e.g. 2.0" required oninput="calculateVariance()" />
+                        </div>
+
+                        <!-- Target Quantity -->
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Target Quantity (Loaves) <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="number" min="1" asp-for="BatchInput.TargetQuantity" id="targetQtyInput" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" placeholder="e.g. 200" required oninput="calculateVariance()" />
+                        </div>
+
+                        <!-- Actual Loaves Produced -->
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Actual Loaves Produced <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="number" min="0" asp-for="BatchInput.ActualQuantity" id="actualQtyInput" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-black text-primary" placeholder="e.g. 204" required oninput="calculateVariance()" />
+                        </div>
+
+                        <!-- Batch Status -->
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Batch Status</span>
+                            </label>
+                            <select asp-for="BatchInput.Status" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
+                                <option value="Completed">Completed (Ready for POS Dispatch)</option>
+                                <option value="Baking">Baking / In Oven</option>
+                                <option value="InMixing">In Mixing / Proofing</option>
+                                <option value="Planned">Planned</option>
+                            </select>
+                        </div>
+
+                        <!-- Production Date -->
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Production Date</span>
+                            </label>
+                            <input type="date" asp-for="BatchInput.ProductionDate" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" value="@DateTime.UtcNow.ToString("yyyy-MM-dd")" required />
+                        </div>
+
+                        <!-- Notes / Observations -->
+                        <div class="form-control sm:col-span-2 w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Shift Notes & Oven Observations
+                                </span>
+                            </label>
+                            <textarea asp-for="BatchInput.Notes" class="textarea textarea-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary leading-relaxed" rows="3" placeholder="e.g. Extra 4 loaves from high moisture flour batch; good golden crust and texture."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Real-Time Variance Calculation Alert Box -->
+                    <div id="varianceAlert" class="alert alert-info shadow-xs rounded-2xl text-xs py-3 flex items-center justify-between transition-all">
+                        <div class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-calculator text-base" id="varianceIcon"></i>
+                            <span id="varianceText" class="font-medium">Enter Target and Actual quantities to preview production yield variance.</span>
+                        </div>
+                        <span id="varianceBadge" class="badge badge-neutral badge-xs font-mono font-bold">0 LOAVES</span>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side Live Metrics & Confirmation Card (4 Cols) -->
+        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+            
+            <!-- Summary Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-primary"></i> Batch Summary & Action
+                    </h2>
+                    <span class="badge badge-success badge-xs font-bold">Live Yield</span>
+                </div>
+
+                <!-- 3 Mini Stats -->
+                <div class="space-y-2.5 text-xs font-mono">
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Flour Conversion:</span>
+                        <span class="font-bold text-base-content" id="flourRatioDisplay">— loaves / bag</span>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Yield Compliance:</span>
+                        <span class="font-bold text-base-content" id="yieldComplianceDisplay">100.0%</span>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Inventory Effect:</span>
+                        <span class="font-bold text-success" id="inventoryEffectDisplay">+0 Loaves to POS</span>
+                    </div>
+                </div>
+
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    Saving this batch will automatically log finished bread loaves to finished inventory for immediate POS dispatch.
+                </p>
+
+                <div class="space-y-2 pt-2 border-t border-base-200">
+                    <button type="submit" class="btn btn-neutral w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
+                        <i class="fa-solid fa-circle-check text-success text-xs"></i> Save Batch Record
+                    </button>
+                    
+                    <a asp-page="/Production/Batches/Index" class="btn btn-ghost w-full rounded-xl text-xs font-semibold">
+                        Cancel
+                    </a>
+                </div>
+            </div>
+
+            <!-- Quick Tip Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 text-xs space-y-2">
+                <div class="font-bold text-base-content flex items-center gap-2">
+                    <i class="fa-regular fa-lightbulb text-warning"></i> Production Standard
+                </div>
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    Standard yield benchmark is <strong>95 - 105 loaves per 50kg flour bag</strong> for Family Loaves, and <strong>130 - 140 loaves</strong> for Standard Size.
+                </p>
+            </div>
+
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    function updateRecipeEstimate() {
+        const flourBags = parseFloat(document.getElementById('flourBagsInput').value) || 2.0;
+        const targetInput = document.getElementById('targetQtyInput');
+        if (!targetInput.value || parseInt(targetInput.value) === 0) {
+            targetInput.value = Math.round(flourBags * 100);
+            document.getElementById('actualQtyInput').value = Math.round(flourBags * 100);
+        }
+        calculateVariance();
+    }
+
+    function calculateVariance() {
+        const target = parseInt(document.getElementById('targetQtyInput').value) || 0;
+        const actual = parseInt(document.getElementById('actualQtyInput').value) || 0;
+        const flourBags = parseFloat(document.getElementById('flourBagsInput').value) || 0;
+        
+        const alertBox = document.getElementById('varianceAlert');
+        const alertText = document.getElementById('varianceText');
+        const alertIcon = document.getElementById('varianceIcon');
+        const alertBadge = document.getElementById('varianceBadge');
+
+        const flourRatioDisplay = document.getElementById('flourRatioDisplay');
+        const yieldComplianceDisplay = document.getElementById('yieldComplianceDisplay');
+        const inventoryEffectDisplay = document.getElementById('inventoryEffectDisplay');
+
+        // Flour ratio
+        if (flourBags > 0 && actual > 0) {
+            const ratio = (actual / flourBags).toFixed(1);
+            flourRatioDisplay.innerText = `${ratio} loaves / bag`;
+        } else {
+            flourRatioDisplay.innerText = `— loaves / bag`;
+        }
+
+        // Inventory effect
+        inventoryEffectDisplay.innerText = `+${actual} Loaves to POS`;
+
+        // Yield compliance
+        if (target > 0) {
+            const compliance = ((actual / target) * 100).toFixed(1);
+            yieldComplianceDisplay.innerText = `${compliance}%`;
+        }
+
+        if (target > 0 && actual >= 0) {
+            const variance = actual - target;
+            alertBox.className = 'alert shadow-xs rounded-2xl text-xs py-3 flex items-center justify-between transition-all';
+            
+            if (variance > 0) {
+                alertBox.classList.add('alert-success');
+                alertIcon.className = 'fa-solid fa-circle-check text-base';
+                alertText.innerText = `Extra Output: +${variance} loaves produced above target yield!`;
+                alertBadge.className = 'badge badge-success badge-xs font-mono font-bold';
+                alertBadge.innerText = `+${variance} LOAVES`;
+            } else if (variance < 0) {
+                alertBox.classList.add('alert-warning');
+                alertIcon.className = 'fa-solid fa-triangle-exclamation text-base';
+                alertText.innerText = `Shortfall: ${Math.abs(variance)} loaves short of target (check dough weight / scrap).`;
+                alertBadge.className = 'badge badge-warning badge-xs font-mono font-bold';
+                alertBadge.innerText = `${variance} LOAVES`;
+            } else {
+                alertBox.classList.add('alert-info');
+                alertIcon.className = 'fa-solid fa-circle-info text-base';
+                alertText.innerText = `Exact match: 100% target yield achieved with 0 variance.`;
+                alertBadge.className = 'badge badge-info badge-xs font-mono font-bold';
+                alertBadge.innerText = `0 VARIANCE`;
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        calculateVariance();
+    });
+</script>
+}

@@ -1,0 +1,107 @@
+@page
+@model Manufacture.Pages.Production.IndexModel
+@{
+    ViewData["Title"] = "Production Management";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-industry text-stone-900"></i> Production & Pre-Order Aggregation
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">
+                Manage mixer batch outputs, raw material yields, and pre-order forecasts
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <a asp-page="/Production/Recipes/Create" class="btn btn-sm btn-outline border-slate-300 text-slate-700 hover:bg-slate-100 rounded-xl gap-2 font-semibold px-3.5 text-xs">
+                <i class="fa-solid fa-plus text-xs"></i> New Recipe
+            </a>
+            <a asp-page="/Production/Batches/Create" class="btn btn-sm btn-neutral bg-stone-900 hover:bg-black text-white border-0 rounded-xl gap-2 font-bold px-4 text-xs shadow-xs">
+                <i class="fa-solid fa-layer-group text-xs"></i> Log Batch Output
+            </a>
+        </div>
+    </div>
+
+    <!-- Pre-Order Aggregated Demand Cards -->
+    <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
+        <div class="card-body p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                    <h2 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-bullhorn text-amber-500"></i> Pre-Order Demand Aggregation (Tomorrow's Targets)
+                    </h2>
+                    <p class="text-xs text-slate-500">Aggregated quantities ordered by Sales Reps and Supermarket Clients</p>
+                </div>
+                <a asp-page="/Sales/Orders/PreOrders" class="btn btn-xs btn-outline border-slate-200 text-slate-700 rounded-xl">View Pre-Orders &rarr;</a>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                @foreach (var demand in Model.AggregatedDemand)
+                {
+                    <div class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                        <div>
+                            <div class="text-[10px] uppercase font-bold text-slate-400">Target Demand</div>
+                            <div class="font-bold text-sm text-slate-900 mt-0.5">@demand.ProductName</div>
+                            <div class="text-xs text-slate-500 mt-1">Est. Flour: ~@((demand.TotalQuantityOrdered * 0.45m / 50m).ToString("F1")) bags</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-2xl font-black text-slate-900 font-mono">@demand.TotalQuantityOrdered</div>
+                            <div class="text-[11px] font-semibold text-slate-500">loaves needed</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Recipes with Cost & Margin Summary -->
+    <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl overflow-hidden">
+        <div class="card-body p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h2 class="font-bold text-sm text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-calculator text-slate-500"></i> Formulated Product Recipes & Unit Costing
+                </h2>
+                <a asp-page="/Production/Recipes/Index" class="btn btn-xs btn-outline border-slate-200 text-slate-700 rounded-xl">All Recipes</a>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="table table-sm w-full text-xs">
+                    <thead>
+                        <tr class="text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-100 bg-slate-50/50">
+                            <th>Recipe / Product</th>
+                            <th>Code</th>
+                            <th>Unit Cost Price</th>
+                            <th>Selling Price</th>
+                            <th>Gross Margin</th>
+                            <th class="text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @foreach (var recipe in Model.Recipes)
+                        {
+                            var margin = recipe.SellingPrice - recipe.TotalUnitCost;
+                            var marginPct = recipe.SellingPrice > 0 ? (margin / recipe.SellingPrice) * 100 : 0;
+                            <tr class="hover:bg-slate-50/60 transition-colors">
+                                <td class="font-bold text-slate-900">@recipe.Name</td>
+                                <td><span class="badge bg-slate-100 text-slate-700 border-0 text-[10px] font-mono font-semibold">@recipe.Code</span></td>
+                                <td class="font-mono text-slate-800 font-bold">₦@recipe.TotalUnitCost.ToString("N0")</td>
+                                <td class="font-mono text-emerald-700 font-bold">₦@recipe.SellingPrice.ToString("N0")</td>
+                                <td>
+                                    <span class="badge bg-emerald-50 text-emerald-700 border-0 font-mono text-[10px] font-bold">
+                                        +₦@margin.ToString("N0") (@marginPct.ToString("F0")%)
+                                    </span>
+                                </td>
+                                <td class="text-right">
+                                    <a asp-page="/Production/Recipes/Edit" asp-route-id="@recipe.Id" class="btn btn-xs btn-ghost text-slate-500 hover:text-slate-900">Edit</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

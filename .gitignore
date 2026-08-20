@@ -1,0 +1,49 @@
+## .NET / Visual Studio
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+.vs/
+.vscode/
+
+## Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+## Visual Studio cache / temporary files
+*.ide/
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svclog
+
+## JetBrains / Rider / Resharper
+_ReSharper*/
+*.ReSharper
+*.DotSettings.user
+
+## OS Generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+## Temporary files & secrets
+*.swp
+*~
+*.lock
+*.log

@@ -1,0 +1,195 @@
+@page
+@model Manufacture.Pages.HR.StaffDirectoryModel
+@{
+    ViewData["Title"] = "Staff Directory";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Top Header Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight">
+                Staff Directory
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Manage employee records and operational status across all departments.
+            </p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a asp-page="/HR/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl font-semibold px-3.5 text-xs">
+                <i class="fa-solid fa-money-check-dollar text-xs"></i> Payroll View
+            </a>
+            <a asp-page="/HR/Employees/Create" class="btn btn-sm btn-neutral rounded-xl font-bold px-4 gap-2 text-xs shadow-xs">
+                <i class="fa-solid fa-user-plus text-xs"></i> Add New Employee
+            </a>
+        </div>
+    </div>
+
+    <!-- Search & Filter Card -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4">
+        <div class="flex flex-col sm:flex-row items-center gap-3">
+            
+            <!-- Search by name or ID -->
+            <div class="relative flex-1 w-full">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 opacity-50 text-xs"></i>
+                <input type="text" id="dirSearchInput" oninput="applyFilters()" placeholder="Search staff by name or ID..." 
+                       class="input input-sm input-bordered w-full pl-9 bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" />
+            </div>
+
+            <!-- All Departments Dropdown -->
+            <div class="w-full sm:w-48">
+                <select id="deptSelect" onchange="applyFilters()" class="select select-sm select-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
+                    <option value="">All Departments</option>
+                    <option value="Production">Production</option>
+                    <option value="Logistics">Logistics</option>
+                    <option value="Sales">Front of House / Sales</option>
+                    <option value="Store">Store & Inventory</option>
+                    <option value="Admin">Administration</option>
+                </select>
+            </div>
+
+            <!-- All Statuses Dropdown -->
+            <div class="w-full sm:w-44">
+                <select id="statusSelect" onchange="applyFilters()" class="select select-sm select-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="leave">On Leave</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Staff Directory Data Table -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="table table-sm w-full text-xs" id="staffTable">
+                <thead>
+                    <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                        <th class="py-3.5 px-4">Staff Member</th>
+                        <th class="py-3.5 px-4">Role & Dept</th>
+                        <th class="py-3.5 px-4">Contact</th>
+                        <th class="py-3.5 px-4">Hire Date</th>
+                        <th class="py-3.5 px-4">Status</th>
+                        <th class="py-3.5 px-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-base-200">
+                    @foreach (var emp in Model.Employees)
+                    {
+                        var statusStr = emp.IsActive ? (emp.Department == "OnLeave" ? "leave" : "active") : "inactive";
+                        var initials = !string.IsNullOrEmpty(emp.FullName) 
+                            ? string.Concat(emp.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => s[0])) 
+                            : "EM";
+
+                        <tr class="hover:bg-base-200/60 transition-colors staff-row" 
+                            data-name="@emp.FullName.ToLower()" 
+                            data-code="@emp.StaffCode.ToLower()" 
+                            data-dept="@emp.Department" 
+                            data-status="@statusStr">
+                            
+                            <!-- Staff Member Avatar + Name + Code -->
+                            <td class="py-3 px-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="avatar placeholder">
+                                        <div class="bg-base-200 text-base-content border border-base-300 rounded-full w-9 shadow-xs">
+                                            <span class="text-xs font-bold font-mono">@initials.ToUpper()</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="font-bold text-base-content text-xs">@emp.FullName</div>
+                                        <div class="text-[10px] opacity-60 font-mono">@emp.StaffCode</div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <!-- Role & Dept -->
+                            <td class="py-3 px-4">
+                                <div class="font-bold text-base-content">@emp.Designation</div>
+                                <div class="text-[11px] opacity-70">@emp.Department</div>
+                            </td>
+
+                            <!-- Contact (Email + Phone) -->
+                            <td class="py-3 px-4">
+                                <div class="text-base-content font-medium">@emp.Email</div>
+                                <div class="text-[10px] opacity-60 font-mono">@emp.PhoneNumber</div>
+                            </td>
+
+                            <!-- Hire Date -->
+                            <td class="py-3 px-4 text-base-content font-medium">
+                                @emp.EmploymentDate.ToString("MMM dd, yyyy")
+                            </td>
+
+                            <!-- Status Badge -->
+                            <td class="py-3 px-4">
+                                @if (emp.IsActive)
+                                {
+                                    <span class="badge badge-success badge-xs font-bold gap-1">● Active</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-error badge-xs font-bold gap-1">● Inactive</span>
+                                }
+                            </td>
+
+                            <!-- Actions (View details & Edit) -->
+                            <td class="py-3 px-4 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <a asp-page="/HR/Employees/Details" asp-route-id="@emp.Id" class="btn btn-xs btn-ghost text-primary font-bold">
+                                        View
+                                    </a>
+                                    <a asp-page="/HR/Employees/Edit" asp-route-id="@emp.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg">
+                                        Edit
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Table Footer Summary -->
+        <div class="p-4 border-t border-base-200 flex flex-col sm:flex-row justify-between items-center text-xs opacity-70 gap-2">
+            <div>
+                Showing <span id="visibleCount" class="font-bold text-base-content">@Model.Employees.Count</span> of <span class="font-bold text-base-content">@Model.Employees.Count</span> employees
+            </div>
+            <div class="text-[11px]">
+                BakeryFlow HR &bull; Guarantor & Compliance Engine
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function applyFilters() {
+        const query = document.getElementById('dirSearchInput').value.toLowerCase().trim();
+        const dept = document.getElementById('deptSelect').value;
+        const status = document.getElementById('statusSelect').value;
+
+        const rows = document.querySelectorAll('.staff-row');
+        let visible = 0;
+
+        rows.forEach(row => {
+            const name = row.getAttribute('data-name');
+            const code = row.getAttribute('data-code');
+            const rowDept = row.getAttribute('data-dept');
+            const rowStatus = row.getAttribute('data-status');
+
+            let matchQuery = !query || name.includes(query) || code.includes(query);
+            let matchDept = !dept || rowDept === dept;
+            let matchStatus = !status || rowStatus === status;
+
+            if (matchQuery && matchDept && matchStatus) {
+                row.style.display = '';
+                visible++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        document.getElementById('visibleCount').innerText = visible;
+    }
+</script>
+}

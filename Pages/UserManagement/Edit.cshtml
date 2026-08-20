@@ -1,0 +1,110 @@
+@page "{id:int}"
+@model Manufacture.Pages.UserManagement.EditModel
+@{
+    ViewData["Title"] = $"Edit User - {Model.UserInput.Name}";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs text-slate-400 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:text-slate-600">Home</a>
+                <span>&gt;</span>
+                <a asp-page="/UserManagement/Index" class="hover:text-slate-600">User Management</a>
+                <span>&gt;</span>
+                <span class="text-slate-700">Edit User</span>
+            </div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-user-pen text-stone-900"></i> Edit User: @Model.UserInput.Name
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">
+                Update account profile, assigned RBAC permissions, and 6-digit terminal PIN
+            </p>
+        </div>
+        <div>
+            <a asp-page="/UserManagement/Index" class="text-xs text-slate-500 hover:text-slate-900 font-semibold flex items-center gap-1.5">
+                <i class="fa-solid fa-arrow-left text-[10px]"></i> Back to Users
+            </a>
+        </div>
+    </div>
+
+    <!-- Standard 2-Column Full-Width Form Layout -->
+    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        <input type="hidden" asp-for="UserInput.Id" />
+
+        <!-- Left Section (~70% width, 8 Cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            <div class="erp-card p-6 space-y-4">
+                <div class="flex items-center gap-2 font-bold text-slate-900 text-sm border-b border-slate-100 pb-3">
+                    <div class="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-xs">
+                        <i class="fa-solid fa-id-badge"></i>
+                    </div>
+                    <span>Account Profile & Security</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="sm:col-span-2">
+                        <label class="erp-label">User Full Name <span class="text-rose-500">*</span></label>
+                        <input type="text" asp-for="UserInput.Name" class="erp-input" required />
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="erp-label">Email Address <span class="text-rose-500">*</span></label>
+                        <input type="email" asp-for="UserInput.Email" class="erp-input" required />
+                    </div>
+
+                    <div>
+                        <label class="erp-label">System Role <span class="text-rose-500">*</span></label>
+                        <select asp-for="UserInput.Role" class="erp-select" required>
+                            <option value="SalesRep">Sales Rep (POS Register)</option>
+                            <option value="ProductionManager">Production Manager</option>
+                            <option value="StoreManager">Store Manager / Keeper</option>
+                            <option value="Vendor">Vendor / Supermarket Client</option>
+                            <option value="HrPayrollManager">HR & Payroll Manager</option>
+                            <option value="SuperAdmin">Super Admin</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="erp-label">6-Digit Fast Login PIN <span class="text-rose-500">*</span></label>
+                        <input type="text" maxlength="6" pattern="\d{6}" asp-for="UserInput.PinCode" class="erp-input font-mono text-center font-bold text-sm tracking-widest" required />
+                    </div>
+
+                    <div>
+                        <label class="erp-label">Reset Password (Optional)</label>
+                        <input type="password" asp-for="UserInput.Password" class="erp-input" placeholder="Leave blank to keep current" />
+                    </div>
+
+                    <div>
+                        <label class="erp-label">Phone Number</label>
+                        <input type="tel" asp-for="UserInput.PhoneNumber" class="erp-input" />
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="erp-label">Assigned POS Terminal</label>
+                        <input type="text" asp-for="UserInput.PosTerminalId" class="erp-input font-mono" placeholder="e.g. POS-01" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sticky Section (~30% width, 4 Cols) -->
+        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+            <div class="erp-card p-6 space-y-4">
+                <div class="font-bold text-slate-900 text-sm">Actions</div>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    Saving modifications will immediately take effect on the user's active session and POS terminal permissions.
+                </p>
+
+                <button type="submit" class="btn-obsidian w-full py-2.5">
+                    <i class="fa-solid fa-check text-xs"></i> Update User Profile
+                </button>
+
+                <div class="text-center pt-1">
+                    <a asp-page="/UserManagement/Index" class="text-xs text-slate-500 hover:text-slate-900 font-medium">Cancel</a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>

@@ -1,0 +1,133 @@
+@page
+@model Manufacture.Pages.Inventory.Requests.CreateModel
+@{
+    ViewData["Title"] = "New Material Requisition";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs text-slate-400 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:text-slate-600">Home</a>
+                <span>&gt;</span>
+                <a asp-page="/Inventory/Requests/Index" class="hover:text-slate-600">Store Requisitions</a>
+                <span>&gt;</span>
+                <span class="text-slate-700">New Requisition</span>
+            </div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-clipboard-question text-stone-900"></i> Requisition Raw Materials
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">
+                Request flour bags, sugar, yeast, and packaging nylons from the warehouse keeper
+            </p>
+        </div>
+        <div>
+            <a asp-page="/Inventory/Requests/Index" class="text-xs text-slate-500 hover:text-slate-900 font-semibold flex items-center gap-1.5">
+                <i class="fa-solid fa-arrow-left text-[10px]"></i> Back to Requisitions
+            </a>
+        </div>
+    </div>
+
+    <!-- Standard 2-Column Full-Width Form Layout -->
+    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        
+        <!-- Left Section (~70% width, 8 Cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- Request Header Info -->
+            <div class="erp-card p-6 space-y-4">
+                <div class="flex items-center gap-2 font-bold text-slate-900 text-sm border-b border-slate-100 pb-3">
+                    <div class="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-xs">
+                        <i class="fa-regular fa-clipboard"></i>
+                    </div>
+                    <span>Requisition Purpose & Department</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="erp-label">Requested By (Manager / Baker) <span class="text-rose-500">*</span></label>
+                        <input type="text" asp-for="RequestInput.RequestedBy" class="erp-input" required />
+                    </div>
+
+                    <div>
+                        <label class="erp-label">Department / Shift</label>
+                        <input type="text" asp-for="RequestInput.Department" class="erp-input" value="Bakery Production Floor" required />
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="erp-label">Target Production Batch / Purpose <span class="text-rose-500">*</span></label>
+                        <input type="text" asp-for="RequestInput.Purpose" class="erp-input" placeholder="e.g. Morning Shift Batch #103 Jumbo Bread (500 loaves)" required />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Material Quantities Table -->
+            <div class="erp-card p-6 space-y-4">
+                <div class="font-bold text-slate-900 text-sm border-b border-slate-100 pb-3">
+                    Required Materials & Quantities
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table table-sm w-full text-xs">
+                        <thead>
+                            <tr class="text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-100 bg-slate-50/50">
+                                <th>Material Name</th>
+                                <th>Unit</th>
+                                <th>Current Stock</th>
+                                <th class="w-40 text-right pr-4">Quantity to Request</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @for (int i = 0; i < Model.AvailableItems.Count; i++)
+                            {
+                                var item = Model.AvailableItems[i];
+                                <tr class="hover:bg-slate-50/60 transition-colors">
+                                    <td>
+                                        <input type="hidden" name="RequestInput.Items[@i].InventoryItemId" value="@item.Id" />
+                                        <input type="hidden" name="RequestInput.Items[@i].ItemName" value="@item.Name" />
+                                        <div class="font-bold text-xs text-slate-900">@item.Name</div>
+                                        <span class="badge bg-slate-100 text-slate-600 border-0 text-[10px] font-mono font-semibold">@item.ItemCode</span>
+                                    </td>
+                                    <td>
+                                        <input type="hidden" name="RequestInput.Items[@i].Unit" value="@item.Unit" />
+                                        <span class="text-xs font-mono text-slate-600">@item.Unit</span>
+                                    </td>
+                                    <td>
+                                        <span class="font-mono text-xs font-semibold @(item.IsLowStock ? "text-rose-600 font-bold" : "text-slate-800")">
+                                            @item.QuantityInStock.ToString("N1") @item.Unit
+                                        </span>
+                                    </td>
+                                    <td class="w-40 text-right pr-4">
+                                        <input type="number" step="0.1" min="0" 
+                                               name="RequestInput.Items[@i].RequestedQuantity" 
+                                               value="@(i == 0 ? "4" : (i == 1 ? "1" : "0"))" 
+                                               class="erp-input w-28 text-center font-mono font-bold" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sticky Section (~30% width, 4 Cols) -->
+        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+            <div class="erp-card p-6 space-y-4">
+                <div class="font-bold text-slate-900 text-sm">Actions</div>
+                <p class="text-xs text-slate-500 leading-relaxed">
+                    Submitting this requisition will alert the store keeper to approve and issue materials for dough mixing.
+                </p>
+
+                <button type="submit" class="btn-obsidian w-full py-2.5">
+                    <i class="fa-solid fa-paper-plane text-xs"></i> Submit Store Requisition
+                </button>
+
+                <div class="text-center pt-1">
+                    <a asp-page="/Inventory/Requests/Index" class="text-xs text-slate-500 hover:text-slate-900 font-medium">Cancel</a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>

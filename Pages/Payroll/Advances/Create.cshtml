@@ -1,0 +1,175 @@
+@page
+@model Manufacture.Pages.Payroll.Advances.CreateModel
+@{
+    ViewData["Title"] = "Issue Salary Advance";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Payroll/Advances/Index" class="hover:underline">Salary Advances</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Issue Advance</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-hand-holding-dollar text-primary"></i> Grant Staff Salary Advance
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Issue employee loan principal with automated monthly installment payroll deductions.
+            </p>
+        </div>
+        <div>
+            <a asp-page="/Payroll/Advances/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Advances
+            </a>
+        </div>
+    </div>
+
+    <!-- Standard 2-Column Full-Width Form Layout -->
+    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        
+        <!-- Left Section (~70% width, 8 Cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-warning text-warning-content flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-file-invoice-dollar"></i>
+                            </div>
+                            <span>Loan Terms & Employee Selection</span>
+                        </div>
+                        <span class="badge badge-neutral badge-xs font-bold uppercase tracking-wider">Payroll Loan</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        
+                        <!-- Staff Member Select -->
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Select Staff Member <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <select asp-for="AdvanceInput.EmployeeId" id="empSelect" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary" required onchange="calculateLoanSchedule()">
+                                <option value="">-- Choose Staff Member --</option>
+                                @foreach (var emp in Model.Employees)
+                                {
+                                    <option value="@emp.Id" data-salary="@emp.BaseSalary">
+                                        @emp.FullName (@emp.StaffCode) - Monthly Base: ₦@emp.BaseSalary.ToString("N0")
+                                    </option>
+                                }
+                            </select>
+                        </div>
+
+                        <!-- Principal Amount -->
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Principal Loan Amount (₦) <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="number" step="1000" min="1000" asp-for="AdvanceInput.PrincipalAmount" id="principalInput" class="input input-bordered input-sm w-full font-mono font-bold bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. 50000" required oninput="calculateLoanSchedule()" />
+                        </div>
+
+                        <!-- Monthly Installment -->
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Monthly Deduction Amount (₦) <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="number" step="1000" min="1000" asp-for="AdvanceInput.MonthlyDeductionAmount" id="installmentInput" class="input input-bordered input-sm w-full font-mono font-bold bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary text-warning" placeholder="e.g. 15000" required oninput="calculateLoanSchedule()" />
+                        </div>
+
+                        <!-- Reason -->
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Reason & Emergency Justification <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <textarea asp-for="AdvanceInput.Reason" class="textarea textarea-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary leading-relaxed" rows="3" placeholder="e.g. Urgent family medical emergency assistance / School fees support" required></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sticky Section (~30% width, 4 Cols) -->
+        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-calculator text-primary"></i> Repayment Forecast
+                    </h2>
+                    <span class="badge badge-warning badge-xs font-bold">Auto-Deduct</span>
+                </div>
+
+                <!-- 3 Live Calculated Metrics -->
+                <div class="space-y-2.5 text-xs font-mono">
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Repayment Period:</span>
+                        <span class="font-bold text-base-content" id="displayDuration">— Months</span>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Monthly Burden:</span>
+                        <span class="font-bold text-warning" id="displayBurdenPercent">—% of Base</span>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Status on Save:</span>
+                        <span class="badge badge-success badge-xs font-bold font-sans">Active Loan</span>
+                    </div>
+                </div>
+
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    Once approved, the monthly installment will automatically be deducted during every subsequent payroll run until fully repaid.
+                </p>
+
+                <div class="space-y-2 pt-2 border-t border-base-200">
+                    <button type="submit" class="btn btn-neutral w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
+                        <i class="fa-solid fa-circle-check text-success text-xs"></i> Approve & Grant Advance
+                    </button>
+
+                    <a asp-page="/Payroll/Advances/Index" class="btn btn-ghost w-full rounded-xl text-xs font-semibold">
+                        Cancel
+                    </a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    function calculateLoanSchedule() {
+        const principal = parseFloat(document.getElementById('principalInput').value) || 0;
+        const installment = parseFloat(document.getElementById('installmentInput').value) || 0;
+        const empSelect = document.getElementById('empSelect');
+        const selectedOpt = empSelect.options[empSelect.selectedIndex];
+        const salary = parseFloat(selectedOpt?.getAttribute('data-salary')) || 0;
+
+        if (principal > 0 && installment > 0) {
+            const months = Math.ceil(principal / installment);
+            document.getElementById('displayDuration').innerText = `${months} Month${months > 1 ? 's' : ''}`;
+        } else {
+            document.getElementById('displayDuration').innerText = '— Months';
+        }
+
+        if (salary > 0 && installment > 0) {
+            const percent = ((installment / salary) * 100).toFixed(1);
+            document.getElementById('displayBurdenPercent').innerText = `${percent}% of Base`;
+        } else {
+            document.getElementById('displayBurdenPercent').innerText = '—% of Base';
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', calculateLoanSchedule);
+</script>
+}

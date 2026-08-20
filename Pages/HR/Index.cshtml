@@ -1,0 +1,424 @@
+@page
+@model Manufacture.Pages.HR.IndexModel
+@{
+    ViewData["Title"] = "Staff Records & Payroll";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Header Title -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight">
+                Staff Records & Payroll
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Personnel database, guarantor files, wage breakdown and monthly salary disbursements
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <a asp-page="/HR/Employees/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
+                <i class="fa-solid fa-plus text-xs"></i> New Employee
+            </a>
+        </div>
+    </div>
+
+    <!-- Top 3 KPI Summary Stats using daisyUI stats component -->
+    <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+        <!-- 1. Total Employees -->
+        <div class="stat p-5">
+            <div class="stat-figure text-primary text-2xl">
+                <i class="fa-solid fa-users"></i>
+            </div>
+            <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Total Employees</div>
+            <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.Employees.Count</div>
+            <div class="stat-desc text-success font-semibold flex items-center gap-1">
+                <i class="fa-solid fa-arrow-up text-[10px]"></i> +3 this month
+            </div>
+        </div>
+
+        <!-- 2. Current Payroll -->
+        <div class="stat p-5">
+            <div class="stat-figure text-success text-2xl">
+                <i class="fa-solid fa-money-bill-wave"></i>
+            </div>
+            <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Current Payroll (@DateTime.UtcNow.ToString("MMM"))</div>
+            <div class="stat-value text-2xl font-black font-mono text-success">₦@Model.TotalPayrollAmount.ToString("N0")</div>
+            <div class="stat-desc text-success font-semibold flex items-center gap-1">
+                <i class="fa-solid fa-arrow-up text-[10px]"></i> +2.4% vs last month
+            </div>
+        </div>
+
+        <!-- 3. Pending Advances -->
+        <div class="stat p-5">
+            <div class="stat-figure text-warning text-2xl">
+                <i class="fa-solid fa-wallet"></i>
+            </div>
+            <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Pending Advances</div>
+            <div class="stat-value text-2xl font-black font-mono text-warning">₦@Model.PendingAdvancesTotal.ToString("N0")</div>
+            <div class="stat-desc">
+                <span class="badge badge-warning badge-xs font-bold uppercase tracking-wider">
+                    @Model.ActiveAdvances.Count ACTIVE LOANS
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main 2-Column Layout: Left Directory & Right Staff Profile/Payroll Sheet -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left Column: Staff Directory with Search & Filters (4 Cols) -->
+        <div class="lg:col-span-4 space-y-4">
+            
+            <!-- Search & Filter Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4 space-y-3">
+                
+                <!-- Search Box -->
+                <div class="relative">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 opacity-50 text-xs"></i>
+                    <input type="text" id="staffSearchInput" oninput="filterStaffList()" placeholder="Search staff..." 
+                           class="input input-sm input-bordered w-full pl-9 bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" />
+                </div>
+
+                <!-- Filter Chips -->
+                <div class="flex flex-wrap gap-1.5 text-xs">
+                    <button type="button" onclick="setDepartmentFilter('All')" class="dept-filter-btn btn btn-xs btn-neutral rounded-lg font-semibold" data-dept="All">All Staff</button>
+                    <button type="button" onclick="setDepartmentFilter('Production')" class="dept-filter-btn btn btn-xs btn-ghost bg-base-200 rounded-lg font-semibold" data-dept="Production">Production</button>
+                    <button type="button" onclick="setDepartmentFilter('Logistics')" class="dept-filter-btn btn btn-xs btn-ghost bg-base-200 rounded-lg font-semibold" data-dept="Logistics">Logistics</button>
+                    <button type="button" onclick="setDepartmentFilter('Sales')" class="dept-filter-btn btn btn-xs btn-ghost bg-base-200 rounded-lg font-semibold" data-dept="Sales">Sales</button>
+                    <button type="button" onclick="setDepartmentFilter('Store')" class="dept-filter-btn btn btn-xs btn-ghost bg-base-200 rounded-lg font-semibold" data-dept="Store">Store</button>
+                </div>
+            </div>
+
+            <!-- Directory Section Header -->
+            <div class="text-xs font-bold uppercase tracking-wider opacity-60 px-1">
+                Directory
+            </div>
+
+            <!-- Directory List Cards -->
+            <div class="space-y-2" id="staffListContainer">
+                @for (int i = 0; i < Model.Employees.Count; i++)
+                {
+                    var emp = Model.Employees[i];
+                    var isFirst = i == 0;
+                    <div onclick="selectEmployee(@emp.Id)" id="emp-card-@emp.Id" 
+                         class="staff-card card bg-base-100 border @(isFirst ? "border-primary shadow-xs" : "border-base-300") p-3 rounded-2xl cursor-pointer hover:border-primary transition-all flex flex-row items-center justify-between gap-3"
+                         data-id="@emp.Id"
+                         data-name="@emp.FullName"
+                         data-code="@emp.StaffCode"
+                         data-role="@emp.Designation"
+                         data-dept="@emp.Department"
+                         data-salary="@emp.BaseSalary"
+                         data-phone="@emp.PhoneNumber"
+                         data-guarantor="@emp.GuarantorName"
+                         data-guarantorphone="@emp.GuarantorPhone"
+                         data-guarantorocc="@emp.GuarantorOccupation"
+                         data-active="@emp.IsActive.ToString().ToLower()">
+                        
+                        <div class="flex items-center gap-3">
+                            <div class="avatar placeholder">
+                                <div class="bg-base-200 text-base-content border border-base-300 rounded-full w-10 shadow-xs">
+                                    <span class="text-xs font-bold font-mono">@emp.FullName.Substring(0, Math.Min(2, emp.FullName.Length)).ToUpper()</span>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-base-content">@emp.FullName</div>
+                                <div class="text-[11px] opacity-70">@emp.Designation • @emp.Department</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            @if (emp.IsActive)
+                            {
+                                <span class="badge badge-success badge-xs font-bold">
+                                    ● ACTIVE
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-warning badge-xs font-bold">
+                                    ● LEAVE
+                                </span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Right Column: Selected Staff Profile & Dynamic Payroll Sheet (8 Cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- 1. Staff Profile Header Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div class="flex items-center gap-4">
+                            <div class="w-16 h-16 rounded-2xl bg-primary text-primary-content flex items-center justify-center text-2xl font-black shrink-0 shadow-xs" id="profileAvatar">
+                                MT
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-black text-base-content tracking-tight" id="profileName">Marcus Thorne</h2>
+                                <p class="text-xs opacity-70 mt-0.5" id="profileDesignation">
+                                    Master Baker • Employee ID: EMP-2041
+                                </p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <a id="editProfileBtn" href="/HR/Employees/Edit/1" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs font-semibold px-4">
+                                Edit Profile
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Profile Bottom Metadata Row -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-base-200 text-xs">
+                        <div>
+                            <div class="text-[10px] uppercase font-bold opacity-60">JOIN DATE</div>
+                            <div class="font-bold text-base-content mt-0.5" id="profileJoinDate">12 Oct, 2019</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] uppercase font-bold opacity-60">BANK DETAILS</div>
+                            <div class="font-bold text-base-content mt-0.5" id="profileBank">Access Bank •••• 4892</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] uppercase font-bold opacity-60">GUARANTOR</div>
+                            <div class="font-bold text-success mt-0.5 flex items-center gap-1" id="profileGuarantor">
+                                Sarah Thorne <i class="fa-solid fa-circle-check text-xs"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Dynamic Payroll Sheet Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-6">
+                    
+                    <!-- Card Top Title & Month Dropdown -->
+                    <div class="flex items-center justify-between border-b border-base-200 pb-4">
+                        <h3 class="font-black text-base text-base-content" id="payrollSheetTitle">
+                            Payroll Sheet: @DateTime.UtcNow.ToString("MMMM yyyy")
+                        </h3>
+                        
+                        <div class="dropdown dropdown-end">
+                            <div tabindex="0" role="button" class="btn btn-xs btn-outline border-base-300 rounded-lg font-semibold gap-1">
+                                <span>@DateTime.UtcNow.ToString("MMM yyyy")</span>
+                                <i class="fa-solid fa-chevron-down text-[8px]"></i>
+                            </div>
+                            <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-xl z-50 w-36 p-1.5 shadow-xl border border-base-300 text-xs">
+                                <li><a class="active bg-neutral text-neutral-content">@DateTime.UtcNow.ToString("MMM yyyy")</a></li>
+                                <li><a>@DateTime.UtcNow.AddMonths(-1).ToString("MMM yyyy")</a></li>
+                                <li><a>@DateTime.UtcNow.AddMonths(-2).ToString("MMM yyyy")</a></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 2-Column Earnings & Deductions Breakdown -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs font-mono">
+                        
+                        <!-- Left Side: EARNINGS & VARIABLE -->
+                        <div class="space-y-6">
+                            <!-- EARNINGS -->
+                            <div class="space-y-2.5">
+                                <div class="text-[10px] uppercase font-bold opacity-60 font-sans tracking-wider">EARNINGS</div>
+                                <div class="flex justify-between text-base-content">
+                                    <span class="font-sans">Base Salary</span>
+                                    <span class="font-bold text-base-content" id="valBaseSalary">₦3,200.00</span>
+                                </div>
+                                <div class="flex justify-between text-base-content">
+                                    <span class="font-sans">Housing Allowance</span>
+                                    <span class="font-bold text-base-content" id="valHousing">₦400.00</span>
+                                </div>
+                                <div class="flex justify-between text-base-content">
+                                    <span class="font-sans">Transport Allowance</span>
+                                    <span class="font-bold text-base-content" id="valTransport">₦200.00</span>
+                                </div>
+                            </div>
+
+                            <!-- VARIABLE -->
+                            <div class="space-y-2.5 pt-4 border-t border-base-200">
+                                <div class="text-[10px] uppercase font-bold opacity-60 font-sans tracking-wider">VARIABLE</div>
+                                <div class="flex justify-between text-base-content">
+                                    <span class="font-sans">Performance Bonus (Tier A)</span>
+                                    <span class="font-bold text-success" id="valBonus">+₦350.00</span>
+                                </div>
+                                <div class="flex justify-between text-base-content">
+                                    <span class="font-sans">Overtime (12 hrs)</span>
+                                    <span class="font-bold text-success" id="valOvertime">+₦288.00</span>
+                                </div>
+                                <div class="flex justify-between items-center pt-3 border-t border-base-200 font-sans font-bold text-base-content text-sm">
+                                    <span>Gross Earnings</span>
+                                    <span class="font-mono text-base-content font-black" id="valGrossEarnings">₦4,438.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Side: DEDUCTIONS & ADVANCES -->
+                        <div class="space-y-6">
+                            <!-- DEDUCTIONS -->
+                            <div class="space-y-2.5">
+                                <div class="text-[10px] uppercase font-bold opacity-60 font-sans tracking-wider">DEDUCTIONS</div>
+                                <div class="flex justify-between text-base-content">
+                                    <span class="font-sans">Income Tax (PAYE)</span>
+                                    <span class="font-bold text-error" id="valTax">-₦640.00</span>
+                                </div>
+                                <div class="flex justify-between text-base-content">
+                                    <span class="font-sans">Pension Fund (5%)</span>
+                                    <span class="font-bold text-error" id="valPension">-₦160.00</span>
+                                </div>
+                                <div class="flex justify-between text-base-content">
+                                    <span class="font-sans">Health Insurance</span>
+                                    <span class="font-bold text-error" id="valHealth">-₦85.00</span>
+                                </div>
+                            </div>
+
+                            <!-- ADVANCES & PENALTIES -->
+                            <div class="space-y-2.5 pt-4 border-t border-base-200">
+                                <div class="text-[10px] uppercase font-bold opacity-60 font-sans tracking-wider">ADVANCES & PENALTIES</div>
+                                <div class="flex justify-between text-base-content items-center">
+                                    <div class="flex items-center gap-1.5 font-sans">
+                                        <span>Salary Advance Repayment</span>
+                                        <span class="badge badge-success badge-xs font-bold px-1.5 py-0.5">2 OF 3</span>
+                                    </div>
+                                    <span class="font-bold text-error" id="valAdvance">-₦200.00</span>
+                                </div>
+                                <div class="flex justify-between text-base-content">
+                                    <span class="font-sans">Late Attendance (1 instance)</span>
+                                    <span class="font-bold text-error" id="valPenalty">-₦15.00</span>
+                                </div>
+                                <div class="flex justify-between items-center pt-3 border-t border-base-200 font-sans font-bold text-base-content text-sm">
+                                    <span>Total Deductions</span>
+                                    <span class="font-mono text-base-content font-black" id="valTotalDeductions">₦1,100.00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Action & Net Pay Settlement Bar -->
+                    <div class="pt-6 border-t border-base-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <div class="text-[10px] uppercase font-bold opacity-60 tracking-wider">NET PAY</div>
+                            <div class="text-3xl font-black text-base-content font-mono" id="valNetPay">
+                                ₦3,338.00
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3">
+                            <button type="button" onclick="window.print()" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-4 text-xs">
+                                <i class="fa-solid fa-download text-xs"></i> PDF
+                            </button>
+                            
+                            <form method="post" asp-page-handler="ApprovePayment" class="inline">
+                                <input type="hidden" name="id" id="approveEmployeeId" value="1" />
+                                <button type="submit" class="btn btn-sm btn-neutral rounded-xl font-bold px-5 gap-2 shadow-xs text-xs">
+                                    <i class="fa-solid fa-circle-check text-success text-xs"></i> Approve & Release Payment
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    let currentFilter = 'All';
+
+    function setDepartmentFilter(dept) {
+        currentFilter = dept;
+        document.querySelectorAll('.dept-filter-btn').forEach(btn => {
+            if (btn.getAttribute('data-dept') === dept) {
+                btn.className = 'dept-filter-btn btn btn-xs btn-neutral rounded-lg font-semibold';
+            } else {
+                btn.className = 'dept-filter-btn btn btn-xs btn-ghost bg-base-200 rounded-lg font-semibold';
+            }
+        });
+        filterStaffList();
+    }
+
+    function filterStaffList() {
+        const query = document.getElementById('staffSearchInput').value.toLowerCase();
+        const cards = document.querySelectorAll('.staff-card');
+
+        cards.forEach(card => {
+            const name = card.getAttribute('data-name').toLowerCase();
+            const dept = card.getAttribute('data-dept');
+            const matchesQuery = name.includes(query);
+            const matchesDept = (currentFilter === 'All' || dept === currentFilter);
+
+            if (matchesQuery && matchesDept) {
+                card.classList.remove('hidden');
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+    }
+
+    function selectEmployee(id) {
+        document.querySelectorAll('.staff-card').forEach(card => {
+            if (parseInt(card.getAttribute('data-id')) === id) {
+                card.className = 'staff-card card bg-base-100 border-2 border-primary shadow-xs p-3 rounded-2xl cursor-pointer transition-all flex flex-row items-center justify-between gap-3';
+                
+                const name = card.getAttribute('data-name');
+                const code = card.getAttribute('data-code');
+                const role = card.getAttribute('data-role');
+                const dept = card.getAttribute('data-dept');
+                const baseSalary = parseFloat(card.getAttribute('data-salary')) || 120000;
+                const guarantor = card.getAttribute('data-guarantor');
+
+                document.getElementById('profileName').innerText = name;
+                document.getElementById('profileDesignation').innerText = `${role} • Employee ID: ${code}`;
+                document.getElementById('profileAvatar').innerText = name.substring(0, Math.Min(2, name.length)).toUpperCase();
+                document.getElementById('profileGuarantor').innerHTML = `${guarantor} <i class="fa-solid fa-circle-check text-xs text-success"></i>`;
+                document.getElementById('editProfileBtn').href = `/HR/Employees/Edit/${id}`;
+                document.getElementById('approveEmployeeId').value = id;
+
+                const housing = Math.round(baseSalary * 0.125);
+                const transport = Math.round(baseSalary * 0.0625);
+                const bonus = Math.round(baseSalary * 0.109);
+                const overtime = Math.round(baseSalary * 0.09);
+                const gross = baseSalary + housing + transport + bonus + overtime;
+
+                const tax = Math.round(baseSalary * 0.20);
+                const pension = Math.round(baseSalary * 0.05);
+                const health = Math.round(baseSalary * 0.0265);
+                const advance = Math.round(baseSalary * 0.0625);
+                const penalty = Math.round(baseSalary * 0.005);
+                const totalDeductions = tax + pension + health + advance + penalty;
+                const netPay = gross - totalDeductions;
+
+                document.getElementById('valBaseSalary').innerText = '₦' + baseSalary.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                document.getElementById('valHousing').innerText = '₦' + housing.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                document.getElementById('valTransport').innerText = '₦' + transport.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                document.getElementById('valBonus').innerText = '+₦' + bonus.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                document.getElementById('valOvertime').innerText = '+₦' + overtime.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                document.getElementById('valGrossEarnings').innerText = '₦' + gross.toLocaleString('en-US', { minimumFractionDigits: 2 });
+
+                document.getElementById('valTax').innerText = '-₦' + tax.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                document.getElementById('valPension').innerText = '-₦' + pension.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                document.getElementById('valHealth').innerText = '-₦' + health.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                document.getElementById('valAdvance').innerText = '-₦' + advance.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                document.getElementById('valPenalty').innerText = '-₦' + penalty.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                document.getElementById('valTotalDeductions').innerText = '₦' + totalDeductions.toLocaleString('en-US', { minimumFractionDigits: 2 });
+
+                document.getElementById('valNetPay').innerText = '₦' + netPay.toLocaleString('en-US', { minimumFractionDigits: 2 });
+            } else {
+                card.className = 'staff-card card bg-base-100 border border-base-300 p-3 rounded-2xl cursor-pointer hover:border-primary transition-all flex flex-row items-center justify-between gap-3';
+            }
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const firstCard = document.querySelector('.staff-card');
+        if (firstCard) {
+            const firstId = parseInt(firstCard.getAttribute('data-id'));
+            selectEmployee(firstId);
+        }
+    });
+</script>
+}

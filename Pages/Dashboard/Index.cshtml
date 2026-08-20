@@ -1,0 +1,604 @@
+@page
+@model Manufacture.Pages.Dashboard.IndexModel
+@{
+    ViewData["Title"] = $"{Model.ActiveRole} Dashboard";
+}
+
+<div class="space-y-6 w-full">
+
+    <!-- Top Universal Welcome Banner -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+        <div class="card-body p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="badge badge-primary font-bold text-xs">@Model.ActiveRole</span>
+                    <span class="text-xs opacity-60">@DateTime.UtcNow.ToString("dddd, dd MMMM yyyy")</span>
+                </div>
+                <h1 class="text-2xl font-black text-base-content tracking-tight">
+                    Welcome back, @Model.ActiveUserName!
+                </h1>
+                <p class="text-xs opacity-70 mt-0.5">
+                    @if (Model.ActiveRole == "SuperAdmin")
+                    {
+                        <span>Executive Control Center &bull; Enterprise Financials, Multi-Channel POS & Factory Yields.</span>
+                    }
+                    else if (Model.ActiveRole == "ProductionManager")
+                    {
+                        <span>Bakery Floor Control &bull; Flour Batch Mixing, Oven Output Yields & Shift Variance.</span>
+                    }
+                    else if (Model.ActiveRole == "StoreManager")
+                    {
+                        <span>Warehouse & Material Store &bull; Stock Deductions, Requisitions & Raw Material Supplies.</span>
+                    }
+                    else if (Model.ActiveRole == "SalesRep")
+                    {
+                        <span>POS Checkout Terminal &bull; Counter Sales, Multi-Channel Accounts & Print-to-Load Slips.</span>
+                    }
+                    else if (Model.ActiveRole == "Vendor")
+                    {
+                        <span>Client Pre-Order Portal &bull; Supermarket Standing Orders, Credit Balance & Delivery Slips.</span>
+                    }
+                    else if (Model.ActiveRole == "HrPayrollManager")
+                    {
+                        <span>HR & Payroll Hub &bull; Staff Attendance, Verified Guarantors & Dynamic Salary Advances.</span>
+                    }
+                </p>
+            </div>
+            
+            <!-- Contextual Quick Action Buttons per Role -->
+            <div class="flex flex-wrap gap-2">
+                @if (Model.ActiveRole == "SuperAdmin")
+                {
+                    <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
+                        <i class="fa-solid fa-cart-plus"></i> New POS Sale
+                    </a>
+                    <a asp-page="/Production/Recipes/Create" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-3.5 text-xs">
+                        <i class="fa-solid fa-calculator"></i> Build Recipe
+                    </a>
+                    <a asp-page="/Production/Batches/Create" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-3.5 text-xs">
+                        <i class="fa-solid fa-layer-group"></i> Log Batch
+                    </a>
+                }
+                @if (Model.ActiveRole == "ProductionManager")
+                {
+                    <a asp-page="/Production/Batches/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
+                        <i class="fa-solid fa-plus"></i> Log Batch Output
+                    </a>
+                    <a asp-page="/Inventory/Requests/Create" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-3.5 text-xs">
+                        <i class="fa-solid fa-clipboard-list"></i> Request Raw Materials
+                    </a>
+                    <a asp-page="/Production/Recipes/Create" class="btn btn-sm btn-ghost font-semibold px-3 text-xs">
+                        <i class="fa-solid fa-calculator"></i> Recipe Builder
+                    </a>
+                }
+                @if (Model.ActiveRole == "StoreManager")
+                {
+                    <a asp-page="/Inventory/Requests/Index" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
+                        <i class="fa-solid fa-clipboard-check"></i> Review Store Requests (@Model.PendingStoreRequests.Count)
+                    </a>
+                    <a asp-page="/Inventory/Items/Create" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-3.5 text-xs">
+                        <i class="fa-solid fa-plus"></i> Add Raw Material
+                    </a>
+                }
+                @if (Model.ActiveRole == "SalesRep")
+                {
+                    <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
+                        <i class="fa-solid fa-cash-register"></i> Instant POS Checkout
+                    </a>
+                    <a asp-page="/Sales/Orders/PreOrders" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-3.5 text-xs">
+                        <i class="fa-solid fa-clock-rotate-left"></i> Book Pre-Order
+                    </a>
+                }
+                @if (Model.ActiveRole == "Vendor")
+                {
+                    <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
+                        <i class="fa-solid fa-cart-shopping"></i> Place Next Day Pre-Order
+                    </a>
+                }
+                @if (Model.ActiveRole == "HrPayrollManager")
+                {
+                    <a asp-page="/Payroll/Run" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
+                        <i class="fa-solid fa-money-check-dollar"></i> Process Monthly Payroll
+                    </a>
+                    <a asp-page="/Payroll/Advances/Create" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-3.5 text-xs">
+                        <i class="fa-solid fa-hand-holding-dollar"></i> Issue Salary Advance
+                    </a>
+                    <a asp-page="/HR/Employees/Create" class="btn btn-sm btn-ghost font-semibold px-3 text-xs">
+                        <i class="fa-solid fa-user-plus"></i> Add Staff
+                    </a>
+                }
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. SUPER ADMIN DASHBOARD -->
+    @if (Model.ActiveRole == "SuperAdmin")
+    {
+        <div class="space-y-6">
+            <!-- Top 4 KPI Stats using daisyUI stats component -->
+            <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+                <div class="stat p-5">
+                    <div class="stat-figure text-success text-2xl">
+                        <i class="fa-solid fa-coins"></i>
+                    </div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Today's Total Sales</div>
+                    <div class="stat-value text-2xl font-black font-mono text-success">₦@Model.Summary.TodaySalesTotal.ToString("N0")</div>
+                    <div class="stat-desc opacity-70">@Model.Summary.TodayOrdersCount completed sales tickets</div>
+                </div>
+
+                <div class="stat p-5">
+                    <div class="stat-figure text-primary text-2xl">
+                        <i class="fa-solid fa-bread-slice"></i>
+                    </div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Today's Production</div>
+                    <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.Summary.ActualProducedLoavesToday / @Model.Summary.TargetProductionLoavesToday</div>
+                    <div class="stat-desc opacity-70">Loaves Produced vs Daily Target</div>
+                </div>
+
+                <div class="stat p-5">
+                    <div class="stat-figure text-warning text-2xl">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Active Pre-Orders</div>
+                    <div class="stat-value text-2xl font-black font-mono text-warning">@Model.Summary.PendingPreOrdersCount</div>
+                    <div class="stat-desc opacity-70">Booked demand tickets</div>
+                </div>
+
+                <div class="stat p-5">
+                    <div class="stat-figure text-info text-2xl">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Active Workforce</div>
+                    <div class="stat-value text-2xl font-black font-mono text-info">@Model.Employees.Count</div>
+                    <div class="stat-desc opacity-70">Registered personnel on shift</div>
+                </div>
+            </div>
+
+            <!-- Multi-Account Bank Balances & Recent Sales Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Multi-Channel Bank Routing Accounts -->
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                            <i class="fa-solid fa-building-columns text-primary"></i> Multi-Channel POS Ledgers
+                        </h2>
+                        <span class="badge badge-success badge-xs font-bold">Live</span>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div class="p-3.5 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs">
+                                    <i class="fa-solid fa-money-bill-wave"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-xs text-base-content">Cash Vault Account</div>
+                                    <div class="text-[10px] opacity-60">Counter & Spot Cash</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-mono font-black text-xs text-emerald-700">₦@Model.Summary.CashSalesAmount.ToString("N0")</div>
+                                <div class="text-[10px] opacity-60">Collected Today</div>
+                            </div>
+                        </div>
+
+                        <div class="p-3.5 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs">
+                                    <i class="fa-solid fa-building-columns"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-xs text-base-content">Bank Transfer Account</div>
+                                    <div class="text-[10px] opacity-60">Direct Bank Inflows</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-mono font-black text-xs text-blue-700">₦@Model.Summary.BankTransferSalesAmount.ToString("N0")</div>
+                                <div class="text-[10px] opacity-60">Verified Inflows</div>
+                            </div>
+                        </div>
+
+                        <div class="p-3.5 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center font-bold text-xs">
+                                    <i class="fa-solid fa-credit-card"></i>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-xs text-base-content">POS Merchant Account</div>
+                                    <div class="text-[10px] opacity-60">Card Swipe Settlement</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="font-mono font-black text-xs text-purple-700">₦@Model.Summary.PosBankSalesAmount.ToString("N0")</div>
+                                <div class="text-[10px] opacity-60">Card Swipes</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Live Transactions Table (2 Columns Span) -->
+                <div class="lg:col-span-2 card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                            <i class="fa-solid fa-receipt text-primary"></i> Real-Time Sales & Dispatch Feed
+                        </h2>
+                        <a asp-page="/Sales/Orders/Index" class="btn btn-xs btn-outline border-base-300 rounded-xl">All Invoices &rarr;</a>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm w-full text-xs">
+                            <thead>
+                                <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                                    <th>Order #</th>
+                                    <th>Customer</th>
+                                    <th>Method</th>
+                                    <th>Amount (₦)</th>
+                                    <th>Status</th>
+                                    <th class="text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-base-200">
+                                @foreach (var order in Model.RecentOrders)
+                                {
+                                    <tr class="hover:bg-base-200/60 transition-colors">
+                                        <td class="font-mono font-bold text-base-content">@order.OrderNumber</td>
+                                        <td class="font-semibold text-base-content">@order.CustomerName</td>
+                                        <td>
+                                            <span class="badge badge-soft badge-xs font-semibold">@order.PaymentMethod</span>
+                                        </td>
+                                        <td class="font-mono font-bold text-base-content">₦@order.TotalAmount.ToString("N0")</td>
+                                        <td>
+                                            @if (order.IsPrintedForLoading)
+                                            {
+                                                <span class="badge badge-success badge-xs font-bold">● Printed</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge badge-warning badge-xs font-bold">● Unprinted</span>
+                                            }
+                                        </td>
+                                        <td class="text-right">
+                                            <a asp-page="/Sales/Orders/Receipt" asp-route-id="@order.Id" class="btn btn-xs btn-ghost text-primary">Receipt</a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    }
+
+    <!-- 2. PRODUCTION MANAGER DASHBOARD -->
+    @if (Model.ActiveRole == "ProductionManager")
+    {
+        <div class="space-y-6">
+            <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+                <div class="stat p-5">
+                    <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-layer-group"></i></div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Batches Mixed Today</div>
+                    <div class="stat-value text-2xl font-black font-mono text-primary">@Model.TodayBatches.Count</div>
+                    <div class="stat-desc opacity-70">Production runs completed</div>
+                </div>
+
+                <div class="stat p-5">
+                    <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-bread-slice"></i></div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Total Loaves Baked</div>
+                    <div class="stat-value text-2xl font-black font-mono text-success">@Model.TodayBatches.Sum(b => b.ActualQuantity)</div>
+                    <div class="stat-desc opacity-70">Ready for dispatch</div>
+                </div>
+
+                <div class="stat p-5">
+                    <div class="stat-figure text-warning text-2xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Yield Variance</div>
+                    <div class="stat-value text-2xl font-black font-mono text-warning">@Model.TodayBatches.Sum(b => b.Variance)</div>
+                    <div class="stat-desc opacity-70">Over/Under target loaf count</div>
+                </div>
+            </div>
+
+            <!-- Active Production Batches Table -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-industry text-primary"></i> Today's Oven Batch Log
+                    </h2>
+                    <a asp-page="/Production/Batches/Create" class="btn btn-xs btn-neutral rounded-xl font-bold">+ New Batch</a>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table table-sm w-full text-xs">
+                        <thead>
+                            <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                                <th>Batch Code</th>
+                                <th>Recipe</th>
+                                <th>Flour Bags Used</th>
+                                <th>Target Yield</th>
+                                <th>Actual Baked</th>
+                                <th>Variance</th>
+                                <th>Mixer Operator</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-base-200">
+                            @foreach (var batch in Model.TodayBatches)
+                            {
+                                <tr class="hover:bg-base-200/60 transition-colors">
+                                    <td class="font-mono font-bold text-base-content">@batch.BatchNumber</td>
+                                    <td class="font-bold text-base-content">@batch.RecipeName</td>
+                                    <td class="font-mono font-bold">@batch.FlourBagsUsed bags</td>
+                                    <td class="font-mono text-base-content">@batch.TargetQuantity loaves</td>
+                                    <td class="font-mono font-black text-success">@batch.ActualQuantity loaves</td>
+                                    <td>
+                                        <span class="badge @(batch.Variance >= 0 ? "badge-success" : "badge-error") badge-xs font-bold">
+                                            @(batch.Variance >= 0 ? "+" : "")@batch.Variance
+                                        </span>
+                                    </td>
+                                    <td class="font-semibold opacity-80">@batch.BakerInCharge</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- 3. STORE MANAGER DASHBOARD -->
+    @if (Model.ActiveRole == "StoreManager")
+    {
+        <div class="space-y-6">
+            <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+                <div class="stat p-5">
+                    <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-boxes-stacked"></i></div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Pending Requisitions</div>
+                    <div class="stat-value text-2xl font-black font-mono text-primary">@Model.PendingStoreRequests.Count</div>
+                    <div class="stat-desc opacity-70">Awaiting material approval</div>
+                </div>
+
+                <div class="stat p-5">
+                    <div class="stat-figure text-warning text-2xl"><i class="fa-solid fa-truck-field"></i></div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Approved Suppliers</div>
+                    <div class="stat-value text-2xl font-black font-mono text-warning">@Model.Suppliers.Count</div>
+                    <div class="stat-desc opacity-70">Active supply partners</div>
+                </div>
+
+                <div class="stat p-5">
+                    <div class="stat-figure text-error text-2xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Stock Alerts</div>
+                    <div class="stat-value text-2xl font-black font-mono text-error">@Model.StockAlertItems.Count</div>
+                    <div class="stat-desc opacity-70">Items below reorder point</div>
+                </div>
+            </div>
+
+            <!-- Pending Store Material Requisitions -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-check text-warning"></i> Store Issue Requisitions Awaiting Approval
+                    </h2>
+                    <a asp-page="/Inventory/Requests/Index" class="btn btn-xs btn-outline border-base-300 rounded-xl">View All Requests</a>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table table-sm w-full text-xs">
+                        <thead>
+                            <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                                <th>Req #</th>
+                                <th>Requested By</th>
+                                <th>Item Required</th>
+                                <th>Quantity</th>
+                                <th>Purpose</th>
+                                <th class="text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-base-200">
+                            @foreach (var req in Model.PendingStoreRequests)
+                            {
+                                var firstItem = req.Items.FirstOrDefault();
+                                <tr class="hover:bg-base-200/60 transition-colors">
+                                    <td class="font-mono font-bold text-base-content">@req.RequestNumber</td>
+                                    <td class="font-bold text-base-content">@req.RequestedBy</td>
+                                    <td class="font-bold text-base-content">@(firstItem?.ItemName ?? "Materials")</td>
+                                    <td class="font-mono font-bold text-primary">@(firstItem?.RequestedQuantity ?? 0) @(firstItem?.Unit ?? "")</td>
+                                    <td class="opacity-70">@req.Purpose</td>
+                                    <td class="text-right">
+                                        <a asp-page="/Inventory/Requests/Details" asp-route-id="@req.Id" class="btn btn-xs btn-neutral rounded-lg font-bold">Review & Issue</a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- 4. SALES REP DASHBOARD -->
+    @if (Model.ActiveRole == "SalesRep")
+    {
+        <div class="space-y-6">
+            <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+                <div class="stat p-5">
+                    <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-cart-shopping"></i></div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">My Sales Today</div>
+                    <div class="stat-value text-2xl font-black font-mono text-success">₦@Model.RepTodayOrders.Sum(o => o.TotalAmount).ToString("N0")</div>
+                    <div class="stat-desc opacity-70">Total tickets issued</div>
+                </div>
+
+                <div class="stat p-5">
+                    <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-receipt"></i></div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Completed Tickets</div>
+                    <div class="stat-value text-2xl font-black font-mono text-primary">@Model.RepTodayOrders.Count</div>
+                    <div class="stat-desc opacity-70">Dispatched loading slips</div>
+                </div>
+
+                <div class="stat p-5">
+                    <div class="stat-figure text-info text-2xl"><i class="fa-solid fa-cash-register"></i></div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Assigned Terminal</div>
+                    <div class="stat-value text-xl font-black font-mono text-info">@(Model.AssignedTerminal?.TerminalName ?? "POS-01 (Main Gate)")</div>
+                    <div class="stat-desc opacity-70">Active session</div>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <a asp-page="/Sales/Orders/Create" class="btn btn-neutral flex-1 rounded-xl font-bold py-3 text-xs shadow-xs">
+                    <i class="fa-solid fa-cash-register"></i> Open POS Checkout Terminal
+                </a>
+                <a asp-page="/Sales/Orders/PreOrders" class="btn btn-outline border-base-300 flex-1 rounded-xl font-bold py-3 text-xs">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Book Next-Day Pre-Order
+                </a>
+            </div>
+        </div>
+    }
+
+    <!-- 5. VENDOR / CLIENT DASHBOARD -->
+    @if (Model.ActiveRole == "Vendor")
+    {
+        <div class="space-y-6">
+            <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+                <div class="stat p-5">
+                    <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-building"></i></div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Account Name</div>
+                    <div class="stat-value text-lg font-black text-primary">@(Model.VendorAccount?.Name ?? "Everyday Supermarket")</div>
+                    <div class="stat-desc opacity-70">Code: @(Model.VendorAccount?.MemberCode ?? "VND-1002")</div>
+                </div>
+
+                <div class="stat p-5">
+                    <div class="stat-figure text-warning text-2xl"><i class="fa-solid fa-wallet"></i></div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Current Credit Balance</div>
+                    <div class="stat-value text-2xl font-black font-mono text-warning">₦@(Model.VendorAccount?.OutstandingBalance.ToString("N0") ?? "0")</div>
+                    <div class="stat-desc opacity-70">Payment terms: 7 Days Net</div>
+                </div>
+
+                <div class="stat p-5">
+                    <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-truck-fast"></i></div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Total Orders Placed</div>
+                    <div class="stat-value text-2xl font-black font-mono text-success">@Model.VendorOrders.Count</div>
+                    <div class="stat-desc opacity-70">Scheduled standing orders</div>
+                </div>
+            </div>
+
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3 mb-4">
+                    <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-cart-plus text-primary"></i> Supermarket Daily Standing Pre-Order
+                    </h2>
+                    <a asp-page="/Sales/Orders/Create" class="btn btn-xs btn-neutral rounded-xl font-bold">New Booking</a>
+                </div>
+                <p class="text-xs opacity-70">
+                    Your scheduled standing pre-orders are tracked and aggregated directly into the daily production mixer forecast.
+                </p>
+            </div>
+        </div>
+    }
+
+    <!-- 6. HR & PAYROLL MANAGER DASHBOARD -->
+    @if (Model.ActiveRole == "HrPayrollManager")
+    {
+        <div class="space-y-6">
+            <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+                <div class="stat p-5">
+                    <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-users"></i></div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Total Staff</div>
+                    <div class="stat-value text-2xl font-black font-mono text-primary">@Model.Employees.Count</div>
+                    <div class="stat-desc opacity-70">Registered bakery personnel</div>
+                </div>
+
+                <div class="stat p-5">
+                    <div class="stat-figure text-warning text-2xl"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Active Salary Advances</div>
+                    <div class="stat-value text-2xl font-black font-mono text-warning">@Model.PendingAdvances.Count</div>
+                    <div class="stat-desc opacity-70 font-mono">₦@Model.PendingAdvances.Sum(a => a.RemainingBalance).ToString("N0") balance</div>
+                </div>
+
+                <div class="stat p-5">
+                    <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-money-check-dollar"></i></div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Monthly Payroll Status</div>
+                    <div class="stat-value text-2xl font-black text-success">Ready</div>
+                    <div class="stat-desc opacity-70">Auto-deductions loaded</div>
+                </div>
+
+                <div class="stat p-5">
+                    <div class="stat-figure text-info text-2xl"><i class="fa-solid fa-user-shield"></i></div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Guarantor Compliance</div>
+                    <div class="stat-value text-2xl font-black text-info">100%</div>
+                    <div class="stat-desc opacity-70">All records verified</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Staff Directory & Wages Table -->
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                            <i class="fa-solid fa-users text-primary"></i> Staff Directory & Wages
+                        </h2>
+                        <a asp-page="/HR/StaffDirectory" class="btn btn-xs btn-ghost text-primary">View All &rarr;</a>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm w-full text-xs">
+                            <thead>
+                                <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                                    <th>Staff Name</th>
+                                    <th>Department</th>
+                                    <th>Monthly Base (₦)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-base-200">
+                                @foreach (var emp in Model.Employees)
+                                {
+                                    <tr class="hover:bg-base-200/60 transition-colors">
+                                        <td>
+                                            <div class="font-bold text-base-content">@emp.FullName</div>
+                                            <div class="text-[10px] opacity-60 font-mono">@emp.StaffCode</div>
+                                        </td>
+                                        <td><span class="badge badge-soft badge-xs font-semibold">@emp.Department</span></td>
+                                        <td class="font-mono font-bold text-base-content">₦@emp.BaseSalary.ToString("N0")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Active Salary Advances Table -->
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                            <i class="fa-solid fa-hand-holding-dollar text-warning"></i> Active Salary Advance Loans
+                        </h2>
+                        <a asp-page="/Payroll/Advances/Index" class="btn btn-xs btn-ghost text-primary">View Ledger &rarr;</a>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm w-full text-xs">
+                            <thead>
+                                <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                                    <th>Staff</th>
+                                    <th>Principal</th>
+                                    <th>Monthly Deduction</th>
+                                    <th>Balance</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-base-200">
+                                @foreach (var adv in Model.PendingAdvances)
+                                {
+                                    <tr class="hover:bg-base-200/60 transition-colors">
+                                        <td class="font-bold text-base-content">@adv.EmployeeName</td>
+                                        <td class="font-mono">₦@adv.PrincipalAmount.ToString("N0")</td>
+                                        <td class="font-mono text-warning font-bold">₦@adv.MonthlyDeductionAmount.ToString("N0")</td>
+                                        <td class="font-mono text-error font-black">₦@adv.RemainingBalance.ToString("N0")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+</div>

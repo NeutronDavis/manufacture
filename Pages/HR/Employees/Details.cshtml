@@ -1,0 +1,186 @@
+@page "{id:int}"
+@model Manufacture.Pages.HR.Employees.DetailsModel
+@{
+    ViewData["Title"] = $"{Model.Employee.FullName} - Staff Profile";
+}
+
+<div class="space-y-6 max-w-4xl mx-auto">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs breadcrumbs mb-1">
+                <ul>
+                    <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
+                    <li><a asp-page="/HR/Index">HR Directory</a></li>
+                    <li class="font-semibold text-primary">@Model.Employee.FullName</li>
+                </ul>
+            </div>
+            <div class="flex items-center gap-3">
+                <h1 class="text-2xl font-black text-base-content">@Model.Employee.FullName</h1>
+                <span class="badge badge-primary font-mono font-bold">@Model.Employee.StaffCode</span>
+                @if (Model.Employee.IsActive)
+                {
+                    <span class="badge badge-success badge-sm font-semibold">Active Staff</span>
+                }
+                else
+                {
+                    <span class="badge badge-error badge-sm font-semibold">Deactivated</span>
+                }
+            </div>
+            <p class="text-sm text-base-content/60">@Model.Employee.Designation &bull; @Model.Employee.Department Department</p>
+        </div>
+        <div class="flex gap-2">
+            <a asp-page="/HR/Employees/Edit" asp-route-id="@Model.Employee.Id" class="btn btn-sm btn-outline gap-1">
+                <i class="fa-solid fa-pen-to-square"></i> Edit Profile
+            </a>
+            <a asp-page="/Payroll/Advances/Create" asp-route-employeeId="@Model.Employee.Id" class="btn btn-sm btn-primary gap-1">
+                <i class="fa-solid fa-hand-holding-dollar"></i> Issue Salary Advance
+            </a>
+        </div>
+    </div>
+
+    <!-- Personal & Employment File -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="card bg-base-100 border border-base-300 shadow-xs">
+            <div class="card-body p-5 space-y-3">
+                <h2 class="font-bold text-base border-b border-base-200 pb-2">Employment & Compensation</h2>
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between">
+                        <span class="text-base-content/70">Designation:</span>
+                        <span class="font-bold">@Model.Employee.Designation</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-base-content/70">Department:</span>
+                        <span class="font-bold">@Model.Employee.Department</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-base-content/70">Base Monthly Salary:</span>
+                        <span class="font-bold text-emerald-600 font-mono text-sm">₦@Model.Employee.BaseSalary.ToString("N0")</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-base-content/70">Employment Date:</span>
+                        <span>@Model.Employee.EmploymentDate.ToString("dd MMMM yyyy")</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-base-content/70">Phone Number:</span>
+                        <span class="font-mono">@Model.Employee.PhoneNumber</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-base-content/70">Email Address:</span>
+                        <span>@(string.IsNullOrEmpty(Model.Employee.Email) ? "N/A" : Model.Employee.Email)</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-base-content/70">Residential Address:</span>
+                        <span class="text-right max-w-xs">@Model.Employee.Address</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Emergency Contact & Verified Guarantor -->
+        <div class="space-y-6">
+            <div class="card bg-base-100 border border-base-300 shadow-xs">
+                <div class="card-body p-5 space-y-2">
+                    <h2 class="font-bold text-base border-b border-base-200 pb-2">Emergency Contact</h2>
+                    <div class="text-xs space-y-1.5">
+                        <div class="flex justify-between">
+                            <span class="text-base-content/70">Name:</span>
+                            <span class="font-bold">@Model.Employee.EmergencyContactName</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-base-content/70">Relationship:</span>
+                            <span>@Model.Employee.EmergencyRelationship</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-base-content/70">Phone:</span>
+                            <span class="font-mono font-bold text-primary">@Model.Employee.EmergencyContactPhone</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card bg-base-100 border border-emerald-500/30 bg-emerald-500/5 shadow-xs">
+                <div class="card-body p-5 space-y-2">
+                    <div class="flex items-center justify-between border-b border-emerald-500/20 pb-2">
+                        <h2 class="font-bold text-base text-emerald-800 flex items-center gap-2">
+                            <i class="fa-solid fa-shield text-emerald-600"></i> Verified Guarantor
+                        </h2>
+                        <span class="badge badge-success badge-xs">Verified</span>
+                    </div>
+                    <div class="text-xs space-y-1.5 text-base-content/80">
+                        <div class="flex justify-between">
+                            <span class="text-base-content/70">Guarantor Name:</span>
+                            <span class="font-bold text-base-content">@Model.Employee.GuarantorName</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-base-content/70">Occupation / Title:</span>
+                            <span>@Model.Employee.GuarantorOccupation</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-base-content/70">Phone:</span>
+                            <span class="font-mono font-bold text-primary">@Model.Employee.GuarantorPhone</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-base-content/70">Address:</span>
+                            <span class="text-right max-w-xs">@Model.Employee.GuarantorAddress</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Salary Advances for this Staff -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs">
+        <div class="card-body p-5">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3 mb-3">
+                <h2 class="font-bold text-base flex items-center gap-2">
+                    <i class="fa-solid fa-hand-holding-dollar text-warning"></i> Salary Advances & Loan Balances
+                </h2>
+                <a asp-page="/Payroll/Advances/Create" asp-route-employeeId="@Model.Employee.Id" class="btn btn-xs btn-outline btn-primary">
+                    + Issue Advance
+                </a>
+            </div>
+
+            @if (Model.Advances.Any())
+            {
+                <div class="overflow-x-auto">
+                    <table class="table table-xs table-zebra">
+                        <thead>
+                            <tr class="bg-base-200/50">
+                                <th>Date</th>
+                                <th>Reason</th>
+                                <th>Principal Amount</th>
+                                <th>Monthly Deduction</th>
+                                <th>Repaid</th>
+                                <th>Remaining Balance</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var adv in Model.Advances)
+                            {
+                                <tr>
+                                    <td class="text-xs">@adv.RequestDate.ToString("yyyy-MM-dd")</td>
+                                    <td class="text-xs font-semibold">@adv.Reason</td>
+                                    <td class="font-mono text-xs">₦@adv.PrincipalAmount.ToString("N0")</td>
+                                    <td class="font-mono text-xs">₦@adv.MonthlyDeductionAmount.ToString("N0")/mo</td>
+                                    <td class="font-mono text-xs text-emerald-600">₦@adv.TotalRepaid.ToString("N0")</td>
+                                    <td class="font-mono text-xs font-bold @(adv.RemainingBalance > 0 ? "text-error" : "text-success")">
+                                        ₦@adv.RemainingBalance.ToString("N0")
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-outline badge-xs">@adv.Status</span>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-xs text-base-content/60 py-2">No active salary advances on file for this staff member.</div>
+            }
+        </div>
+    </div>
+</div>

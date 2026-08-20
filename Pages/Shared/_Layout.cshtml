@@ -1,0 +1,449 @@
+@using Microsoft.AspNetCore.Http
+@{
+    var session = Context.Session;
+    var userRole = session?.GetString("UserRole") ?? "SuperAdmin";
+    var userName = session?.GetString("UserName") ?? "Adekunle Johnson";
+    var userEmail = session?.GetString("UserEmail") ?? "admin@bakery.com";
+    var currentPath = Context.Request.Path.Value ?? "";
+
+    // Determine current active module
+    bool inProduction = currentPath.StartsWith("/Production");
+    bool inStaff = currentPath.StartsWith("/HR") || currentPath.StartsWith("/Payroll");
+    bool inInventory = currentPath.StartsWith("/Inventory");
+    bool inSales = currentPath.StartsWith("/Sales");
+    bool inFleet = currentPath.StartsWith("/Logistics");
+    bool inSettings = currentPath.StartsWith("/UserManagement") || currentPath.StartsWith("/Settings");
+    bool inDashboard = !inProduction && !inStaff && !inInventory && !inSales && !inFleet && !inSettings;
+}
+<!DOCTYPE html>
+<html lang="en" data-theme="corporate">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Artisan ERP</title>
+    
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- daisyUI 5 + Tailwind CSS 4 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5" rel="stylesheet" type="text/css" />
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@5/themes.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.jsdelivr.net/npm/@@tailwindcss/browser@4"></script>
+    
+    <!-- Artisan ERP Central Theme Stylesheet -->
+    <link rel="stylesheet" href="~/css/artisan-erp.css" />
+
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+
+    <!-- Immediate Theme Application from LocalStorage to prevent flash -->
+    <script>
+        (function () {
+            const savedTheme = localStorage.getItem('erp_theme') || 'corporate';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
+</head>
+<body class="bg-base-200 text-base-content min-h-screen antialiased flex flex-col font-sans">
+
+<div class="drawer lg:drawer-open flex-1">
+    <input id="main-drawer" type="checkbox" class="drawer-toggle" />
+    
+    <!-- Main Content Shell (100% full screen width) -->
+    <div class="drawer-content flex flex-col min-h-screen bg-base-200">
+        
+        <!-- Top Navbar -->
+        <header class="navbar bg-base-100 border-b border-base-300 px-6 py-2.5 z-20 sticky top-0 no-print flex justify-between items-center shadow-xs">
+            <div class="flex items-center gap-3">
+                <div class="flex-none lg:hidden">
+                    <label for="main-drawer" class="btn btn-square btn-sm btn-ghost">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                    </label>
+                </div>
+                
+                <span class="font-black text-sm text-base-content tracking-tight">
+                    BakeryFlow ERP
+                </span>
+            </div>
+
+            <!-- Right Controls: Role Switcher, Notification, Avatar -->
+            <div class="flex items-center gap-3">
+                <!-- Role Switcher -->
+                <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="btn btn-xs btn-outline border-base-300 text-base-content hover:bg-base-300 rounded-xl gap-1.5 font-bold text-xs py-1 px-2.5">
+                        <i class="fa-solid fa-user-shield text-xs"></i>
+                        <span class="hidden sm:inline">Role:</span> 
+                        <span class="font-black">@userRole</span>
+                        <i class="fa-solid fa-chevron-down text-[9px] opacity-60"></i>
+                    </div>
+                    <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-2xl z-50 w-56 p-2 shadow-xl border border-base-300 text-xs">
+                        <li class="menu-title text-[10px] uppercase font-bold opacity-60">Switch Active Role (Mock):</li>
+                        <li><a asp-page="/Login" asp-page-handler="SwitchRole" asp-route-role="SuperAdmin" class="@(userRole == "SuperAdmin" ? "active bg-neutral text-neutral-content rounded-xl" : "rounded-xl")"><i class="fa-solid fa-crown text-amber-500"></i> Super Admin</a></li>
+                        <li><a asp-page="/Login" asp-page-handler="SwitchRole" asp-route-role="ProductionManager" class="@(userRole == "ProductionManager" ? "active bg-neutral text-neutral-content rounded-xl" : "rounded-xl")"><i class="fa-solid fa-industry text-blue-500"></i> Production Mgr</a></li>
+                        <li><a asp-page="/Login" asp-page-handler="SwitchRole" asp-route-role="StoreManager" class="@(userRole == "StoreManager" ? "active bg-neutral text-neutral-content rounded-xl" : "rounded-xl")"><i class="fa-solid fa-warehouse text-emerald-500"></i> Store Keeper</a></li>
+                        <li><a asp-page="/Login" asp-page-handler="SwitchRole" asp-route-role="SalesRep" class="@(userRole == "SalesRep" ? "active bg-neutral text-neutral-content rounded-xl" : "rounded-xl")"><i class="fa-solid fa-cash-register text-purple-500"></i> Sales Rep (POS)</a></li>
+                        <li><a asp-page="/Login" asp-page-handler="SwitchRole" asp-route-role="Vendor" class="@(userRole == "Vendor" ? "active bg-neutral text-neutral-content rounded-xl" : "rounded-xl")"><i class="fa-solid fa-store text-orange-500"></i> Vendor / Client</a></li>
+                        <li><a asp-page="/Login" asp-page-handler="SwitchRole" asp-route-role="HrPayrollManager" class="@(userRole == "HrPayrollManager" ? "active bg-neutral text-neutral-content rounded-xl" : "rounded-xl")"><i class="fa-solid fa-users text-rose-500"></i> HR & Payroll</a></li>
+                    </ul>
+                </div>
+
+                <!-- Notifications Bell -->
+                <button class="btn btn-ghost btn-circle btn-sm text-base-content hover:bg-base-300">
+                    <i class="fa-regular fa-bell text-sm"></i>
+                </button>
+
+                <!-- User Profile Avatar -->
+                <div class="dropdown dropdown-end">
+                    <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar placeholder">
+                        <div class="bg-neutral text-neutral-content rounded-full w-8 shadow-xs">
+                            <span class="text-xs font-bold">@userName.Substring(0, Math.Min(2, userName.Length)).ToUpper()</span>
+                        </div>
+                    </div>
+                    <ul tabindex="0" class="menu dropdown-content bg-base-100 rounded-2xl z-50 w-56 p-2 shadow-xl border border-base-300 text-xs">
+                        <li class="menu-title">
+                            <div class="font-bold text-base-content">@userName</div>
+                            <div class="text-[11px] opacity-70">@userEmail</div>
+                        </li>
+                        <div class="divider my-1"></div>
+                        <li><a asp-page="/Dashboard/Index"><i class="fa-solid fa-gauge"></i> Dashboard</a></li>
+                        @if (userRole == "SuperAdmin")
+                        {
+                            <li><a asp-page="/Settings/Theme"><i class="fa-solid fa-palette"></i> Theme & Color Palettes</a></li>
+                            <li><a asp-page="/UserManagement/Index"><i class="fa-solid fa-gear"></i> System Settings</a></li>
+                        }
+                        <div class="divider my-1"></div>
+                        <li><a asp-page="/Logout" class="text-error font-bold"><i class="fa-solid fa-right-from-bracket"></i> Sign Out</a></li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content Area — 100% Full Width Screen -->
+        <main class="flex-1 w-full px-6 lg:px-8 py-6 space-y-6">
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success shadow-xs rounded-2xl flex items-center gap-3 text-xs font-semibold">
+                    <i class="fa-solid fa-circle-check text-base"></i>
+                    <span>@TempData["SuccessMessage"]</span>
+                </div>
+            }
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-error shadow-xs rounded-2xl flex items-center gap-3 text-xs font-semibold">
+                    <i class="fa-solid fa-triangle-exclamation text-base"></i>
+                    <span>@TempData["ErrorMessage"]</span>
+                </div>
+            }
+
+            @RenderBody()
+        </main>
+    </div>
+
+    <!-- Role-Adapted Navigation Sidebar with Collapsible Dropdowns -->
+    <div class="drawer-side z-30 no-print">
+        <label for="main-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+        <aside class="bg-base-100 border-r border-base-300 w-64 min-h-screen flex flex-col justify-between select-none">
+            <div class="p-4 space-y-3">
+                
+                <!-- Facility Brand Header -->
+                <div class="px-2 py-1 flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-full bg-base-200 border border-base-300 flex items-center justify-center text-base-content text-sm font-bold shadow-xs shrink-0">
+                        <i class="fa-solid fa-wheat-awn"></i>
+                    </div>
+                    <div>
+                        <div class="font-black text-sm text-base-content tracking-tight">Industrial Ops</div>
+                        <div class="text-[10px] opacity-70 font-semibold">North Plant</div>
+                    </div>
+                </div>
+
+                <!-- Contextual Top Quick Action Button per Role -->
+                <div class="pt-1">
+                    @if (userRole == "SalesRep")
+                    {
+                        <a asp-page="/Sales/Orders/Create" class="btn btn-neutral w-full rounded-xl font-bold py-2 text-xs shadow-xs">
+                            <i class="fa-solid fa-cash-register text-xs"></i> New POS Sale
+                        </a>
+                    }
+                    else if (userRole == "StoreManager")
+                    {
+                        <a asp-page="/Inventory/Items/Create" class="btn btn-neutral w-full rounded-xl font-bold py-2 text-xs shadow-xs">
+                            <i class="fa-solid fa-plus text-xs"></i> Add Stock Item
+                        </a>
+                    }
+                    else if (userRole == "HrPayrollManager")
+                    {
+                        <a asp-page="/HR/Employees/Create" class="btn btn-neutral w-full rounded-xl font-bold py-2 text-xs shadow-xs">
+                            <i class="fa-solid fa-user-plus text-xs"></i> Add Employee
+                        </a>
+                    }
+                    else if (userRole == "Vendor")
+                    {
+                        <a asp-page="/Sales/Orders/Create" class="btn btn-neutral w-full rounded-xl font-bold py-2 text-xs shadow-xs">
+                            <i class="fa-solid fa-cart-shopping text-xs"></i> Place Pre-Order
+                        </a>
+                    }
+                    else
+                    {
+                        <a asp-page="/Production/Batches/Create" class="btn btn-neutral w-full rounded-xl font-bold py-2 text-xs shadow-xs">
+                            <i class="fa-solid fa-plus text-xs"></i> New Batch
+                        </a>
+                    }
+                </div>
+
+                <!-- Navigation List: Role-Aware Filtering -->
+                <nav class="space-y-1 text-xs font-medium pt-2">
+                    
+                    <!-- 1. Dashboard (All Roles) -->
+                    <a asp-page="/Dashboard/Index" class="erp-nav-item @(inDashboard ? "erp-nav-active" : "")">
+                        <i class="fa-solid fa-table-cells-large text-sm w-4 text-center"></i>
+                        <span>Dashboard</span>
+                    </a>
+
+                    <!-- 2. Production (SuperAdmin & ProductionManager) -->
+                    @if (userRole == "SuperAdmin" || userRole == "ProductionManager")
+                    {
+                        <details class="erp-nav-dropdown" @(inProduction ? "open" : "")>
+                            <summary class="@(inProduction ? "font-bold text-base-content" : "")">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-solid fa-industry text-sm w-4 text-center"></i>
+                                    <span>Production</span>
+                                </div>
+                                <i class="fa-solid fa-chevron-right erp-nav-arrow"></i>
+                            </summary>
+                            <div class="erp-nav-sub-menu">
+                                <a asp-page="/Production/Recipes/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Production/Recipes") && currentPath != "/Production/Recipes/Create" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-calculator text-[11px] w-3.5 text-center"></i>
+                                    <span>Recipes & Costing</span>
+                                </a>
+                                <a asp-page="/Production/Batches/Index" class="erp-nav-sub-item @(currentPath == "/Production/Batches" || currentPath == "/Production/Batches/Index" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-layer-group text-[11px] w-3.5 text-center"></i>
+                                    <span>Mixing Batches</span>
+                                </a>
+                                <a asp-page="/Production/Recipes/Create" class="erp-nav-sub-item @(currentPath == "/Production/Recipes/Create" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-flask text-[11px] w-3.5 text-center"></i>
+                                    <span>Build Recipe</span>
+                                </a>
+                                <a asp-page="/Production/Batches/Create" class="erp-nav-sub-item @(currentPath == "/Production/Batches/Create" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-clipboard-list text-[11px] w-3.5 text-center"></i>
+                                    <span>Log Batch Output</span>
+                                </a>
+                            </div>
+                        </details>
+                    }
+
+                    <!-- 3. Inventory (SuperAdmin, StoreManager, ProductionManager) -->
+                    @if (userRole == "SuperAdmin" || userRole == "StoreManager" || userRole == "ProductionManager")
+                    {
+                        <details class="erp-nav-dropdown" @(inInventory ? "open" : "")>
+                            <summary class="@(inInventory ? "font-bold text-base-content" : "")">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-solid fa-box-archive text-sm w-4 text-center"></i>
+                                    <span>Inventory</span>
+                                </div>
+                                <i class="fa-solid fa-chevron-right erp-nav-arrow"></i>
+                            </summary>
+                            <div class="erp-nav-sub-menu">
+                                <a asp-page="/Inventory/Index" class="erp-nav-sub-item @(currentPath == "/Inventory" || currentPath == "/Inventory/Index" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-list-check text-[11px] w-3.5 text-center"></i>
+                                    <span>Stock Overview</span>
+                                </a>
+                                @if (userRole == "SuperAdmin" || userRole == "StoreManager")
+                                {
+                                    <a asp-page="/Inventory/Items/Create" class="erp-nav-sub-item @(currentPath == "/Inventory/Items/Create" ? "erp-nav-active" : "")">
+                                        <i class="fa-solid fa-plus text-[11px] w-3.5 text-center"></i>
+                                        <span>Add Stock Item</span>
+                                    </a>
+                                }
+                                <a asp-page="/Inventory/Requests/Index" class="erp-nav-sub-item @(currentPath == "/Inventory/Requests" || currentPath == "/Inventory/Requests/Index" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-clipboard-check text-[11px] w-3.5 text-center"></i>
+                                    <span>Store Requisitions</span>
+                                </a>
+                                <a asp-page="/Inventory/Requests/Create" class="erp-nav-sub-item @(currentPath == "/Inventory/Requests/Create" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-clipboard-question text-[11px] w-3.5 text-center"></i>
+                                    <span>New Store Request</span>
+                                </a>
+                                @if (userRole == "SuperAdmin" || userRole == "StoreManager")
+                                {
+                                    <a asp-page="/Inventory/Suppliers/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Inventory/Suppliers") ? "erp-nav-active" : "")">
+                                        <i class="fa-solid fa-truck-field text-[11px] w-3.5 text-center"></i>
+                                        <span>Approved Suppliers</span>
+                                    </a>
+                                }
+                            </div>
+                        </details>
+                    }
+
+                    <!-- 4. Sales & POS (SuperAdmin, SalesRep, Vendor) -->
+                    @if (userRole == "SuperAdmin" || userRole == "SalesRep" || userRole == "Vendor")
+                    {
+                        <details class="erp-nav-dropdown" @(inSales ? "open" : "")>
+                            <summary class="@(inSales ? "font-bold text-base-content" : "")">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-solid fa-cash-register text-sm w-4 text-center"></i>
+                                    <span>Sales & POS</span>
+                                </div>
+                                <i class="fa-solid fa-chevron-right erp-nav-arrow"></i>
+                            </summary>
+                            <div class="erp-nav-sub-menu">
+                                @if (userRole != "Vendor")
+                                {
+                                    <a asp-page="/Sales/Index" class="erp-nav-sub-item @(currentPath == "/Sales" || currentPath == "/Sales/Index" ? "erp-nav-active" : "")">
+                                        <i class="fa-solid fa-chart-line text-[11px] w-3.5 text-center"></i>
+                                        <span>Sales Hub</span>
+                                    </a>
+                                }
+                                <a asp-page="/Sales/Orders/Index" class="erp-nav-sub-item @(currentPath == "/Sales/Orders" || currentPath == "/Sales/Orders/Index" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-receipt text-[11px] w-3.5 text-center"></i>
+                                    <span>Orders & Invoices</span>
+                                </a>
+                                <a asp-page="/Sales/Orders/Create" class="erp-nav-sub-item @(currentPath == "/Sales/Orders/Create" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-cart-plus text-[11px] w-3.5 text-center"></i>
+                                    <span>@(userRole == "Vendor" ? "Place Pre-Order" : "POS Checkout")</span>
+                                </a>
+                                <a asp-page="/Sales/Orders/PreOrders" class="erp-nav-sub-item @(currentPath == "/Sales/Orders/PreOrders" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-clock-rotate-left text-[11px] w-3.5 text-center"></i>
+                                    <span>Pre-Orders Schedule</span>
+                                </a>
+                                @if (userRole == "SuperAdmin")
+                                {
+                                    <a asp-page="/Sales/Terminals/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Sales/Terminals") ? "erp-nav-active" : "")">
+                                        <i class="fa-solid fa-desktop text-[11px] w-3.5 text-center"></i>
+                                        <span>POS Terminals</span>
+                                    </a>
+                                    <a asp-page="/Sales/Customers/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Sales/Customers") ? "erp-nav-active" : "")">
+                                        <i class="fa-solid fa-store text-[11px] w-3.5 text-center"></i>
+                                        <span>Clients & Vendors</span>
+                                    </a>
+                                }
+                            </div>
+                        </details>
+                    }
+
+                    <!-- 5. Fleet & Logistics (SuperAdmin & ProductionManager) -->
+                    @if (userRole == "SuperAdmin" || userRole == "ProductionManager")
+                    {
+                        <details class="erp-nav-dropdown" @(inFleet ? "open" : "")>
+                            <summary class="@(inFleet ? "font-bold text-base-content" : "")">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-solid fa-truck-moving text-sm w-4 text-center"></i>
+                                    <span>Fleet</span>
+                                </div>
+                                <i class="fa-solid fa-chevron-right erp-nav-arrow"></i>
+                            </summary>
+                            <div class="erp-nav-sub-menu">
+                                <a asp-page="/Logistics/Index" class="erp-nav-sub-item @(currentPath == "/Logistics" || currentPath == "/Logistics/Index" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-gauge text-[11px] w-3.5 text-center"></i>
+                                    <span>Logistics Overview</span>
+                                </a>
+                                <a asp-page="/Logistics/Vehicles/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Logistics/Vehicles") ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-van-shuttle text-[11px] w-3.5 text-center"></i>
+                                    <span>Vehicles Directory</span>
+                                </a>
+                                <a asp-page="/Logistics/FuelLogs/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Logistics/FuelLogs") ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-gas-pump text-[11px] w-3.5 text-center"></i>
+                                    <span>Fuel Purchase Logs</span>
+                                </a>
+                                <a asp-page="/Logistics/FuelLogs/Create" class="erp-nav-sub-item @(currentPath == "/Logistics/FuelLogs/Create" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-receipt text-[11px] w-3.5 text-center"></i>
+                                    <span>Record Fuel Expense</span>
+                                </a>
+                            </div>
+                        </details>
+                    }
+
+                    <!-- 6. Staff & HR / Payroll (SuperAdmin & HrPayrollManager) -->
+                    @if (userRole == "SuperAdmin" || userRole == "HrPayrollManager")
+                    {
+                        <details class="erp-nav-dropdown" @(inStaff ? "open" : "")>
+                            <summary class="@(inStaff ? "font-bold text-base-content" : "")">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-solid fa-user-group text-sm w-4 text-center"></i>
+                                    <span>Staff & HR</span>
+                                </div>
+                                <i class="fa-solid fa-chevron-right erp-nav-arrow"></i>
+                            </summary>
+                            <div class="erp-nav-sub-menu">
+                                <a asp-page="/HR/StaffDirectory" class="erp-nav-sub-item @(currentPath == "/HR/StaffDirectory" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-users text-[11px] w-3.5 text-center"></i>
+                                    <span>Staff Directory</span>
+                                </a>
+                                <a asp-page="/HR/Index" class="erp-nav-sub-item @(currentPath == "/HR" || currentPath == "/HR/Index" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-id-card text-[11px] w-3.5 text-center"></i>
+                                    <span>Staff Records & Payroll</span>
+                                </a>
+                                <a asp-page="/HR/Employees/Create" class="erp-nav-sub-item @(currentPath == "/HR/Employees/Create" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-user-plus text-[11px] w-3.5 text-center"></i>
+                                    <span>Add Employee</span>
+                                </a>
+                                <a asp-page="/Payroll/Index" class="erp-nav-sub-item @(currentPath == "/Payroll" || currentPath == "/Payroll/Index" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-money-check-dollar text-[11px] w-3.5 text-center"></i>
+                                    <span>Monthly Payroll</span>
+                                </a>
+                                <a asp-page="/Payroll/Advances/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Payroll/Advances") ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-hand-holding-dollar text-[11px] w-3.5 text-center"></i>
+                                    <span>Salary Advances</span>
+                                </a>
+                                <a asp-page="/Payroll/Run" class="erp-nav-sub-item @(currentPath == "/Payroll/Run" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-gears text-[11px] w-3.5 text-center"></i>
+                                    <span>Process Payroll</span>
+                                </a>
+                            </div>
+                        </details>
+                    }
+
+                    <!-- 7. Settings & RBAC (SuperAdmin Only) -->
+                    @if (userRole == "SuperAdmin")
+                    {
+                        <details class="erp-nav-dropdown" @(inSettings ? "open" : "")>
+                            <summary class="@(inSettings ? "font-bold text-base-content" : "")">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-solid fa-gear text-sm w-4 text-center"></i>
+                                    <span>Settings</span>
+                                </div>
+                                <i class="fa-solid fa-chevron-right erp-nav-arrow"></i>
+                            </summary>
+                            <div class="erp-nav-sub-menu">
+                                <a asp-page="/Settings/Theme" class="erp-nav-sub-item @(currentPath == "/Settings/Theme" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-palette text-[11px] w-3.5 text-center"></i>
+                                    <span>Theme & Palettes</span>
+                                </a>
+                                <a asp-page="/UserManagement/Index" class="erp-nav-sub-item @(currentPath == "/UserManagement" || currentPath == "/UserManagement/Index" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-users-gear text-[11px] w-3.5 text-center"></i>
+                                    <span>User Accounts & PINs</span>
+                                </a>
+                                <a asp-page="/UserManagement/Create" class="erp-nav-sub-item @(currentPath == "/UserManagement/Create" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-user-plus text-[11px] w-3.5 text-center"></i>
+                                    <span>Create User</span>
+                                </a>
+                                <a asp-page="/UserManagement/Permissions" class="erp-nav-sub-item @(currentPath == "/UserManagement/Permissions" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-shield-halved text-[11px] w-3.5 text-center"></i>
+                                    <span>RBAC Matrix</span>
+                                </a>
+                            </div>
+                        </details>
+                    }
+
+                </nav>
+            </div>
+
+            <!-- Bottom Navigation: Support & Log Out -->
+            <div class="p-4 border-t border-base-300 space-y-1 text-xs font-medium">
+                <a href="javascript:void(0)" onclick="alert('Help Desk Support: Internal extension #401');" class="erp-nav-item">
+                    <i class="fa-regular fa-circle-question text-sm w-4 text-center opacity-70"></i>
+                    <span>Support</span>
+                </a>
+
+                <a asp-page="/Logout" class="erp-nav-item text-error hover:bg-error/10">
+                    <i class="fa-solid fa-arrow-right-from-bracket text-sm w-4 text-center"></i>
+                    <span>Log Out</span>
+                </a>
+            </div>
+        </aside>
+    </div>
+</div>
+
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
