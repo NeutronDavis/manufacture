@@ -5,26 +5,26 @@
 }
 
 <div class="space-y-6 w-full">
-    <!-- Breadcrumb & Header -->
+    <!-- Breadcrumb & Header Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <div class="text-xs text-slate-400 mb-1 flex items-center gap-1.5 font-medium">
-                <a asp-page="/Dashboard/Index" class="hover:text-slate-600">Home</a>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
                 <span>&gt;</span>
-                <a asp-page="/UserManagement/Index" class="hover:text-slate-600">User Management</a>
+                <a asp-page="/UserManagement/Index" class="hover:underline">User Management</a>
                 <span>&gt;</span>
-                <span class="text-slate-700">Create User</span>
+                <span class="text-primary font-bold">Create User</span>
             </div>
-            <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                <i class="fa-solid fa-user-plus text-stone-900"></i> Create User Account
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-user-plus text-primary"></i> Create System User Account
             </h1>
-            <p class="text-xs text-slate-500 mt-0.5">
-                Assign system role, credentials, and 6-digit numeric PIN for quick shift terminal access
+            <p class="text-xs opacity-70 mt-0.5">
+                Assign system role, account credentials, and 6-digit numeric PIN for quick shift terminal access.
             </p>
         </div>
         <div>
-            <a asp-page="/UserManagement/Index" class="text-xs text-slate-500 hover:text-slate-900 font-semibold flex items-center gap-1.5">
-                <i class="fa-solid fa-arrow-left text-[10px]"></i> Back to Users
+            <a asp-page="/UserManagement/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Users
             </a>
         </div>
     </div>
@@ -34,75 +34,120 @@
         
         <!-- Left Section (~70% width, 8 Cols) -->
         <div class="lg:col-span-8 space-y-6">
-            <div class="erp-card p-6 space-y-4">
-                <div class="flex items-center gap-2 font-bold text-slate-900 text-sm border-b border-slate-100 pb-3">
-                    <div class="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-xs">
-                        <i class="fa-solid fa-id-badge"></i>
-                    </div>
-                    <span>User Account & Security Credentials</span>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div class="sm:col-span-2">
-                        <label class="erp-label">Full Name <span class="text-rose-500">*</span></label>
-                        <input type="text" asp-for="UserInput.Name" class="erp-input" placeholder="e.g. Babatunde Alabi" required />
-                    </div>
-
-                    <div class="sm:col-span-2">
-                        <label class="erp-label">Email Address <span class="text-rose-500">*</span></label>
-                        <input type="email" asp-for="UserInput.Email" class="erp-input" placeholder="babatunde@bakery.com" required />
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-id-badge"></i>
+                            </div>
+                            <span>User Profile & Security Credentials</span>
+                        </div>
+                        <span class="badge badge-neutral badge-xs font-bold uppercase tracking-wider">Access Control</span>
                     </div>
 
-                    <div>
-                        <label class="erp-label">Password <span class="text-rose-500">*</span></label>
-                        <input type="password" asp-for="UserInput.Password" class="erp-input" placeholder="••••••••" required />
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        
+                        <!-- Full Name -->
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Full Name <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="UserInput.Name" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" placeholder="e.g. Babatunde Alabi" required />
+                        </div>
+
+                        <!-- Email Address -->
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Email Address (Login Username) <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="email" asp-for="UserInput.Email" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="babatunde@bakery.com" required />
+                        </div>
+
+                        <!-- Password -->
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Password <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="password" asp-for="UserInput.Password" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="••••••••" required />
+                        </div>
+
+                        <!-- 6-Digit PIN Code -->
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    6-Digit Fast Login PIN <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" maxlength="6" pattern="[0-9]{6}" asp-for="UserInput.PinCode" class="input input-bordered input-sm w-full font-mono tracking-widest text-center font-black bg-base-200 border-base-300 rounded-xl text-sm focus:bg-base-100 focus:border-primary text-primary" placeholder="123456" required />
+                        </div>
+
+                        <!-- Assigned System Role -->
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Assigned System Role & Permissions <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <select asp-for="UserInput.Role" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary" required>
+                                <option value="SuperAdmin">Super Admin (Full Enterprise Control & Settings)</option>
+                                <option value="ProductionManager">Production Manager (Recipes, Batches, Oven Output)</option>
+                                <option value="StoreManager">Store Manager (Inventory, Requisitions, Material Issues)</option>
+                                <option value="SalesRep">Sales Representative (POS Registers, Counter Sales, Pre-Orders)</option>
+                                <option value="Vendor">External Vendor / Supermarket Client (Pre-Orders Portal)</option>
+                                <option value="HrPayrollManager">HR & Payroll Manager (Staff Records, Advances, Payroll Run)</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <div>
-                        <label class="erp-label">6-Digit PIN Code <span class="text-rose-500">*</span></label>
-                        <input type="password" maxlength="6" pattern="[0-9]{6}" asp-for="UserInput.PinCode" class="erp-input font-mono tracking-widest text-center" placeholder="123456" required />
-                    </div>
-
-                    <div class="sm:col-span-2">
-                        <label class="erp-label">Assigned System Role <span class="text-rose-500">*</span></label>
-                        <select asp-for="UserInput.Role" class="erp-select" required>
-                            <option value="SuperAdmin">Super Admin (Full Enterprise Control)</option>
-                            <option value="ProductionManager">Production Manager (Recipes, Batches, Floor Shift)</option>
-                            <option value="StoreManager">Store Manager (Inventory, Raw Materials, Stock Issues)</option>
-                            <option value="SalesRep">Sales Representative (POS Terminals, Counter Sales, Pre-Orders)</option>
-                            <option value="Vendor">External Vendor / Supermarket Client (Pre-Orders Portal)</option>
-                            <option value="HrPayrollManager">HR & Payroll Manager (Staff Records, Salary Advances, Payroll Run)</option>
-                        </select>
-                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Right Sticky Section (~30% width, 4 Cols) -->
         <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
-            <div class="erp-card p-6 space-y-4">
-                <div class="font-bold text-slate-900 text-sm">Actions</div>
-                <p class="text-xs text-slate-500 leading-relaxed">
-                    User will immediately be able to sign in via standard password or numeric touch keypad PIN.
+            
+            <!-- Summary & Actions Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-shield-halved text-primary"></i> Account Summary
+                    </h2>
+                    <span class="badge badge-success badge-xs font-bold">Active</span>
+                </div>
+
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    User will immediately be able to sign in via standard email/password or using their 6-digit numeric touch PIN at POS registers.
                 </p>
 
-                <button type="submit" class="btn-obsidian w-full py-2.5">
-                    <i class="fa-solid fa-check text-xs"></i> Create User Profile
-                </button>
+                <div class="space-y-2 pt-2 border-t border-base-200">
+                    <button type="submit" class="btn btn-neutral w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
+                        <i class="fa-solid fa-circle-check text-success text-xs"></i> Create User Profile
+                    </button>
 
-                <div class="text-center pt-1">
-                    <a asp-page="/UserManagement/Index" class="text-xs text-slate-500 hover:text-slate-900 font-medium">Cancel</a>
+                    <a asp-page="/UserManagement/Index" class="btn btn-ghost w-full rounded-xl text-xs font-semibold">
+                        Cancel
+                    </a>
                 </div>
             </div>
 
-            <div class="erp-card p-6 bg-slate-50/70 border border-slate-200 text-xs space-y-2">
-                <div class="font-bold uppercase tracking-wider text-slate-500 text-[10px]">
-                    PIN AUTHENTICATION NOTE
+            <!-- Fast PIN Authentication Note -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 text-xs space-y-2">
+                <div class="font-bold text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-keypad text-primary"></i> Fast PIN Authentication
                 </div>
-                <p class="text-slate-600">
-                    6-Digit PIN codes allow instant terminal switching on the POS register touchscreens without typing full email credentials.
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    For sales reps and cashier terminals, the 6-digit PIN provides fast touch authentication without typing full credentials during busy retail rush hours.
                 </p>
             </div>
+
         </div>
     </form>
 </div>

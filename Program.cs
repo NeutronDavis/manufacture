@@ -24,6 +24,7 @@ builder.Services.AddSingleton<MockInventoryService>();
 builder.Services.AddSingleton<MockPayrollService>();
 builder.Services.AddSingleton<MockLogisticsService>();
 builder.Services.AddSingleton<MockDashboardService>();
+builder.Services.AddSingleton<MockRbacService>();
 
 var app = builder.Build();
 

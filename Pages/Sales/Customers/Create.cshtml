@@ -5,26 +5,26 @@
 }
 
 <div class="space-y-6 w-full">
-    <!-- Breadcrumb & Header -->
+    <!-- Breadcrumb & Header Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <div class="text-xs text-slate-400 mb-1 flex items-center gap-1.5 font-medium">
-                <a asp-page="/Dashboard/Index" class="hover:text-slate-600">Home</a>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
                 <span>&gt;</span>
-                <a asp-page="/Sales/Customers/Index" class="hover:text-slate-600">Clients & Vendors</a>
+                <a asp-page="/Sales/Customers/Index" class="hover:underline">Clients & Vendors</a>
                 <span>&gt;</span>
-                <span class="text-slate-700">Register Account</span>
+                <span class="text-primary font-bold">Register Account</span>
             </div>
-            <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                <i class="fa-solid fa-store text-stone-900"></i> Register Client / Vendor Account
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-store text-primary"></i> Register Client / Vendor Account
             </h1>
-            <p class="text-xs text-slate-500 mt-0.5">
-                Register supermarkets, external bread depots, or corporate standing pre-order accounts
+            <p class="text-xs opacity-70 mt-0.5">
+                Register supermarkets, external bread depots, or corporate standing pre-order vendor accounts.
             </p>
         </div>
         <div>
-            <a asp-page="/Sales/Customers/Index" class="text-xs text-slate-500 hover:text-slate-900 font-semibold flex items-center gap-1.5">
-                <i class="fa-solid fa-arrow-left text-[10px]"></i> Back to Clients
+            <a asp-page="/Sales/Customers/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Clients
             </a>
         </div>
     </div>
@@ -34,48 +34,72 @@
         
         <!-- Left Section (~70% width, 8 Cols) -->
         <div class="lg:col-span-8 space-y-6">
-            <div class="erp-card p-6 space-y-4">
-                <div class="flex items-center gap-2 font-bold text-slate-900 text-sm border-b border-slate-100 pb-3">
-                    <div class="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-xs">
-                        <i class="fa-regular fa-building"></i>
-                    </div>
-                    <span>Account Profile & Credit Category</span>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div class="sm:col-span-2">
-                        <label class="erp-label">Account / Business Name <span class="text-rose-500">*</span></label>
-                        <input type="text" asp-for="CustomerInput.Name" class="erp-input" placeholder="e.g. Grand Square Supermarkets Ltd" required />
-                    </div>
-
-                    <div>
-                        <label class="erp-label">Member / Customer Code <span class="text-rose-500">*</span></label>
-                        <input type="text" asp-for="CustomerInput.MemberCode" class="erp-input font-mono uppercase" placeholder="e.g. SUP-501" required />
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-regular fa-building"></i>
+                            </div>
+                            <span>Account Profile & Credit Category</span>
+                        </div>
+                        <span class="badge badge-neutral badge-xs font-bold uppercase tracking-wider">Client Directory</span>
                     </div>
 
-                    <div>
-                        <label class="erp-label">Customer Category</label>
-                        <select asp-for="CustomerInput.Category" class="erp-select">
-                            <option value="Supermarket">Supermarket Chain</option>
-                            <option value="ExternalVendor">External Vendor (Wholesaler)</option>
-                            <option value="WalkIn">Walk-in Retail</option>
-                            <option value="SalesRep">Internal Sales Rep</option>
-                        </select>
-                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Account / Business Name <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="CustomerInput.Name" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" placeholder="e.g. Grand Square Supermarkets Ltd" required />
+                        </div>
 
-                    <div>
-                        <label class="erp-label">Phone Number <span class="text-rose-500">*</span></label>
-                        <input type="tel" asp-for="CustomerInput.PhoneNumber" class="erp-input" placeholder="+234 80..." required />
-                    </div>
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Member / Account Code <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="CustomerInput.MemberCode" class="input input-bordered input-sm w-full font-mono uppercase bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" placeholder="e.g. SUP-501" required />
+                        </div>
 
-                    <div>
-                        <label class="erp-label">Initial Outstanding Balance (₦)</label>
-                        <input type="number" step="100" min="0" asp-for="CustomerInput.OutstandingBalance" class="erp-input font-mono" value="0" />
-                    </div>
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Customer Category</span>
+                            </label>
+                            <select asp-for="CustomerInput.Category" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary">
+                                <option value="Supermarket">Supermarket Chain (Standing Pre-Orders)</option>
+                                <option value="ExternalVendor">External Vendor (Wholesale Depot)</option>
+                                <option value="WalkIn">Walk-in Retail Customer</option>
+                                <option value="SalesRep">Internal Sales Rep Account</option>
+                            </select>
+                        </div>
 
-                    <div class="sm:col-span-2">
-                        <label class="erp-label">Delivery Address / Shop Location</label>
-                        <textarea asp-for="CustomerInput.Address" class="erp-textarea" rows="2" placeholder="Street, landmark, LGA, State"></textarea>
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Phone Number <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="tel" asp-for="CustomerInput.PhoneNumber" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="+234 80..." required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Initial Outstanding Balance (₦)</span>
+                            </label>
+                            <input type="number" step="100" min="0" asp-for="CustomerInput.OutstandingBalance" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" value="0" />
+                        </div>
+
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Delivery Address / Store Location</span>
+                            </label>
+                            <textarea asp-for="CustomerInput.Address" class="textarea textarea-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary leading-relaxed" rows="3" placeholder="Shop address, landmarks, delivery gate contact"></textarea>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -83,18 +107,26 @@
 
         <!-- Right Sticky Section (~30% width, 4 Cols) -->
         <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
-            <div class="erp-card p-6 space-y-4">
-                <div class="font-bold text-slate-900 text-sm">Actions</div>
-                <p class="text-xs text-slate-500 leading-relaxed">
-                    Client account will immediately be available for POS orders, pre-order deliveries, and credit management.
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-address-book text-primary"></i> Account Setup
+                    </h2>
+                    <span class="badge badge-success badge-xs font-bold">New Client</span>
+                </div>
+
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    Client account will immediately be available for POS orders, scheduled pre-order deliveries, and customer credit ledger tracking.
                 </p>
 
-                <button type="submit" class="btn-obsidian w-full py-2.5">
-                    <i class="fa-solid fa-check text-xs"></i> Register Client Profile
-                </button>
+                <div class="space-y-2 pt-2 border-t border-base-200">
+                    <button type="submit" class="btn btn-neutral w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
+                        <i class="fa-solid fa-circle-check text-success text-xs"></i> Register Client Profile
+                    </button>
 
-                <div class="text-center pt-1">
-                    <a asp-page="/Sales/Customers/Index" class="text-xs text-slate-500 hover:text-slate-900 font-medium">Cancel</a>
+                    <a asp-page="/Sales/Customers/Index" class="btn btn-ghost w-full rounded-xl text-xs font-semibold">
+                        Cancel
+                    </a>
                 </div>
             </div>
         </div>

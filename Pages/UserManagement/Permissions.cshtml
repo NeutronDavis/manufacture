@@ -5,143 +5,221 @@
 }
 
 <div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <div class="text-xs breadcrumbs mb-1 opacity-60">
-                <ul>
-                    <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
-                    <li><a asp-page="/UserManagement/Index">User Management</a></li>
-                    <li class="font-semibold text-primary">RBAC Matrix</li>
-                </ul>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/UserManagement/Index" class="hover:underline">User Management</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">RBAC Matrix</span>
             </div>
             <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
                 <i class="fa-solid fa-shield-halved text-primary"></i> Role-Based Access Control (RBAC) Matrix
             </h1>
             <p class="text-xs opacity-70 mt-0.5">
-                Granular View, Print, Edit, and Delete privileges across all bakery management modules
+                Configure live Granular View, Edit, Issue, Print, and Delete privileges across all bakery roles.
             </p>
         </div>
-        <a asp-page="/UserManagement/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-1 text-xs">
-            <i class="fa-solid fa-arrow-left text-xs"></i> User Directory
-        </a>
-    </div>
+        
+        <!-- Header Actions -->
+        <div class="flex items-center gap-2">
+            @if (Model.IsEditMode)
+            {
+                <a asp-page="/UserManagement/Permissions" class="btn btn-sm btn-ghost rounded-xl text-xs gap-1">
+                    <i class="fa-solid fa-xmark text-xs"></i> Cancel Editing
+                </a>
+            }
+            else
+            {
+                <a asp-page="/UserManagement/Permissions" asp-route-edit="true" class="btn btn-sm btn-neutral rounded-xl font-bold text-xs gap-1.5 shadow-xs">
+                    <i class="fa-solid fa-sliders text-xs"></i> Adjust Permissions
+                </a>
 
-    <!-- RBAC Matrix Table -->
-    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
-        <div class="card-body p-6 space-y-4">
-            <div class="overflow-x-auto">
-                <table class="table table-sm w-full text-xs">
-                    <thead>
-                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
-                            <th class="py-3 pl-4">Module / Feature Area</th>
-                            <th class="text-center">Super Admin</th>
-                            <th class="text-center">Production Mgr</th>
-                            <th class="text-center">Store Keeper</th>
-                            <th class="text-center">Sales Rep (POS)</th>
-                            <th class="text-center">Vendor / Client</th>
-                            <th class="text-center pr-4">HR & Payroll</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-base-200">
-                        <tr class="hover:bg-base-200/60 transition-colors">
-                            <td class="font-bold py-3 pl-4">
-                                <div class="text-base-content">Recipe Builder & Unit Costing</div>
-                                <span class="text-[10px] opacity-60">Ingredients, packaging & margin formulas</span>
-                            </td>
-                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">View, Edit, Del</span></td>
-                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">View, Edit</span></td>
-                            <td class="text-center"><span class="badge badge-neutral badge-xs">View Only</span></td>
-                            <td class="text-center"><span class="badge badge-neutral badge-xs">View Only</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center pr-4"><span class="opacity-30">—</span></td>
-                        </tr>
-                        <tr class="hover:bg-base-200/60 transition-colors">
-                            <td class="font-bold py-3 pl-4">
-                                <div class="text-base-content">Batch Production Logger</div>
-                                <span class="text-[10px] opacity-60">Flour bags, oven yields & variance</span>
-                            </td>
-                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">View, Edit, Del</span></td>
-                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">View, Edit</span></td>
-                            <td class="text-center"><span class="badge badge-neutral badge-xs">View Only</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center pr-4"><span class="opacity-30">—</span></td>
-                        </tr>
-                        <tr class="hover:bg-base-200/60 transition-colors">
-                            <td class="font-bold py-3 pl-4">
-                                <div class="text-base-content">Raw Material Store & Requests</div>
-                                <span class="text-[10px] opacity-60">Stock inventory, reorder alerts & issue approval</span>
-                            </td>
-                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">View, Edit, Del</span></td>
-                            <td class="text-center"><span class="badge badge-primary badge-xs">Request Only</span></td>
-                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">View, Issue, Edit</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center pr-4"><span class="opacity-30">—</span></td>
-                        </tr>
-                        <tr class="hover:bg-base-200/60 transition-colors">
-                            <td class="font-bold py-3 pl-4">
-                                <div class="text-base-content">POS Checkout & Cash Routing</div>
-                                <span class="text-[10px] opacity-60">Instant sale, Cash/Transfer/POS routing</span>
-                            </td>
-                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">Full Access</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">Create, Print</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center pr-4"><span class="opacity-30">—</span></td>
-                        </tr>
-                        <tr class="hover:bg-base-200/60 transition-colors">
-                            <td class="font-bold py-3 pl-4">
-                                <div class="text-base-content">Pre-Order Booking Portal</div>
-                                <span class="text-[10px] opacity-60">Supermarket next-day orders & aggregation</span>
-                            </td>
-                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">Full Access</span></td>
-                            <td class="text-center"><span class="badge badge-neutral badge-xs">View Targets</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center"><span class="badge badge-primary badge-xs">Book Order</span></td>
-                            <td class="text-center"><span class="badge badge-primary badge-xs font-bold">Book Own Order</span></td>
-                            <td class="text-center pr-4"><span class="opacity-30">—</span></td>
-                        </tr>
-                        <tr class="hover:bg-base-200/60 transition-colors">
-                            <td class="font-bold py-3 pl-4">
-                                <div class="text-base-content">Print-to-Load Dispatch Slips</div>
-                                <span class="text-[10px] opacity-60">Vehicle loading gate-pass verification</span>
-                            </td>
-                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">Full Access</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">Print Once</span></td>
-                            <td class="text-center"><span class="badge badge-neutral badge-xs">View Slip</span></td>
-                            <td class="text-center pr-4"><span class="opacity-30">—</span></td>
-                        </tr>
-                        <tr class="hover:bg-base-200/60 transition-colors">
-                            <td class="font-bold py-3 pl-4">
-                                <div class="text-base-content">Staff & Payroll Engine</div>
-                                <span class="text-[10px] opacity-60">Guarantors, salary advances & monthly wage run</span>
-                            </td>
-                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">Full Access</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center pr-4"><span class="badge badge-success badge-xs font-bold">Manage & Disburse</span></td>
-                        </tr>
-                        <tr class="hover:bg-base-200/60 transition-colors">
-                            <td class="font-bold py-3 pl-4">
-                                <div class="text-base-content">Logistics & Fuel Logs</div>
-                                <span class="text-[10px] opacity-60">Vehicles, odometer & fuel expenditure</span>
-                            </td>
-                            <td class="text-center"><span class="badge badge-success badge-xs font-bold">Full Access</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center"><span class="opacity-30">—</span></td>
-                            <td class="text-center pr-4"><span class="opacity-30">—</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                <button type="button" onclick="document.getElementById('resetModal').showModal()" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1 text-error hover:bg-error hover:text-white">
+                    <i class="fa-solid fa-rotate-left text-xs"></i> Reset Defaults
+                </button>
+            }
+
+            <a asp-page="/UserManagement/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-1 text-xs font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> User Directory
+            </a>
         </div>
     </div>
+
+    <!-- Active RBAC Live Enforcement Banner -->
+    <div class="alert alert-info shadow-xs rounded-2xl text-xs py-3.5 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+            <i class="fa-solid fa-circle-check text-base text-info-content"></i>
+            <div>
+                <span class="font-bold">Live Application Access Engine Active:</span>
+                <span class="opacity-80 ml-1">Permissions configured in this matrix directly determine sidebar navigation, module visibility, and action buttons for each active user role in real time.</span>
+            </div>
+        </div>
+        @if (Model.IsEditMode)
+        {
+            <span class="badge badge-warning badge-sm font-bold uppercase tracking-wider shrink-0">Edit Mode Active</span>
+        }
+    </div>
+
+    <!-- RBAC Matrix Form & Table -->
+    <form method="post" asp-page-handler="Save">
+        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+            <div class="card-body p-6 space-y-4">
+                
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <div class="font-black text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-table text-primary"></i> Module Privilege Matrix
+                    </div>
+                    <span class="text-xs opacity-60">@Model.Matrix.Count Functional Modules</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table table-sm w-full text-xs">
+                        <thead>
+                            <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                                <th class="py-3 pl-4 w-72">Module / Feature Area</th>
+                                <th class="text-center font-bold text-base-content">Super Admin</th>
+                                <th class="text-center">Production Mgr</th>
+                                <th class="text-center">Store Keeper</th>
+                                <th class="text-center">Sales Rep (POS)</th>
+                                <th class="text-center">Vendor / Client</th>
+                                <th class="text-center pr-4">HR & Payroll</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-base-200">
+                            @foreach (var mod in Model.Matrix)
+                            {
+                                <tr class="hover:bg-base-200/60 transition-colors">
+                                    <td class="font-bold py-3 pl-4">
+                                        <div class="text-base-content font-bold">@mod.ModuleName</div>
+                                        <span class="text-[10px] opacity-60 font-normal leading-tight">@mod.Description</span>
+                                    </td>
+
+                                    <!-- Super Admin -->
+                                    <td class="text-center">
+                                        @if (Model.IsEditMode)
+                                        {
+                                            <select name="matrixInput[@mod.ModuleKey][SuperAdmin]" class="select select-bordered select-xs w-full max-w-[130px] font-bold bg-base-100 border-base-300 rounded-lg text-xs">
+                                                <option value="Full Access" selected>Full Access</option>
+                                            </select>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge badge-neutral badge-xs font-bold font-mono">Full Access</span>
+                                        }
+                                    </td>
+
+                                    <!-- Production Manager -->
+                                    <td class="text-center">
+                                        @RenderCell(mod.ModuleKey, "ProductionManager", mod.RoleAccess.GetValueOrDefault("ProductionManager", "None"))
+                                    </td>
+
+                                    <!-- Store Manager -->
+                                    <td class="text-center">
+                                        @RenderCell(mod.ModuleKey, "StoreManager", mod.RoleAccess.GetValueOrDefault("StoreManager", "None"))
+                                    </td>
+
+                                    <!-- Sales Rep -->
+                                    <td class="text-center">
+                                        @RenderCell(mod.ModuleKey, "SalesRep", mod.RoleAccess.GetValueOrDefault("SalesRep", "None"))
+                                    </td>
+
+                                    <!-- Vendor -->
+                                    <td class="text-center">
+                                        @RenderCell(mod.ModuleKey, "Vendor", mod.RoleAccess.GetValueOrDefault("Vendor", "None"))
+                                    </td>
+
+                                    <!-- HR & Payroll -->
+                                    <td class="text-center pr-4">
+                                        @RenderCell(mod.ModuleKey, "HrPayrollManager", mod.RoleAccess.GetValueOrDefault("HrPayrollManager", "None"))
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (Model.IsEditMode)
+                {
+                    <div class="pt-4 border-t border-base-200 flex items-center justify-between gap-4">
+                        <div class="text-xs opacity-70">
+                            Select the desired permission level for each role and click <strong>Save Changes</strong> to apply immediately.
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <a asp-page="/UserManagement/Permissions" class="btn btn-sm btn-ghost rounded-xl text-xs">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-sm btn-neutral rounded-xl font-bold text-xs gap-1.5 shadow-xs px-5">
+                                <i class="fa-solid fa-check text-success text-xs"></i> Save Changes Live
+                            </button>
+                        </div>
+                    </div>
+                }
+
+            </div>
+        </div>
+    </form>
 </div>
+
+<!-- Reset Confirmation Modal -->
+<dialog id="resetModal" class="modal">
+    <div class="modal-box rounded-2xl border border-base-300 p-6 space-y-4 max-w-sm">
+        <h3 class="font-black text-base text-base-content flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation text-warning"></i> Reset RBAC Matrix?
+        </h3>
+        <p class="text-xs opacity-70 leading-relaxed">
+            This will restore all module access permissions for all user roles back to standard factory defaults.
+        </p>
+        <form method="post" asp-page-handler="Reset" class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="document.getElementById('resetModal').close()" class="btn btn-sm btn-ghost rounded-xl text-xs font-semibold">
+                Cancel
+            </button>
+            <button type="submit" class="btn btn-sm btn-error rounded-xl text-xs font-bold gap-1 shadow-xs">
+                <i class="fa-solid fa-rotate-left text-xs"></i> Yes, Reset
+            </button>
+        </form>
+    </div>
+</dialog>
+
+@functions {
+    public Microsoft.AspNetCore.Html.IHtmlContent RenderCell(string moduleKey, string role, string level)
+    {
+        if (Model.IsEditMode)
+        {
+            var optionsHtml = "";
+            foreach (var p in Model.PermissionLevels)
+            {
+                var isSelected = string.Equals(p, level, StringComparison.OrdinalIgnoreCase) ? "selected" : "";
+                optionsHtml += $"<option value=\"{p}\" {isSelected}>{p}</option>";
+            }
+            return new Microsoft.AspNetCore.Html.HtmlString(
+                $"<select name=\"matrixInput[{moduleKey}][{role}]\" class=\"select select-bordered select-xs w-full max-w-[130px] font-medium bg-base-200 border-base-300 rounded-lg text-xs focus:bg-base-100 focus:border-primary\">{optionsHtml}</select>"
+            );
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(level) || level == "None" || level == "—")
+            {
+                return new Microsoft.AspNetCore.Html.HtmlString("<span class=\"opacity-30 font-mono\">—</span>");
+            }
+            else if (level == "Full Access" || level.Contains("Edit") || level.Contains("Manage"))
+            {
+                return new Microsoft.AspNetCore.Html.HtmlString($"<span class=\"badge badge-success badge-xs font-bold font-mono\">{level}</span>");
+            }
+            else if (level.Contains("Request") || level.Contains("Book"))
+            {
+                return new Microsoft.AspNetCore.Html.HtmlString($"<span class=\"badge badge-primary badge-xs font-bold font-mono\">{level}</span>");
+            }
+            else if (level.Contains("Create") || level.Contains("Print"))
+            {
+                return new Microsoft.AspNetCore.Html.HtmlString($"<span class=\"badge badge-warning badge-xs font-bold font-mono\">{level}</span>");
+            }
+            else
+            {
+                return new Microsoft.AspNetCore.Html.HtmlString($"<span class=\"badge badge-soft badge-xs font-medium font-mono\">{level}</span>");
+            }
+        }
+    }
+}
