@@ -4,67 +4,73 @@
     ViewData["Title"] = "Delivery Vehicles";
 }
 
-<div class="space-y-6">
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <div class="text-xs breadcrumbs mb-1">
-                <ul>
-                    <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
-                    <li><a asp-page="/Logistics/Index">Logistics</a></li>
-                    <li class="font-semibold text-primary">Vehicles</li>
-                </ul>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Logistics/Index" class="hover:underline">Fleet Logistics</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Vehicles</span>
             </div>
-            <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
                 <i class="fa-solid fa-van-shuttle text-primary"></i> Company Delivery Vehicles
             </h1>
-            <p class="text-sm text-base-content/60">Manage delivery vans, assigned drivers, and service schedules</p>
+            <p class="text-xs opacity-70 mt-0.5">
+                Manage delivery vans, assigned drivers, tank capacities, and service schedules.
+            </p>
         </div>
-        <a asp-page="/Logistics/Vehicles/Create" class="btn btn-primary gap-2">
-            <i class="fa-solid fa-plus"></i> Register Vehicle
-        </a>
+        <div>
+            <a asp-page="/Logistics/Vehicles/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
+                <i class="fa-solid fa-plus text-xs"></i> Register Vehicle
+            </a>
+        </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Grid of Vehicle Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         @foreach (var v in Model.Vehicles)
         {
-            <div class="card bg-base-100 border border-base-300 shadow-xs">
-                <div class="card-body p-5 space-y-3">
+            <div class="card bg-base-100 border border-base-300 shadow-xs hover:shadow-md hover:border-primary transition-all duration-200 rounded-2xl flex flex-col justify-between">
+                <div class="card-body p-6 space-y-4">
                     <div class="flex justify-between items-start">
                         <div>
-                            <span class="badge badge-primary font-mono font-bold">@v.RegistrationNumber</span>
-                            <h2 class="font-bold text-base mt-1">@v.MakeAndModel</h2>
+                            <span class="badge badge-neutral badge-xs font-mono font-bold">@v.RegistrationNumber</span>
+                            <h2 class="font-black text-base text-base-content tracking-tight mt-1">@v.MakeAndModel</h2>
                         </div>
-                        <span class="badge @(v.Status == "Active" ? "badge-success" : "badge-warning") badge-xs font-semibold">@v.Status</span>
+                        <span class="badge badge-success badge-xs font-bold">● @v.Status</span>
                     </div>
 
-                    <div class="space-y-2 text-xs text-base-content/80">
+                    <div class="space-y-2 bg-base-200 border border-base-300 p-4 rounded-xl text-xs">
                         <div class="flex justify-between">
-                            <span class="text-base-content/60">Vehicle Type:</span>
-                            <span class="font-bold">@v.Type</span>
+                            <span class="opacity-60">Vehicle Type:</span>
+                            <span class="font-bold text-base-content">@v.Type</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-base-content/60">Assigned Driver:</span>
-                            <span class="font-bold">@v.AssignedDriverName</span>
+                            <span class="opacity-60">Assigned Driver:</span>
+                            <span class="font-bold text-base-content">@v.AssignedDriverName</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-base-content/60">Driver Phone:</span>
-                            <span class="font-mono">@v.DriverPhoneNumber</span>
+                            <span class="opacity-60">Driver Phone:</span>
+                            <span class="font-mono font-bold text-primary">@v.DriverPhoneNumber</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-base-content/60">Fuel Type / Tank:</span>
-                            <span>@v.FuelType (@v.TankCapacityLitres L)</span>
+                            <span class="opacity-60">Fuel Type / Tank:</span>
+                            <span class="font-mono">@v.FuelType (@v.TankCapacityLitres L)</span>
                         </div>
-                        <div class="flex justify-between font-mono">
-                            <span class="text-base-content/60">Odometer:</span>
-                            <span class="font-bold">@v.CurrentOdometerKm.ToString("N0") km</span>
+                        <div class="flex justify-between font-mono pt-1 border-t border-base-300">
+                            <span class="opacity-60 font-sans">Current Odometer:</span>
+                            <span class="font-bold text-base-content">@v.CurrentOdometerKm.ToString("N0") KM</span>
                         </div>
                     </div>
 
-                    <div class="pt-3 border-t border-base-200 flex justify-between items-center text-xs">
-                        <a asp-page="/Logistics/FuelLogs/Create" asp-route-vehicleId="@v.Id" class="btn btn-xs btn-outline btn-warning">
-                            <i class="fa-solid fa-gas-pump"></i> Log Fuel
+                    <div class="pt-2 border-t border-base-200 flex justify-between items-center text-xs">
+                        <a asp-page="/Logistics/FuelLogs/Create" asp-route-vehicleId="@v.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg gap-1 font-semibold hover:border-primary">
+                            <i class="fa-solid fa-gas-pump text-[10px]"></i> Log Fuel
                         </a>
-                        <span class="text-base-content/50">Serviced: @v.LastServiceDate.ToString("yyyy-MM-dd")</span>
+                        <span class="text-[11px] opacity-60">Serviced: @v.LastServiceDate.ToString("yyyy-MM-dd")</span>
                     </div>
                 </div>
             </div>

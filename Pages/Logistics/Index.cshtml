@@ -5,85 +5,178 @@
 }
 
 <div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                <i class="fa-solid fa-truck-moving text-stone-900"></i> Fleet & Delivery Logistics
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Fleet Logistics</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-truck-moving text-primary"></i> Fleet & Delivery Logistics
             </h1>
-            <p class="text-xs text-slate-500 mt-0.5">
-                Delivery vans, truck haulage, daily fuel consumption logs, and maintenance tracking
+            <p class="text-xs opacity-70 mt-0.5">
+                Delivery vans, truck haulage, daily fuel consumption logs, and maintenance tracking.
             </p>
         </div>
-        <div class="flex gap-2">
-            <a asp-page="/Logistics/FuelLogs/Create" class="btn btn-sm btn-outline border-slate-300 text-slate-700 hover:bg-slate-100 rounded-xl gap-2 font-semibold px-3.5 text-xs">
+        <div class="flex items-center gap-2">
+            <a asp-page="/Logistics/FuelLogs/Create" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
                 <i class="fa-solid fa-gas-pump text-xs"></i> Log Fuel Expense
             </a>
-            <a asp-page="/Logistics/Vehicles/Create" class="btn btn-sm btn-neutral bg-stone-900 hover:bg-black text-white border-0 rounded-xl gap-2 font-bold px-4 text-xs shadow-xs">
+            <a asp-page="/Logistics/Vehicles/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 text-xs shadow-xs">
                 <i class="fa-solid fa-plus text-xs"></i> Add Vehicle
             </a>
         </div>
     </div>
 
-    <!-- Fleet Status Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
-            <div class="card-body p-5">
-                <div class="text-[10px] uppercase font-bold text-slate-400">Total Delivery Vehicles</div>
-                <div class="text-2xl font-black text-slate-900 font-mono mt-1">@Model.Vehicles.Count</div>
-                <div class="text-xs text-slate-500 mt-1">Active delivery vans & trucks</div>
-            </div>
+    <!-- Fleet Status KPI Stats Bar -->
+    <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+        <div class="stat p-5">
+            <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-van-shuttle"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Fleet Vehicles</div>
+            <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.Vehicles.Count</div>
+            <div class="stat-desc opacity-70">Active vans & trucks</div>
         </div>
-        <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
-            <div class="card-body p-5">
-                <div class="text-[10px] uppercase font-bold text-slate-400">Total Fuel Dispensed</div>
-                <div class="text-2xl font-black text-slate-900 font-mono mt-1">@Model.FuelLogs.Sum(f => f.LitresDispensed) Litres</div>
-                <div class="text-xs text-slate-500 mt-1">PMS & AGO volume tracked</div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-base-content text-2xl"><i class="fa-solid fa-gas-pump"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Fuel Dispensed</div>
+            <div class="stat-value text-2xl font-black font-mono text-base-content">
+                @Model.FuelLogs.Sum(f => f.LitresDispensed).ToString("N0") <span class="text-xs font-sans opacity-70 font-normal">Litres</span>
             </div>
+            <div class="stat-desc opacity-70">PMS & AGO volume logged</div>
         </div>
-        <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
-            <div class="card-body p-5">
-                <div class="text-[10px] uppercase font-bold text-slate-400">Total Fleet Fuel Spend</div>
-                <div class="text-2xl font-black text-emerald-700 font-mono mt-1">₦@Model.FuelLogs.Sum(f => f.TotalCost).ToString("N0")</div>
-                <div class="text-xs text-slate-500 mt-1">Cumulative fuel expense</div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-wallet"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Fleet Fuel Spend</div>
+            <div class="stat-value text-2xl font-black font-mono text-success">
+                ₦@Model.FuelLogs.Sum(f => f.TotalCost).ToString("N0")
             </div>
+            <div class="stat-desc opacity-70">Cumulative fuel expense</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-info text-2xl"><i class="fa-solid fa-shield-halved"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Fleet Operational Status</div>
+            <div class="stat-value text-2xl font-black font-mono text-info">100%</div>
+            <div class="stat-desc font-semibold text-success">All vehicles active on road</div>
         </div>
     </div>
 
-    <!-- Vehicles List -->
-    <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl overflow-hidden">
+    <!-- Vehicles List Card -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
         <div class="card-body p-6 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h2 class="font-bold text-sm text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-van-shuttle text-slate-500"></i> Company Delivery Vehicles
-                </h2>
-                <a asp-page="/Logistics/Vehicles/Index" class="btn btn-xs btn-outline border-slate-200 text-slate-700 rounded-xl">View All &rarr;</a>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-base-200 pb-3">
+                <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                    <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                        <i class="fa-solid fa-van-shuttle"></i>
+                    </div>
+                    <span>Company Delivery Vehicles & Routes</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a asp-page="/Logistics/Vehicles/Index" class="btn btn-xs btn-outline border-base-300 rounded-lg text-xs font-semibold">
+                        View Vehicle Cards &rarr;
+                    </a>
+                </div>
             </div>
 
+            <!-- Vehicles Table -->
             <div class="overflow-x-auto">
                 <table class="table table-sm w-full text-xs">
                     <thead>
-                        <tr class="text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-100 bg-slate-50/50">
-                            <th>Plate Number</th>
+                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                            <th class="py-3 pl-4">Plate Number</th>
                             <th>Make & Model</th>
                             <th>Vehicle Type</th>
                             <th>Assigned Driver</th>
                             <th>Phone Number</th>
                             <th>Odometer</th>
                             <th>Status</th>
+                            <th class="text-right pr-4">Action</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100">
+                    <tbody class="divide-y divide-base-200">
                         @foreach (var v in Model.Vehicles)
                         {
-                            <tr class="hover:bg-slate-50/60 transition-colors">
-                                <td class="font-mono text-xs font-bold text-slate-900">@v.RegistrationNumber</td>
-                                <td class="font-bold text-slate-900">@v.MakeAndModel</td>
-                                <td><span class="badge bg-slate-100 text-slate-700 border-0 text-[10px] font-semibold">@v.Type</span></td>
-                                <td class="font-semibold text-slate-800">@v.AssignedDriverName</td>
-                                <td class="font-mono text-slate-500">@v.DriverPhoneNumber</td>
-                                <td class="font-mono text-slate-700 font-medium">@v.CurrentOdometerKm.ToString("N0") KM</td>
+                            <tr class="hover:bg-base-200/60 transition-colors">
+                                <td class="font-mono text-xs font-bold pl-4 text-base-content">
+                                    <span class="badge badge-neutral badge-xs font-mono font-bold">@v.RegistrationNumber</span>
+                                </td>
+                                <td class="font-bold text-base-content py-3">@v.MakeAndModel</td>
                                 <td>
-                                    <span class="badge bg-emerald-50 text-emerald-700 border-0 text-[10px] font-bold px-2 py-0.5">● @v.Status</span>
+                                    <span class="badge badge-ghost border border-base-300 text-[10px] font-semibold">@v.Type</span>
+                                </td>
+                                <td class="font-semibold text-base-content py-3">@v.AssignedDriverName</td>
+                                <td class="font-mono opacity-70 py-3">@v.DriverPhoneNumber</td>
+                                <td class="font-mono text-base-content font-bold py-3">@v.CurrentOdometerKm.ToString("N0") KM</td>
+                                <td>
+                                    <span class="badge badge-success badge-xs font-bold">● @v.Status</span>
+                                </td>
+                                <td class="text-right pr-4 py-3">
+                                    <a asp-page="/Logistics/FuelLogs/Create" asp-route-vehicleId="@v.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg gap-1 text-[11px] font-semibold hover:border-primary">
+                                        <i class="fa-solid fa-gas-pump text-[10px]"></i> Log Fuel
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Fuel Logs Card -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+        <div class="card-body p-6 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-base-200 pb-3">
+                <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                    <div class="w-7 h-7 rounded-lg bg-warning text-warning-content flex items-center justify-center text-xs font-bold shadow-xs">
+                        <i class="fa-solid fa-gas-pump"></i>
+                    </div>
+                    <span>Recent Fuel Dispensation Logs</span>
+                </div>
+                <div>
+                    <a asp-page="/Logistics/FuelLogs/Index" class="btn btn-xs btn-outline border-base-300 rounded-lg text-xs font-semibold">
+                        View All Fuel Logs &rarr;
+                    </a>
+                </div>
+            </div>
+
+            <!-- Fuel Logs Table -->
+            <div class="overflow-x-auto">
+                <table class="table table-sm w-full text-xs">
+                    <thead>
+                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                            <th class="py-3 pl-4">Date</th>
+                            <th>Vehicle Plate</th>
+                            <th>Driver</th>
+                            <th>Litres Dispensed</th>
+                            <th>Rate / L</th>
+                            <th>Total Cost</th>
+                            <th>Petrol Station & Receipt</th>
+                            <th class="text-right pr-4">Delivery Route</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-base-200">
+                        @foreach (var log in Model.FuelLogs.Take(5))
+                        {
+                            <tr class="hover:bg-base-200/60 transition-colors">
+                                <td class="font-mono text-xs opacity-70 pl-4 py-3">@log.Date.ToString("yyyy-MM-dd")</td>
+                                <td class="font-mono text-xs font-bold text-primary py-3">
+                                    <span class="badge badge-neutral badge-xs font-mono font-bold">@log.VehicleRegNumber</span>
+                                </td>
+                                <td class="font-semibold text-base-content py-3">@log.DriverName</td>
+                                <td class="font-mono text-base-content font-bold py-3">@log.LitresDispensed.ToString("N1") L</td>
+                                <td class="font-mono opacity-70 py-3">₦@log.PricePerLitre.ToString("N0")</td>
+                                <td class="font-mono font-black text-success py-3">₦@log.TotalCost.ToString("N0")</td>
+                                <td class="py-3">
+                                    <div class="font-bold text-base-content">@log.PetrolStation</div>
+                                    <span class="font-mono text-[10px] opacity-60">Receipt: @log.ReceiptNumber</span>
+                                </td>
+                                <td class="text-right pr-4 text-[11px] opacity-70 py-3 truncate max-w-xs">
+                                    @log.RouteDescription
                                 </td>
                             </tr>
                         }

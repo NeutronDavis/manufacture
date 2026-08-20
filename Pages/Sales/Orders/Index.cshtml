@@ -4,111 +4,171 @@
     ViewData["Title"] = "All Sales Orders & Loading Register";
 }
 
-<div class="space-y-6">
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <div class="text-xs breadcrumbs mb-1">
-                <ul>
-                    <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
-                    <li><a asp-page="/Sales/Index">Sales</a></li>
-                    <li class="font-semibold text-primary">Orders</li>
-                </ul>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Sales/Index" class="hover:underline">Sales & POS</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Order Register</span>
             </div>
-            <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
-                <i class="fa-solid fa-receipt text-primary"></i> Order Register & Dispatch Status
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-receipt text-primary"></i> Order Register & Loading Dispatch
             </h1>
-            <p class="text-sm text-base-content/60">Complete audit trail of POS sales, pre-orders, and loading slips</p>
+            <p class="text-xs opacity-70 mt-0.5">
+                Complete audit trail of POS checkout sales, pre-orders, and loading slip verifications.
+            </p>
         </div>
-        <div class="flex gap-2">
-            <a asp-page="/Sales/Orders/PreOrders" class="btn btn-sm btn-outline btn-warning gap-1">
-                <i class="fa-solid fa-clock-rotate-left"></i> Pre-Orders Only
+        <div class="flex items-center gap-2">
+            <a asp-page="/Sales/Orders/PreOrders" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-clock-rotate-left text-xs"></i> Pre-Orders Only
             </a>
-            <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-primary gap-1">
-                <i class="fa-solid fa-cart-plus"></i> New Order
+            <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
+                <i class="fa-solid fa-cart-plus text-xs"></i> New POS Order
             </a>
         </div>
     </div>
 
-    <div class="card bg-base-100 border border-base-300 shadow-xs">
-        <div class="card-body p-5">
+    <!-- Search & Filter Toolbar -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4 space-y-3">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <!-- Search Bar -->
+            <div class="relative w-full sm:w-96">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-xs opacity-50"></i>
+                <input type="text" 
+                       id="orderSearchInput" 
+                       oninput="filterOrders()" 
+                       placeholder="Search by order # (e.g. ORD-2026-001), customer, or product..." 
+                       class="input input-bordered input-sm w-full pl-9 bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" />
+            </div>
+
+            <!-- Dynamic Count Badge -->
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                <span id="orderCountBadge" class="badge badge-neutral badge-xs font-mono font-bold">
+                    @Model.Orders.Count Orders
+                </span>
+            </div>
+        </div>
+
+        <!-- Quick Status Filter Pills -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            <button type="button" onclick="setOrderStatusFilter('all', this)" class="btn btn-xs btn-neutral rounded-lg font-bold order-filter-pill">All Orders</button>
+            <button type="button" onclick="setOrderStatusFilter('printed', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg order-filter-pill">Slip Printed</button>
+            <button type="button" onclick="setOrderStatusFilter('unprinted', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg order-filter-pill">Unprinted</button>
+            <button type="button" onclick="setOrderStatusFilter('dispatched', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg order-filter-pill">Dispatched</button>
+            <button type="button" onclick="setOrderStatusFilter('debt', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg order-filter-pill text-error font-semibold">With Balance Due</button>
+        </div>
+    </div>
+
+    <!-- Orders Table Card -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+        <div class="card-body p-6 space-y-4">
+            
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                    <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                        <i class="fa-solid fa-list-check"></i>
+                    </div>
+                    <span>Orders Audit Ledger</span>
+                </div>
+            </div>
+
             <div class="overflow-x-auto">
-                <table class="table table-sm table-zebra">
+                <table class="table table-sm w-full text-xs">
                     <thead>
-                        <tr class="bg-base-200/70">
-                            <th>Order Number</th>
+                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                            <th class="py-3 pl-4">Order #</th>
                             <th>Date / Type</th>
-                            <th>Customer & Code</th>
+                            <th>Customer & Category</th>
                             <th>Items Breakdown</th>
                             <th>Payment Channel</th>
                             <th>Net Total</th>
-                            <th>Paid / Balance</th>
-                            <th>Print Slip</th>
-                            <th>Dispatch Status</th>
-                            <th class="text-right">Actions</th>
+                            <th>Settlement</th>
+                            <th>Loading Slip</th>
+                            <th>Dispatch</th>
+                            <th class="text-right pr-4">Action</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="ordersTableBody" class="divide-y divide-base-200">
                         @foreach (var o in Model.Orders)
                         {
-                            <tr>
-                                <td class="font-mono text-xs font-bold text-primary">@o.OrderNumber</td>
-                                <td class="text-xs">
-                                    <div class="font-semibold">@o.OrderDate.ToString("yyyy-MM-dd HH:mm")</div>
-                                    <span class="badge badge-outline badge-xs">@o.Type</span>
+                            var itemsSummary = string.Join(" ", o.Items.Select(i => $"{i.Quantity}x {i.ProductName}".ToLower()));
+
+                            <tr class="hover:bg-base-200/60 transition-colors order-row"
+                                data-order="@o.OrderNumber.ToLower()"
+                                data-customer="@o.CustomerName.ToLower()"
+                                data-category="@o.CustomerCategory.ToString().ToLower()"
+                                data-payment="@o.PaymentMethod.ToString().ToLower()"
+                                data-items="@itemsSummary"
+                                data-printed="@(o.IsPrintedForLoading ? "printed" : "unprinted")"
+                                data-dispatched="@(o.Status == OrderStatus.Dispatched ? "dispatched" : "pending")"
+                                data-hasdue="@(o.BalanceDue > 0 ? "true" : "false")">
+                                
+                                <td class="font-mono text-xs font-bold pl-4 py-3 text-base-content">
+                                    <span class="badge badge-neutral badge-xs font-mono font-bold">@o.OrderNumber</span>
                                 </td>
-                                <td>
-                                    <div class="font-bold text-xs">@o.CustomerName</div>
-                                    <span class="badge badge-ghost badge-xs">@o.CustomerCategory</span>
+                                <td class="py-3">
+                                    <div class="font-semibold text-base-content font-mono text-[11px]">@o.OrderDate.ToString("yyyy-MM-dd HH:mm")</div>
+                                    <span class="badge badge-ghost border border-base-300 text-[10px]">@o.Type</span>
                                 </td>
-                                <td class="text-xs max-w-xs">
+                                <td class="py-3">
+                                    <div class="font-bold text-base-content">@o.CustomerName</div>
+                                    <span class="badge badge-ghost border border-base-300 text-[10px] opacity-70">@o.CustomerCategory</span>
+                                </td>
+                                <td class="py-3 max-w-xs text-[11px] opacity-90">
                                     @foreach (var item in o.Items)
                                     {
-                                        <div><span class="font-bold">@item.Quantity</span>x @item.ProductName</div>
+                                        <div><strong class="text-base-content font-mono">@item.Quantity</strong> × @item.ProductName</div>
                                     }
                                 </td>
-                                <td>
-                                    <span class="badge badge-neutral badge-xs font-mono">@o.PaymentMethod</span>
+                                <td class="py-3">
+                                    <span class="badge badge-ghost border border-base-300 text-[10px] font-mono font-bold">@o.PaymentMethod</span>
                                 </td>
-                                <td class="font-mono text-xs font-bold">₦@o.TotalAmount.ToString("N0")</td>
-                                <td class="text-xs font-mono">
-                                    <div class="text-emerald-600 font-semibold">Paid: ₦@o.AmountPaid.ToString("N0")</div>
+                                <td class="font-mono text-xs font-black text-base-content py-3">
+                                    ₦@o.TotalAmount.ToString("N0")
+                                </td>
+                                <td class="font-mono text-[11px] py-3">
+                                    <div class="text-success font-bold">Paid: ₦@o.AmountPaid.ToString("N0")</div>
                                     @if (o.BalanceDue > 0)
                                     {
-                                        <div class="text-rose-600 font-bold">Due: ₦@o.BalanceDue.ToString("N0")</div>
+                                        <div class="text-error font-bold">Due: ₦@o.BalanceDue.ToString("N0")</div>
                                     }
                                 </td>
-                                <td>
+                                <td class="py-3">
                                     @if (o.IsPrintedForLoading)
                                     {
                                         <span class="badge badge-success badge-xs font-bold gap-1">
-                                            <i class="fa-solid fa-check"></i> Printed
+                                            <i class="fa-solid fa-check text-[9px]"></i> Printed
                                         </span>
                                     }
                                     else
                                     {
                                         <span class="badge badge-warning badge-xs font-bold gap-1">
-                                            <i class="fa-solid fa-clock"></i> Unprinted
+                                            <i class="fa-solid fa-clock text-[9px]"></i> Unprinted
                                         </span>
                                     }
                                 </td>
-                                <td>
+                                <td class="py-3">
                                     @if (o.Status == OrderStatus.Dispatched)
                                     {
-                                        <span class="badge badge-neutral badge-xs">Dispatched</span>
-                                        <div class="text-[10px] text-base-content/60">By: @o.VerifiedByLoaderName</div>
+                                        <span class="badge badge-neutral badge-xs font-bold">Dispatched</span>
+                                        <div class="text-[10px] opacity-60">By: @o.VerifiedByLoaderName</div>
                                     }
                                     else if (o.Status == OrderStatus.ReadyToLoad)
                                     {
-                                        <span class="badge badge-info badge-xs">Ready To Load</span>
+                                        <span class="badge badge-info badge-xs font-bold">Ready To Load</span>
                                     }
                                     else
                                     {
                                         <span class="badge badge-ghost badge-xs">@o.Status</span>
                                     }
                                 </td>
-                                <td class="text-right space-x-1">
-                                    <a asp-page="/Sales/Orders/Receipt" asp-route-id="@o.Id" class="btn btn-xs btn-outline btn-primary" title="Print Loading Slip / Receipt">
-                                        <i class="fa-solid fa-print"></i> Slip
+                                <td class="text-right pr-4 py-3">
+                                    <a asp-page="/Sales/Orders/Receipt" asp-route-id="@o.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg gap-1 font-semibold hover:border-primary" title="Print Loading Slip / Receipt">
+                                        <i class="fa-solid fa-print text-[10px]"></i> Slip
                                     </a>
                                 </td>
                             </tr>
@@ -116,6 +176,78 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Empty Search State -->
+            <div id="noOrdersAlert" class="alert alert-info shadow-xs rounded-2xl text-xs py-4 hidden flex items-center gap-3">
+                <i class="fa-solid fa-circle-info text-base"></i>
+                <span>No orders matched your search criteria or selected status filter.</span>
+            </div>
+
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+    let activeOrderStatus = 'all';
+
+    function setOrderStatusFilter(status, button) {
+        activeOrderStatus = status;
+
+        document.querySelectorAll('.order-filter-pill').forEach(btn => {
+            btn.className = 'btn btn-xs btn-ghost border border-base-300 rounded-lg order-filter-pill';
+        });
+        button.className = 'btn btn-xs btn-neutral rounded-lg font-bold order-filter-pill';
+
+        filterOrders();
+    }
+
+    function filterOrders() {
+        const query = document.getElementById('orderSearchInput').value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.order-row');
+        const countBadge = document.getElementById('orderCountBadge');
+        const noResults = document.getElementById('noOrdersAlert');
+
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const orderNum = row.getAttribute('data-order') || '';
+            const customer = row.getAttribute('data-customer') || '';
+            const category = row.getAttribute('data-category') || '';
+            const payment = row.getAttribute('data-payment') || '';
+            const items = row.getAttribute('data-items') || '';
+            const printed = row.getAttribute('data-printed') || '';
+            const dispatched = row.getAttribute('data-dispatched') || '';
+            const hasDue = row.getAttribute('data-hasdue') === 'true';
+
+            const matchesQuery = !query || orderNum.includes(query) || customer.includes(query) || category.includes(query) || payment.includes(query) || items.includes(query);
+
+            let matchesStatus = true;
+            if (activeOrderStatus === 'printed') {
+                matchesStatus = printed === 'printed';
+            } else if (activeOrderStatus === 'unprinted') {
+                matchesStatus = printed === 'unprinted';
+            } else if (activeOrderStatus === 'dispatched') {
+                matchesStatus = dispatched === 'dispatched';
+            } else if (activeOrderStatus === 'debt') {
+                matchesStatus = hasDue;
+            }
+
+            if (matchesQuery && matchesStatus) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        countBadge.innerText = `${visibleCount} Order${visibleCount !== 1 ? 's' : ''}`;
+
+        if (visibleCount === 0) {
+            noResults.classList.remove('hidden');
+        } else {
+            noResults.classList.add('hidden');
+        }
+    }
+</script>
+}

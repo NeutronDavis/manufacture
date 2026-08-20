@@ -4,75 +4,136 @@
     ViewData["Title"] = "Store Release Requisitions";
 }
 
-<div class="space-y-6">
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <div class="text-xs breadcrumbs mb-1">
-                <ul>
-                    <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
-                    <li><a asp-page="/Inventory/Index">Inventory</a></li>
-                    <li class="font-semibold text-primary">Store Releases</li>
-                </ul>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Inventory/Index" class="hover:underline">Store Inventory</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Store Releases</span>
             </div>
-            <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
                 <i class="fa-solid fa-clipboard-check text-primary"></i> Store Release & Raw Material Issuance
             </h1>
-            <p class="text-sm text-base-content/60">Digital approval and stock deduction workflow between Production and Store Keeper</p>
+            <p class="text-xs opacity-70 mt-0.5">
+                Digital approval and automated warehouse stock deduction workflow between Production and Store Keeper.
+            </p>
         </div>
-        <a asp-page="/Inventory/Requests/Create" class="btn btn-primary gap-2">
-            <i class="fa-solid fa-plus"></i> New Material Requisition
-        </a>
+        <div>
+            <a asp-page="/Inventory/Requests/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
+                <i class="fa-solid fa-plus text-xs"></i> New Material Requisition
+            </a>
+        </div>
     </div>
 
-    <div class="space-y-4">
+    <!-- Search & Status Filter Toolbar -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4 space-y-3">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <!-- Search Bar -->
+            <div class="relative w-full sm:w-96">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-xs opacity-50"></i>
+                <input type="text" 
+                       id="requestSearchInput" 
+                       oninput="filterRequests()" 
+                       placeholder="Search by request # (e.g. REQ-201), requester, purpose, or material..." 
+                       class="input input-bordered input-sm w-full pl-9 bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" />
+            </div>
+
+            <!-- Total Requests Count Badge -->
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                <span id="requestCountBadge" class="badge badge-neutral badge-xs font-mono font-bold">
+                    @Model.Requests.Count Requests
+                </span>
+            </div>
+        </div>
+
+        <!-- Quick Status Filter Pills -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            <button type="button" onclick="setStatusFilter('all', this)" class="btn btn-xs btn-neutral rounded-lg font-bold filter-pill">All Requisitions</button>
+            <button type="button" onclick="setStatusFilter('pending', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill">Pending Approval</button>
+            <button type="button" onclick="setStatusFilter('issued', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill">Stock Issued</button>
+            <button type="button" onclick="setStatusFilter('rejected', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill">Rejected</button>
+        </div>
+    </div>
+
+    <!-- Requisition Tickets List -->
+    <div id="requestsList" class="space-y-5">
         @foreach (var req in Model.Requests)
         {
-            <div class="card bg-base-100 border border-base-300 shadow-xs">
-                <div class="card-body p-5">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-base-200 pb-3 mb-3">
+            var statusStr = req.Status.ToString().ToLower();
+            var materialsStr = string.Join(" ", req.Items.Select(i => i.ItemName.ToLower()));
+
+            <div class="card bg-base-100 border border-base-300 shadow-xs hover:shadow-md transition-all rounded-2xl overflow-hidden request-card"
+                 data-number="@req.RequestNumber.ToLower()"
+                 data-purpose="@req.Purpose.ToLower()"
+                 data-requester="@req.RequestedBy.ToLower()"
+                 data-dept="@req.Department.ToLower()"
+                 data-status="@statusStr"
+                 data-materials="@materialsStr">
+                
+                <div class="card-body p-6 space-y-4">
+                    <!-- Ticket Header: Code, Purpose, Requester, and Status Badge -->
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-base-200 pb-4">
                         <div>
-                            <span class="badge badge-primary badge-sm font-mono font-bold">@req.RequestNumber</span>
-                            <span class="font-bold text-sm ml-2">@req.Purpose</span>
-                            <div class="text-xs text-base-content/60 mt-1">
-                                Requested By: <strong>@req.RequestedBy</strong> &bull; Dept: @req.Department &bull; @req.RequestedAt.ToString("yyyy-MM-dd HH:mm")
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="badge badge-neutral badge-sm font-mono font-bold">@req.RequestNumber</span>
+                                <span class="font-black text-sm text-base-content">@req.Purpose</span>
+                            </div>
+                            <div class="text-xs opacity-70 mt-1 flex items-center gap-2 flex-wrap font-medium">
+                                <span><i class="fa-regular fa-user text-primary mr-1"></i> Requested by <strong>@req.RequestedBy</strong></span>
+                                <span>&bull;</span>
+                                <span><i class="fa-solid fa-industry text-primary mr-1"></i> @req.Department</span>
+                                <span>&bull;</span>
+                                <span class="font-mono text-[11px]"><i class="fa-regular fa-clock opacity-60 mr-1"></i> @req.RequestedAt.ToString("yyyy-MM-dd HH:mm")</span>
                             </div>
                         </div>
 
                         <div>
                             @if (req.Status == StoreRequestStatus.Issued)
                             {
-                                <span class="badge badge-success font-bold gap-1"><i class="fa-solid fa-check"></i> Stock Issued</span>
+                                <span class="badge badge-success badge-sm font-bold gap-1 shadow-2xs">
+                                    <i class="fa-solid fa-circle-check text-xs"></i> Stock Issued
+                                </span>
                             }
                             else if (req.Status == StoreRequestStatus.Pending)
                             {
-                                <span class="badge badge-warning font-bold gap-1"><i class="fa-solid fa-clock"></i> Awaiting Approval</span>
+                                <span class="badge badge-warning badge-sm font-bold gap-1 shadow-2xs">
+                                    <i class="fa-solid fa-clock text-xs"></i> Awaiting Approval
+                                </span>
                             }
                             else if (req.Status == StoreRequestStatus.Rejected)
                             {
-                                <span class="badge badge-error font-bold gap-1"><i class="fa-solid fa-xmark"></i> Rejected</span>
+                                <span class="badge badge-error badge-sm font-bold gap-1 shadow-2xs">
+                                    <i class="fa-solid fa-circle-xmark text-xs"></i> Rejected
+                                </span>
                             }
                         </div>
                     </div>
 
-                    <!-- Items requested table -->
-                    <div class="overflow-x-auto">
-                        <table class="table table-xs">
+                    <!-- Items Table -->
+                    <div class="overflow-x-auto rounded-xl border border-base-200">
+                        <table class="table table-xs w-full">
                             <thead>
-                                <tr class="bg-base-200/50">
-                                    <th>Material / Item</th>
+                                <tr class="bg-base-200/60 uppercase text-[10px] tracking-wider opacity-60 border-b border-base-200">
+                                    <th class="py-2.5 pl-4">Material / Raw Item</th>
                                     <th>Unit</th>
-                                    <th>Requested Quantity</th>
-                                    <th>Issued Quantity</th>
+                                    <th class="text-center">Requested Quantity</th>
+                                    <th class="text-right pr-4">Issued Quantity</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody class="divide-y divide-base-200">
                                 @foreach (var item in req.Items)
                                 {
-                                    <tr>
-                                        <td class="font-semibold text-xs">@item.ItemName</td>
-                                        <td class="text-xs">@item.Unit</td>
-                                        <td class="font-mono font-bold text-xs">@item.RequestedQuantity</td>
-                                        <td class="font-mono font-bold text-xs @(req.Status == StoreRequestStatus.Issued ? "text-emerald-600" : "text-base-content/50")">
+                                    <tr class="hover:bg-base-200/40 transition-colors">
+                                        <td class="font-bold text-xs py-2.5 pl-4 text-base-content">
+                                            <i class="fa-solid fa-cube text-primary text-[10px] mr-1.5 opacity-60"></i> @item.ItemName
+                                        </td>
+                                        <td class="text-xs opacity-70 font-mono">@item.Unit</td>
+                                        <td class="font-mono font-bold text-xs text-center">@item.RequestedQuantity</td>
+                                        <td class="font-mono font-bold text-xs text-right pr-4 @(req.Status == StoreRequestStatus.Issued ? "text-success font-black" : "opacity-40")">
                                             @(req.Status == StoreRequestStatus.Issued ? item.IssuedQuantity.ToString() : "—")
                                         </td>
                                     </tr>
@@ -81,47 +142,108 @@
                         </table>
                     </div>
 
-                    <!-- Actions & Approval Trail -->
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pt-3 border-t border-base-200 mt-3 text-xs">
+                    <!-- Actions & Approval Audit Trail -->
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-3 border-t border-base-200 text-xs">
                         <div>
                             @if (req.Status == StoreRequestStatus.Issued)
                             {
-                                <span class="text-emerald-700 font-semibold">
-                                    <i class="fa-solid fa-circle-check"></i> Approved & Issued by @req.ApprovedBy at @req.ApprovedAt?.ToString("yyyy-MM-dd HH:mm")
+                                <span class="text-success font-semibold flex items-center gap-1.5">
+                                    <i class="fa-solid fa-circle-check text-success"></i> Approved & Issued by <strong>@req.ApprovedBy</strong> on @req.ApprovedAt?.ToString("yyyy-MM-dd HH:mm")
                                 </span>
                             }
                             else if (req.Status == StoreRequestStatus.Rejected)
                             {
-                                <span class="text-error font-semibold">
-                                    <i class="fa-solid fa-circle-xmark"></i> Rejected by @req.ApprovedBy. Reason: @req.RejectionReason
+                                <span class="text-error font-semibold flex items-center gap-1.5">
+                                    <i class="fa-solid fa-circle-xmark text-error"></i> Rejected by <strong>@req.ApprovedBy</strong>. Reason: @req.RejectionReason
                                 </span>
                             }
                             else
                             {
-                                <span class="text-warning font-semibold">
-                                    <i class="fa-solid fa-hourglass-half"></i> Store Keeper approval required to deduct materials from stock.
+                                <span class="text-warning font-semibold flex items-center gap-1.5">
+                                    <i class="fa-solid fa-hourglass-half text-warning"></i> Store Keeper approval required to deduct materials from warehouse inventory.
                                 </span>
                             }
                         </div>
 
                         @if (req.Status == StoreRequestStatus.Pending)
                         {
-                            <div class="flex gap-2">
+                            <div class="flex items-center gap-2">
                                 <form method="post" asp-page-handler="Approve" asp-route-id="@req.Id">
-                                    <button type="submit" class="btn btn-xs btn-success text-white gap-1">
-                                        <i class="fa-solid fa-check"></i> Approve & Issue Stock
+                                    <button type="submit" class="btn btn-xs btn-neutral rounded-lg font-bold gap-1 text-success shadow-xs">
+                                        <i class="fa-solid fa-check text-xs"></i> Approve & Issue Stock
                                     </button>
                                 </form>
                                 <form method="post" asp-page-handler="Reject" asp-route-id="@req.Id">
-                                    <button type="submit" class="btn btn-xs btn-error text-white gap-1" onclick="return confirm('Reject this material request?');">
-                                        <i class="fa-solid fa-xmark"></i> Reject
+                                    <button type="submit" class="btn btn-xs btn-ghost text-error rounded-lg gap-1 font-semibold" onclick="return confirm('Reject this material requisition?');">
+                                        <i class="fa-solid fa-xmark text-xs"></i> Reject
                                     </button>
                                 </form>
                             </div>
                         }
                     </div>
+
                 </div>
+
             </div>
         }
     </div>
+
+    <!-- Empty Search State -->
+    <div id="noRequestsAlert" class="alert alert-info shadow-xs rounded-2xl text-xs py-4 hidden flex items-center gap-3">
+        <i class="fa-solid fa-circle-info text-base"></i>
+        <span>No store requisitions match your search criteria or selected status filter.</span>
+    </div>
 </div>
+
+@section Scripts {
+<script>
+    let activeStatus = 'all';
+
+    function setStatusFilter(status, button) {
+        activeStatus = status;
+
+        document.querySelectorAll('.filter-pill').forEach(btn => {
+            btn.className = 'btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill';
+        });
+        button.className = 'btn btn-xs btn-neutral rounded-lg font-bold filter-pill';
+
+        filterRequests();
+    }
+
+    function filterRequests() {
+        const query = document.getElementById('requestSearchInput').value.toLowerCase().trim();
+        const cards = document.querySelectorAll('.request-card');
+        const countBadge = document.getElementById('requestCountBadge');
+        const noResults = document.getElementById('noRequestsAlert');
+
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const num = card.getAttribute('data-number') || '';
+            const purpose = card.getAttribute('data-purpose') || '';
+            const requester = card.getAttribute('data-requester') || '';
+            const dept = card.getAttribute('data-dept') || '';
+            const status = card.getAttribute('data-status') || '';
+            const materials = card.getAttribute('data-materials') || '';
+
+            const matchesQuery = !query || num.includes(query) || purpose.includes(query) || requester.includes(query) || dept.includes(query) || materials.includes(query);
+            const matchesStatus = (activeStatus === 'all') || (status === activeStatus);
+
+            if (matchesQuery && matchesStatus) {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        countBadge.innerText = `${visibleCount} Request${visibleCount !== 1 ? 's' : ''}`;
+
+        if (visibleCount === 0) {
+            noResults.classList.remove('hidden');
+        } else {
+            noResults.classList.add('hidden');
+        }
+    }
+</script>
+}

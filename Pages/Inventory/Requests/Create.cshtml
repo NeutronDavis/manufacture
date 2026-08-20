@@ -5,129 +5,336 @@
 }
 
 <div class="space-y-6 w-full">
-    <!-- Breadcrumb & Header -->
+    <!-- Breadcrumb & Header Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <div class="text-xs text-slate-400 mb-1 flex items-center gap-1.5 font-medium">
-                <a asp-page="/Dashboard/Index" class="hover:text-slate-600">Home</a>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
                 <span>&gt;</span>
-                <a asp-page="/Inventory/Requests/Index" class="hover:text-slate-600">Store Requisitions</a>
+                <a asp-page="/Inventory/Requests/Index" class="hover:underline">Store Requisitions</a>
                 <span>&gt;</span>
-                <span class="text-slate-700">New Requisition</span>
+                <span class="text-primary font-bold">New Requisition</span>
             </div>
-            <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                <i class="fa-solid fa-clipboard-question text-stone-900"></i> Requisition Raw Materials
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-clipboard-question text-primary"></i> Requisition Raw Materials
             </h1>
-            <p class="text-xs text-slate-500 mt-0.5">
-                Request flour bags, sugar, yeast, and packaging nylons from the warehouse keeper
+            <p class="text-xs opacity-70 mt-0.5">
+                Request flour bags, sugar, yeast, and packaging nylons from the warehouse keeper for production runs.
             </p>
         </div>
         <div>
-            <a asp-page="/Inventory/Requests/Index" class="text-xs text-slate-500 hover:text-slate-900 font-semibold flex items-center gap-1.5">
-                <i class="fa-solid fa-arrow-left text-[10px]"></i> Back to Requisitions
+            <a asp-page="/Inventory/Requests/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Requisitions
             </a>
         </div>
     </div>
 
     <!-- Standard 2-Column Full-Width Form Layout -->
-    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+    <form method="post" id="requisitionForm" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
         
         <!-- Left Section (~70% width, 8 Cols) -->
         <div class="lg:col-span-8 space-y-6">
             
             <!-- Request Header Info -->
-            <div class="erp-card p-6 space-y-4">
-                <div class="flex items-center gap-2 font-bold text-slate-900 text-sm border-b border-slate-100 pb-3">
-                    <div class="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center text-xs">
-                        <i class="fa-regular fa-clipboard"></i>
-                    </div>
-                    <span>Requisition Purpose & Department</span>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="erp-label">Requested By (Manager / Baker) <span class="text-rose-500">*</span></label>
-                        <input type="text" asp-for="RequestInput.RequestedBy" class="erp-input" required />
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-regular fa-clipboard"></i>
+                            </div>
+                            <span>Requisition Purpose & Department</span>
+                        </div>
+                        <span class="badge badge-neutral badge-xs font-bold uppercase tracking-wider">Internal Issue</span>
                     </div>
 
-                    <div>
-                        <label class="erp-label">Department / Shift</label>
-                        <input type="text" asp-for="RequestInput.Department" class="erp-input" value="Bakery Production Floor" required />
-                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Requested By (Manager / Baker) <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="RequestInput.RequestedBy" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" required />
+                        </div>
 
-                    <div class="sm:col-span-2">
-                        <label class="erp-label">Target Production Batch / Purpose <span class="text-rose-500">*</span></label>
-                        <input type="text" asp-for="RequestInput.Purpose" class="erp-input" placeholder="e.g. Morning Shift Batch #103 Jumbo Bread (500 loaves)" required />
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Department / Shift</span>
+                            </label>
+                            <input type="text" asp-for="RequestInput.Department" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" value="Bakery Production Floor" required />
+                        </div>
+
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Target Production Batch / Purpose <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="RequestInput.Purpose" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. Morning Shift Batch #103 Jumbo Bread (500 loaves)" required />
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Material Quantities Table -->
-            <div class="erp-card p-6 space-y-4">
-                <div class="font-bold text-slate-900 text-sm border-b border-slate-100 pb-3">
-                    Required Materials & Quantities
-                </div>
+            <!-- Material Quantities Table & Add Tool -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+                <div class="card-body p-6 space-y-5">
+                    
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-wheat-awn"></i>
+                            </div>
+                            <span>Required Materials & Quantities</span>
+                        </div>
+                        <span class="badge badge-neutral badge-xs font-mono font-bold" id="itemCountBadge">0 Items</span>
+                    </div>
 
-                <div class="overflow-x-auto">
-                    <table class="table table-sm w-full text-xs">
-                        <thead>
-                            <tr class="text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-100 bg-slate-50/50">
-                                <th>Material Name</th>
-                                <th>Unit</th>
-                                <th>Current Stock</th>
-                                <th class="w-40 text-right pr-4">Quantity to Request</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            @for (int i = 0; i < Model.AvailableItems.Count; i++)
-                            {
-                                var item = Model.AvailableItems[i];
-                                <tr class="hover:bg-slate-50/60 transition-colors">
-                                    <td>
-                                        <input type="hidden" name="RequestInput.Items[@i].InventoryItemId" value="@item.Id" />
-                                        <input type="hidden" name="RequestInput.Items[@i].ItemName" value="@item.Name" />
-                                        <div class="font-bold text-xs text-slate-900">@item.Name</div>
-                                        <span class="badge bg-slate-100 text-slate-600 border-0 text-[10px] font-mono font-semibold">@item.ItemCode</span>
-                                    </td>
-                                    <td>
-                                        <input type="hidden" name="RequestInput.Items[@i].Unit" value="@item.Unit" />
-                                        <span class="text-xs font-mono text-slate-600">@item.Unit</span>
-                                    </td>
-                                    <td>
-                                        <span class="font-mono text-xs font-semibold @(item.IsLowStock ? "text-rose-600 font-bold" : "text-slate-800")">
-                                            @item.QuantityInStock.ToString("N1") @item.Unit
-                                        </span>
-                                    </td>
-                                    <td class="w-40 text-right pr-4">
-                                        <input type="number" step="0.1" min="0" 
-                                               name="RequestInput.Items[@i].RequestedQuantity" 
-                                               value="@(i == 0 ? "4" : (i == 1 ? "1" : "0"))" 
-                                               class="erp-input w-28 text-center font-mono font-bold" />
-                                    </td>
+                    <!-- Material Picker Bar (Add to Request Tool) -->
+                    <div class="p-4 rounded-2xl bg-base-200 border border-base-300 space-y-3">
+                        <div class="text-xs font-bold text-base-content uppercase tracking-wider opacity-70">
+                            Select Raw Material to Add to Requisition:
+                        </div>
+                        <div class="flex flex-col sm:flex-row items-center gap-3">
+                            <div class="flex-1 w-full">
+                                <select id="materialPickerSelect" class="select select-bordered select-sm w-full bg-base-100 border-base-300 rounded-xl text-xs font-semibold focus:border-primary">
+                                    <option value="">-- Choose Raw Material --</option>
+                                    @foreach (var item in Model.AvailableItems)
+                                    {
+                                        <option value="@item.Id" data-name="@item.Name" data-code="@item.ItemCode" data-unit="@item.Unit" data-stock="@item.QuantityInStock">
+                                            @item.Name (@item.ItemCode) — Stock: @item.QuantityInStock.ToString("N1") @item.Unit
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="w-full sm:w-28 flex items-center gap-1.5">
+                                <span class="text-xs font-bold opacity-60">Qty:</span>
+                                <input type="number" id="materialPickerQty" value="4" min="0.1" step="0.5" class="input input-bordered input-sm w-full font-mono font-bold text-center bg-base-100 border-base-300 rounded-xl text-xs focus:border-primary" />
+                            </div>
+
+                            <button type="button" onclick="addMaterialToRequest()" class="btn btn-sm btn-neutral rounded-xl font-bold px-4 text-xs shadow-xs gap-1.5 w-full sm:w-auto">
+                                <i class="fa-solid fa-plus text-xs"></i> Add Material
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Materials Table -->
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm w-full text-xs">
+                            <thead>
+                                <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                                    <th class="py-3 pl-3">Material Name</th>
+                                    <th>Unit</th>
+                                    <th>Warehouse Stock</th>
+                                    <th class="text-center w-36">Request Quantity</th>
+                                    <th>Status</th>
+                                    <th class="text-center w-16 pr-3">Action</th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody id="materialsTableBody" class="divide-y divide-base-200">
+                                <!-- Dynamic rows rendered here by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Empty State Alert -->
+                    <div id="emptyMaterialsAlert" class="alert alert-info shadow-xs rounded-2xl text-xs py-4 flex items-center gap-3">
+                        <i class="fa-solid fa-circle-info text-base"></i>
+                        <span><strong>No materials added yet.</strong> Select raw materials from the dropdown above and click <strong>"+ Add Material"</strong> to build your store requisition.</span>
+                    </div>
+
                 </div>
             </div>
         </div>
 
         <!-- Right Sticky Section (~30% width, 4 Cols) -->
         <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
-            <div class="erp-card p-6 space-y-4">
-                <div class="font-bold text-slate-900 text-sm">Actions</div>
-                <p class="text-xs text-slate-500 leading-relaxed">
-                    Submitting this requisition will alert the store keeper to approve and issue materials for dough mixing.
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-paper-plane text-primary"></i> Dispatch Actions
+                    </h2>
+                    <span class="badge badge-success badge-xs font-bold">Pending Approval</span>
+                </div>
+
+                <!-- Live Metrics Summary -->
+                <div class="space-y-2.5 text-xs font-mono">
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Total Materials:</span>
+                        <span class="font-bold text-base-content" id="cardTotalCount">0 Items</span>
+                    </div>
+
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Store Status:</span>
+                        <span class="badge badge-success badge-xs font-bold font-sans">Ready to Submit</span>
+                    </div>
+                </div>
+
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    Submitting this requisition will alert the warehouse store keeper to verify stock, approve portions, and issue physical materials for dough mixing.
                 </p>
 
-                <button type="submit" class="btn-obsidian w-full py-2.5">
-                    <i class="fa-solid fa-paper-plane text-xs"></i> Submit Store Requisition
-                </button>
+                <div class="space-y-2 pt-2 border-t border-base-200">
+                    <button type="submit" class="btn btn-neutral w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
+                        <i class="fa-solid fa-paper-plane text-xs"></i> Submit Store Requisition
+                    </button>
 
-                <div class="text-center pt-1">
-                    <a asp-page="/Inventory/Requests/Index" class="text-xs text-slate-500 hover:text-slate-900 font-medium">Cancel</a>
+                    <a asp-page="/Inventory/Requests/Index" class="btn btn-ghost w-full rounded-xl text-xs font-semibold">
+                        Cancel
+                    </a>
                 </div>
+            </div>
+
+            <!-- Workflow Tip -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 text-xs space-y-2">
+                <div class="font-bold text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-shield-check text-success"></i> Stock Deduction Policy
+                </div>
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    Inventory balances are only deducted once the store keeper physically confirms and issues the items from the warehouse floor.
+                </p>
             </div>
         </div>
     </form>
 </div>
+
+@section Scripts {
+<script>
+    let requestedItems = [];
+
+    function addMaterialToRequest() {
+        const select = document.getElementById('materialPickerSelect');
+        const qtyInput = document.getElementById('materialPickerQty');
+
+        const selectedOpt = select.options[select.selectedIndex];
+        const itemId = parseInt(select.value);
+        const qty = parseFloat(qtyInput.value) || 0;
+
+        if (!itemId) {
+            alert('Please choose a raw material from the dropdown.');
+            return;
+        }
+
+        if (qty <= 0) {
+            alert('Please specify a quantity greater than 0.');
+            return;
+        }
+
+        const name = selectedOpt.getAttribute('data-name');
+        const code = selectedOpt.getAttribute('data-code');
+        const unit = selectedOpt.getAttribute('data-unit');
+        const stock = parseFloat(selectedOpt.getAttribute('data-stock')) || 0;
+
+        // Check if item already exists
+        const existing = requestedItems.find(item => item.id === itemId);
+        if (existing) {
+            existing.quantity += qty;
+        } else {
+            requestedItems.push({
+                id: itemId,
+                name: name,
+                code: code,
+                unit: unit,
+                stock: stock,
+                quantity: qty
+            });
+        }
+
+        select.value = "";
+        qtyInput.value = "4";
+
+        renderMaterials();
+    }
+
+    function removeMaterial(index) {
+        requestedItems.splice(index, 1);
+        renderMaterials();
+    }
+
+    function stepMaterialQty(index, delta) {
+        if (requestedItems[index]) {
+            requestedItems[index].quantity = Math.max(0.1, requestedItems[index].quantity + delta);
+            renderMaterials();
+        }
+    }
+
+    function updateMaterialQty(index, newQty) {
+        const val = parseFloat(newQty) || 0;
+        if (val <= 0) {
+            requestedItems.splice(index, 1);
+        } else {
+            requestedItems[index].quantity = val;
+        }
+        renderMaterials();
+    }
+
+    function renderMaterials() {
+        const tbody = document.getElementById('materialsTableBody');
+        const emptyAlert = document.getElementById('emptyMaterialsAlert');
+        const countBadge = document.getElementById('itemCountBadge');
+        const cardCount = document.getElementById('cardTotalCount');
+
+        tbody.innerHTML = '';
+
+        if (requestedItems.length === 0) {
+            emptyAlert.classList.remove('hidden');
+            countBadge.innerText = '0 Items';
+            cardCount.innerText = '0 Items';
+        } else {
+            emptyAlert.classList.add('hidden');
+            countBadge.innerText = `${requestedItems.length} Item${requestedItems.length > 1 ? 's' : ''}`;
+            cardCount.innerText = `${requestedItems.length} Material${requestedItems.length > 1 ? 's' : ''}`;
+
+            requestedItems.forEach((item, i) => {
+                const exceedsStock = item.quantity > item.stock;
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-base-200/60 transition-colors';
+                tr.innerHTML = `
+                    <td class="py-2.5 pl-3">
+                        <input type="hidden" name="RequestInput.Items[${i}].InventoryItemId" value="${item.id}" />
+                        <input type="hidden" name="RequestInput.Items[${i}].ItemName" value="${item.name}" />
+                        <div class="font-bold text-xs text-base-content">${item.name}</div>
+                        <span class="badge badge-neutral badge-xs font-mono font-bold">${item.code}</span>
+                    </td>
+                    <td class="font-mono text-xs opacity-80 py-2.5">
+                        <input type="hidden" name="RequestInput.Items[${i}].Unit" value="${item.unit}" />
+                        ${item.unit}
+                    </td>
+                    <td class="font-mono text-xs font-semibold py-2.5">
+                        ${item.stock.toFixed(1)} ${item.unit}
+                    </td>
+                    <td class="py-2.5 text-center">
+                        <div class="join inline-flex shadow-2xs">
+                            <button type="button" class="btn btn-xs btn-neutral join-item" onclick="stepMaterialQty(${i}, -1)">-1</button>
+                            <input type="number" step="0.1" min="0.1" 
+                                   name="RequestInput.Items[${i}].RequestedQuantity" 
+                                   value="${item.quantity}" 
+                                   class="input input-xs input-bordered w-16 text-center font-mono font-black text-xs join-item bg-base-100 border-base-300" 
+                                   onchange="updateMaterialQty(${i}, this.value)" />
+                            <button type="button" class="btn btn-xs btn-neutral join-item" onclick="stepMaterialQty(${i}, 1)">+1</button>
+                        </div>
+                    </td>
+                    <td class="py-2.5">
+                        ${exceedsStock 
+                            ? '<span class="badge badge-error badge-xs font-bold">Exceeds Stock</span>' 
+                            : '<span class="badge badge-success badge-xs font-bold">Available</span>'}
+                    </td>
+                    <td class="text-center pr-3 py-2.5">
+                        <button type="button" onclick="removeMaterial(${i})" class="btn btn-xs btn-ghost text-error" title="Remove item">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Pre-populate with default items if desired or render empty
+        renderMaterials();
+    });
+</script>
+}

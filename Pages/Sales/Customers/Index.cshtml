@@ -4,65 +4,169 @@
     ViewData["Title"] = "Clients, Supermarkets & Vendors";
 }
 
-<div class="space-y-6">
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <div class="text-xs breadcrumbs mb-1">
-                <ul>
-                    <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
-                    <li><a asp-page="/Sales/Index">Sales</a></li>
-                    <li class="font-semibold text-primary">Customers & Vendors</li>
-                </ul>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Sales/Orders/Index" class="hover:underline">Sales & POS</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Clients & Vendors</span>
             </div>
-            <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
                 <i class="fa-solid fa-store text-primary"></i> Clients, Supermarkets & Vendor Directory
             </h1>
-            <p class="text-sm text-base-content/60">Manage supermarket accounts, vendor wholesaler codes, and credit receivable ledgers</p>
+            <p class="text-xs opacity-70 mt-0.5">
+                Manage supermarket accounts, vendor wholesaler codes, and credit receivable ledgers.
+            </p>
         </div>
-        <a asp-page="/Sales/Customers/Create" class="btn btn-primary gap-2">
-            <i class="fa-solid fa-plus"></i> Register Client / Vendor
-        </a>
+        <div>
+            <a asp-page="/Sales/Customers/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
+                <i class="fa-solid fa-plus text-xs"></i> Register Client / Vendor
+            </a>
+        </div>
     </div>
 
-    <div class="card bg-base-100 border border-base-300 shadow-xs">
-        <div class="card-body p-5">
+    <!-- Client Directory KPI Stats Bar -->
+    <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+        <div class="stat p-5">
+            <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-users"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Registered Clients</div>
+            <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.Customers.Count</div>
+            <div class="stat-desc opacity-70">Supermarkets, wholesalers & vendors</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-base-content text-2xl"><i class="fa-solid fa-shop"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Supermarket Outlets</div>
+            <div class="stat-value text-2xl font-black font-mono text-base-content">
+                @Model.Customers.Count(c => c.Category == Manufacture.Models.Entities.CustomerCategory.Supermarket)
+            </div>
+            <div class="stat-desc opacity-70">Active retail partners</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-error text-2xl"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Credit Receivables</div>
+            <div class="stat-value text-2xl font-black font-mono text-error">
+                ₦@Model.Customers.Sum(c => c.OutstandingBalance).ToString("N0")
+            </div>
+            <div class="stat-desc opacity-70">Pending customer ledger balances</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Clear Accounts</div>
+            <div class="stat-value text-2xl font-black font-mono text-success">
+                @Model.Customers.Count(c => c.OutstandingBalance == 0)
+            </div>
+            <div class="stat-desc font-semibold text-success">Zero outstanding credit debt</div>
+        </div>
+    </div>
+
+    <!-- Search & Category Filter Toolbar -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4 space-y-3">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <!-- Search Bar -->
+            <div class="relative w-full sm:w-96">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-xs opacity-50"></i>
+                <input type="text" 
+                       id="customerSearchInput" 
+                       oninput="filterCustomers()" 
+                       placeholder="Search by client name, code (e.g. CLI-101), phone, or address..." 
+                       class="input input-bordered input-sm w-full pl-9 bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" />
+            </div>
+
+            <!-- Total Count -->
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                <span id="customerCountBadge" class="badge badge-neutral badge-xs font-mono font-bold">
+                    @Model.Customers.Count Clients
+                </span>
+            </div>
+        </div>
+
+        <!-- Quick Category Filter Pills -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            <button type="button" onclick="setCategoryFilter('all', this)" class="btn btn-xs btn-neutral rounded-lg font-bold filter-pill">All Clients</button>
+            <button type="button" onclick="setCategoryFilter('supermarket', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill">Supermarkets</button>
+            <button type="button" onclick="setCategoryFilter('wholesaler', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill">Wholesalers</button>
+            <button type="button" onclick="setCategoryFilter('vendor', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill">Vendors</button>
+            <button type="button" onclick="setCategoryFilter('debtors', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill text-error font-semibold">With Outstanding Debt</button>
+        </div>
+    </div>
+
+    <!-- Clients Table Card -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+        <div class="card-body p-6 space-y-4">
+            
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                    <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                        <i class="fa-solid fa-address-book"></i>
+                    </div>
+                    <span>Customer Accounts & Balances</span>
+                </div>
+            </div>
+
             <div class="overflow-x-auto">
-                <table class="table table-sm table-zebra">
+                <table class="table table-sm w-full text-xs">
                     <thead>
-                        <tr class="bg-base-200/70">
-                            <th>Member / Client Code</th>
-                            <th>Customer Name</th>
+                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                            <th class="py-3 pl-4">Client Code</th>
+                            <th>Customer / Company Name</th>
                             <th>Category</th>
                             <th>Phone Contact</th>
                             <th>Delivery Address</th>
                             <th>Outstanding Balance</th>
-                            <th class="text-right">Actions</th>
+                            <th class="text-right pr-4">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="customersTableBody" class="divide-y divide-base-200">
                         @foreach (var c in Model.Customers)
                         {
-                            <tr>
-                                <td class="font-mono text-xs font-bold text-primary">@c.MemberCode</td>
-                                <td class="font-bold text-xs">@c.Name</td>
-                                <td>
-                                    <span class="badge badge-outline badge-xs">@c.Category</span>
+                            <tr class="hover:bg-base-200/60 transition-colors customer-row"
+                                data-code="@c.MemberCode.ToLower()"
+                                data-name="@c.Name.ToLower()"
+                                data-category="@c.Category.ToString().ToLower()"
+                                data-phone="@c.PhoneNumber.ToLower()"
+                                data-address="@c.Address.ToLower()"
+                                data-hasdebt="@(c.OutstandingBalance > 0 ? "true" : "false")">
+                                
+                                <td class="font-mono text-xs font-bold pl-4 py-3 text-base-content">
+                                    <span class="badge badge-neutral badge-xs font-mono font-bold">@c.MemberCode</span>
                                 </td>
-                                <td class="text-xs">@c.PhoneNumber</td>
-                                <td class="text-xs text-base-content/70 max-w-xs truncate">@c.Address</td>
+                                <td class="font-bold text-base-content py-3">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fa-solid fa-store text-primary text-[10px] opacity-60"></i>
+                                        <span>@c.Name</span>
+                                    </div>
+                                </td>
                                 <td>
+                                    <span class="badge badge-ghost border border-base-300 text-[10px] font-semibold">@c.Category</span>
+                                </td>
+                                <td class="font-mono py-3">
+                                    <a href="tel:@c.PhoneNumber" class="text-primary font-bold hover:underline">@c.PhoneNumber</a>
+                                </td>
+                                <td class="opacity-70 py-3 max-w-xs truncate text-[11px]">
+                                    <span class="flex items-center gap-1.5 truncate">
+                                        <i class="fa-solid fa-location-dot text-primary text-[10px]"></i> @c.Address
+                                    </span>
+                                </td>
+                                <td class="py-3 font-mono">
                                     @if (c.OutstandingBalance > 0)
                                     {
-                                        <span class="font-bold text-xs text-error font-mono">₦@c.OutstandingBalance.ToString("N0")</span>
+                                        <span class="font-black text-xs text-error">₦@c.OutstandingBalance.ToString("N0")</span>
                                     }
                                     else
                                     {
-                                        <span class="text-xs text-success font-semibold">₦0.00 (Clear)</span>
+                                        <span class="badge badge-success badge-xs font-bold font-sans">Clear (₦0.00)</span>
                                     }
                                 </td>
-                                <td class="text-right">
-                                    <a asp-page="/Sales/Orders/Create" asp-route-customerId="@c.Id" class="btn btn-xs btn-outline btn-primary">
-                                        <i class="fa-solid fa-cart-plus"></i> Create Order
+                                <td class="text-right pr-4 py-3">
+                                    <a asp-page="/Sales/Orders/Create" asp-route-customerId="@c.Id" class="btn btn-xs btn-neutral rounded-lg gap-1.5 text-xs font-bold shadow-xs">
+                                        <i class="fa-solid fa-cart-plus text-[10px]"></i> Create Order
                                     </a>
                                 </td>
                             </tr>
@@ -70,6 +174,72 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- No Results Alert -->
+            <div id="noCustomersAlert" class="alert alert-info shadow-xs rounded-2xl text-xs py-4 hidden flex items-center gap-3">
+                <i class="fa-solid fa-circle-info text-base"></i>
+                <span>No clients matched your search query or selected category filter.</span>
+            </div>
+
         </div>
     </div>
 </div>
+
+@section Scripts {
+<script>
+    let activeCategory = 'all';
+
+    function setCategoryFilter(category, button) {
+        activeCategory = category;
+
+        document.querySelectorAll('.filter-pill').forEach(btn => {
+            btn.className = 'btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill';
+        });
+        button.className = 'btn btn-xs btn-neutral rounded-lg font-bold filter-pill';
+
+        filterCustomers();
+    }
+
+    function filterCustomers() {
+        const query = document.getElementById('customerSearchInput').value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.customer-row');
+        const countBadge = document.getElementById('customerCountBadge');
+        const noResults = document.getElementById('noCustomersAlert');
+
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const code = row.getAttribute('data-code') || '';
+            const name = row.getAttribute('data-name') || '';
+            const category = row.getAttribute('data-category') || '';
+            const phone = row.getAttribute('data-phone') || '';
+            const address = row.getAttribute('data-address') || '';
+            const hasDebt = row.getAttribute('data-hasdebt') === 'true';
+
+            const matchesQuery = !query || code.includes(query) || name.includes(query) || category.includes(query) || phone.includes(query) || address.includes(query);
+            
+            let matchesCategory = true;
+            if (activeCategory === 'debtors') {
+                matchesCategory = hasDebt;
+            } else if (activeCategory !== 'all') {
+                matchesCategory = category.includes(activeCategory);
+            }
+
+            if (matchesQuery && matchesCategory) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        countBadge.innerText = `${visibleCount} Client${visibleCount !== 1 ? 's' : ''}`;
+
+        if (visibleCount === 0) {
+            noResults.classList.remove('hidden');
+        } else {
+            noResults.classList.add('hidden');
+        }
+    }
+</script>
+}

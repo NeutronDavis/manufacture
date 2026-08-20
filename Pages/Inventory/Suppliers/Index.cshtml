@@ -1,62 +1,203 @@
 @page
 @model Manufacture.Pages.Inventory.Suppliers.IndexModel
 @{
-    ViewData["Title"] = "Suppliers & Vendors Directory";
+    ViewData["Title"] = "Approved Suppliers Directory";
 }
 
-<div class="space-y-6">
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <div class="text-xs breadcrumbs mb-1">
-                <ul>
-                    <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
-                    <li><a asp-page="/Inventory/Index">Inventory</a></li>
-                    <li class="font-semibold text-primary">Suppliers</li>
-                </ul>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Inventory/Index" class="hover:underline">Store Inventory</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Approved Suppliers</span>
             </div>
-            <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
-                <i class="fa-solid fa-handshake text-primary"></i> Suppliers & Vendor Directory
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-handshake text-primary"></i> Approved Suppliers & Vendor Directory
             </h1>
-            <p class="text-sm text-base-content/60">Flour mills, sugar refineries, yeast importers and nylon packaging suppliers with direct contacts</p>
+            <p class="text-xs opacity-70 mt-0.5">
+                Flour mills, sugar refineries, active yeast importers, and nylon packaging partners with direct procurement contacts.
+            </p>
         </div>
-        <a asp-page="/Inventory/Suppliers/Create" class="btn btn-primary gap-2">
-            <i class="fa-solid fa-plus"></i> Add New Supplier
-        </a>
+        <div>
+            <a asp-page="/Inventory/Suppliers/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
+                <i class="fa-solid fa-plus text-xs"></i> Register New Supplier
+            </a>
+        </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Search & Category Filter Toolbar -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4 space-y-3">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <!-- Search Bar -->
+            <div class="relative w-full sm:w-96">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-xs opacity-50"></i>
+                <input type="text" 
+                       id="supplierSearchInput" 
+                       oninput="filterSuppliers()" 
+                       placeholder="Search suppliers by name, contact person, or category..." 
+                       class="input input-bordered input-sm w-full pl-9 bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" />
+            </div>
+
+            <!-- Category Pills & Count -->
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                <span id="supplierCountBadge" class="badge badge-neutral badge-xs font-mono font-bold">
+                    @Model.Suppliers.Count Suppliers
+                </span>
+            </div>
+        </div>
+
+        <!-- Quick Category Filter Pills -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            <button type="button" onclick="setCategoryFilter('all', this)" class="btn btn-xs btn-neutral rounded-lg font-bold filter-pill">All Categories</button>
+            <button type="button" onclick="setCategoryFilter('flour', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill">Flour & Grains</button>
+            <button type="button" onclick="setCategoryFilter('packaging', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill">Packaging</button>
+            <button type="button" onclick="setCategoryFilter('sweeteners', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill">Sweeteners & Yeast</button>
+            <button type="button" onclick="setCategoryFilter('fats', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill">Fats & Oils</button>
+            <button type="button" onclick="setCategoryFilter('equipment', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill">Equipment</button>
+        </div>
+    </div>
+
+    <!-- Grid of Supplier Cards -->
+    <div id="suppliersGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         @foreach (var s in Model.Suppliers)
         {
-            <div class="card bg-base-100 border border-base-300 shadow-xs">
-                <div class="card-body p-5 space-y-3">
-                    <div class="flex justify-between items-start">
+            <div class="card bg-base-100 border border-base-300 shadow-xs hover:shadow-md hover:border-primary transition-all duration-200 rounded-2xl flex flex-col justify-between supplier-card"
+                 data-name="@s.Name.ToLower()" 
+                 data-contact="@s.ContactPerson.ToLower()" 
+                 data-category="@s.SupplyCategory.ToLower()" 
+                 data-address="@s.Address.ToLower()" 
+                 data-email="@s.Email.ToLower()">
+                
+                <div class="card-body p-6 space-y-4">
+                    <!-- Top Header: Category Badge & Verification Status -->
+                    <div class="flex justify-between items-start gap-2">
                         <div>
-                            <span class="badge badge-outline badge-xs mb-1">@s.SupplyCategory</span>
-                            <h2 class="font-bold text-base text-base-content">@s.Name</h2>
+                            <span class="badge badge-neutral badge-xs font-bold mb-1.5">@s.SupplyCategory</span>
+                            <h2 class="font-black text-base text-base-content tracking-tight">@s.Name</h2>
                         </div>
-                        <span class="badge badge-success badge-xs">Verified Partner</span>
+                        <span class="badge badge-success badge-xs font-bold gap-1 shrink-0">
+                            <i class="fa-solid fa-circle-check text-[9px]"></i> Verified Partner
+                        </span>
                     </div>
 
-                    <div class="space-y-1.5 text-xs text-base-content/80">
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-user text-primary w-4 text-center"></i>
-                            <span>Contact Person: <strong>@s.ContactPerson</strong></span>
+                    <!-- Contact Details Box -->
+                    <div class="space-y-2.5 bg-base-200 border border-base-300 p-4 rounded-xl text-xs">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-6 h-6 rounded-lg bg-base-100 border border-base-300 flex items-center justify-center text-primary text-xs shrink-0">
+                                <i class="fa-regular fa-user"></i>
+                            </div>
+                            <div>
+                                <span class="text-[10px] opacity-60 uppercase font-bold block">Representative:</span>
+                                <span class="font-bold text-base-content">@s.ContactPerson</span>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-2 font-mono">
-                            <i class="fa-solid fa-phone text-primary w-4 text-center"></i>
-                            <a href="tel:@s.PhoneNumber" class="link link-hover font-bold text-primary">@s.PhoneNumber</a>
+
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-6 h-6 rounded-lg bg-base-100 border border-base-300 flex items-center justify-center text-primary text-xs shrink-0">
+                                <i class="fa-solid fa-phone"></i>
+                            </div>
+                            <div>
+                                <span class="text-[10px] opacity-60 uppercase font-bold block">Direct Line:</span>
+                                <a href="tel:@s.PhoneNumber" class="font-mono font-bold text-primary hover:underline">@s.PhoneNumber</a>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-envelope text-primary w-4 text-center"></i>
-                            <span>@s.Email</span>
+
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-6 h-6 rounded-lg bg-base-100 border border-base-300 flex items-center justify-center text-primary text-xs shrink-0">
+                                <i class="fa-regular fa-envelope"></i>
+                            </div>
+                            <div class="truncate">
+                                <span class="text-[10px] opacity-60 uppercase font-bold block">Email Orders:</span>
+                                <a href="mailto:@s.Email" class="font-mono text-xs opacity-90 hover:text-primary truncate block">@s.Email</a>
+                            </div>
                         </div>
-                        <div class="flex items-start gap-2">
-                            <i class="fa-solid fa-location-dot text-primary w-4 text-center mt-0.5"></i>
-                            <span>@s.Address</span>
+
+                        <div class="flex items-start gap-2.5 pt-1 border-t border-base-300">
+                            <div class="w-6 h-6 rounded-lg bg-base-100 border border-base-300 flex items-center justify-center text-primary text-xs shrink-0 mt-0.5">
+                                <i class="fa-solid fa-location-dot"></i>
+                            </div>
+                            <div>
+                                <span class="text-[10px] opacity-60 uppercase font-bold block">Depot Location:</span>
+                                <span class="text-[11px] opacity-80 leading-relaxed">@s.Address</span>
+                            </div>
                         </div>
                     </div>
+
+                    <!-- Quick Actions Footer -->
+                    <div class="flex items-center justify-between gap-2 pt-2 border-t border-base-200">
+                        <a href="tel:@s.PhoneNumber" class="btn btn-xs btn-outline border-base-300 rounded-lg gap-1.5 text-xs font-semibold">
+                            <i class="fa-solid fa-phone text-[10px]"></i> Call Supplier
+                        </a>
+                        <a href="mailto:@s.Email" class="btn btn-xs btn-ghost text-primary rounded-lg gap-1 text-xs font-semibold">
+                            <i class="fa-solid fa-paper-plane text-[10px]"></i> Send Order Email
+                        </a>
+                    </div>
                 </div>
+
             </div>
         }
     </div>
+
+    <!-- No Results State -->
+    <div id="noSuppliersAlert" class="alert alert-info shadow-xs rounded-2xl text-xs py-4 hidden flex items-center gap-3">
+        <i class="fa-solid fa-circle-info text-base"></i>
+        <span>No suppliers matched your search criteria. Try another keyword or clear your category filter.</span>
+    </div>
 </div>
+
+@section Scripts {
+<script>
+    let activeCategory = 'all';
+
+    function setCategoryFilter(category, button) {
+        activeCategory = category;
+
+        // Toggle pill styling
+        document.querySelectorAll('.filter-pill').forEach(btn => {
+            btn.className = 'btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill';
+        });
+        button.className = 'btn btn-xs btn-neutral rounded-lg font-bold filter-pill';
+
+        filterSuppliers();
+    }
+
+    function filterSuppliers() {
+        const query = document.getElementById('supplierSearchInput').value.toLowerCase().trim();
+        const cards = document.querySelectorAll('.supplier-card');
+        const countBadge = document.getElementById('supplierCountBadge');
+        const noResults = document.getElementById('noSuppliersAlert');
+
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const name = card.getAttribute('data-name') || '';
+            const contact = card.getAttribute('data-contact') || '';
+            const category = card.getAttribute('data-category') || '';
+            const address = card.getAttribute('data-address') || '';
+            const email = card.getAttribute('data-email') || '';
+
+            const matchesQuery = !query || name.includes(query) || contact.includes(query) || category.includes(query) || address.includes(query) || email.includes(query);
+            const matchesCategory = (activeCategory === 'all') || category.includes(activeCategory);
+
+            if (matchesQuery && matchesCategory) {
+                card.style.display = 'flex';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        countBadge.innerText = `${visibleCount} Supplier${visibleCount !== 1 ? 's' : ''}`;
+
+        if (visibleCount === 0) {
+            noResults.classList.remove('hidden');
+        } else {
+            noResults.classList.add('hidden');
+        }
+    }
+</script>
+}

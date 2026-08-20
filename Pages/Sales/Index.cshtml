@@ -5,111 +5,181 @@
 }
 
 <div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                <i class="fa-solid fa-cash-register text-stone-900"></i> Sales & POS Operations Hub
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Sales & POS</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-cash-register text-primary"></i> Sales & POS Operations Hub
             </h1>
-            <p class="text-xs text-slate-500 mt-0.5">
-                POS Terminals, Multi-Account Cash/Transfer routing, Pre-Orders, and Dispatch verification
+            <p class="text-xs opacity-70 mt-0.5">
+                POS checkout terminals, multi-account revenue routing, pre-order demand, and loading verification.
             </p>
         </div>
-        <div class="flex gap-2">
-            <a asp-page="/Sales/Orders/PreOrders" class="btn btn-sm btn-outline border-slate-300 text-slate-700 hover:bg-slate-100 rounded-xl gap-2 font-semibold px-3.5 text-xs">
+        <div class="flex items-center gap-2">
+            <a asp-page="/Sales/Orders/PreOrders" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
                 <i class="fa-solid fa-clock-rotate-left text-xs"></i> View Pre-Orders
             </a>
-            <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-neutral bg-stone-900 hover:bg-black text-white border-0 rounded-xl gap-2 font-bold px-4 text-xs shadow-xs">
+            <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
                 <i class="fa-solid fa-cart-plus text-xs"></i> New POS Sale
             </a>
         </div>
     </div>
 
-    <!-- Multi-Account POS Terminals Overview -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        @foreach (var term in Model.Terminals)
-        {
-            <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
-                <div class="card-body p-6 space-y-4">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span class="badge bg-stone-900 text-white border-0 text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg">@term.TerminalCode</span>
-                            <h2 class="font-bold text-sm text-slate-900 mt-1.5">@term.TerminalName</h2>
-                        </div>
-                        <span class="badge bg-emerald-50 text-emerald-700 border-0 text-[10px] font-bold px-2 py-0.5">● Active</span>
-                    </div>
+    <!-- Sales & POS KPI Stats Bar -->
+    <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+        <div class="stat p-5">
+            <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-desktop"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Active POS Terminals</div>
+            <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.Terminals.Count</div>
+            <div class="stat-desc opacity-70">Dedicated checkout registers</div>
+        </div>
 
-                    <div class="text-xs text-slate-500">
-                        <i class="fa-solid fa-user-tie text-slate-400"></i> Assigned Rep: <strong class="text-slate-900">@(term.AssignedUserName ?? "Unassigned")</strong>
-                    </div>
+        <div class="stat p-5">
+            <div class="stat-figure text-base-content text-2xl"><i class="fa-solid fa-receipt"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Recent Orders</div>
+            <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.RecentOrders.Count</div>
+            <div class="stat-desc opacity-70">Processed loading slips</div>
+        </div>
 
-                    <div class="space-y-1.5 p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-xs font-mono">
-                        <div class="text-emerald-700 font-semibold flex items-center gap-1.5"><i class="fa-solid fa-money-bill-wave text-[10px]"></i> @term.CashAccountName</div>
-                        <div class="text-blue-700 font-semibold flex items-center gap-1.5"><i class="fa-solid fa-building-columns text-[10px]"></i> @term.TransferAccountName</div>
-                        <div class="text-purple-700 font-semibold flex items-center gap-1.5"><i class="fa-solid fa-credit-card text-[10px]"></i> @term.PosBankAccountName</div>
-                    </div>
-
-                    <div class="flex justify-between items-center pt-3 border-t border-slate-100">
-                        <a asp-page="/Sales/Terminals/Assign" asp-route-id="@term.Id" class="btn btn-xs btn-outline border-slate-300 text-slate-700 rounded-lg text-xs">
-                            <i class="fa-solid fa-user-plus text-[10px]"></i> Assign Rep
-                        </a>
-                        <a asp-page="/Sales/Orders/Create" class="btn btn-xs btn-neutral bg-stone-900 hover:bg-black text-white border-0 rounded-lg text-xs font-bold">
-                            Sell on @term.TerminalCode
-                        </a>
-                    </div>
-                </div>
+        <div class="stat p-5">
+            <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Revenue Tracked</div>
+            <div class="stat-value text-2xl font-black font-mono text-success">
+                ₦@Model.RecentOrders.Sum(o => o.TotalAmount).ToString("N0")
             </div>
-        }
+            <div class="stat-desc opacity-70">Cash, POS bank & transfers</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-info text-2xl"><i class="fa-solid fa-print"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Loading Slips Issued</div>
+            <div class="stat-value text-2xl font-black font-mono text-info">
+                @Model.RecentOrders.Count(o => o.IsPrintedForLoading)
+            </div>
+            <div class="stat-desc font-semibold text-success">Verified for gate exit</div>
+        </div>
     </div>
 
-    <!-- Recent Sales & Orders Table -->
-    <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl overflow-hidden">
+    <!-- Multi-Account POS Terminals Overview -->
+    <div>
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-black text-base-content flex items-center gap-2">
+                <i class="fa-solid fa-desktop text-primary"></i> Dedicated Checkout Registers
+            </h2>
+            <a asp-page="/Sales/Terminals/Index" class="btn btn-xs btn-ghost text-primary font-semibold">
+                Manage Terminals &rarr;
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            @foreach (var term in Model.Terminals)
+            {
+                <div class="card bg-base-100 border border-base-300 shadow-xs hover:shadow-md hover:border-primary transition-all duration-200 rounded-2xl flex flex-col justify-between">
+                    <div class="card-body p-6 space-y-4">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="badge badge-neutral badge-xs font-mono font-bold">@term.TerminalCode</span>
+                                <h3 class="font-black text-base text-base-content mt-1">@term.TerminalName</h3>
+                            </div>
+                            <span class="badge badge-success badge-xs font-bold">● Active</span>
+                        </div>
+
+                        <div class="p-3 bg-base-200 border border-base-300 rounded-xl flex items-center justify-between text-xs">
+                            <span class="opacity-60">Assigned Rep:</span>
+                            <span class="font-bold text-base-content">@(term.AssignedUserName ?? "Unassigned")</span>
+                        </div>
+
+                        <div class="space-y-1.5 p-3.5 rounded-xl bg-base-200 border border-base-300 text-xs font-mono">
+                            <div class="text-success font-bold flex items-center gap-2">
+                                <i class="fa-solid fa-money-bill-wave text-[10px]"></i> @term.CashAccountName
+                            </div>
+                            <div class="text-info font-bold flex items-center gap-2">
+                                <i class="fa-solid fa-building-columns text-[10px]"></i> @term.TransferAccountName
+                            </div>
+                            <div class="text-secondary font-bold flex items-center gap-2">
+                                <i class="fa-solid fa-credit-card text-[10px]"></i> @term.PosBankAccountName
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center pt-2 border-t border-base-200">
+                            <a asp-page="/Sales/Terminals/Assign" asp-route-id="@term.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg text-xs font-semibold hover:border-primary">
+                                <i class="fa-solid fa-user-plus text-[10px]"></i> Assign Rep
+                            </a>
+                            <a asp-page="/Sales/Orders/Create" class="btn btn-xs btn-neutral rounded-lg text-xs font-bold shadow-xs">
+                                Sell on @term.TerminalCode
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Recent Sales & Orders Table Card -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
         <div class="card-body p-6 space-y-4">
-            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h2 class="font-bold text-sm text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-receipt text-slate-500"></i> Recent Sales Orders & Loading Slips
-                </h2>
-                <a asp-page="/Sales/Orders/Index" class="btn btn-xs btn-outline border-slate-200 text-slate-700 rounded-xl">View All Orders &rarr;</a>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-base-200 pb-3">
+                <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                    <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                        <i class="fa-solid fa-receipt"></i>
+                    </div>
+                    <span>Recent Sales Orders & Loading Slips</span>
+                </div>
+                <a asp-page="/Sales/Orders/Index" class="btn btn-xs btn-outline border-base-300 rounded-lg text-xs font-semibold">
+                    View Complete Order Register &rarr;
+                </a>
             </div>
 
             <div class="overflow-x-auto">
                 <table class="table table-sm w-full text-xs">
                     <thead>
-                        <tr class="text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-100 bg-slate-50/50">
-                            <th>Order #</th>
+                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                            <th class="py-3 pl-4">Order #</th>
                             <th>Date / Time</th>
                             <th>Customer</th>
                             <th>Sales Rep</th>
-                            <th>Amount (₦)</th>
-                            <th>Method</th>
-                            <th>Status</th>
-                            <th class="text-right">Action</th>
+                            <th>Net Total (₦)</th>
+                            <th>Payment Channel</th>
+                            <th>Slip Status</th>
+                            <th class="text-right pr-4">Action</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100">
+                    <tbody class="divide-y divide-base-200">
                         @foreach (var order in Model.RecentOrders)
                         {
-                            <tr class="hover:bg-slate-50/60 transition-colors">
-                                <td class="font-mono text-xs font-bold text-slate-900">@order.OrderNumber</td>
-                                <td class="text-slate-500">@order.OrderDate.ToString("yyyy-MM-dd HH:mm")</td>
-                                <td class="font-bold text-slate-900">@order.CustomerName</td>
-                                <td class="text-slate-700 font-medium">@order.SalesRepName</td>
-                                <td class="font-mono text-xs font-black text-slate-900">₦@order.TotalAmount.ToString("N0")</td>
+                            <tr class="hover:bg-base-200/60 transition-colors">
+                                <td class="font-mono text-xs font-bold pl-4 py-3 text-base-content">
+                                    <span class="badge badge-neutral badge-xs font-mono font-bold">@order.OrderNumber</span>
+                                </td>
+                                <td class="font-mono text-xs opacity-70 py-3">@order.OrderDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td class="font-bold text-base-content py-3">@order.CustomerName</td>
+                                <td class="opacity-80 py-3">@order.SalesRepName</td>
+                                <td class="font-mono font-black text-success py-3">₦@order.TotalAmount.ToString("N0")</td>
                                 <td>
-                                    <span class="badge bg-blue-50 text-blue-700 border-0 text-[10px] font-semibold">@order.PaymentMethod</span>
+                                    <span class="badge badge-ghost border border-base-300 text-[10px] font-mono font-semibold">@order.PaymentMethod</span>
                                 </td>
                                 <td>
                                     @if (order.IsPrintedForLoading)
                                     {
-                                        <span class="badge bg-emerald-50 text-emerald-700 border-0 text-[10px] font-bold px-2 py-0.5">● Printed</span>
+                                        <span class="badge badge-success badge-xs font-bold gap-1">
+                                            <i class="fa-solid fa-check text-[9px]"></i> Printed
+                                        </span>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-amber-50 text-amber-700 border-0 text-[10px] font-bold px-2 py-0.5">● Unprinted</span>
+                                        <span class="badge badge-warning badge-xs font-bold gap-1">
+                                            <i class="fa-solid fa-clock text-[9px]"></i> Unprinted
+                                        </span>
                                     }
                                 </td>
-                                <td class="text-right">
-                                    <a asp-page="/Sales/Orders/Receipt" asp-route-id="@order.Id" class="btn btn-xs btn-outline border-slate-300 text-slate-700 rounded-lg">
-                                        Receipt
+                                <td class="text-right pr-4 py-3">
+                                    <a asp-page="/Sales/Orders/Receipt" asp-route-id="@order.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg gap-1 text-[11px] font-semibold hover:border-primary">
+                                        <i class="fa-solid fa-print text-[10px]"></i> Receipt
                                     </a>
                                 </td>
                             </tr>

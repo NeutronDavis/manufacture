@@ -5,95 +5,165 @@
 }
 
 <div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <div class="text-xs text-slate-400 mb-1 flex items-center gap-1.5 font-medium">
-                <a asp-page="/Dashboard/Index" class="hover:text-slate-600">Home</a>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
                 <span>&gt;</span>
-                <a asp-page="/Production/Index" class="hover:text-slate-600">Manufacturing</a>
+                <a asp-page="/Production/Index" class="hover:underline">Manufacturing</a>
                 <span>&gt;</span>
-                <span class="text-slate-700">Recipes & Costing</span>
+                <span class="text-primary font-bold">Recipes & Costing</span>
             </div>
-            <h1 class="text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-                <i class="fa-solid fa-calculator text-emerald-600"></i> Product Recipe Builder & Cost Engine
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-calculator text-primary"></i> Product Recipe Builder & Cost Engine
             </h1>
-            <p class="text-xs text-slate-500 mt-0.5">
-                Ingredient-level pricing, packaging nylon costs, and automated margin calculation
+            <p class="text-xs opacity-70 mt-0.5">
+                Ingredient-level pricing, packaging nylon costs, and automated margin calculation.
             </p>
         </div>
-        <a asp-page="/Production/Recipes/Create" class="btn btn-sm btn-neutral bg-stone-900 hover:bg-black text-white border-0 rounded-xl gap-2 font-bold px-4 shadow-xs">
-            <i class="fa-solid fa-plus text-xs"></i> Build New Recipe
-        </a>
+        <div>
+            <a asp-page="/Production/Recipes/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
+                <i class="fa-solid fa-plus text-xs"></i> Build New Recipe
+            </a>
+        </div>
     </div>
 
-    <!-- Grid of Recipe Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+    <!-- Search & Filter Bar -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="relative w-full sm:w-96">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-xs opacity-50"></i>
+                <input type="text" 
+                       id="recipeSearchInput" 
+                       oninput="filterRecipes()" 
+                       placeholder="Search recipes by name or code (e.g. BRD-JMB)..." 
+                       class="input input-bordered input-sm w-full pl-9 bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" />
+            </div>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <span id="recipeCountBadge" class="badge badge-neutral badge-xs font-mono font-bold">
+                    @Model.Recipes.Count Recipes
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grid of Clickable Recipe Cards -->
+    <div id="recipeGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         @foreach (var recipe in Model.Recipes)
         {
-            <div class="card bg-white border border-slate-200 shadow-xs hover:border-emerald-500/50 transition-all rounded-2xl flex flex-col justify-between">
+            <a asp-page="/Production/Recipes/Details" asp-route-id="@recipe.Id" 
+               class="card bg-base-100 border border-base-300 shadow-xs hover:shadow-md hover:border-primary hover:-translate-y-1 transition-all duration-200 rounded-2xl flex flex-col justify-between group cursor-pointer text-left block recipe-card"
+               data-name="@recipe.Name.ToLower()" 
+               data-code="@recipe.Code.ToLower()" 
+               data-desc="@recipe.Description.ToLower()">
+                
                 <div class="card-body p-6 space-y-4">
+                    <!-- Top Row: Code Badge, Margin Badge & Hover Arrow -->
                     <div class="flex justify-between items-start">
-                        <div>
+                        <div class="flex items-center gap-2">
                             <span class="badge badge-neutral badge-xs font-mono font-bold">@recipe.Code</span>
-                            <h2 class="text-lg font-black text-slate-800 mt-1">@recipe.Name</h2>
+                            <span class="badge @(recipe.MarginPercentage >= 30 ? "badge-success" : "badge-warning") badge-xs font-bold font-mono">
+                                @recipe.MarginPercentage% Margin
+                            </span>
                         </div>
-                        <span class="badge @(recipe.MarginPercentage >= 25 ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200") font-bold text-xs">
-                            @recipe.MarginPercentage% Margin
-                        </span>
+                        <div class="w-6 h-6 rounded-full bg-base-200 group-hover:bg-primary group-hover:text-primary-content flex items-center justify-center text-xs transition-colors shadow-2xs">
+                            <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-0.5 transition-transform"></i>
+                        </div>
                     </div>
 
-                    <p class="text-xs text-slate-500 line-clamp-2">@recipe.Description</p>
+                    <!-- Recipe Title & Description -->
+                    <div>
+                        <h2 class="text-lg font-black text-base-content group-hover:text-primary transition-colors tracking-tight">
+                            @recipe.Name
+                        </h2>
+                        <p class="text-xs opacity-70 line-clamp-2 mt-1">@recipe.Description</p>
+                    </div>
 
-                    <!-- Cost Breakdown Summary -->
-                    <div class="space-y-2 bg-slate-50 p-4 rounded-xl text-xs font-mono">
-                        <div class="flex justify-between text-slate-600">
-                            <span>Raw Ingredients Cost:</span>
-                            <span class="font-bold text-slate-800">₦@recipe.IngredientsCost.ToString("N2")</span>
+                    <!-- Cost Breakdown Summary Box -->
+                    <div class="space-y-2 bg-base-200 border border-base-300 p-4 rounded-xl text-xs font-mono">
+                        <div class="flex justify-between opacity-70">
+                            <span class="font-sans">Raw Ingredients:</span>
+                            <span class="font-bold text-base-content">₦@recipe.IngredientsCost.ToString("N2")</span>
                         </div>
-                        <div class="flex justify-between text-slate-600">
-                            <span>Nylon Packaging:</span>
-                            <span class="font-bold text-slate-800">₦@recipe.PackagingCost.ToString("N2")</span>
+                        <div class="flex justify-between opacity-70">
+                            <span class="font-sans">Nylon Packaging:</span>
+                            <span class="font-bold text-base-content">₦@recipe.PackagingCost.ToString("N2")</span>
                         </div>
-                        <div class="flex justify-between text-slate-600">
-                            <span>Labor & Baking Overhead:</span>
-                            <span class="font-bold text-slate-800">₦@recipe.LaborAndOverheadPerUnit.ToString("N2")</span>
+                        <div class="flex justify-between opacity-70">
+                            <span class="font-sans">Labor & Overhead:</span>
+                            <span class="font-bold text-base-content">₦@recipe.LaborAndOverheadPerUnit.ToString("N2")</span>
                         </div>
-                        <div class="divider my-1 border-slate-200"></div>
-                        <div class="flex justify-between font-bold text-xs text-slate-800">
-                            <span>Total Unit Cost:</span>
+                        
+                        <div class="divider my-1 border-base-300 opacity-60"></div>
+                        
+                        <div class="flex justify-between font-bold text-xs text-base-content">
+                            <span class="font-sans">Total Unit Cost:</span>
                             <span>₦@recipe.TotalUnitCost.ToString("N2")</span>
                         </div>
-                        <div class="flex justify-between font-bold text-xs text-emerald-700">
-                            <span>Selling Price:</span>
+                        <div class="flex justify-between font-bold text-xs text-primary">
+                            <span class="font-sans">Selling Price:</span>
                             <span>₦@recipe.SellingPrice.ToString("N2")</span>
                         </div>
-                        <div class="flex justify-between text-xs font-bold text-emerald-600">
-                            <span>Profit per Loaf:</span>
+                        <div class="flex justify-between text-xs font-bold text-success">
+                            <span class="font-sans">Profit per Loaf:</span>
                             <span>+₦@recipe.MarginAmount.ToString("N2")</span>
                         </div>
                     </div>
 
-                    <div class="text-[11px] text-slate-400 flex items-center gap-1.5">
-                        <i class="fa-solid fa-list-check text-emerald-600"></i> Contains @recipe.Ingredients.Count raw materials
+                    <!-- Footer Note -->
+                    <div class="flex items-center justify-between text-[11px] opacity-60 pt-1 border-t border-base-200">
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-list-check text-primary text-xs"></i> Contains @recipe.Ingredients.Count raw materials
+                        </span>
+                        <span class="group-hover:text-primary font-semibold transition-colors">
+                            View Formula & Costing &rarr;
+                        </span>
                     </div>
                 </div>
 
-                <div class="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center rounded-b-2xl">
-                    <a asp-page="/Production/Recipes/Details" asp-route-id="@recipe.Id" class="btn btn-xs btn-outline border-slate-300 text-slate-700 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 rounded-lg">
-                        <i class="fa-solid fa-eye"></i> View Formula
-                    </a>
-                    <div class="flex gap-1">
-                        <a asp-page="/Production/Recipes/Edit" asp-route-id="@recipe.Id" class="btn btn-xs btn-square btn-ghost text-slate-500 hover:text-emerald-700" title="Edit Recipe">
-                            <i class="fa-solid fa-pen-to-square"></i>
-                        </a>
-                        <form method="post" asp-page-handler="ToggleStatus" asp-route-id="@recipe.Id" onsubmit="return confirm('Toggle recipe active status?');">
-                            <button type="submit" class="btn btn-xs btn-square btn-ghost text-rose-500 hover:bg-rose-50" title="Deactivate">
-                                <i class="fa-solid fa-power-off"></i>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
+            </a>
         }
     </div>
+
+    <!-- No Results Alert -->
+    <div id="noResultsAlert" class="alert alert-info shadow-xs rounded-2xl text-xs py-4 hidden flex items-center gap-3">
+        <i class="fa-solid fa-circle-info text-base"></i>
+        <span>No recipes matched your search query. Try typing another name or product code.</span>
+    </div>
 </div>
+
+@section Scripts {
+<script>
+    function filterRecipes() {
+        const query = document.getElementById('recipeSearchInput').value.toLowerCase().trim();
+        const cards = document.querySelectorAll('.recipe-card');
+        const countBadge = document.getElementById('recipeCountBadge');
+        const noResults = document.getElementById('noResultsAlert');
+        
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const name = card.getAttribute('data-name') || '';
+            const code = card.getAttribute('data-code') || '';
+            const desc = card.getAttribute('data-desc') || '';
+
+            if (name.includes(query) || code.includes(query) || desc.includes(query)) {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        countBadge.innerText = `${visibleCount} Recipe${visibleCount !== 1 ? 's' : ''}`;
+
+        if (visibleCount === 0) {
+            noResults.classList.remove('hidden');
+        } else {
+            noResults.classList.add('hidden');
+        }
+    }
+</script>
+}

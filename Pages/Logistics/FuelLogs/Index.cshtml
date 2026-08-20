@@ -4,34 +4,50 @@
     ViewData["Title"] = "Daily Fuel & Expense Logs";
 }
 
-<div class="space-y-6">
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <div class="text-xs breadcrumbs mb-1">
-                <ul>
-                    <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
-                    <li><a asp-page="/Logistics/Index">Logistics</a></li>
-                    <li class="font-semibold text-primary">Fuel Logs</li>
-                </ul>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Logistics/Index" class="hover:underline">Fleet Logistics</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Fuel Logs</span>
             </div>
-            <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
                 <i class="fa-solid fa-gas-pump text-warning"></i> Daily Fuel & Vehicle Operating Expenses
             </h1>
-            <p class="text-sm text-base-content/60">Log petrol/diesel purchases, receipt tracking, and delivery route mileage</p>
+            <p class="text-xs opacity-70 mt-0.5">
+                Log petrol/diesel purchases, receipt tracking, and delivery route mileage.
+            </p>
         </div>
-        <a asp-page="/Logistics/FuelLogs/Create" class="btn btn-primary gap-2">
-            <i class="fa-solid fa-plus"></i> New Fuel Log
-        </a>
+        <div>
+            <a asp-page="/Logistics/FuelLogs/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
+                <i class="fa-solid fa-plus text-xs"></i> New Fuel Log
+            </a>
+        </div>
     </div>
 
-    <!-- Fuel Logs Table -->
-    <div class="card bg-base-100 border border-base-300 shadow-xs">
-        <div class="card-body p-5">
+    <!-- Fuel Logs Table Card -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+        <div class="card-body p-6 space-y-4">
+            
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                    <div class="w-7 h-7 rounded-lg bg-warning text-warning-content flex items-center justify-center text-xs font-bold shadow-xs">
+                        <i class="fa-solid fa-receipt"></i>
+                    </div>
+                    <span>Fuel Dispensation Ledger</span>
+                </div>
+                <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.FuelLogs.Count Records</span>
+            </div>
+
             <div class="overflow-x-auto">
-                <table class="table table-sm table-zebra">
+                <table class="table table-sm w-full text-xs">
                     <thead>
-                        <tr class="bg-base-200/70">
-                            <th>Date</th>
+                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                            <th class="py-3 pl-4">Date</th>
                             <th>Vehicle Plate</th>
                             <th>Driver</th>
                             <th>Litres</th>
@@ -39,25 +55,29 @@
                             <th>Total Cost (₦)</th>
                             <th>Odometer (KM)</th>
                             <th>Petrol Station & Receipt</th>
-                            <th>Delivery Route</th>
+                            <th class="text-right pr-4">Delivery Route</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="divide-y divide-base-200">
                         @foreach (var log in Model.FuelLogs)
                         {
-                            <tr>
-                                <td class="text-xs font-semibold">@log.Date.ToString("yyyy-MM-dd")</td>
-                                <td class="font-mono text-xs font-bold text-primary">@log.VehicleRegNumber</td>
-                                <td class="text-xs">@log.DriverName</td>
-                                <td class="font-mono text-xs">@log.LitresDispensed L</td>
-                                <td class="font-mono text-xs">₦@log.PricePerLitre.ToString("N0")</td>
-                                <td class="font-mono text-xs font-bold text-emerald-600">₦@log.TotalCost.ToString("N0")</td>
-                                <td class="font-mono text-xs">@log.OdometerReadingKm.ToString("N0") km</td>
-                                <td class="text-xs">
-                                    <div class="font-semibold">@log.PetrolStation</div>
-                                    <span class="font-mono text-[10px] text-base-content/60">Receipt: @log.ReceiptNumber</span>
+                            <tr class="hover:bg-base-200/60 transition-colors">
+                                <td class="font-mono text-xs opacity-70 pl-4 py-3">@log.Date.ToString("yyyy-MM-dd")</td>
+                                <td class="font-mono text-xs font-bold text-primary py-3">
+                                    <span class="badge badge-neutral badge-xs font-mono font-bold">@log.VehicleRegNumber</span>
                                 </td>
-                                <td class="text-xs text-base-content/70 max-w-xs truncate">@log.RouteDescription</td>
+                                <td class="font-bold text-base-content py-3">@log.DriverName</td>
+                                <td class="font-mono text-base-content font-bold py-3">@log.LitresDispensed.ToString("N1") L</td>
+                                <td class="font-mono opacity-70 py-3">₦@log.PricePerLitre.ToString("N0")</td>
+                                <td class="font-mono font-black text-success py-3">₦@log.TotalCost.ToString("N0")</td>
+                                <td class="font-mono text-base-content py-3">@log.OdometerReadingKm.ToString("N0") km</td>
+                                <td class="py-3">
+                                    <div class="font-bold text-base-content">@log.PetrolStation</div>
+                                    <span class="font-mono text-[10px] opacity-60">Receipt: @log.ReceiptNumber</span>
+                                </td>
+                                <td class="text-right pr-4 text-[11px] opacity-70 py-3 truncate max-w-xs">
+                                    @log.RouteDescription
+                                </td>
                             </tr>
                         }
                     </tbody>

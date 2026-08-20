@@ -5,114 +5,150 @@
 }
 
 <div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <div class="text-xs text-slate-400 mb-1 flex items-center gap-1.5 font-medium">
-                <a asp-page="/Dashboard/Index" class="hover:text-slate-600">Home</a>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
                 <span>&gt;</span>
-                <a asp-page="/Production/Recipes/Index" class="hover:text-slate-600">Recipes</a>
+                <a asp-page="/Production/Recipes/Index" class="hover:underline">Recipes & Costing</a>
                 <span>&gt;</span>
-                <span class="text-slate-700">@Model.Recipe.Name</span>
+                <span class="text-primary font-bold">@Model.Recipe.Name</span>
             </div>
             <div class="flex items-center gap-3">
-                <h1 class="text-2xl font-black text-slate-800 tracking-tight">@Model.Recipe.Name</h1>
-                <span class="badge badge-neutral font-mono font-bold text-xs">@Model.Recipe.Code</span>
+                <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                    <i class="fa-solid fa-calculator text-primary"></i> @Model.Recipe.Name
+                </h1>
+                <span class="badge badge-neutral badge-sm font-mono font-bold">@Model.Recipe.Code</span>
             </div>
-            <p class="text-xs text-slate-500 mt-0.5">@Model.Recipe.Description</p>
+            <p class="text-xs opacity-70 mt-0.5">@Model.Recipe.Description</p>
         </div>
-        <div class="flex gap-2">
-            <a asp-page="/Production/Recipes/Edit" asp-route-id="@Model.Recipe.Id" class="btn btn-sm btn-outline border-slate-300 rounded-xl gap-1 text-xs">
-                <i class="fa-solid fa-pen-to-square"></i> Edit Formula
+
+        <!-- Header Action Controls with Back Button -->
+        <div class="flex items-center gap-2">
+            <a asp-page="/Production/Recipes/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-1.5 text-xs font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Recipes
             </a>
-            <a asp-page="/Production/Batches/Create" asp-route-recipeId="@Model.Recipe.Id" class="btn btn-sm bg-emerald-600 hover:bg-emerald-700 text-white border-0 rounded-xl gap-1 text-xs font-bold shadow-xs">
-                <i class="fa-solid fa-layer-group"></i> Plan Batch
+            
+            <a asp-page="/Production/Recipes/Edit" asp-route-id="@Model.Recipe.Id" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-1.5 text-xs font-semibold">
+                <i class="fa-solid fa-pen-to-square text-xs"></i> Edit Formula
+            </a>
+
+            <a asp-page="/Production/Batches/Create" asp-route-recipeId="@Model.Recipe.Id" class="btn btn-sm btn-neutral rounded-xl gap-1.5 text-xs font-bold shadow-xs">
+                <i class="fa-solid fa-layer-group text-xs"></i> Plan Batch
             </a>
         </div>
     </div>
 
-    <!-- Financial Metrics Bar -->
-    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
-            <div class="card-body p-4 text-center">
-                <div class="text-[10px] uppercase font-bold text-slate-400">Raw Ingredients Cost</div>
-                <div class="text-xl font-black text-slate-800 font-mono mt-1">₦@Model.Recipe.IngredientsCost.ToString("N2")</div>
+    <!-- Financial Metrics Bar using daisyUI stats -->
+    <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+        <div class="stat p-5">
+            <div class="stat-figure text-base-content text-2xl"><i class="fa-solid fa-wheat-awn"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Raw Ingredients</div>
+            <div class="stat-value text-2xl font-black font-mono text-base-content">
+                ₦@Model.Recipe.IngredientsCost.ToString("N2")
             </div>
+            <div class="stat-desc opacity-70">@Model.Recipe.Ingredients.Count components</div>
         </div>
-        <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
-            <div class="card-body p-4 text-center">
-                <div class="text-[10px] uppercase font-bold text-slate-400">Total Unit Cost</div>
-                <div class="text-xl font-black text-slate-800 font-mono mt-1">₦@Model.Recipe.TotalUnitCost.ToString("N2")</div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-base-content text-2xl"><i class="fa-solid fa-coins"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Unit Cost</div>
+            <div class="stat-value text-2xl font-black font-mono text-base-content">
+                ₦@Model.Recipe.TotalUnitCost.ToString("N2")
             </div>
+            <div class="stat-desc opacity-70">Ingredients + Nylon + Overhead</div>
         </div>
-        <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
-            <div class="card-body p-4 text-center">
-                <div class="text-[10px] uppercase font-bold text-slate-400">Selling Price</div>
-                <div class="text-xl font-black text-emerald-600 font-mono mt-1">₦@Model.Recipe.SellingPrice.ToString("N2")</div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-tag"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Selling Price</div>
+            <div class="stat-value text-2xl font-black font-mono text-primary">
+                ₦@Model.Recipe.SellingPrice.ToString("N2")
             </div>
+            <div class="stat-desc opacity-70">Standard wholesale rate</div>
         </div>
-        <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
-            <div class="card-body p-4 text-center">
-                <div class="text-[10px] uppercase font-bold text-slate-400">Profit Margin %</div>
-                <div class="text-xl font-black text-emerald-600 font-mono mt-1">@Model.Recipe.MarginPercentage%</div>
-                <div class="text-[11px] text-emerald-600 font-semibold">+₦@Model.Recipe.MarginAmount.ToString("N2")/loaf</div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-arrow-trend-up"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Profit Margin %</div>
+            <div class="stat-value text-2xl font-black font-mono text-success">
+                @Model.Recipe.MarginPercentage%
+            </div>
+            <div class="stat-desc font-bold text-success font-mono">
+                +₦@Model.Recipe.MarginAmount.ToString("N2") per loaf
             </div>
         </div>
     </div>
 
-    <!-- Ingredients Breakdown Table -->
-    <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
+    <!-- Ingredients Formulation Table -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
         <div class="card-body p-6 space-y-4">
-            <div class="flex items-center gap-2 font-bold text-slate-800 text-sm border-b border-slate-100 pb-3">
-                <div class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">
-                    <i class="fa-solid fa-flask"></i>
+            
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <div class="font-black text-sm text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-flask text-primary"></i> Ingredient Formulation & Portion Cost (Per Loaf)
                 </div>
-                <span>Ingredient Formulation & Portion Cost (Per Loaf)</span>
+                <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.Recipe.Ingredients.Count Raw Materials</span>
             </div>
 
             <div class="overflow-x-auto">
                 <table class="table table-sm w-full text-xs">
                     <thead>
-                        <tr class="text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-100">
-                            <th class="py-2">#</th>
-                            <th class="py-2">Ingredient Name</th>
-                            <th class="py-2">Portion Qty per Loaf</th>
-                            <th class="py-2">Raw Unit Cost</th>
-                            <th class="py-2 text-right">Total Ingredient Cost</th>
+                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                            <th class="py-3 pl-4 w-12">#</th>
+                            <th>Ingredient Name</th>
+                            <th>Portion Qty per Loaf</th>
+                            <th>Raw Unit Cost</th>
+                            <th class="text-right pr-4">Total Ingredient Cost</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100">
+                    <tbody class="divide-y divide-base-200">
                         @for (int i = 0; i < Model.Recipe.Ingredients.Count; i++)
                         {
                             var ing = Model.Recipe.Ingredients[i];
-                            <tr class="hover:bg-slate-50/60">
-                                <td class="text-slate-400 py-2.5">@(i + 1)</td>
-                                <td class="font-bold text-slate-800 py-2.5">@ing.IngredientName</td>
-                                <td class="font-mono text-slate-600 py-2.5">@ing.QuantityPerUnit @ing.Unit</td>
-                                <td class="font-mono text-slate-600 py-2.5">₦@ing.IngredientUnitCost.ToString("N2") / @ing.Unit</td>
-                                <td class="font-mono font-bold text-right py-2.5 text-slate-800">₦@ing.TotalCost.ToString("N2")</td>
+                            <tr class="hover:bg-base-200/60 transition-colors">
+                                <td class="opacity-50 py-3 pl-4 font-mono">@(i + 1)</td>
+                                <td class="font-bold text-base-content py-3">@ing.IngredientName</td>
+                                <td class="font-mono opacity-80 py-3">@ing.QuantityPerUnit @ing.Unit</td>
+                                <td class="font-mono opacity-80 py-3">₦@ing.IngredientUnitCost.ToString("N2") / @ing.Unit</td>
+                                <td class="font-mono font-bold text-right py-3 pr-4 text-base-content">
+                                    ₦@ing.TotalCost.ToString("N2")
+                                </td>
                             </tr>
                         }
                     </tbody>
-                    <tfoot class="bg-slate-50 font-mono text-xs border-t border-slate-200">
+                    <tfoot class="bg-base-200/60 font-mono text-xs border-t border-base-300">
                         <tr>
-                            <td colspan="4" class="text-right py-2 text-slate-600">Ingredients Subtotal:</td>
-                            <td class="text-right font-bold py-2 text-slate-900">₦@Model.Recipe.IngredientsCost.ToString("N2")</td>
+                            <td colspan="4" class="text-right py-2 opacity-70">Raw Ingredients Subtotal:</td>
+                            <td class="text-right font-bold py-2 pr-4 text-base-content">
+                                ₦@Model.Recipe.IngredientsCost.ToString("N2")
+                            </td>
                         </tr>
                         <tr>
-                            <td colspan="4" class="text-right py-2 text-slate-600 text-[11px]">Packaging Nylon & Bread Tag:</td>
-                            <td class="text-right py-2 text-slate-900 text-[11px]">₦@Model.Recipe.PackagingCost.ToString("N2")</td>
+                            <td colspan="4" class="text-right py-2 opacity-70 text-[11px]">Packaging Nylon & Bread Tag:</td>
+                            <td class="text-right py-2 pr-4 text-base-content text-[11px]">
+                                ₦@Model.Recipe.PackagingCost.ToString("N2")
+                            </td>
                         </tr>
                         <tr>
-                            <td colspan="4" class="text-right py-2 text-slate-600 text-[11px]">Labor, Oven Fuel & Overhead:</td>
-                            <td class="text-right py-2 text-slate-900 text-[11px]">₦@Model.Recipe.LaborAndOverheadPerUnit.ToString("N2")</td>
+                            <td colspan="4" class="text-right py-2 opacity-70 text-[11px]">Labor, Oven Gas/Fuel & Factory Overhead:</td>
+                            <td class="text-right py-2 pr-4 text-base-content text-[11px]">
+                                ₦@Model.Recipe.LaborAndOverheadPerUnit.ToString("N2")
+                            </td>
                         </tr>
-                        <tr class="font-bold text-slate-900 bg-emerald-50 text-sm">
-                            <td colspan="4" class="text-right py-2.5 text-emerald-800">Total Base Cost Price per Unit:</td>
-                            <td class="text-right py-2.5 text-emerald-800 font-black">₦@Model.Recipe.TotalUnitCost.ToString("N2")</td>
+                        <tr class="font-bold text-sm bg-primary/10 border-t border-primary/20">
+                            <td colspan="4" class="text-right py-3 text-primary font-black uppercase text-xs tracking-wider">
+                                Total Base Cost Price per Loaf:
+                            </td>
+                            <td class="text-right py-3 pr-4 text-primary font-black text-base">
+                                ₦@Model.Recipe.TotalUnitCost.ToString("N2")
+                            </td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
+
         </div>
     </div>
 </div>

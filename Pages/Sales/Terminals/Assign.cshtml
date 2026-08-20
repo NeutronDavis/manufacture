@@ -1,44 +1,150 @@
 @page "{id:int}"
 @model Manufacture.Pages.Sales.Terminals.AssignModel
 @{
-    ViewData["Title"] = $"Assign Rep - {Model.Terminal.TerminalCode}";
+    ViewData["Title"] = $"Assign Operator - {Model.Terminal.TerminalCode}";
 }
 
-<div class="space-y-6 max-w-lg mx-auto">
-    <div class="flex items-center justify-between">
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
-                <i class="fa-solid fa-user-plus text-primary"></i> Assign Terminal Operator
-            </h1>
-            <p class="text-sm text-base-content/60">Terminal: <span class="font-mono font-bold">@Model.Terminal.TerminalCode - @Model.Terminal.TerminalName</span></p>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Sales/Terminals/Index" class="hover:underline">POS Terminals</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Assign Operator</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                    <i class="fa-solid fa-user-gear text-primary"></i> Assign Terminal Operator
+                </h1>
+                <span class="badge badge-neutral font-mono font-bold text-xs">@Model.Terminal.TerminalCode</span>
+            </div>
+            <p class="text-xs opacity-70 mt-0.5">
+                Assign an authorized sales representative to manage checkout sessions on <strong class="text-base-content">@Model.Terminal.TerminalName</strong>.
+            </p>
         </div>
-        <a asp-page="/Sales/Terminals/Index" class="btn btn-sm btn-ghost gap-1">
-            <i class="fa-solid fa-arrow-left"></i> Cancel
-        </a>
+        <div>
+            <a asp-page="/Sales/Terminals/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Terminals
+            </a>
+        </div>
     </div>
 
-    <form method="post" class="card bg-base-100 border border-base-300 shadow-xs">
-        <div class="card-body p-6 space-y-4">
-            <div class="fieldset">
-                <label class="fieldset-label font-semibold">Select Sales Representative</label>
-                <select name="SelectedUserId" class="select select-bordered w-full" required>
-                    <option value="">-- Select Rep --</option>
-                    @foreach (var user in Model.EligibleUsers)
-                    {
-                        <option value="@user.Id" selected="@(user.Id == Model.Terminal.AssignedUserId)">
-                            @user.Name (@user.Role) - PIN: @user.PinCode
-                        </option>
-                    }
-                </select>
-                <span class="text-xs text-base-content/60">The selected sales rep will be authorized to collect cash/card on this terminal register.</span>
+    <!-- Standard 2-Column Full-Width Form Layout -->
+    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        
+        <!-- Left Section (~70% width, 8 Cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- Terminal Profile & Rep Selection Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-desktop"></i>
+                            </div>
+                            <span>Terminal Specifications & Operator Assignment</span>
+                        </div>
+                        <span class="badge badge-success badge-xs font-bold">Active Register</span>
+                    </div>
+
+                    <!-- Terminal Summary Info -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-base-200 border border-base-300 p-4 rounded-xl text-xs">
+                        <div>
+                            <span class="opacity-60 text-[10px] uppercase font-bold block">Terminal Name:</span>
+                            <span class="font-bold text-base-content text-sm">@Model.Terminal.TerminalName</span>
+                        </div>
+                        <div>
+                            <span class="opacity-60 text-[10px] uppercase font-bold block">Terminal SKU / Code:</span>
+                            <span class="font-mono font-bold text-primary text-sm">@Model.Terminal.TerminalCode</span>
+                        </div>
+                        <div>
+                            <span class="opacity-60 text-[10px] uppercase font-bold block">Cash Drawer:</span>
+                            <span class="font-mono text-base-content">@Model.Terminal.CashAccountName</span>
+                        </div>
+                        <div>
+                            <span class="opacity-60 text-[10px] uppercase font-bold block">POS Machine Bank:</span>
+                            <span class="font-mono text-base-content">@Model.Terminal.PosBankAccountName</span>
+                        </div>
+                    </div>
+
+                    <!-- Rep Selection Dropdown -->
+                    <div class="form-control w-full space-y-2 pt-2">
+                        <label class="label pb-0">
+                            <span class="label-text font-bold text-xs text-base-content">
+                                Select Authorized Sales Representative <span class="text-error">*</span>
+                            </span>
+                        </label>
+                        
+                        <select name="SelectedUserId" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary" required>
+                            <option value="">-- Choose Sales Representative --</option>
+                            @foreach (var user in Model.EligibleUsers)
+                            {
+                                <option value="@user.Id" selected="@(user.Id == Model.Terminal.AssignedUserId)">
+                                    @user.Name (@user.Role) &bull; 6-Digit PIN: @user.PinCode
+                                </option>
+                            }
+                        </select>
+                        
+                        <p class="text-[11px] opacity-60">
+                            The designated operator will log into this checkout terminal using their 6-digit PIN code to issue bread tickets and take payments.
+                        </p>
+                    </div>
+
+                </div>
             </div>
 
-            <div class="flex justify-end gap-3 pt-4 border-t border-base-200">
-                <a asp-page="/Sales/Terminals/Index" class="btn btn-ghost">Cancel</a>
-                <button type="submit" class="btn btn-primary gap-2">
-                    <i class="fa-solid fa-check"></i> Save Assignment
-                </button>
+            <!-- Multi-Channel Settlement Notice -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-3">
+                <div class="font-bold text-sm text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-layer-group text-primary"></i> Multi-Channel Revenue Routing
+                </div>
+                <p class="text-xs opacity-70 leading-relaxed">
+                    All sales executed through this terminal will automatically route revenue into the mapped cash drawer (<strong class="text-base-content">@Model.Terminal.CashAccountName</strong>) or direct bank transfer (<strong class="text-base-content">@Model.Terminal.TransferAccountName</strong>).
+                </p>
             </div>
+        </div>
+
+        <!-- Right Sticky Section (~30% width, 4 Cols) -->
+        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+            
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-shield-check text-primary"></i> Authorization
+                    </h2>
+                    <span class="badge badge-neutral badge-xs font-mono font-bold">Shift Setup</span>
+                </div>
+
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    Saving this assignment updates the POS register lock. Only the assigned operator or Super Admin can start shift balancing on this station.
+                </p>
+
+                <div class="space-y-2 pt-2 border-t border-base-200">
+                    <button type="submit" class="btn btn-neutral w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
+                        <i class="fa-solid fa-circle-check text-success text-xs"></i> Save Assignment
+                    </button>
+
+                    <a asp-page="/Sales/Terminals/Index" class="btn btn-ghost w-full rounded-xl text-xs font-semibold">
+                        Cancel
+                    </a>
+                </div>
+            </div>
+
+            <!-- Shift Tip -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 text-xs space-y-2">
+                <div class="font-bold text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-triangle-exclamation text-warning"></i> End-of-Day Shift Closeout
+                </div>
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    Ensure the current operator performs end-of-shift cash drawer reconciliation before handing over this station to another sales rep.
+                </p>
+            </div>
+
         </div>
     </form>
 </div>
