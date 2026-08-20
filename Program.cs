@@ -34,6 +34,12 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+// Support reverse proxies (like Render.com, Cloudflare, NGINX)
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+});
+
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
