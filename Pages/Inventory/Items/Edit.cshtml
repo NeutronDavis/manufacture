@@ -1,0 +1,245 @@
+@page "{id:int}"
+@model Manufacture.Pages.Inventory.Items.EditModel
+@{
+    ViewData["Title"] = $"Edit {Model.ItemInput.Name}";
+    var totalValuation = Model.ItemInput.QuantityInStock * Model.ItemInput.UnitCostPrice;
+    var isLowStock = Model.ItemInput.QuantityInStock <= Model.ItemInput.ReorderThreshold;
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Inventory/Index" class="hover:underline">Store Inventory</a>
+                <span>&gt;</span>
+                <a asp-page="/Inventory/Items/Details" asp-route-id="@Model.ItemInput.Id" class="hover:underline">@Model.ItemInput.Name</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Edit Item</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-pen-to-square text-primary"></i> Edit Stock Item: @Model.ItemInput.Name
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Update warehouse specifications, stock unit count, unit purchase cost, and supplier assignments.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a asp-page="/Inventory/Items/Details" asp-route-id="@Model.ItemInput.Id" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-eye text-xs"></i> View Item Details
+            </a>
+            <a asp-page="/Inventory/Index" class="btn btn-sm btn-ghost rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Inventory List
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-error text-xs rounded-xl shadow-xs">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>@TempData["ErrorMessage"]</span>
+        </div>
+    }
+
+    <!-- 2-Column Full-Width Form Layout -->
+    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        <input type="hidden" asp-for="ItemInput.Id" />
+        
+        <!-- Left Section (~70% width, 8 Cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-boxes-stacked"></i>
+                            </div>
+                            <span>Item Specifications & Ledger Details</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="badge badge-neutral badge-xs font-mono font-bold uppercase">@Model.ItemInput.ItemCode</span>
+                            @if (isLowStock)
+                            {
+                                <span class="badge badge-warning badge-xs font-bold gap-1">
+                                    <i class="fa-solid fa-circle-exclamation text-[10px]"></i> Low Stock
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-success badge-xs font-bold gap-1">
+                                    <i class="fa-solid fa-check text-[10px]"></i> In Stock
+                                </span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Material / Item Name <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="ItemInput.Name" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Item Code / SKU <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="ItemInput.ItemCode" class="input input-bordered input-sm w-full font-mono uppercase bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Category</span>
+                            </label>
+                            <select asp-for="ItemInput.Category" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary">
+                                <option value="Raw Materials">Raw Materials (Flour, Sugar, Yeast, Corn)</option>
+                                <option value="Packaging">Packaging (Wrappers, Bottles, Bags)</option>
+                                <option value="Additives">Additives & Flavours (Preservatives, Seasonings)</option>
+                                <option value="Fuel & Utility">Fuel & Utility (Diesel AGO, Petrol PMS, Gas)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Unit of Packaging / Measurement <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="text" asp-for="ItemInput.Unit" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. 50kg Bags, 10kg Cartons, Litres" required />
+                            <span class="text-[10px] opacity-60 mt-1">Specify package unit representation (e.g. Bags, Cartons, Rolls, Litres)</span>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Unit Cost Price (₦) <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="number" step="0.01" min="0" asp-for="ItemInput.UnitCostPrice" id="unitCostInput" class="input input-bordered input-sm w-full font-mono font-bold bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" required />
+                            <span class="text-[10px] opacity-60 mt-1">Purchase cost per unit package or measure</span>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Warehouse Stock On Hand <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="number" step="0.1" min="0" asp-for="ItemInput.QuantityInStock" id="stockQtyInput" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" required />
+                            <span class="text-[10px] opacity-60 mt-1">Physical count currently sitting in store warehouse</span>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Reorder Alert Threshold <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="number" step="0.1" min="0" asp-for="ItemInput.ReorderThreshold" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary text-warning font-bold" required />
+                            <span class="text-[10px] opacity-60 mt-1">Triggers low stock warnings when stock drops below this number</span>
+                        </div>
+
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Preferred / Primary Supplier</span>
+                            </label>
+                            <select asp-for="ItemInput.PreferredSupplierId" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
+                                <option value="">-- No Preferred Supplier Selected --</option>
+                                @foreach (var s in Model.Suppliers)
+                                {
+                                    <option value="@s.Id">@s.Name - @s.SupplyCategory (@s.ContactPerson)</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sticky Section (~30% width, 4 Cols) -->
+        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+            
+            <!-- Live Calculation & Summary Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-calculator text-primary"></i> Stock Valuation
+                    </h2>
+                    <span class="badge badge-primary badge-outline badge-xs font-bold">Live</span>
+                </div>
+
+                <div class="bg-base-200/50 p-4 rounded-xl border border-base-200 space-y-3">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="opacity-70">Current Count:</span>
+                        <span id="previewQty" class="font-bold font-mono">@Model.ItemInput.QuantityInStock.ToString("N1") @Model.ItemInput.Unit</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="opacity-70">Unit Cost:</span>
+                        <span id="previewUnitCost" class="font-bold font-mono">₦@Model.ItemInput.UnitCostPrice.ToString("N2")</span>
+                    </div>
+                    <div class="divider my-1"></div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="font-bold text-base-content">Total Inventory Value:</span>
+                        <span id="previewTotalVal" class="text-sm font-black text-success font-mono">₦@totalValuation.ToString("N2")</span>
+                    </div>
+                </div>
+
+                <div class="space-y-2 pt-2 border-t border-base-200">
+                    <button type="submit" class="btn btn-neutral w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
+                        <i class="fa-solid fa-floppy-disk text-success text-xs"></i> Update Inventory Item
+                    </button>
+
+                    <a asp-page="/Inventory/Items/Details" asp-route-id="@Model.ItemInput.Id" class="btn btn-outline border-base-300 w-full rounded-xl text-xs font-semibold">
+                        Cancel Changes
+                    </a>
+                </div>
+            </div>
+
+            <!-- Warehouse Notice Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 text-xs space-y-2.5">
+                <div class="font-bold text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-info"></i> Requisition Ledger Impact
+                </div>
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    Changing the unit cost or quantity in stock will update the current total asset valuation on your financial and executive dashboards. Active batch recipes will draw from this updated baseline.
+                </p>
+            </div>
+
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const qtyInput = document.getElementById('stockQtyInput');
+        const costInput = document.getElementById('unitCostInput');
+        const previewQty = document.getElementById('previewQty');
+        const previewCost = document.getElementById('previewUnitCost');
+        const previewTotal = document.getElementById('previewTotalVal');
+
+        function updatePreview() {
+            const qty = parseFloat(qtyInput.value) || 0;
+            const cost = parseFloat(costInput.value) || 0;
+            const total = qty * cost;
+
+            if (previewQty) previewQty.textContent = qty.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+            if (previewCost) previewCost.textContent = '₦' + cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (previewTotal) previewTotal.textContent = '₦' + total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        if (qtyInput && costInput) {
+            qtyInput.addEventListener('input', updatePreview);
+            costInput.addEventListener('input', updatePreview);
+        }
+    });
+</script>

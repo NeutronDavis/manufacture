@@ -41,11 +41,16 @@ namespace Manufacture.Models.Entities
     public class Ingredient
     {
         public int Id { get; set; }
+        public string? ItemCode { get; set; }
         public string Name { get; set; } = string.Empty;
         public string Unit { get; set; } = "kg"; // pricing unit: kg, litres, pcs
         public decimal UnitCost { get; set; } // cost per one <see cref="Unit"/>
         public decimal CurrentStock { get; set; }
         public string Category { get; set; } = "Raw Materials";
+        public string? PackageUnit { get; set; }
+        public decimal PackageCostPrice { get; set; }
+        public decimal PackageStockOnHand { get; set; }
+        public string? SupplierName { get; set; }
 
         /// <summary>Tracks the last vendor price change so the costing admin
         /// dashboard can show how recently a price was refreshed.</summary>

@@ -2,19 +2,33 @@
 @model Manufacture.Pages.Inventory.IndexModel
 @{
     ViewData["Title"] = "Warehouse Inventory";
+    var totalStockValuation = Model.Items.Sum(i => i.QuantityInStock * i.UnitCostPrice);
 }
 
 <div class="space-y-6 w-full">
+    <!-- Header & Action Buttons -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Store Inventory</span>
+            </div>
             <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
                 <i class="fa-solid fa-boxes-stacked text-primary"></i> Raw Materials & Store Inventory
             </h1>
             <p class="text-xs opacity-70 mt-0.5">
-                Monitor flour bags, sugar, yeast, packaging stock levels, and store release requests
+                Track warehouse raw ingredients in bags, cartons, packaging materials, and floor store releases
             </p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
+            <a asp-page="/Inventory/Requests/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-3.5 text-xs">
+                <i class="fa-solid fa-clipboard-list text-xs"></i> Floor Requisitions
+                @if (Model.PendingRequestsCount > 0)
+                {
+                    <span class="badge badge-warning badge-xs font-bold font-mono">@Model.PendingRequestsCount</span>
+                }
+            </a>
             <a asp-page="/Inventory/Requests/Create" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-3.5 text-xs">
                 <i class="fa-solid fa-clipboard-question text-xs"></i> Request Materials
             </a>
@@ -24,95 +38,377 @@
         </div>
     </div>
 
-    <!-- Stock Health Stats using daisyUI stats component -->
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-check text-base"></i>
+            <span class="font-medium">@TempData["SuccessMessage"]</span>
+        </div>
+    }
+
+    <!-- Stock Health Stats -->
     <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
         <div class="stat p-5">
             <div class="stat-figure text-primary text-2xl">
-                <i class="fa-solid fa-box"></i>
+                <i class="fa-solid fa-boxes-packing"></i>
             </div>
             <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Tracked Items</div>
             <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.Items.Count</div>
-            <div class="stat-desc opacity-70">Active warehouse SKUs</div>
+            <div class="stat-desc opacity-70">Active raw materials & SKUs</div>
         </div>
 
         <div class="stat p-5">
             <div class="stat-figure @(Model.LowStockCount > 0 ? "text-error" : "text-success") text-2xl">
                 <i class="fa-solid fa-triangle-exclamation"></i>
             </div>
-            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Below Reorder Threshold</div>
-            <div class="stat-value text-2xl font-black font-mono @(Model.LowStockCount > 0 ? "text-error" : "text-success")">@Model.LowStockCount</div>
-            <div class="stat-desc @(Model.LowStockCount > 0 ? "text-error font-semibold" : "opacity-70")">Restock alerts active</div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Below Reorder Level</div>
+            <div class="stat-value text-2xl font-black font-mono @(Model.LowStockCount > 0 ? "text-error" : "text-success")">
+                @Model.LowStockCount
+            </div>
+            <div class="stat-desc @(Model.LowStockCount > 0 ? "text-error font-semibold" : "opacity-70")">
+                @(Model.LowStockCount > 0 ? "Restock purchase needed" : "All materials optimal")
+            </div>
         </div>
 
         <div class="stat p-5">
             <div class="stat-figure text-success text-2xl">
                 <i class="fa-solid fa-vault"></i>
             </div>
-            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Stock Value</div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Store Asset Value</div>
             <div class="stat-value text-2xl font-black font-mono text-success">
-                ₦@Model.Items.Sum(i => i.QuantityInStock * i.UnitCostPrice).ToString("N0")
+                ₦@totalStockValuation.ToString("N0")
             </div>
-            <div class="stat-desc opacity-70">Estimated raw inventory valuation</div>
+            <div class="stat-desc opacity-70">Physical inventory ledger valuation</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-warning text-2xl">
+                <i class="fa-solid fa-clipboard-check"></i>
+            </div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Pending Requisitions</div>
+            <div class="stat-value text-2xl font-black font-mono text-warning">
+                @Model.PendingRequestsCount
+            </div>
+            <div class="stat-desc opacity-70">Awaiting storekeeper release</div>
+        </div>
+    </div>
+
+    <!-- Search & Category Filters Card -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4 space-y-3">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <!-- Search Bar -->
+            <div class="relative w-full sm:w-96">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-xs opacity-50"></i>
+                <input type="text" 
+                       id="inventorySearchInput" 
+                       oninput="filterInventory()" 
+                       placeholder="Search by SKU, item name, packaging unit, or supplier..." 
+                       class="input input-bordered input-sm w-full pl-9 bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" />
+            </div>
+
+            <!-- Total Filtered Count Badge -->
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                <span id="filteredCountBadge" class="badge badge-neutral badge-xs font-mono font-bold">
+                    @Model.Items.Count Items Displayed
+                </span>
+            </div>
+        </div>
+
+        <!-- Filter Tabs / Pills -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-base-200">
+            <!-- Category Pills -->
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                <span class="text-[11px] font-bold opacity-50 mr-1 uppercase tracking-wider">Category:</span>
+                <button type="button" onclick="setCategoryFilter('all', this)" class="btn btn-xs btn-neutral rounded-lg font-bold cat-pill">All Items</button>
+                <button type="button" onclick="setCategoryFilter('raw materials', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg cat-pill">Raw Materials</button>
+                <button type="button" onclick="setCategoryFilter('packaging', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg cat-pill">Packaging</button>
+                <button type="button" onclick="setCategoryFilter('additives', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg cat-pill">Additives & Flavor</button>
+                <button type="button" onclick="setCategoryFilter('fuel', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg cat-pill">Fuel & Utility</button>
+            </div>
+
+            <!-- Stock Health Pills -->
+            <div class="flex items-center gap-1.5 text-xs">
+                <span class="text-[11px] font-bold opacity-50 mr-1 uppercase tracking-wider">Stock:</span>
+                <button type="button" onclick="setStockFilter('all', this)" class="btn btn-xs btn-neutral rounded-lg font-bold stock-pill">All Stock</button>
+                <button type="button" onclick="setStockFilter('low', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg stock-pill text-error font-semibold">Low Stock (@Model.LowStockCount)</button>
+                <button type="button" onclick="setStockFilter('ok', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg stock-pill">In Stock</button>
+            </div>
         </div>
     </div>
 
     <!-- Inventory Table -->
     <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
-        <div class="card-body p-6 space-y-4">
-            <div class="flex items-center justify-between border-b border-base-200 pb-3">
-                <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
-                    <i class="fa-solid fa-list text-primary"></i> Stock Items & Reorder Levels
-                </h2>
-                <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.Items.Count Items</span>
-            </div>
-
+        <div class="card-body p-0">
             <div class="overflow-x-auto">
-                <table class="table table-sm w-full text-xs">
+                <table class="table table-sm w-full text-xs" id="inventoryTable">
                     <thead>
                         <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
-                            <th>Item Code</th>
-                            <th>Item Description</th>
-                            <th>Category</th>
-                            <th>Current Stock</th>
-                            <th>Unit Cost (₦)</th>
-                            <th>Reorder Level</th>
-                            <th>Status</th>
-                            <th class="text-right">Action</th>
+                            <th class="py-3 px-4 whitespace-nowrap">Item Code</th>
+                            <th class="whitespace-nowrap">Material & Packaging</th>
+                            <th class="whitespace-nowrap">Category</th>
+                            <th class="whitespace-nowrap">Preferred Supplier</th>
+                            <th class="whitespace-nowrap">Stock On Hand</th>
+                            <th class="whitespace-nowrap">Unit Purchase Cost</th>
+                            <th class="whitespace-nowrap">Total Valuation</th>
+                            <th class="whitespace-nowrap">Reorder Threshold</th>
+                            <th class="whitespace-nowrap">Status</th>
+                            <th class="text-right py-3 px-4 whitespace-nowrap">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-base-200">
                         @foreach (var item in Model.Items)
                         {
-                            var isLow = item.QuantityInStock <= item.ReorderThreshold;
-                            <tr class="hover:bg-base-200/60 transition-colors">
-                                <td class="font-mono text-xs font-bold text-base-content">@item.ItemCode</td>
-                                <td class="font-bold text-base-content">@item.Name</td>
-                                <td><span class="badge badge-soft badge-xs font-semibold">@item.Category</span></td>
-                                <td class="font-mono text-xs font-black @(isLow ? "text-error" : "text-base-content")">
-                                    @item.QuantityInStock.ToString("N0") @item.Unit
+                            var isLow = item.IsLowStock;
+                            var valuation = item.QuantityInStock * item.UnitCostPrice;
+                            <tr class="hover:bg-base-200/50 transition-colors inventory-row"
+                                data-code="@item.ItemCode.ToLower()"
+                                data-name="@item.Name.ToLower()"
+                                data-category="@item.Category.ToLower()"
+                                data-supplier="@(item.PreferredSupplierName?.ToLower() ?? "")"
+                                data-unit="@item.Unit.ToLower()"
+                                data-status="@(isLow ? "low" : "ok")">
+                                
+                                <!-- Item Code with direct details link -->
+                                <td class="py-3.5 px-4 whitespace-nowrap">
+                                    <a asp-page="/Inventory/Items/Details" asp-route-id="@item.Id" 
+                                       class="font-mono text-xs font-black text-primary hover:underline flex items-center gap-1.5"
+                                       title="View @item.Name details">
+                                        <i class="fa-solid fa-box-open text-[11px] opacity-70"></i>
+                                        <span>@item.ItemCode</span>
+                                    </a>
                                 </td>
-                                <td class="font-mono text-base-content">₦@item.UnitCostPrice.ToString("N0")</td>
-                                <td class="font-mono opacity-70">@item.ReorderThreshold.ToString("N0") @item.Unit</td>
+
+                                <!-- Item Name & Unit -->
                                 <td>
-                                    @if (isLow)
+                                    <div>
+                                        <a asp-page="/Inventory/Items/Details" asp-route-id="@item.Id" 
+                                           class="font-bold text-base-content hover:text-primary transition-colors text-xs">
+                                            @item.Name
+                                        </a>
+                                        <div class="text-[10px] opacity-60 flex items-center gap-1 mt-0.5">
+                                            <i class="fa-solid fa-cubes-stacked text-[9px]"></i>
+                                            <span>Unit: <strong>@item.Unit</strong></span>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <!-- Category -->
+                                <td class="whitespace-nowrap">
+                                    <span class="badge badge-soft badge-sm font-semibold whitespace-nowrap px-2.5 py-1 h-auto text-xs inline-flex items-center">@item.Category</span>
+                                </td>
+
+                                <!-- Supplier -->
+                                <td>
+                                    @if (!string.IsNullOrEmpty(item.PreferredSupplierName))
                                     {
-                                        <span class="badge badge-error badge-xs font-bold gap-1">● Reorder Needed</span>
+                                        <span class="text-[11px] opacity-80 flex items-center gap-1" title="@item.PreferredSupplierName">
+                                            <i class="fa-solid fa-truck-field text-[10px] opacity-50"></i>
+                                            <span class="truncate max-w-[150px]">@item.PreferredSupplierName</span>
+                                        </span>
                                     }
                                     else
                                     {
-                                        <span class="badge badge-success badge-xs font-bold gap-1">● In Stock</span>
+                                        <span class="text-[11px] opacity-40 italic">Not Assigned</span>
                                     }
                                 </td>
-                                <td class="text-right">
-                                    <a asp-page="/Inventory/Items/Edit" asp-route-id="@item.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg">
-                                        Edit
-                                    </a>
+
+                                <!-- Current Stock with Unit representation -->
+                                <td class="whitespace-nowrap">
+                                    <div class="font-mono text-xs font-black @(isLow ? "text-error" : "text-base-content")">
+                                        @item.QuantityInStock.ToString("N1")
+                                    </div>
+                                    <span class="text-[10px] opacity-60 font-medium">@item.Unit</span>
+                                </td>
+
+                                <!-- Unit Cost -->
+                                <td class="font-mono text-base-content font-semibold whitespace-nowrap">
+                                    ₦@item.UnitCostPrice.ToString("N0")
+                                </td>
+
+                                <!-- Total Valuation -->
+                                <td class="font-mono text-success font-black whitespace-nowrap">
+                                    ₦@valuation.ToString("N0")
+                                </td>
+
+                                <!-- Reorder Level -->
+                                <td class="font-mono opacity-70 whitespace-nowrap">
+                                    @item.ReorderThreshold.ToString("N1") @item.Unit
+                                </td>
+
+                                <!-- Status Badge -->
+                                <td class="whitespace-nowrap">
+                                    @if (isLow)
+                                    {
+                                        <span class="badge badge-error badge-sm font-bold gap-1.5 whitespace-nowrap px-2.5 py-1 h-auto inline-flex items-center animate-pulse">
+                                            <i class="fa-solid fa-triangle-exclamation text-[10px]"></i> Reorder Needed
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-success badge-sm font-bold gap-1.5 whitespace-nowrap px-2.5 py-1 h-auto inline-flex items-center">
+                                            <i class="fa-solid fa-circle-check text-[10px]"></i> In Stock
+                                        </span>
+                                    }
+                                </td>
+
+                                <!-- Actions -->
+                                <td class="text-right py-3.5 px-4 whitespace-nowrap">
+                                    <div class="flex items-center justify-end gap-1.5">
+                                        <a asp-page="/Inventory/Items/Details" asp-route-id="@item.Id" 
+                                           class="btn btn-xs btn-outline border-base-300 rounded-lg text-[11px] font-semibold gap-1 hover:border-primary hover:text-primary"
+                                           title="View Details & Requisition Ledger">
+                                            <i class="fa-solid fa-eye text-[10px]"></i> View
+                                        </a>
+
+                                        <a asp-page="/Inventory/Items/Edit" asp-route-id="@item.Id" 
+                                           class="btn btn-xs btn-outline border-base-300 rounded-lg text-[11px] font-semibold gap-1 hover:border-neutral hover:bg-neutral hover:text-white"
+                                           title="Edit Item Specs & Cost">
+                                            <i class="fa-solid fa-pen-to-square text-[10px]"></i> Edit
+                                        </a>
+
+                                        <button type="button" 
+                                                onclick="openRestockModal(@item.Id, '@item.Name.Replace("'", "\\'")', '@item.Unit')" 
+                                                class="btn btn-xs btn-ghost border border-base-300 rounded-lg text-[11px] font-bold text-success hover:bg-success hover:text-white gap-1"
+                                                title="Quick Restock Stock Count">
+                                            <i class="fa-solid fa-plus text-[10px]"></i> Restock
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
+
+            <!-- Empty state when search/filters return 0 -->
+            <div id="noResultsState" class="hidden p-12 text-center space-y-3">
+                <div class="w-12 h-12 rounded-2xl bg-base-200 flex items-center justify-center mx-auto text-xl opacity-40">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </div>
+                <div class="text-sm font-bold text-base-content">No inventory items matched your criteria</div>
+                <p class="text-xs opacity-60 max-w-sm mx-auto">
+                    Try adjusting your search keywords, clearing category filters, or selecting "All Items".
+                </p>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Fast Quick-Restock Modal for Index Page -->
+<dialog id="indexRestockModal" class="modal">
+    <div class="modal-box rounded-2xl border border-base-300 p-6 max-w-md">
+        <h3 class="font-black text-base text-base-content flex items-center gap-2">
+            <i class="fa-solid fa-dolly text-primary"></i> Quick Stock Restock
+        </h3>
+        <p class="text-xs opacity-70 mt-1">
+            Add incoming delivery units to the physical warehouse ledger for:
+        </p>
+        <div class="mt-2 p-3 bg-base-200/60 rounded-xl border border-base-200 font-bold text-xs text-base-content flex items-center justify-between">
+            <span id="modalItemName">Selected Item</span>
+            <span id="modalItemUnit" class="badge badge-neutral badge-xs font-mono font-bold">Units</span>
+        </div>
+
+        <form method="post" asp-page-handler="Restock" class="space-y-4 mt-4">
+            <input type="hidden" name="id" id="modalItemId" value="0" />
+
+            <div class="form-control w-full">
+                <label class="label pb-1.5">
+                    <span class="label-text font-bold text-xs text-base-content">
+                        Quantity Delivered / Added <span class="text-error">*</span>
+                    </span>
+                </label>
+                <input type="number" min="0.1" step="any" name="quantity" class="input input-bordered input-sm w-full font-mono font-bold bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. 20" required />
+            </div>
+
+            <div class="modal-action border-t border-base-200 pt-3">
+                <button type="button" onclick="document.getElementById('indexRestockModal').close()" class="btn btn-sm btn-ghost rounded-xl text-xs font-semibold">
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-sm btn-primary rounded-xl text-xs font-bold px-4 gap-1.5 shadow-xs">
+                    <i class="fa-solid fa-circle-check text-xs"></i> Confirm +Stock
+                </button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button type="submit">close</button>
+    </form>
+</dialog>
+
+<script>
+    let activeCategory = 'all';
+    let activeStock = 'all';
+
+    function setCategoryFilter(category, button) {
+        activeCategory = category;
+        document.querySelectorAll('.cat-pill').forEach(btn => {
+            btn.classList.remove('btn-neutral', 'font-bold');
+            btn.classList.add('btn-ghost');
+        });
+        button.classList.remove('btn-ghost');
+        button.classList.add('btn-neutral', 'font-bold');
+        filterInventory();
+    }
+
+    function setStockFilter(stock, button) {
+        activeStock = stock;
+        document.querySelectorAll('.stock-pill').forEach(btn => {
+            btn.classList.remove('btn-neutral', 'font-bold');
+            btn.classList.add('btn-ghost');
+        });
+        button.classList.remove('btn-ghost');
+        button.classList.add('btn-neutral', 'font-bold');
+        filterInventory();
+    }
+
+    function filterInventory() {
+        const query = (document.getElementById('inventorySearchInput')?.value || '').toLowerCase().trim();
+        const rows = document.querySelectorAll('.inventory-row');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const code = row.getAttribute('data-code') || '';
+            const name = row.getAttribute('data-name') || '';
+            const category = row.getAttribute('data-category') || '';
+            const supplier = row.getAttribute('data-supplier') || '';
+            const unit = row.getAttribute('data-unit') || '';
+            const status = row.getAttribute('data-status') || '';
+
+            const matchesQuery = !query || 
+                code.includes(query) || 
+                name.includes(query) || 
+                category.includes(query) || 
+                supplier.includes(query) || 
+                unit.includes(query);
+
+            const matchesCategory = activeCategory === 'all' || category.includes(activeCategory);
+            const matchesStock = activeStock === 'all' || 
+                (activeStock === 'low' && status === 'low') || 
+                (activeStock === 'ok' && status === 'ok');
+
+            if (matchesQuery && matchesCategory && matchesStock) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        const badge = document.getElementById('filteredCountBadge');
+        if (badge) {
+            badge.textContent = visibleCount + ' Items Displayed';
+        }
+
+        const noResults = document.getElementById('noResultsState');
+        if (noResults) {
+            noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+        }
+    }
+
+    function openRestockModal(itemId, itemName, itemUnit) {
+        document.getElementById('modalItemId').value = itemId;
+        document.getElementById('modalItemName').textContent = itemName;
+        document.getElementById('modalItemUnit').textContent = itemUnit;
+        document.getElementById('indexRestockModal').showModal();
+    }
+</script>

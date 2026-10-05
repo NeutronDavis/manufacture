@@ -1,0 +1,407 @@
+@page "{id:int}"
+@model Manufacture.Pages.Inventory.Items.DetailsModel
+@{
+    ViewData["Title"] = $"{Model.Item.Name} - Inventory Details";
+    var item = Model.Item;
+    var isLow = item.IsLowStock;
+    var stockPercent = item.ReorderThreshold > 0 
+        ? Math.Min(100, Math.Round((item.QuantityInStock / (item.ReorderThreshold * 2m)) * 100)) 
+        : 100;
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Top Header Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Inventory/Index" class="hover:underline">Store Inventory</a>
+                <span>&gt;</span>
+                <span class="font-mono text-primary font-bold">@item.ItemCode</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-lg shadow-xs">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h1 class="text-xl font-black text-base-content tracking-tight">@item.Name</h1>
+                        <span class="badge badge-neutral badge-sm font-mono font-bold whitespace-nowrap px-2.5 py-1 h-auto inline-flex items-center">@item.ItemCode</span>
+                        <span class="badge badge-primary badge-soft badge-sm font-bold whitespace-nowrap px-2.5 py-1 h-auto inline-flex items-center">@item.Category</span>
+                        @if (isLow)
+                        {
+                            <span class="badge badge-error badge-sm font-bold gap-1.5 whitespace-nowrap px-2.5 py-1 h-auto inline-flex items-center animate-pulse">
+                                <i class="fa-solid fa-triangle-exclamation text-[10px]"></i> Low Stock Alert
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-success badge-sm font-bold gap-1.5 whitespace-nowrap px-2.5 py-1 h-auto inline-flex items-center">
+                                <i class="fa-solid fa-circle-check text-[10px]"></i> Optimal Stock
+                            </span>
+                        }
+                    </div>
+                    <p class="text-xs opacity-70 mt-0.5">
+                        Tracked warehouse SKU &bull; Last restocked: @item.LastRestockedDate.ToString("MMMM dd, yyyy")
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+            <a asp-page="/Inventory/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back
+            </a>
+            <button type="button" onclick="document.getElementById('restockModal').showModal()" class="btn btn-sm btn-outline btn-primary rounded-xl text-xs gap-1.5 font-bold">
+                <i class="fa-solid fa-plus text-xs"></i> Quick Restock
+            </button>
+            <a asp-page="/Inventory/Items/Edit" asp-route-id="@item.Id" class="btn btn-sm btn-neutral rounded-xl text-xs gap-1.5 font-bold shadow-xs">
+                <i class="fa-solid fa-pen-to-square text-xs"></i> Edit Item
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-check text-base"></i>
+            <span class="font-medium">@TempData["SuccessMessage"]</span>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-xmark text-base"></i>
+            <span class="font-medium">@TempData["ErrorMessage"]</span>
+        </div>
+    }
+
+    <!-- 4 High-Impact KPI Metric Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- 1. Stock on Hand -->
+        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5">
+            <div class="flex items-center justify-between opacity-70 mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider">Stock on Hand</span>
+                <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-box-open"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-black font-mono @(isLow ? "text-error" : "text-base-content")">
+                @item.QuantityInStock.ToString("N0") <span class="text-xs font-normal opacity-60">@item.Unit</span>
+            </div>
+            <div class="mt-2 space-y-1">
+                <div class="w-full bg-base-200 rounded-full h-1.5 overflow-hidden">
+                    <div class="h-full rounded-full @(isLow ? "bg-error" : "bg-primary")" style="width: @stockPercent%;"></div>
+                </div>
+                <div class="flex justify-between text-[10px] opacity-60 font-mono">
+                    <span>Reorder: @item.ReorderThreshold.ToString("N0")</span>
+                    <span>@(item.QuantityInStock > item.ReorderThreshold ? $"+{(item.QuantityInStock - item.ReorderThreshold):N0} Buffer" : "Under Limit")</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Unit Cost Price -->
+        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5">
+            <div class="flex items-center justify-between opacity-70 mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider">Unit Purchase Cost</span>
+                <div class="w-8 h-8 rounded-lg bg-info/10 text-info flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-tag"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-black font-mono text-base-content">
+                ₦@item.UnitCostPrice.ToString("N0")
+            </div>
+            <p class="text-[11px] opacity-60 mt-1">
+                Master purchase rate per @item.Unit
+            </p>
+        </div>
+
+        <!-- 3. Total Valuation -->
+        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5">
+            <div class="flex items-center justify-between opacity-70 mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider">Total Stock Value</span>
+                <div class="w-8 h-8 rounded-lg bg-success/10 text-success flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-vault"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-black font-mono text-success">
+                ₦@Model.TotalStockValuation.ToString("N0")
+            </div>
+            <p class="text-[11px] opacity-60 mt-1">
+                @item.QuantityInStock.ToString("N0") units &times; ₦@item.UnitCostPrice.ToString("N0")
+            </p>
+        </div>
+
+        <!-- 4. Reorder Alert Limit -->
+        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5">
+            <div class="flex items-center justify-between opacity-70 mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider">Reorder Safety Level</span>
+                <div class="w-8 h-8 rounded-lg @(isLow ? "bg-error/10 text-error" : "bg-warning/10 text-warning") flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-bell"></i>
+                </div>
+            </div>
+            <div class="text-2xl font-black font-mono @(isLow ? "text-error" : "text-base-content")">
+                @item.ReorderThreshold.ToString("N0") <span class="text-xs font-normal opacity-60">@item.Unit</span>
+            </div>
+            <p class="text-[11px] @(isLow ? "text-error font-bold" : "opacity-60") mt-1">
+                @(isLow ? "⚠️ Stock below threshold! Restock needed." : "Safe inventory buffer maintained.")
+            </p>
+        </div>
+    </div>
+
+    <!-- Main Content Layout (7 Cols Left, 5 Cols Right) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left Side: Specifications & Store Request History (7 Cols) -->
+        <div class="lg:col-span-7 space-y-6">
+            
+            <!-- Warehouse Specifications Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-circle-info text-primary"></i> Warehouse Item Specifications
+                    </h2>
+                    <span class="badge badge-ghost badge-xs font-mono">ID: #@item.Id</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div class="p-3.5 rounded-xl bg-base-200/50 border border-base-300">
+                        <span class="text-[10px] uppercase font-bold opacity-60">Material Name & SKU</span>
+                        <div class="font-bold text-sm text-base-content mt-0.5">@item.Name</div>
+                        <div class="font-mono text-[11px] opacity-70 mt-0.5">Item Code: @item.ItemCode</div>
+                    </div>
+
+                    <div class="p-3.5 rounded-xl bg-base-200/50 border border-base-300">
+                        <span class="text-[10px] uppercase font-bold opacity-60">Storage Classification</span>
+                        <div class="font-bold text-sm text-base-content mt-0.5">@item.Category</div>
+                        <div class="text-[11px] opacity-70 mt-0.5">Unit: @item.Unit</div>
+                    </div>
+
+                    <div class="p-3.5 rounded-xl bg-base-200/50 border border-base-300 sm:col-span-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] uppercase font-bold opacity-60 flex items-center gap-1.5">
+                                <i class="fa-solid fa-truck-field text-primary"></i> Preferred Vendor / Supplier
+                            </span>
+                            @if (item.PreferredSupplierId.HasValue)
+                            {
+                                <a asp-page="/Inventory/Suppliers/Index" class="text-[10px] text-primary hover:underline font-bold">
+                                    View Supplier Directory &gt;
+                                </a>
+                            }
+                        </div>
+                        <div class="font-bold text-sm text-base-content mt-1">
+                            @(string.IsNullOrWhiteSpace(item.PreferredSupplierName) ? "Unassigned Supplier" : item.PreferredSupplierName)
+                        </div>
+                        <div class="text-[11px] opacity-70 mt-1 flex items-center gap-3 flex-wrap">
+                            <span>Supplier ID: @(item.PreferredSupplierId?.ToString() ?? "N/A")</span>
+                            <span>&bull;</span>
+                            <span>Category: @item.Category</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Floor Consumption & Store Requests History -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <div>
+                        <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                            <i class="fa-solid fa-clock-rotate-left text-primary"></i> Floor Requisition History
+                        </h2>
+                        <p class="text-[11px] opacity-60 mt-0.5">
+                            Recent store releases for batch mixing and production runs
+                        </p>
+                    </div>
+                    <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.ItemRequests.Count Records</span>
+                </div>
+
+                @if (Model.ItemRequests.Any())
+                {
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm w-full text-xs">
+                            <thead>
+                                <tr class="opacity-60 uppercase text-[10px] border-b border-base-200 bg-base-200/40">
+                                    <th>Req #</th>
+                                    <th>Department / Purpose</th>
+                                    <th>Date</th>
+                                    <th class="text-right">Quantity</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-base-200">
+                                @foreach (var req in Model.ItemRequests)
+                                {
+                                    var lineItem = req.Items.FirstOrDefault(i => i.InventoryItemId == item.Id);
+                                    <tr class="hover:bg-base-200/50">
+                                        <td class="font-mono font-bold text-primary">
+                                            <a asp-page="/Inventory/Requests/Index" class="hover:underline">
+                                                @req.RequestNumber
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <div class="font-semibold text-base-content">@req.Department</div>
+                                            <span class="text-[10px] opacity-60 truncate block max-w-xs" title="@req.Purpose">@req.Purpose</span>
+                                        </td>
+                                        <td class="font-mono text-[11px] opacity-70">
+                                            @req.RequestedAt.ToString("MMM dd, HH:mm")
+                                        </td>
+                                        <td class="font-mono font-bold text-right text-base-content">
+                                            @(lineItem?.IssuedQuantity > 0 ? lineItem.IssuedQuantity.ToString("N0") : lineItem?.RequestedQuantity.ToString("N0") ?? "0") @item.Unit
+                                        </td>
+                                        <td class="whitespace-nowrap">
+                                            @switch (req.Status)
+                                            {
+                                                case StoreRequestStatus.Issued:
+                                                    <span class="badge badge-success badge-sm font-bold whitespace-nowrap px-2 py-0.5 h-auto text-[11px] inline-flex items-center">Issued</span>
+                                                    break;
+                                                case StoreRequestStatus.Approved:
+                                                    <span class="badge badge-info badge-sm font-bold whitespace-nowrap px-2 py-0.5 h-auto text-[11px] inline-flex items-center">Approved</span>
+                                                    break;
+                                                case StoreRequestStatus.Rejected:
+                                                    <span class="badge badge-error badge-sm font-bold whitespace-nowrap px-2 py-0.5 h-auto text-[11px] inline-flex items-center">Rejected</span>
+                                                    break;
+                                                default:
+                                                    <span class="badge badge-warning badge-sm font-bold whitespace-nowrap px-2 py-0.5 h-auto text-[11px] inline-flex items-center">Pending</span>
+                                                    break;
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-8 opacity-60">
+                        <i class="fa-solid fa-clipboard-list text-3xl mb-2"></i>
+                        <p class="text-xs font-semibold">No store requisitions recorded for this item yet.</p>
+                        <p class="text-[10px]">Requests made from the bakery floor will show here automatically.</p>
+                    </div>
+                }
+            </div>
+
+        </div>
+
+        <!-- Right Side: Quick Restock & Recipe Utilization (5 Cols) -->
+        <div class="lg:col-span-5 space-y-6">
+            
+            <!-- Quick Restock Action Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h3 class="font-black text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-dolly text-primary"></i> Stock Replenishment
+                    </h3>
+                    <span class="badge badge-success badge-xs font-bold">Instant Update</span>
+                </div>
+
+                <form method="post" asp-page-handler="Restock" asp-route-id="@item.Id" class="space-y-4">
+                    <div class="form-control w-full">
+                        <label class="label pb-1.5">
+                            <span class="label-text font-bold text-xs text-base-content">
+                                Add Received Quantity (@item.Unit) <span class="text-error">*</span>
+                            </span>
+                        </label>
+                        <div class="join w-full">
+                            <input type="number" min="1" step="1" name="addedQuantity" class="input input-bordered input-sm join-item w-full font-mono font-bold bg-base-200 border-base-300 rounded-l-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. 20" required />
+                            <span class="join-item bg-base-200 border border-base-300 border-l-0 font-mono text-[10px] font-bold px-3 flex items-center">
+                                @item.Unit
+                            </span>
+                        </div>
+                        <span class="text-[10px] opacity-60 mt-1">Stock balance will immediately update upon saving.</span>
+                    </div>
+
+                    <button type="submit" class="btn btn-neutral w-full rounded-xl text-xs font-bold gap-2 shadow-xs">
+                        <i class="fa-solid fa-floppy-disk text-success"></i> Record Received Stock
+                    </button>
+                </form>
+            </div>
+
+            <!-- Associated Product Formulations Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h3 class="font-black text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-flask text-primary"></i> Used in Formulations
+                    </h3>
+                    <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.AssociatedRecipes.Count Recipes</span>
+                </div>
+
+                @if (Model.AssociatedRecipes.Any())
+                {
+                    <div class="space-y-2.5">
+                        @foreach (var rec in Model.AssociatedRecipes)
+                        {
+                            <div class="p-3 rounded-xl bg-base-200/50 border border-base-300 flex items-center justify-between gap-3 text-xs">
+                                <div>
+                                    <div class="font-bold text-base-content">@rec.Name</div>
+                                    <div class="text-[10px] opacity-60 font-mono">@rec.Code &bull; Yield: @rec.ExpectedYield @rec.OutputUnit</div>
+                                </div>
+                                <a asp-page="/Production/Recipes/Index" class="btn btn-xs btn-outline border-base-300 rounded-lg text-[10px] font-bold">
+                                    View
+                                </a>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-6 opacity-60 text-xs">
+                        <p>General store supply or packaging material.</p>
+                    </div>
+                }
+            </div>
+
+            <!-- Reorder Safety Tips Card -->
+            <div class="card bg-amber-50/70 border border-amber-200/80 rounded-2xl p-5 text-xs space-y-2">
+                <div class="font-bold text-amber-900 flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-amber-600"></i> Warehouse Reorder Standard
+                </div>
+                <p class="text-[11px] text-amber-900/80 leading-relaxed">
+                    Lead time for standard deliveries from <strong>@(item.PreferredSupplierName ?? "assigned vendor")</strong> is approximately 24 - 48 hours. Ensure restock purchase orders are raised before falling below <strong>@item.ReorderThreshold.ToString("N0") @item.Unit</strong>.
+                </p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Quick Restock Modal -->
+<dialog id="restockModal" class="modal">
+    <div class="modal-box rounded-2xl border border-base-300 p-6 max-w-md">
+        <h3 class="font-black text-base text-base-content flex items-center gap-2">
+            <i class="fa-solid fa-dolly text-primary"></i> Restock @item.Name
+        </h3>
+        <p class="text-xs opacity-70 mt-1">
+            Enter the quantity received from @(item.PreferredSupplierName ?? "supplier") to update warehouse stock.
+        </p>
+
+        <form method="post" asp-page-handler="Restock" asp-route-id="@item.Id" class="space-y-4 mt-4">
+            <div class="form-control w-full">
+                <label class="label pb-1.5">
+                    <span class="label-text font-bold text-xs text-base-content">
+                        Quantity Received (@item.Unit) <span class="text-error">*</span>
+                    </span>
+                </label>
+                <div class="join w-full">
+                    <input type="number" min="1" step="1" name="addedQuantity" class="input input-bordered input-sm join-item w-full font-mono font-bold bg-base-200 border-base-300 rounded-l-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. 50" required />
+                    <span class="join-item bg-base-200 border border-base-300 border-l-0 font-mono text-[10px] font-bold px-3 flex items-center">
+                        @item.Unit
+                    </span>
+                </div>
+            </div>
+
+            <div class="modal-action border-t border-base-200 pt-3">
+                <button type="button" onclick="document.getElementById('restockModal').close()" class="btn btn-sm btn-ghost rounded-xl text-xs font-semibold">
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-sm btn-primary rounded-xl text-xs font-bold px-4 gap-1.5 shadow-xs">
+                    <i class="fa-solid fa-circle-check text-xs"></i> Confirm Restock
+                </button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button type="submit">close</button>
+    </form>
+</dialog>

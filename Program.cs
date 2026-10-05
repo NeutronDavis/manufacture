@@ -4,7 +4,13 @@ using Manufacture.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddRazorPages();
+builder.Services.AddRazorPages(options =>
+{
+    options.Conventions.AddPageRoute("/Production/Recipes/Create", "Recipes/Create");
+    options.Conventions.AddPageRoute("/Production/Recipes/Index", "Recipes");
+    options.Conventions.AddPageRoute("/Production/Recipes/Details", "Recipes/Details/{id:int}");
+    options.Conventions.AddPageRoute("/Production/Recipes/Edit", "Recipes/Edit/{id:int}");
+});
 builder.Services.AddHttpContextAccessor();
 
 // Add Session
@@ -20,9 +26,9 @@ builder.Services.AddSession(options =>
 builder.Services.AddSingleton<IUnitConversionService, UnitConversionService>();
 builder.Services.AddSingleton<MockUserService>();
 builder.Services.AddSingleton<MockEmployeeService>();
+builder.Services.AddSingleton<MockInventoryService>();
 builder.Services.AddSingleton<MockProductionService>();
 builder.Services.AddSingleton<MockSalesService>();
-builder.Services.AddSingleton<MockInventoryService>();
 builder.Services.AddSingleton<MockPayrollService>();
 builder.Services.AddSingleton<MockLogisticsService>();
 builder.Services.AddSingleton<MockDashboardService>();

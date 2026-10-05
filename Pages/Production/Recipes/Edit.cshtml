@@ -203,19 +203,27 @@
                     <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                         <div class="flex items-center gap-2">
                             <div class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">
-                                <i class="fa-solid fa-flask"></i>
+                                <i class="fa-solid fa-boxes-stacked"></i>
                             </div>
                             <div>
-                                <div class="font-bold text-slate-800 text-sm">Raw Ingredient Formula (per baseline batch)</div>
+                                <div class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                    <span>Raw Ingredient Formula (per baseline batch)</span>
+                                    <span class="badge badge-success badge-soft badge-xs font-bold text-[10px]">Store Inventory Linked</span>
+                                </div>
                                 <div class="text-[11px] text-slate-400" id="formulaSubtitle">
-                                    Quantities are totals for the whole batch
+                                    Materials sourced directly from warehouse stock ledger &bull; Quantities are totals for this batch
                                 </div>
                             </div>
                         </div>
 
-                        <button type="button" onclick="addIngredientRow()" class="btn btn-xs btn-neutral bg-stone-900 hover:bg-black text-white border-0 gap-1.5 rounded-xl font-bold px-3 shadow-xs">
-                            <i class="fa-solid fa-plus text-[10px]"></i> Add Ingredient
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <a asp-page="/Inventory/Index" target="_blank" class="btn btn-xs btn-outline border-slate-200 text-slate-600 hover:text-emerald-700 gap-1 rounded-xl text-[11px] font-semibold">
+                                <i class="fa-solid fa-warehouse text-[10px]"></i> Store Inventory
+                            </a>
+                            <button type="button" onclick="addIngredientRow()" class="btn btn-xs btn-neutral bg-stone-900 hover:bg-black text-white border-0 gap-1.5 rounded-xl font-bold px-3 shadow-xs">
+                                <i class="fa-solid fa-plus text-[10px]"></i> Add Raw Material
+                            </button>
+                        </div>
                     </div>
 
                     <div class="overflow-x-auto">
@@ -308,14 +316,19 @@
 
 @section Scripts {
 <script>
-    // Master price list, rendered from the ingredient seed (live unit costs).
+    // Master price list, rendered from warehouse store inventory (live unit costs and stock).
     const inventoryMaterials = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
         Model.AvailableIngredients.Select(i => new {
             id = i.Id,
+            itemCode = i.ItemCode ?? $"RAW-{i.Id:00}",
             name = i.Name,
             unit = i.Unit,
             category = i.Category,
-            costPerUnit = i.UnitCost
+            costPerUnit = i.UnitCost,
+            packageUnit = i.PackageUnit ?? i.Unit,
+            packageCost = i.PackageCostPrice > 0 ? i.PackageCostPrice : i.UnitCost,
+            stockOnHand = i.PackageStockOnHand > 0 ? i.PackageStockOnHand : i.CurrentStock,
+            supplierName = i.SupplierName ?? "Warehouse Store"
         })));
 
     // Existing lines, pre-seeded into the editable grid (qty is per BATCH).
@@ -379,13 +392,16 @@
 
         let list = [];
         if (kind === 'mass') {
-            list = ['kg', 'g', 'mg', 'ton', 'lb', 'oz', 'Bags (50kg)', 'Bags (25kg)'];
+            list = ['kg', 'g', 'mg', 'ton', 'lb', 'oz'];
+            if (material.packageUnit && !list.includes(material.packageUnit)) list.push(material.packageUnit);
             if (isLiquid) list.push('litres', 'ml', 'cl');
         } else if (kind === 'volume') {
             list = ['litres', 'ml', 'cl', 'dl', 'gal', 'cup', 'tbsp', 'tsp', 'm3'];
+            if (material.packageUnit && !list.includes(material.packageUnit)) list.push(material.packageUnit);
             if (isLiquid) list.push('kg', 'g');
         } else {
             list = ['pcs', 'dozen', 'pack', 'carton', 'box', 'crate'];
+            if (material.packageUnit && !list.includes(material.packageUnit)) list.push(material.packageUnit);
             if (hasBottleVol) list.push('litres', 'ml');
         }
 
@@ -535,13 +551,19 @@
                     <input type="hidden" name="RecipeInput.Ingredients[${idx}].IngredientId" value="${material.id}" />
                     <input type="hidden" name="RecipeInput.Ingredients[${idx}].IngredientName" value="${material.name}" />
                     <input type="hidden" name="RecipeInput.Ingredients[${idx}].IngredientUnit" value="${material.unit}" />
-                    <select class="select select-xs select-bordered w-full rounded-lg text-xs"
+                    <select class="select select-xs select-bordered w-full rounded-lg text-xs font-semibold focus:border-emerald-500"
                             onchange="onMaterialChange(${idx}, this.value)">
                         ${inventoryMaterials.map(m => `
                             <option value="${m.id}" ${m.id === material.id ? 'selected' : ''}>
-                                ${m.name} [${naira(m.costPerUnit, 0)}/${m.unit}]
+                                [${m.itemCode}] ${m.name} (${m.stockOnHand.toLocaleString('en-US', {maximumFractionDigits: 1})} ${m.packageUnit} in store) — ₦${m.costPerUnit.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2})}/${m.unit}
                             </option>`).join('')}
                     </select>
+                    <div class="flex items-center gap-2 mt-1 text-[10px] text-slate-500">
+                        <span class="badge badge-ghost badge-xs font-mono font-bold">${material.itemCode}</span>
+                        <span>Store Stock: <strong class="text-slate-700">${material.stockOnHand.toLocaleString('en-US', {maximumFractionDigits: 1})} ${material.packageUnit}</strong></span>
+                        <span class="opacity-40">&bull;</span>
+                        <span>Package: <strong>₦${material.packageCost.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</strong></span>
+                    </div>
                 </td>
                 <td class="py-2.5 text-center">
                     <div class="flex flex-col items-center">

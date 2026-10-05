@@ -11,12 +11,14 @@ namespace Manufacture.Services
     /// </summary>
     public class MockProductionService
     {
+        private readonly MockInventoryService _inventoryService;
         private readonly List<Ingredient> _ingredients = new();
         private readonly List<Recipe> _recipes = new();
         private readonly List<ProductionBatch> _batches = new();
 
-        public MockProductionService()
+        public MockProductionService(MockInventoryService? inventoryService = null)
         {
+            _inventoryService = inventoryService ?? new MockInventoryService();
             SeedInitialData();
         }
 
@@ -31,52 +33,81 @@ namespace Manufacture.Services
             SeedBatches();
         }
 
+        public static (string baseUnit, decimal multiplier) ParsePackageUnit(string unitDescription)
+        {
+            if (string.IsNullOrWhiteSpace(unitDescription)) return ("kg", 1m);
+            var lower = unitDescription.ToLowerInvariant();
+
+            var matchKg = System.Text.RegularExpressions.Regex.Match(lower, @"\(\s*([\d\.]+)\s*kg\s*\)");
+            if (matchKg.Success && decimal.TryParse(matchKg.Groups[1].Value, out var kgVal))
+                return ("kg", kgVal);
+
+            var matchL = System.Text.RegularExpressions.Regex.Match(lower, @"\(\s*([\d\.]+)\s*l\s*\)");
+            if (matchL.Success && decimal.TryParse(matchL.Groups[1].Value, out var lVal))
+                return ("litres", lVal);
+
+            var matchPcs = System.Text.RegularExpressions.Regex.Match(lower, @"\(\s*([\d,\.]+)\s*pcs\s*\)");
+            if (matchPcs.Success)
+            {
+                var clean = matchPcs.Groups[1].Value.Replace(",", "");
+                if (decimal.TryParse(clean, out var pcsVal)) return ("pcs", pcsVal);
+            }
+
+            if (lower.Contains("litre") || lower.Contains("liter")) return ("litres", 1m);
+            if (lower.Contains("piece") || lower.Contains("pcs")) return ("pcs", 1m);
+            if (lower.Contains("kg")) return ("kg", 1m);
+
+            return ("pcs", 1m);
+        }
+
         private void SeedIngredients()
         {
-            var seededAt = DateTime.UtcNow;
+            _ingredients.Clear();
+            var inventoryItems = _inventoryService.GetAllItems()
+                .Where(i => i.Category != "Fuel & Utility")
+                .ToList();
 
-            _ingredients.AddRange(new[]
+            foreach (var item in inventoryItems)
             {
-                // ---- Bread raw materials (priced per kg / litre) ----
-                new Ingredient { Id = 1,  Name = "Premium Wheat Flour",                  Unit = "kg",     UnitCost = 1100m, CurrentStock = 450m,  Category = "Raw Materials", UpdatedAt = seededAt },
-                new Ingredient { Id = 2,  Name = "Refined White Sugar",                   Unit = "kg",     UnitCost = 1450m, CurrentStock = 120m,  Category = "Raw Materials", UpdatedAt = seededAt },
-                new Ingredient { Id = 3,  Name = "Instant Dry Yeast",                     Unit = "kg",     UnitCost = 3800m, CurrentStock = 35m,   Category = "Raw Materials", UpdatedAt = seededAt },
-                new Ingredient { Id = 4,  Name = "Vegetable Bakery Shortening",          Unit = "kg",     UnitCost = 2200m, CurrentStock = 80m,   Category = "Raw Materials", UpdatedAt = seededAt },
-                new Ingredient { Id = 5,  Name = "Iodized Salt",                         Unit = "kg",     UnitCost = 400m,  CurrentStock = 50m,   Category = "Raw Materials", UpdatedAt = seededAt },
-                new Ingredient { Id = 6,  Name = "Calcium Propionate (Preservative)",    Unit = "kg",     UnitCost = 4500m, CurrentStock = 15m,   Category = "Additives",     UpdatedAt = seededAt },
-                new Ingredient { Id = 7,  Name = "Milk Flavour Powder",                   Unit = "kg",     UnitCost = 9500m, CurrentStock = 22m,   Category = "Additives",     UpdatedAt = seededAt },
-                new Ingredient { Id = 8,  Name = "Purified Process Water",               Unit = "litres", UnitCost = 10m,   CurrentStock = 2000m, Category = "Raw Materials", UpdatedAt = seededAt },
+                var (baseUnit, multiplier) = ParsePackageUnit(item.Unit);
+                var costPerBaseUnit = multiplier > 0 ? Math.Round(item.UnitCostPrice / multiplier, 4) : item.UnitCostPrice;
+                var stockInBaseUnit = item.QuantityInStock * multiplier;
 
-                // ---- Packaging (priced per piece) ----
-                new Ingredient { Id = 9,  Name = "Jumbo Bread Nylon Wrapper",            Unit = "pcs",    UnitCost = 12m,   CurrentStock = 4000m, Category = "Packaging",     UpdatedAt = seededAt },
-                new Ingredient { Id = 10, Name = "Medium Bread Nylon Wrapper",           Unit = "pcs",    UnitCost = 8m,    CurrentStock = 6500m, Category = "Packaging",     UpdatedAt = seededAt },
-                new Ingredient { Id = 11, Name = "18.9L Dispenser Water Bottle",         Unit = "pcs",    UnitCost = 95m,   CurrentStock = 900m,  Category = "Packaging",     UpdatedAt = seededAt },
-                new Ingredient { Id = 12, Name = "Popcorn Small Bag",                    Unit = "pcs",    UnitCost = 6m,    CurrentStock = 5200m, Category = "Packaging",     UpdatedAt = seededAt },
-
-                // ---- Popcorn raw materials ----
-                new Ingredient { Id = 13, Name = "Popcorn Maize (Mota)",                 Unit = "kg",     UnitCost = 1650m, CurrentStock = 140m,  Category = "Raw Materials", UpdatedAt = seededAt },
-                new Ingredient { Id = 14, Name = "Vegetable Frying Oil",                 Unit = "litres", UnitCost = 2400m, CurrentStock = 85m,   Category = "Raw Materials", UpdatedAt = seededAt },
-                new Ingredient { Id = 15, Name = "Popcorn Seasoning Powder",             Unit = "kg",     UnitCost = 6200m, CurrentStock = 18m,   Category = "Additives",     UpdatedAt = seededAt }
-            });
+                _ingredients.Add(new Ingredient
+                {
+                    Id = item.Id,
+                    ItemCode = item.ItemCode,
+                    Name = item.Name,
+                    Unit = baseUnit,
+                    UnitCost = costPerBaseUnit,
+                    CurrentStock = stockInBaseUnit,
+                    Category = item.Category,
+                    PackageUnit = item.Unit,
+                    PackageCostPrice = item.UnitCostPrice,
+                    PackageStockOnHand = item.QuantityInStock,
+                    SupplierName = item.PreferredSupplierName,
+                    UpdatedAt = item.LastRestockedDate
+                });
+            }
         }
 
         private void SeedRecipes()
         {
-            var flour = _ingredients[0];
-            var sugar = _ingredients[1];
-            var yeast = _ingredients[2];
-            var shortening = _ingredients[3];
-            var salt = _ingredients[4];
-            var preservative = _ingredients[5];
-            var milkFlavour = _ingredients[6];
-            var water = _ingredients[7];
-            var jumboWrap = _ingredients[8];
-            var mediumWrap = _ingredients[9];
-            var waterBottle = _ingredients[10];
-            var popcornBag = _ingredients[11];
-            var maize = _ingredients[12];
-            var fryingOil = _ingredients[13];
-            var seasoning = _ingredients[14];
+            var flour = _ingredients.First(i => i.ItemCode == "RAW-FLR-01" || i.Name.Contains("Flour"));
+            var sugar = _ingredients.First(i => i.ItemCode == "RAW-SGR-01" || i.Name.Contains("Sugar"));
+            var yeast = _ingredients.First(i => i.ItemCode == "RAW-YST-01" || i.Name.Contains("Yeast"));
+            var shortening = _ingredients.First(i => i.ItemCode == "RAW-FAT-01" || i.Name.Contains("Shortening") || i.Name.Contains("Margarine"));
+            var salt = _ingredients.First(i => i.ItemCode == "RAW-SLT-01" || i.Name.Contains("Salt"));
+            var preservative = _ingredients.First(i => i.ItemCode == "RAW-PRV-01" || i.Name.Contains("Preservative"));
+            var milkFlavour = _ingredients.First(i => i.ItemCode == "RAW-FLV-01" || i.Name.Contains("Flavour"));
+            var water = _ingredients.First(i => i.ItemCode == "RAW-WTR-01" || i.Name.Contains("Water"));
+            var jumboWrap = _ingredients.First(i => i.ItemCode == "PKG-NYL-JMB" || i.Name.Contains("Jumbo"));
+            var mediumWrap = _ingredients.First(i => i.ItemCode == "PKG-NYL-MED" || i.Name.Contains("Medium"));
+            var waterBottle = _ingredients.First(i => i.ItemCode == "PKG-BTL-189" || i.Name.Contains("18.9L") || i.Name.Contains("Bottle"));
+            var popcornBag = _ingredients.First(i => i.ItemCode == "PKG-BAG-POP" || i.Name.Contains("Popcorn Small Bag"));
+            var maize = _ingredients.First(i => i.ItemCode == "RAW-CRN-01" || i.Name.Contains("Maize"));
+            var fryingOil = _ingredients.First(i => i.ItemCode == "RAW-OIL-01" || i.Name.Contains("Oil"));
+            var seasoning = _ingredients.First(i => i.ItemCode == "RAW-SEA-01" || i.Name.Contains("Seasoning"));
 
             // ---- Bread: every recipe is defined against ONE 50kg bag of flour ----
 
@@ -341,8 +372,65 @@ namespace Manufacture.Services
         // Ingredients
         // =============================================================
 
-        public List<Ingredient> GetAllIngredients() => _ingredients.OrderBy(i => i.Name).ToList();
-        public Ingredient? GetIngredientById(int id) => _ingredients.FirstOrDefault(i => i.Id == id);
+        public void SyncIngredientsWithInventory()
+        {
+            var inventoryItems = _inventoryService.GetAllItems()
+                .Where(i => i.Category != "Fuel & Utility")
+                .ToList();
+
+            foreach (var item in inventoryItems)
+            {
+                var (baseUnit, multiplier) = ParsePackageUnit(item.Unit);
+                var costPerBaseUnit = multiplier > 0 ? Math.Round(item.UnitCostPrice / multiplier, 4) : item.UnitCostPrice;
+                var stockInBaseUnit = item.QuantityInStock * multiplier;
+
+                var existing = _ingredients.FirstOrDefault(i => i.Id == item.Id || i.ItemCode == item.ItemCode);
+                if (existing != null)
+                {
+                    existing.ItemCode = item.ItemCode;
+                    existing.Name = item.Name;
+                    existing.Category = item.Category;
+                    existing.PackageUnit = item.Unit;
+                    existing.PackageCostPrice = item.UnitCostPrice;
+                    existing.PackageStockOnHand = item.QuantityInStock;
+                    existing.SupplierName = item.PreferredSupplierName;
+                    existing.Unit = baseUnit;
+                    existing.UnitCost = costPerBaseUnit;
+                    existing.CurrentStock = stockInBaseUnit;
+                    existing.UpdatedAt = item.LastRestockedDate;
+                }
+                else
+                {
+                    _ingredients.Add(new Ingredient
+                    {
+                        Id = item.Id,
+                        ItemCode = item.ItemCode,
+                        Name = item.Name,
+                        Unit = baseUnit,
+                        UnitCost = costPerBaseUnit,
+                        CurrentStock = stockInBaseUnit,
+                        Category = item.Category,
+                        PackageUnit = item.Unit,
+                        PackageCostPrice = item.UnitCostPrice,
+                        PackageStockOnHand = item.QuantityInStock,
+                        SupplierName = item.PreferredSupplierName,
+                        UpdatedAt = item.LastRestockedDate
+                    });
+                }
+            }
+        }
+
+        public List<Ingredient> GetAllIngredients()
+        {
+            SyncIngredientsWithInventory();
+            return _ingredients.OrderBy(i => i.Name).ToList();
+        }
+
+        public Ingredient? GetIngredientById(int id)
+        {
+            SyncIngredientsWithInventory();
+            return _ingredients.FirstOrDefault(i => i.Id == id);
+        }
 
         public Ingredient CreateIngredient(Ingredient ingredient)
         {
