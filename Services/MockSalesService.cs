@@ -8,10 +8,12 @@ namespace Manufacture.Services
         private readonly List<Customer> _customers = new();
         private readonly List<PosTerminal> _terminals = new();
         private readonly List<Order> _orders = new();
+        private readonly List<SalesRepProfile> _reps = new();
 
-        public MockSalesService()
+        public MockSalesService(MockUserService userService, MockLogisticsService logisticsService)
         {
             SeedInitialData();
+            SeedReps(userService, logisticsService);
         }
 
         private void SeedInitialData()
@@ -169,9 +171,106 @@ namespace Manufacture.Services
                     {
                         new() { Id = 5, OrderId = 4, RecipeId = 2, ProductName = "Medium Loaf Bread", Quantity = 110, UnitPrice = 900 }
                     }
+                },
+                new Order
+                {
+                    Id = 5,
+                    OrderNumber = "ORD-20260819-005",
+                    Type = OrderType.PreOrder,
+                    CustomerId = 3,
+                    CustomerName = "Grand Square Supermarket VI",
+                    CustomerCategory = CustomerCategory.Supermarket,
+                    SalesRepUserId = 1,
+                    SalesRepName = "Babatunde Alabi",
+                    PosTerminalCode = "POS-02",
+                    PaymentMethod = PaymentMethod.BankTransfer,
+                    Status = OrderStatus.InProduction,
+                    OrderDate = DateTime.UtcNow.AddMinutes(-45),
+                    TargetDeliveryDate = DateTime.UtcNow,
+                    Discount = 0,
+                    AmountPaid = 0,
+                    Items = new List<OrderItem>
+                    {
+                        new() { Id = 6, OrderId = 5, RecipeId = 6, ProductName = "Purified Water 18.9L", Quantity = 250, UnitPrice = 250 }
+                    }
+                },
+                new Order
+                {
+                    Id = 6,
+                    OrderNumber = "ORD-20260819-006",
+                    Type = OrderType.PreOrder,
+                    CustomerId = 2,
+                    CustomerName = "Goodness Supermarket Ikeja",
+                    CustomerCategory = CustomerCategory.Supermarket,
+                    SalesRepUserId = 2,
+                    SalesRepName = "Chiamaka Nwosu",
+                    PosTerminalCode = "POS-03",
+                    PaymentMethod = PaymentMethod.PosBank,
+                    Status = OrderStatus.InProduction,
+                    OrderDate = DateTime.UtcNow.AddMinutes(-20),
+                    TargetDeliveryDate = DateTime.UtcNow,
+                    Discount = 0,
+                    AmountPaid = 0,
+                    Items = new List<OrderItem>
+                    {
+                        new() { Id = 7, OrderId = 6, RecipeId = 7, ProductName = "Popcorn 40g Bag", Quantity = 120, UnitPrice = 200 }
+                    }
                 }
             });
         }
+
+        /// <summary>
+        /// The field roster. Every rep is bound to a real login account, a real POS
+        /// terminal and a real vehicle, so a rep named on the dashboard is the same
+        /// person who signs in, appears in HR, and can be found on an order.
+        ///
+        /// Terminal and vehicle are assigned here rather than invented downstream:
+        ///   * POS-01 is the front retail register and is owned outright by its user.
+        ///   * POS-02 is the wholesale/dispatch register, shared by the mainland reps.
+        ///   * POS-03 is a van's mobile POS, so the two reps on a van share it.
+        /// </summary>
+        private void SeedReps(MockUserService userService, MockLogisticsService logisticsService)
+        {
+            // Resolve by registration number so a renamed or renumbered vehicle in the
+            // fleet master cannot silently orphan a rep.
+            var vehicle = (string reg) => logisticsService.GetAllVehicles()
+                .FirstOrDefault(v => string.Equals(v.RegistrationNumber, reg, StringComparison.OrdinalIgnoreCase));
+
+            var repUser = (string name) => userService.GetAll(includeInactive: false)
+                .FirstOrDefault(u => u.Role == nameof(UserRole.SalesRep)
+                                  && string.Equals(u.Name, name, StringComparison.OrdinalIgnoreCase));
+
+            void Add(int id, string name, string phone, string route, string terminal, string reg, string focus)
+            {
+                var account = repUser(name);
+                _reps.Add(new SalesRepProfile
+                {
+                    Id = id,
+                    UserId = account?.Id,
+                    FullName = account?.Name ?? name,
+                    PhoneNumber = account?.PhoneNumber ?? phone,
+                    RouteName = route,
+                    PosTerminalCode = terminal,
+                    VehicleRegistration = vehicle(reg)?.RegistrationNumber ?? reg,
+                    ProductFocus = focus,
+                    IsActive = true
+                });
+            }
+
+            Add(1, "Babatunde Alabi", "+2348044445555", "Ikeja & Ojota", "POS-01", "KJA-892-XA", "Bread & Water");
+            Add(2, "Chiamaka Nwosu", "+2348055556677", "Lagos Island & Victoria Is.", "POS-03", "KJA-892-XA", "Bread & Popcorn");
+            Add(3, "Ibrahim Sanni", "+2348066667788", "Yaba & Surulere", "POS-02", "LSR-441-YB", "Water & Bread");
+            Add(4, "Blessing Etim", "+2348077778899", "Maryland & Ikeja", "POS-02", "LSR-441-YB", "Popcorn & Water");
+            Add(5, "Segun Adewale", "+2348088889900", "Agege & Ilupeju", "POS-02", "EKY-319-ZC", "Bread");
+            Add(6, "Halima Yusuf", "+2348099990011", "Oshodi & Islington", "POS-03", "EKY-319-ZC", "Water & Popcorn");
+        }
+
+        // Sales reps
+        public List<SalesRepProfile> GetAllReps() => _reps.Where(r => r.IsActive).ToList();
+
+        public SalesRepProfile? GetRepById(int id) => _reps.FirstOrDefault(r => r.Id == id);
+
+        public SalesRepProfile? GetRepByUserId(int userId) => _reps.FirstOrDefault(r => r.UserId == userId);
 
         // Customers
         public List<Customer> GetAllCustomers() => _customers.Where(c => c.IsActive).OrderBy(c => c.Name).ToList();
@@ -295,6 +394,33 @@ namespace Manufacture.Services
             order.LoadedAt = DateTime.UtcNow;
             order.Status = OrderStatus.Dispatched;
             return true;
+        }
+
+        /// <summary>
+        /// Aggregates demand from Sales Rep orders placed (active pre-orders & pending dispatches)
+        /// for a specific recipe to drive production batch planning.
+        /// </summary>
+        public int GetDemandForRecipe(int recipeId)
+        {
+            return _orders
+                .Where(o => o.Status != OrderStatus.Dispatched && o.Status != OrderStatus.Cancelled)
+                .SelectMany(o => o.Items)
+                .Where(item => item.RecipeId == recipeId)
+                .Sum(item => item.Quantity);
+        }
+
+        /// <summary>
+        /// Returns open customer orders / pre-orders that need production or loading.
+        /// If a recipeId is supplied, filters down to orders that contain this recipe item.
+        /// </summary>
+        public List<Order> GetOpenOrdersForRecipe(int? recipeId = null)
+        {
+            var query = _orders.Where(o => o.Status != OrderStatus.Dispatched && o.Status != OrderStatus.Cancelled);
+            if (recipeId.HasValue && recipeId.Value > 0)
+            {
+                query = query.Where(o => o.Items.Any(i => i.RecipeId == recipeId.Value));
+            }
+            return query.OrderByDescending(o => o.Id).ToList();
         }
     }
 }

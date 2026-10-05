@@ -2,6 +2,12 @@
 @model Manufacture.Pages.Production.Recipes.IndexModel
 @{
     ViewData["Title"] = "Product Recipes & Costing";
+    var categories = RecipeCatalog.ProductTypes
+        .Select(p => p.ToString())
+        .Union(Model.Recipes.Select(r => r.ProductType))
+        .Where(pt => !string.IsNullOrWhiteSpace(pt))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
 }
 
 <div class="space-y-6 w-full">
@@ -13,26 +19,30 @@
                 <span>&gt;</span>
                 <a asp-page="/Production/Index" class="hover:underline">Manufacturing</a>
                 <span>&gt;</span>
-                <span class="text-primary font-bold">Recipes & Costing</span>
+                <span class="text-primary font-bold">Recipes &amp; Costing</span>
             </div>
             <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
-                <i class="fa-solid fa-calculator text-primary"></i> Product Recipe Builder & Cost Engine
+                <i class="fa-solid fa-calculator text-primary"></i> Product Recipe Builder &amp; Cost Engine
             </h1>
             <p class="text-xs opacity-70 mt-0.5">
-                Ingredient-level pricing, packaging nylon costs, and automated margin calculation.
+                Quantities defined per baseline batch, costed live against current ingredient prices.
             </p>
         </div>
-        <div>
+        <div class="flex items-center gap-2">
+            <a asp-page="/Production/Pricing/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-bold px-4 text-xs">
+                <i class="fa-solid fa-tags text-xs"></i> Price &amp; Margin Admin
+            </a>
             <a asp-page="/Production/Recipes/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
                 <i class="fa-solid fa-plus text-xs"></i> Build New Recipe
             </a>
         </div>
     </div>
 
-    <!-- Search & Filter Bar -->
+    <!-- Search & Category Filter Bar -->
     <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4">
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div class="relative w-full sm:w-96">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <!-- Search Bar -->
+            <div class="relative w-full lg:w-80 shrink-0">
                 <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-xs opacity-50"></i>
                 <input type="text" 
                        id="recipeSearchInput" 
@@ -41,7 +51,38 @@
                        class="input input-bordered input-sm w-full pl-9 bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" />
             </div>
 
-            <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <!-- Category Filter Pills -->
+            <div class="flex items-center gap-1.5 overflow-x-auto py-0.5" id="categoryFilterContainer">
+                <button type="button" 
+                        onclick="setCategoryFilter('all', this)" 
+                        data-category="all"
+                        class="btn btn-xs btn-neutral rounded-lg font-bold filter-pill transition-all gap-1.5 shadow-2xs">
+                    <i class="fa-solid fa-layer-group text-[10px]"></i>
+                    All Categories
+                    <span class="badge badge-xs font-mono font-bold count-badge bg-neutral-content text-neutral border-0">@Model.Recipes.Count</span>
+                </button>
+                @foreach (var cat in categories)
+                {
+                    var catCount = Model.Recipes.Count(r => string.Equals(r.ProductType, cat, StringComparison.OrdinalIgnoreCase));
+                    var icon = cat.ToLower() switch {
+                        "bread" => "fa-bread-slice",
+                        "water" => "fa-bottle-water",
+                        "popcorn" => "fa-bowl-food",
+                        _ => "fa-tag"
+                    };
+                    <button type="button" 
+                            onclick="setCategoryFilter('@cat.ToLower()', this)" 
+                            data-category="@cat.ToLower()"
+                            class="btn btn-xs btn-ghost border border-base-300 hover:border-primary/40 rounded-lg filter-pill font-medium transition-all gap-1.5">
+                        <i class="fa-solid @icon text-[10px] opacity-70"></i>
+                        @cat
+                        <span class="badge badge-xs font-mono count-badge bg-base-200 text-base-content/70 border-0">@catCount</span>
+                    </button>
+                }
+            </div>
+
+            <!-- Total Counter Badge -->
+            <div class="flex items-center gap-2 justify-end shrink-0">
                 <span id="recipeCountBadge" class="badge badge-neutral badge-xs font-mono font-bold">
                     @Model.Recipes.Count Recipes
                 </span>
@@ -53,19 +94,37 @@
     <div id="recipeGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         @foreach (var recipe in Model.Recipes)
         {
-            <a asp-page="/Production/Recipes/Details" asp-route-id="@recipe.Id" 
+            var marginBadgeClass = recipe.HasNegativeMargin ? "badge-error"
+                                 : recipe.HasThinMargin ? "badge-warning"
+                                 : "badge-success";
+            var marginTextColor = recipe.HasNegativeMargin ? "text-error"
+                                 : recipe.HasThinMargin ? "text-warning"
+                                 : "text-success";
+            var catIcon = (recipe.ProductType?.ToLower()) switch {
+                "bread" => "fa-bread-slice",
+                "water" => "fa-bottle-water",
+                "popcorn" => "fa-bowl-food",
+                _ => "fa-tag"
+            };
+
+            <a asp-page="/Production/Recipes/Details" asp-route-id="@recipe.RecipeId" 
                class="card bg-base-100 border border-base-300 shadow-xs hover:shadow-md hover:border-primary hover:-translate-y-1 transition-all duration-200 rounded-2xl flex flex-col justify-between group cursor-pointer text-left block recipe-card"
-               data-name="@recipe.Name.ToLower()" 
-               data-code="@recipe.Code.ToLower()" 
-               data-desc="@recipe.Description.ToLower()">
+               data-name="@recipe.RecipeName.ToLower()" 
+               data-code="@recipe.RecipeCode.ToLower()" 
+               data-desc="@(recipe.BaselineUnitName.ToLower())"
+               data-category="@(recipe.ProductType?.ToLower() ?? "")">
                 
                 <div class="card-body p-6 space-y-4">
                     <!-- Top Row: Code Badge, Margin Badge & Hover Arrow -->
                     <div class="flex justify-between items-start">
-                        <div class="flex items-center gap-2">
-                            <span class="badge badge-neutral badge-xs font-mono font-bold">@recipe.Code</span>
-                            <span class="badge @(recipe.MarginPercentage >= 30 ? "badge-success" : "badge-warning") badge-xs font-bold font-mono">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="badge badge-neutral badge-xs font-mono font-bold">@recipe.RecipeCode</span>
+                            <span class="badge @marginBadgeClass badge-xs font-bold font-mono">
                                 @recipe.MarginPercentage% Margin
+                            </span>
+                            <span class="badge badge-soft badge-xs font-semibold gap-1">
+                                <i class="fa-solid @catIcon text-[9px] opacity-70"></i>
+                                @recipe.ProductType
                             </span>
                         </div>
                         <div class="w-6 h-6 rounded-full bg-base-200 group-hover:bg-primary group-hover:text-primary-content flex items-center justify-center text-xs transition-colors shadow-2xs">
@@ -73,26 +132,29 @@
                         </div>
                     </div>
 
-                    <!-- Recipe Title & Description -->
+                    <!-- Recipe Title & Baseline -->
                     <div>
                         <h2 class="text-lg font-black text-base-content group-hover:text-primary transition-colors tracking-tight">
-                            @recipe.Name
+                            @recipe.RecipeName
                         </h2>
-                        <p class="text-xs opacity-70 line-clamp-2 mt-1">@recipe.Description</p>
+                        <p class="text-[11px] opacity-60 font-mono mt-1 flex items-center gap-1.5">
+                            <i class="fa-solid fa-layer-group text-primary"></i>
+                            @recipe.BaselineUnitName &rarr; @recipe.ExpectedYield.ToString("N0") @recipe.OutputUnit
+                        </p>
                     </div>
 
                     <!-- Cost Breakdown Summary Box -->
                     <div class="space-y-2 bg-base-200 border border-base-300 p-4 rounded-xl text-xs font-mono">
                         <div class="flex justify-between opacity-70">
                             <span class="font-sans">Raw Ingredients:</span>
-                            <span class="font-bold text-base-content">₦@recipe.IngredientsCost.ToString("N2")</span>
+                            <span class="font-bold text-base-content">₦@recipe.IngredientsCostPerUnit.ToString("N2")</span>
                         </div>
                         <div class="flex justify-between opacity-70">
-                            <span class="font-sans">Nylon Packaging:</span>
+                            <span class="font-sans">Handling &amp; Label:</span>
                             <span class="font-bold text-base-content">₦@recipe.PackagingCost.ToString("N2")</span>
                         </div>
                         <div class="flex justify-between opacity-70">
-                            <span class="font-sans">Labor & Overhead:</span>
+                            <span class="font-sans">Labor &amp; Overhead:</span>
                             <span class="font-bold text-base-content">₦@recipe.LaborAndOverheadPerUnit.ToString("N2")</span>
                         </div>
                         
@@ -106,19 +168,19 @@
                             <span class="font-sans">Selling Price:</span>
                             <span>₦@recipe.SellingPrice.ToString("N2")</span>
                         </div>
-                        <div class="flex justify-between text-xs font-bold text-success">
-                            <span class="font-sans">Profit per Loaf:</span>
-                            <span>+₦@recipe.MarginAmount.ToString("N2")</span>
+                        <div class="flex justify-between text-xs font-bold @marginTextColor">
+                            <span class="font-sans">Profit per @recipe.SingularOutputUnit:</span>
+                            <span>@(recipe.MarginAmount >= 0 ? "+" : "")₦@recipe.MarginAmount.ToString("N2")</span>
                         </div>
                     </div>
 
                     <!-- Footer Note -->
                     <div class="flex items-center justify-between text-[11px] opacity-60 pt-1 border-t border-base-200">
                         <span class="flex items-center gap-1.5">
-                            <i class="fa-solid fa-list-check text-primary text-xs"></i> Contains @recipe.Ingredients.Count raw materials
+                            <i class="fa-solid fa-list-check text-primary text-xs"></i> @recipe.Lines.Count raw materials
                         </span>
-                        <span class="group-hover:text-primary font-semibold transition-colors">
-                            View Formula & Costing &rarr;
+                        <span class="font-sans">
+                            Batch Cost ₦@recipe.TotalBatchCost.ToString("N0")
                         </span>
                     </div>
                 </div>
@@ -128,16 +190,54 @@
     </div>
 
     <!-- No Results Alert -->
-    <div id="noResultsAlert" class="alert alert-info shadow-xs rounded-2xl text-xs py-4 hidden flex items-center gap-3">
-        <i class="fa-solid fa-circle-info text-base"></i>
-        <span>No recipes matched your search query. Try typing another name or product code.</span>
+    <div id="noResultsAlert" class="alert alert-info shadow-xs rounded-2xl text-xs py-4 hidden flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+            <i class="fa-solid fa-circle-info text-base"></i>
+            <span>No recipes matched your search or category filter.</span>
+        </div>
+        <button type="button" onclick="resetFilters()" class="btn btn-xs btn-outline rounded-lg text-[11px] font-bold">
+            Reset Filters
+        </button>
     </div>
 </div>
 
 @section Scripts {
 <script>
+    let activeCategory = 'all';
+
+    function setCategoryFilter(category, btn) {
+        activeCategory = (category || 'all').toLowerCase();
+        
+        document.querySelectorAll('.filter-pill').forEach(pill => {
+            pill.classList.remove('btn-neutral', 'font-bold', 'shadow-2xs');
+            pill.classList.add('btn-ghost');
+            const badge = pill.querySelector('.count-badge');
+            if (badge) {
+                badge.className = 'badge badge-xs font-mono count-badge bg-base-200 text-base-content/70 border-0';
+            }
+        });
+        
+        const activeBtn = btn || document.querySelector(`.filter-pill[data-category="${activeCategory}"]`);
+        if (activeBtn) {
+            activeBtn.classList.remove('btn-ghost');
+            activeBtn.classList.add('btn-neutral', 'font-bold', 'shadow-2xs');
+            const badge = activeBtn.querySelector('.count-badge');
+            if (badge) {
+                badge.className = 'badge badge-xs font-mono font-bold count-badge bg-neutral-content text-neutral border-0';
+            }
+        }
+        
+        filterRecipes();
+    }
+
+    function resetFilters() {
+        const searchInput = document.getElementById('recipeSearchInput');
+        if (searchInput) searchInput.value = '';
+        setCategoryFilter('all');
+    }
+
     function filterRecipes() {
-        const query = document.getElementById('recipeSearchInput').value.toLowerCase().trim();
+        const query = (document.getElementById('recipeSearchInput')?.value || '').toLowerCase().trim();
         const cards = document.querySelectorAll('.recipe-card');
         const countBadge = document.getElementById('recipeCountBadge');
         const noResults = document.getElementById('noResultsAlert');
@@ -148,21 +248,29 @@
             const name = card.getAttribute('data-name') || '';
             const code = card.getAttribute('data-code') || '';
             const desc = card.getAttribute('data-desc') || '';
+            const category = (card.getAttribute('data-category') || '').toLowerCase();
 
-            if (name.includes(query) || code.includes(query) || desc.includes(query)) {
-                card.style.display = 'block';
+            const matchesQuery = !query || name.includes(query) || code.includes(query) || desc.includes(query);
+            const matchesCategory = (activeCategory === 'all') || (category === activeCategory);
+
+            if (matchesQuery && matchesCategory) {
+                card.style.display = '';
                 visibleCount++;
             } else {
                 card.style.display = 'none';
             }
         });
 
-        countBadge.innerText = `${visibleCount} Recipe${visibleCount !== 1 ? 's' : ''}`;
+        if (countBadge) {
+            countBadge.innerText = `${visibleCount} Recipe${visibleCount !== 1 ? 's' : ''}`;
+        }
 
-        if (visibleCount === 0) {
-            noResults.classList.remove('hidden');
-        } else {
-            noResults.classList.add('hidden');
+        if (noResults) {
+            if (visibleCount === 0) {
+                noResults.classList.remove('hidden');
+            } else {
+                noResults.classList.add('hidden');
+            }
         }
     }
 </script>

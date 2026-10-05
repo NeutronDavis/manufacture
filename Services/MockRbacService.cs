@@ -241,6 +241,21 @@ namespace Manufacture.Services
                     },
                     new ModulePermission
                     {
+                        ModuleKey = "Reports",
+                        ModuleName = "Executive Reports & Analytics",
+                        Description = "Operational, financial and logistics reconciliation with chart views and exports",
+                        RoleAccess = new Dictionary<string, string>
+                        {
+                            { "SuperAdmin", "Full Access" },
+                            { "ProductionManager", "View Only" },
+                            { "StoreManager", "View Only" },
+                            { "SalesRep", "View Only" },
+                            { "Vendor", "None" },
+                            { "HrPayrollManager", "None" }
+                        }
+                    },
+                    new ModulePermission
+                    {
                         ModuleKey = "Settings",
                         ModuleName = "System Settings & RBAC",
                         Description = "User accounts, terminal PINs, color themes & RBAC permissions",

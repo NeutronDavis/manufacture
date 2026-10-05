@@ -1,7 +1,24 @@
 @page
 @model Manufacture.Pages.Production.Batches.IndexModel
 @{
-    ViewData["Title"] = "Production Batches & Output Log";
+    ViewData["Title"] = "Production Batches & Output Logger";
+
+    var totalCostSum = Model.Batches.Sum(b => b.TotalBatchCost);
+    var totalActualUnits = Model.Batches.Sum(b => b.ActualQuantity);
+    var totalTargetUnits = Model.Batches.Sum(b => b.TargetQuantity);
+    var completedBatches = Model.Batches.Count(b => b.Status == Manufacture.Models.Entities.BatchStatus.Completed);
+    var inProgressBatches = Model.Batches.Count(b => b.Status != Manufacture.Models.Entities.BatchStatus.Completed);
+    var overallYieldCompliance = totalTargetUnits > 0 ? ((decimal)totalActualUnits / totalTargetUnits) * 100m : 100m;
+
+    var recipesJson = System.Text.Json.JsonSerializer.Serialize(Model.ActiveRecipes.Select(r => new {
+        id = r.Id,
+        name = r.Name,
+        code = r.Code,
+        category = r.ProductType.ToString(),
+        expectedYield = r.ExpectedYield,
+        outputUnit = r.OutputUnit,
+        materialCostPerBaseline = r.TotalBatchCost
+    }));
 }
 
 <div class="space-y-6 w-full">
@@ -16,49 +33,144 @@
                 <span class="text-primary font-bold">Batches</span>
             </div>
             <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
-                <i class="fa-solid fa-layer-group text-primary"></i> Production Batches & Output Logger
+                <i class="fa-solid fa-layer-group text-primary"></i> Production Batches &amp; Output Logger
             </h1>
             <p class="text-xs opacity-70 mt-0.5">
-                Log flour bags mixed, oven batches, and record output variances (extra vs short loaves).
+                Track production runs across Bread, Water, and Popcorn lines. Live material batch costing, true per-unit production cost, and sales rep demand tracking.
             </p>
         </div>
-        <a asp-page="/Production/Batches/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 text-xs shadow-xs">
-            <i class="fa-solid fa-plus text-xs"></i> Record New Batch
-        </a>
+        <div class="flex items-center gap-2">
+            <button type="button" class="btn btn-sm btn-primary rounded-xl gap-2 font-bold px-4 text-xs shadow-xs"
+                    onclick="openDailyEntry()">
+                <i class="fa-solid fa-bolt text-xs"></i> Log Daily Output
+            </button>
+            <a asp-page="/Production/Batches/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 text-xs shadow-xs">
+                <i class="fa-solid fa-plus text-xs"></i> Plan Batch
+            </a>
+        </div>
     </div>
 
-    <!-- Batch KPI Stats -->
+    <!-- 4 Clear, Operational Batch KPI Stats -->
     <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+        <!-- 1. Total Batches -->
         <div class="stat p-5">
             <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-industry"></i></div>
             <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Batches</div>
-            <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.Batches.Count</div>
-            <div class="stat-desc opacity-70">Completed runs today</div>
+            <div class="stat-value text-2xl font-black font-mono text-base-content" id="kpiTotalBatches">@Model.Batches.Count</div>
+            <div class="stat-desc opacity-70" id="kpiBatchBreakdown">@completedBatches Completed &bull; @inProgressBatches In Run</div>
         </div>
 
+        <!-- 2. Total Units Produced -->
         <div class="stat p-5">
-            <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-bread-slice"></i></div>
-            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Baked Loaves</div>
-            <div class="stat-value text-2xl font-black font-mono text-success">@Model.Batches.Sum(b => b.ActualQuantity).ToString("N0")</div>
-            <div class="stat-desc opacity-70">Dispatched to POS store</div>
+            <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-box-open"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Units Produced</div>
+            <div class="stat-value text-2xl font-black font-mono text-success" id="kpiUnitsProduced">@totalActualUnits.ToString("N0")</div>
+            <div class="stat-desc opacity-70">Finished goods to POS dispatch</div>
         </div>
 
+        <!-- 3. Overall Yield Compliance (Replaces ambiguous Input Batch Scale) -->
         <div class="stat p-5">
-            <div class="stat-figure text-warning text-2xl"><i class="fa-solid fa-scale-balanced"></i></div>
-            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Flour Mixed</div>
-            <div class="stat-value text-2xl font-black font-mono text-warning">@Model.Batches.Sum(b => b.FlourBagsUsed).ToString("N1") Bags</div>
-            <div class="stat-desc opacity-70">50kg flour bags consumed</div>
+            <div class="stat-figure text-warning text-2xl"><i class="fa-solid fa-chart-line"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Yield Compliance</div>
+            <div class="stat-value text-2xl font-black font-mono text-warning" id="kpiYieldCompliance">
+                @overallYieldCompliance.ToString("F1")%
+            </div>
+            <div class="stat-desc opacity-70" id="kpiYieldDesc">
+                Target: @totalTargetUnits.ToString("N0") &bull; Net: @((totalActualUnits - totalTargetUnits).ToString("+0;-0;0")) units
+            </div>
+        </div>
+
+        <!-- 4. Total Material Cost (Replaces ambiguous Logged Batch Cost) -->
+        <div class="stat p-5">
+            <div class="stat-figure text-base-content text-2xl"><i class="fa-solid fa-wallet"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Material Cost</div>
+            <div class="stat-value text-2xl font-black font-mono text-base-content" id="kpiTotalCost">
+                ₦@totalCostSum.ToString("N0")
+            </div>
+            <div class="stat-desc opacity-70" id="kpiCostDesc">Raw material expenditure</div>
+        </div>
+    </div>
+
+    <!-- Search & Filter Toolbar with Date Presets & Categories -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4 space-y-3">
+        <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+            
+            <!-- Search Bar -->
+            <div class="relative w-full lg:w-80">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-xs opacity-50"></i>
+                <input type="text" id="batchSearchInput" oninput="applyAllFilters()" 
+                       placeholder="Search batch #, recipe, operator, shift..." 
+                       class="input input-bordered input-sm w-full pl-9 bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" />
+            </div>
+
+            <!-- Date Presets & Custom Picker (Defaults to Today) -->
+            <div class="flex flex-wrap items-center gap-2">
+                <div class="join bg-base-200 p-0.5 rounded-xl border border-base-300 text-xs">
+                    <button type="button" class="btn btn-xs join-item font-bold date-filter-btn btn-primary" data-period="today" onclick="setDateFilter('today')">Today</button>
+                    <button type="button" class="btn btn-xs join-item font-bold date-filter-btn btn-ghost" data-period="yesterday" onclick="setDateFilter('yesterday')">Yesterday</button>
+                    <button type="button" class="btn btn-xs join-item font-bold date-filter-btn btn-ghost" data-period="week" onclick="setDateFilter('week')">This Week</button>
+                    <button type="button" class="btn btn-xs join-item font-bold date-filter-btn btn-ghost" data-period="month" onclick="setDateFilter('month')">This Month</button>
+                    <button type="button" class="btn btn-xs join-item font-bold date-filter-btn btn-ghost" data-period="all" onclick="setDateFilter('all')">All Time</button>
+                </div>
+
+                <div class="flex items-center gap-1.5 text-xs">
+                    <input type="date" id="customDateFrom" onchange="setDateFilter('custom')" class="input input-bordered input-xs rounded-lg text-xs bg-base-200" title="From date" />
+                    <span class="opacity-50 text-[10px]">to</span>
+                    <input type="date" id="customDateTo" onchange="setDateFilter('custom')" class="input input-bordered input-xs rounded-lg text-xs bg-base-200" title="To date" />
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Filter Row: Category Pills & Status Filter -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-base-200 text-xs">
+            
+            <!-- Category Filter Tabs -->
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                <button type="button" onclick="setCategoryFilter('ALL')" class="btn btn-xs rounded-xl font-bold cat-filter-btn btn-primary" id="catBtnALL">
+                    All Batches (<span id="catCountALL">@Model.Batches.Count</span>)
+                </button>
+                <button type="button" onclick="setCategoryFilter('Bread')" class="btn btn-xs rounded-xl font-bold cat-filter-btn btn-ghost border border-base-300" id="catBtnBread">
+                    <i class="fa-solid fa-bread-slice text-primary text-[10px]"></i> Bread (<span id="catCountBread">@Model.Batches.Count(b => b.ProductCategory == Manufacture.Models.Entities.ProductType.Bread)</span>)
+                </button>
+                <button type="button" onclick="setCategoryFilter('Water')" class="btn btn-xs rounded-xl font-bold cat-filter-btn btn-ghost border border-base-300" id="catBtnWater">
+                    <i class="fa-solid fa-bottle-water text-info text-[10px]"></i> Water (<span id="catCountWater">@Model.Batches.Count(b => b.ProductCategory == Manufacture.Models.Entities.ProductType.Water)</span>)
+                </button>
+                <button type="button" onclick="setCategoryFilter('Popcorn')" class="btn btn-xs rounded-xl font-bold cat-filter-btn btn-ghost border border-base-300" id="catBtnPopcorn">
+                    <i class="fa-solid fa-bowl-food text-warning text-[10px]"></i> Popcorn (<span id="catCountPopcorn">@Model.Batches.Count(b => b.ProductCategory == Manufacture.Models.Entities.ProductType.Popcorn)</span>)
+                </button>
+            </div>
+
+            <!-- Status Dropdown & Page Size -->
+            <div class="flex items-center gap-2">
+                <select id="statusFilterSelect" onchange="applyAllFilters()" class="select select-bordered select-xs rounded-lg text-xs bg-base-200 font-medium">
+                    <option value="ALL">All Statuses</option>
+                    <option value="Completed">Completed Only</option>
+                    <option value="Baking">In Baking / Oven</option>
+                    <option value="InMixing">In Mixing</option>
+                    <option value="Planned">Planned</option>
+                </select>
+
+                <select id="pageSizeSelect" onchange="changePageSize(this.value)" class="select select-bordered select-xs rounded-lg text-xs bg-base-200 font-medium">
+                    <option value="10">10 / page</option>
+                    <option value="25">25 / page</option>
+                    <option value="50">50 / page</option>
+                </select>
+            </div>
+
         </div>
     </div>
 
     <!-- Batches Table Card -->
     <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
         <div class="card-body p-6 space-y-4">
-            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3 flex-wrap gap-2">
                 <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
-                    <i class="fa-solid fa-list text-primary"></i> Batch Output Records
+                    <i class="fa-solid fa-list text-primary"></i> Batch Output Records &amp; Unit Cost Ledger
                 </h2>
-                <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.Batches.Count Batches</span>
+                <div class="flex items-center gap-2">
+                    <span class="badge badge-neutral badge-xs font-mono font-bold" id="visibleRowCount">@Model.Batches.Count Batches</span>
+                </div>
             </div>
 
             <div class="overflow-x-auto">
@@ -67,57 +179,743 @@
                         <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
                             <th class="py-3 pl-4">Batch #</th>
                             <th>Date / Shift</th>
-                            <th>Recipe Product</th>
-                            <th>Baker In Charge</th>
-                            <th>Flour Used</th>
-                            <th>Target Qty</th>
-                            <th>Actual Loaves</th>
-                            <th>Variance</th>
+                            <th>Line &amp; Product</th>
+                            <th>Operator / Baker</th>
+                            <th>Input Batch Size</th>
+                            <th>Target</th>
+                            <th>Actual Output</th>
+                            <th>Yield Variance</th>
+                            <th class="text-right">Unit Cost</th>
                             <th>Status</th>
-                            <th class="pr-4">Notes</th>
+                            <th>Notes</th>
+                            <th class="text-center pr-4">Action</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-base-200">
+                    <tbody class="divide-y divide-base-200" id="batchTableBody">
                         @foreach (var batch in Model.Batches)
                         {
-                            <tr class="hover:bg-base-200/60 transition-colors">
-                                <td class="font-mono text-xs font-black text-primary py-3 pl-4">@batch.BatchNumber</td>
+                            var categoryStr = batch.ProductCategory.ToString();
+                            var catBadgeClass = batch.ProductCategory == Manufacture.Models.Entities.ProductType.Water ? "badge-info badge-soft"
+                                              : batch.ProductCategory == Manufacture.Models.Entities.ProductType.Popcorn ? "badge-warning badge-soft"
+                                              : "badge-primary badge-soft";
+
+                            var unitLabel = string.IsNullOrWhiteSpace(batch.OutputUnitLabel) ? "units" : batch.OutputUnitLabel;
+
+                            <tr class="hover:bg-base-200/60 transition-colors batch-row" 
+                                data-category="@categoryStr"
+                                data-date="@batch.ProductionDate.ToString("yyyy-MM-dd")"
+                                data-status="@batch.Status.ToString()"
+                                data-cost="@batch.TotalBatchCost"
+                                data-actual="@batch.ActualQuantity"
+                                data-target="@batch.TargetQuantity"
+                                data-search="@batch.BatchNumber.ToLower() @(batch.LinkedOrderNumber ?? "").ToLower() @(batch.CustomerName ?? "").ToLower() @batch.RecipeName.ToLower() @batch.BakerInCharge.ToLower() @batch.Shift.ToLower() @categoryStr.ToLower() @batch.Status.ToString().ToLower() @(batch.Notes ?? "").ToLower()">
+                                <td class="font-mono text-xs font-black py-3 pl-4">
+                                    <a asp-page="/Production/Batches/Details" asp-route-id="@batch.Id" class="text-primary hover:underline flex items-center gap-1.5" title="View batch details">
+                                        <i class="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-60"></i>
+                                        @batch.BatchNumber
+                                    </a>
+                                </td>
                                 <td>
                                     <div class="font-semibold text-base-content">@batch.ProductionDate.ToString("yyyy-MM-dd")</div>
                                     <span class="text-[10px] opacity-60">@batch.Shift</span>
                                 </td>
-                                <td class="font-bold text-base-content">@batch.RecipeName</td>
-                                <td class="opacity-80">@batch.BakerInCharge</td>
-                                <td class="font-mono font-bold text-base-content">@batch.FlourBagsUsed bags</td>
-                                <td class="font-mono opacity-70">@batch.TargetQuantity</td>
-                                <td class="font-mono font-black text-base-content">@batch.ActualQuantity</td>
                                 <td>
-                                    @if (batch.Variance > 0)
+                                    <div class="font-bold text-base-content flex items-center gap-1.5">
+                                        <span>@batch.RecipeName</span>
+                                    </div>
+                                    <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                        <span class="badge @catBadgeClass badge-xs font-mono font-bold">@categoryStr</span>
+                                        @if (batch.LinkedOrderId.HasValue && !string.IsNullOrEmpty(batch.LinkedOrderNumber))
+                                        {
+                                            <a asp-page="/Sales/Orders/Receipt" asp-route-id="@batch.LinkedOrderId" class="badge badge-primary badge-soft badge-xs gap-1 font-mono font-bold hover:badge-primary transition-all" title="Linked to Order for @batch.CustomerName">
+                                                <i class="fa-solid fa-file-invoice text-[8px]"></i> @batch.LinkedOrderNumber
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge badge-ghost badge-xs text-[9px] opacity-60">MTS Stock</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td class="opacity-80">@batch.BakerInCharge</td>
+                                <td class="font-mono font-bold text-base-content">
+                                    @batch.BatchInputQuantity.ToString("0.##") 
+                                    <span class="text-[10px] opacity-60 font-normal">
+                                        @(string.IsNullOrWhiteSpace(batch.BatchInputUnitLabel) ? "input" : batch.BatchInputUnitLabel)
+                                    </span>
+                                </td>
+                                <td class="font-mono font-bold text-base-content">
+                                    @batch.TargetQuantity.ToString("N0") <span class="text-[10px] opacity-60 font-normal">@unitLabel</span>
+                                </td>
+                                <td class="font-mono font-black text-base-content">
+                                    @if (batch.ActualQuantity > 0)
                                     {
-                                        <span class="badge badge-success badge-xs font-bold gap-1">
-                                            +@batch.Variance extra
-                                        </span>
-                                    }
-                                    else if (batch.Variance < 0)
-                                    {
-                                        <span class="badge badge-error badge-xs font-bold gap-1">
-                                            @batch.Variance short
-                                        </span>
+                                        <span>@batch.ActualQuantity.ToString("N0") <span class="text-[10px] font-normal opacity-60">@unitLabel</span></span>
                                     }
                                     else
                                     {
-                                        <span class="badge badge-neutral badge-xs font-mono">0 (Exact)</span>
+                                        <span class="badge badge-warning badge-soft badge-xs font-mono font-bold">0 @unitLabel</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (batch.ActualQuantity > 0)
+                                    {
+                                        @if (batch.Variance > 0)
+                                        {
+                                            <span class="badge badge-success badge-xs font-bold gap-1 font-mono">
+                                                +@batch.Variance extra
+                                            </span>
+                                        }
+                                        else if (batch.Variance < 0)
+                                        {
+                                            <span class="badge badge-error badge-xs font-bold gap-1 font-mono">
+                                                @batch.Variance short
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge badge-neutral badge-xs font-mono">0 (Exact)</span>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-warning badge-soft badge-xs font-mono">Pending</span>
+                                    }
+                                </td>
+                                <td class="font-mono text-right text-[10px] leading-tight">
+                                    @if (batch.CalculatedUnitCost > 0)
+                                    {
+                                        <div class="font-bold text-amber-700 text-xs">₦@batch.CalculatedUnitCost.ToString("N2") <span class="text-[9px] font-normal opacity-60">/ @unitLabel</span></div>
+                                        <div class="opacity-60 text-[10px]">batch ₦@batch.TotalBatchCost.ToString("N0")</div>
+                                    }
+                                    else if (batch.Status == Manufacture.Models.Entities.BatchStatus.Baking || batch.Status == Manufacture.Models.Entities.BatchStatus.InMixing)
+                                    {
+                                        <span class="badge badge-warning badge-xs font-mono font-semibold">In Run</span>
+                                        <div class="opacity-50 text-[9px]">batch ₦@batch.TotalBatchCost.ToString("N0")</div>
+                                    }
+                                    else
+                                    {
+                                        <span class="opacity-40">—</span>
                                     }
                                 </td>
                                 <td>
                                     <span class="badge badge-soft badge-xs font-semibold">@batch.Status</span>
                                 </td>
-                                <td class="text-xs opacity-70 max-w-xs truncate pr-4">@batch.Notes</td>
+                                <td class="text-xs opacity-70 max-w-xs truncate" title="@batch.Notes">@batch.Notes</td>
+                                <td class="text-center pr-4 whitespace-nowrap">
+                                    @if (batch.ActualQuantity == 0 || batch.Status != Manufacture.Models.Entities.BatchStatus.Completed)
+                                    {
+                                        <a asp-page="/Production/Batches/Details" asp-route-id="@batch.Id" class="btn btn-warning btn-xs rounded-xl font-bold gap-1 shadow-xs hover:btn-warning">
+                                            <i class="fa-solid fa-pen-to-square text-[10px]"></i> Record Output
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a asp-page="/Production/Batches/Details" asp-route-id="@batch.Id" class="btn btn-ghost btn-xs rounded-xl font-bold gap-1 text-base-content/70 hover:text-primary">
+                                            <i class="fa-solid fa-eye text-[10px]"></i> View
+                                        </a>
+                                    }
+                                </td>
                             </tr>
                         }
                     </tbody>
                 </table>
             </div>
+
+            <!-- Table Pagination Controls -->
+            <div class="pt-4 border-t border-base-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                <div class="opacity-70 font-mono">
+                    Showing <span id="pageStart" class="font-bold text-base-content">1</span> to <span id="pageEnd" class="font-bold text-base-content">5</span> of <span id="totalItems" class="font-bold text-base-content">5</span> batches
+                </div>
+
+                <div class="join" id="paginationControls">
+                    <!-- Populated dynamically by JavaScript -->
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
+
+<!-- ============================================================
+     Daily Production Entry Modal (doc/recipe-costing.md UI #2 & plan.txt)
+     Production manager picks category & recipe, types the input size
+     and real daily yield, and sees real-time unit costing.
+     ============================================================ -->
+<dialog id="dailyEntryModal" class="modal">
+    <div class="modal-box max-w-3xl rounded-2xl border border-base-300">
+        <form method="post" asp-page-handler="LogDailyOutput" id="dailyEntryForm">
+            <div class="flex items-start justify-between gap-4 border-b border-base-200 pb-4">
+                <div>
+                    <h3 class="font-black text-lg text-base-content tracking-tight flex items-center gap-2">
+                        <i class="fa-solid fa-bolt text-primary"></i> Daily Production Entry &amp; Unit Cost Snapper
+                    </h3>
+                    <p class="text-xs opacity-60 mt-0.5">
+                        Log today's physical batch output across any line. Real-time material cost and true unit cost are calculated and snapshotted.
+                    </p>
+                </div>
+                <button type="button" onclick="closeDailyEntry()" class="btn btn-ghost btn-sm btn-circle rounded-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="py-5 space-y-4">
+                <!-- Category Filter for Modal -->
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold opacity-70">Line Category:</span>
+                    <button type="button" class="btn btn-xs rounded-xl font-bold modal-cat-btn btn-primary" data-cat="ALL" onclick="filterModalRecipes('ALL')">All</button>
+                    <button type="button" class="btn btn-xs rounded-xl font-bold modal-cat-btn btn-outline border-base-300" data-cat="Bread" onclick="filterModalRecipes('Bread')">Bread</button>
+                    <button type="button" class="btn btn-xs rounded-xl font-bold modal-cat-btn btn-outline border-base-300" data-cat="Water" onclick="filterModalRecipes('Water')">Water</button>
+                    <button type="button" class="btn btn-xs rounded-xl font-bold modal-cat-btn btn-outline border-base-300" data-cat="Popcorn" onclick="filterModalRecipes('Popcorn')">Popcorn</button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-base-content" for="Entry_RecipeId">
+                            Product Recipe <span class="text-error">*</span>
+                        </label>
+                        <select asp-for="Entry.RecipeId" id="Entry_RecipeId"
+                                class="select select-bordered select-sm w-full rounded-xl text-xs font-medium"
+                                onchange="onModalRecipeChange(this.value)">
+                            <option value="">-- Select a recipe --</option>
+                            @foreach (var recipe in Model.ActiveRecipes)
+                            {
+                                <option value="@recipe.Id" data-category="@recipe.ProductType" data-expected="@recipe.ExpectedYield" data-unit="@recipe.OutputUnit">
+                                    @recipe.Name (@recipe.Code)
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-base-content" id="modalInputLabel" for="Entry_BatchInputQuantity">
+                            Input Batch Size <span class="text-error">*</span>
+                        </label>
+                        <div class="join w-full">
+                            <input type="number" step="0.1" min="0.1" asp-for="Entry.BatchInputQuantity" id="Entry_BatchInputQuantity"
+                                   class="input input-bordered input-sm join-item w-full rounded-l-xl text-xs font-mono font-bold"
+                                   value="1.0" oninput="refreshPreview()" required />
+                            <span id="modalInputTag" class="join-item bg-base-200 border-base-300 border-l-0 font-mono text-[10px] font-bold px-3 flex items-center">
+                                Bags
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-semibold text-base-content" for="Entry_ActualYield" id="modalActualYieldLabel">
+                                Actual Yield Today <span class="text-error">*</span>
+                            </label>
+                            <button type="button" class="badge badge-primary badge-soft badge-xs font-mono font-bold cursor-pointer" id="modalRepDemandBadge" onclick="applyModalRepDemand()" title="Click to fill yield from sales rep demand">
+                                Rep Demand: <span id="modalRepDemandValue">0</span>
+                            </button>
+                        </div>
+                        <div class="join w-full">
+                            <input type="number" min="1" step="1" asp-for="Entry.ActualYield" id="Entry_ActualYield"
+                                   class="input input-bordered input-sm join-item w-full rounded-l-xl text-xs font-mono font-bold text-primary"
+                                   oninput="refreshPreview()" required />
+                            <span id="entryOutputUnit" class="join-item bg-base-200 border-base-300 border-l-0 font-mono text-[10px] font-bold px-3 flex items-center">
+                                units
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-base-content" for="Entry_Shift">Shift</label>
+                        <select asp-for="Entry.Shift" id="Entry_Shift" class="select select-bordered select-sm w-full rounded-xl text-xs">
+                            <option>Morning Shift</option>
+                            <option>Afternoon Shift</option>
+                            <option>Evening Shift</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-xs font-semibold text-base-content" for="Entry_BakerInCharge">Operator / Baker in Charge</label>
+                        <input type="text" asp-for="Entry.BakerInCharge" id="Entry_BakerInCharge"
+                               class="input input-bordered input-sm w-full rounded-xl text-xs"
+                               placeholder="e.g. Emeka Obi" />
+                    </div>
+
+                    <div class="space-y-1.5 sm:col-span-2">
+                        <label class="text-xs font-semibold text-base-content" for="Entry_Notes">Notes</label>
+                        <input type="text" asp-for="Entry.Notes" id="Entry_Notes"
+                               class="input input-bordered input-sm w-full rounded-xl text-xs"
+                               placeholder="e.g. Smooth cycle; good consistency" />
+                    </div>
+
+                    <div class="space-y-1.5 sm:col-span-2 p-3 rounded-xl bg-base-200/50 border border-base-300">
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-semibold text-base-content flex items-center gap-1.5" for="Entry_LinkedOrderId">
+                                <i class="fa-solid fa-file-invoice text-primary"></i> Linked Customer Order <span class="text-[10px] opacity-60 font-normal">(Optional)</span>
+                            </label>
+                            <span class="text-[10px] opacity-60 font-mono" id="modalOrderHint">Make-to-Stock if unselected</span>
+                        </div>
+                        <select asp-for="Entry.LinkedOrderId" id="Entry_LinkedOrderId"
+                                class="select select-bordered select-sm w-full rounded-xl text-xs font-medium"
+                                onchange="onModalOrderChange()">
+                            <option value="">-- No Linked Order (Make-to-Stock / Floor Inventory) --</option>
+                            @foreach (var order in Model.AvailableOrders)
+                            {
+                                var itemsSummary = string.Join(", ", order.Items.Select(i => $"{i.ProductName}: {i.Quantity:N0}"));
+                                <option value="@order.Id" data-items='@System.Text.Json.JsonSerializer.Serialize(order.Items.Select(i => new { recipeId = i.RecipeId, quantity = i.Quantity }))'>
+                                    @order.OrderNumber &bull; @order.CustomerName &bull; [@itemsSummary]
+                                </option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Live Cost Preview -->
+                <div id="previewPanel" class="hidden rounded-2xl bg-amber-50/70 border border-amber-200/80 p-5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="text-[10px] uppercase font-bold tracking-wider text-amber-800">Live Material Cost Preview</div>
+                        <div id="previewLoading" class="text-[10px] text-slate-500 hidden">
+                            <i class="fa-solid fa-spinner fa-spin"></i> recalculating
+                        </div>
+                    </div>
+
+                    <div id="previewBaseline" class="text-[11px] text-slate-600 font-mono"></div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
+                        <div class="bg-white/60 rounded-xl border border-amber-200/60 p-3">
+                            <div class="text-[9px] uppercase font-bold text-slate-500 font-sans">Batch Material Cost</div>
+                            <div id="previewBatchCost" class="font-black text-base text-base-content">₦0</div>
+                        </div>
+                        <div class="bg-white/60 rounded-xl border border-amber-200/60 p-3">
+                            <div class="text-[9px] uppercase font-bold text-slate-500 font-sans">Unit Cost @@ Actual</div>
+                            <div id="previewUnitActual" class="font-black text-base text-amber-800">₦0</div>
+                        </div>
+                        <div class="bg-white/60 rounded-xl border border-amber-200/60 p-3">
+                            <div class="text-[9px] uppercase font-bold text-slate-500 font-sans">Unit Cost @@ Plan</div>
+                            <div id="previewUnitExpected" class="font-black text-base text-slate-600">₦0</div>
+                        </div>
+                        <div class="bg-white/60 rounded-xl border border-amber-200/60 p-3">
+                            <div class="text-[9px] uppercase font-bold text-slate-500 font-sans">Margin @@ Selling</div>
+                            <div id="previewMargin" class="font-black text-base text-emerald-600">₦0</div>
+                        </div>
+                    </div>
+
+                    <div id="previewVariance" class="text-[11px] text-slate-600 font-mono"></div>
+                    <div id="previewWarning" class="hidden alert alert-error rounded-xl text-[10px] py-2 px-3">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>Actual unit cost is above the selling price — this run would sell at a loss.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 border-t border-base-200 pt-4">
+                <button type="button" onclick="closeDailyEntry()" class="btn btn-sm btn-ghost rounded-xl text-xs font-semibold">
+                    Cancel
+                </button>
+                <button type="submit" id="dailyEntrySubmit" class="btn btn-sm btn-primary rounded-xl text-xs font-bold px-5 gap-2">
+                    <i class="fa-solid fa-floppy-disk text-xs"></i> Log Production Run
+                </button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button type="submit">close</button>
+    </form>
+</dialog>
+
+@section Scripts {
+<script>
+    const previewUrl = '@Url.Page("/Production/Batches/Index", "Preview")';
+    let previewTimer = null;
+
+    const recipes = @Html.Raw(recipesJson);
+
+    function naira(v, d) {
+        const dec = d === undefined ? 2 : d;
+        return '₦' + (v || 0).toLocaleString('en-US', {
+            minimumFractionDigits: dec, maximumFractionDigits: dec
+        });
+    }
+
+    // Global Filter & Pagination State
+    let selectedCategory = 'ALL';
+    let selectedDatePeriod = 'today';
+    let currentPage = 1;
+    let pageSize = 10;
+
+    function getLocalDateString(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    function setCategoryFilter(category) {
+        selectedCategory = category;
+        document.querySelectorAll('.cat-filter-btn').forEach(btn => {
+            const isMatch = btn.id === `catBtn${category}`;
+            btn.classList.toggle('btn-primary', isMatch);
+            btn.classList.toggle('btn-ghost', !isMatch);
+            btn.classList.toggle('border', !isMatch);
+            btn.classList.toggle('border-base-300', !isMatch);
+        });
+        currentPage = 1;
+        applyAllFilters();
+    }
+
+    function setDateFilter(period) {
+        selectedDatePeriod = period;
+        document.querySelectorAll('.date-filter-btn').forEach(btn => {
+            const isMatch = btn.getAttribute('data-period') === period;
+            btn.classList.toggle('btn-primary', isMatch);
+            btn.classList.toggle('btn-ghost', !isMatch);
+        });
+        currentPage = 1;
+        applyAllFilters();
+    }
+
+    function changePageSize(newSize) {
+        pageSize = parseInt(newSize) || 10;
+        currentPage = 1;
+        applyAllFilters();
+    }
+
+    function applyAllFilters() {
+        const query = (document.getElementById('batchSearchInput')?.value || '').trim().toLowerCase();
+        const statusFilter = document.getElementById('statusFilterSelect')?.value || 'ALL';
+        const fromDate = document.getElementById('customDateFrom')?.value;
+        const toDate = document.getElementById('customDateTo')?.value;
+
+        const now = new Date();
+        const todayStr = getLocalDateString(now);
+
+        const yest = new Date();
+        yest.setDate(yest.getDate() - 1);
+        const yestStr = getLocalDateString(yest);
+
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const weekStart = getLocalDateString(weekAgo);
+
+        const monthAgo = new Date();
+        monthAgo.setDate(monthAgo.getDate() - 30);
+        const monthStart = getLocalDateString(monthAgo);
+
+        const rows = Array.from(document.querySelectorAll('.batch-row'));
+        const matchedRows = [];
+
+        // Count category metrics in the filtered date range
+        let countAll = 0, countBread = 0, countWater = 0, countPopcorn = 0;
+        let totalCost = 0, totalActual = 0, totalTarget = 0, completedCount = 0, inRunCount = 0;
+
+        rows.forEach(row => {
+            const cat = row.getAttribute('data-category') || '';
+            const rowDate = row.getAttribute('data-date') || '';
+            const status = row.getAttribute('data-status') || '';
+            const searchData = row.getAttribute('data-search') || '';
+            const cost = parseFloat(row.getAttribute('data-cost')) || 0;
+            const actual = parseInt(row.getAttribute('data-actual')) || 0;
+            const target = parseInt(row.getAttribute('data-target')) || 0;
+
+            // Date condition
+            let dateMatch = true;
+            if (selectedDatePeriod === 'today') {
+                dateMatch = (rowDate === todayStr);
+            } else if (selectedDatePeriod === 'yesterday') {
+                dateMatch = (rowDate === yestStr);
+            } else if (selectedDatePeriod === 'week') {
+                dateMatch = (rowDate >= weekStart && rowDate <= todayStr);
+            } else if (selectedDatePeriod === 'month') {
+                dateMatch = (rowDate >= monthStart && rowDate <= todayStr);
+            } else if (selectedDatePeriod === 'custom') {
+                if (fromDate && rowDate < fromDate) dateMatch = false;
+                if (toDate && rowDate > toDate) dateMatch = false;
+            }
+
+            if (!dateMatch) {
+                row.style.display = 'none';
+                return;
+            }
+
+            // Track category counts matching the date filter
+            countAll++;
+            if (cat === 'Bread') countBread++;
+            else if (cat === 'Water') countWater++;
+            else if (cat === 'Popcorn') countPopcorn++;
+
+            // Category condition
+            const catMatch = (selectedCategory === 'ALL' || cat === selectedCategory);
+            // Status condition
+            const statusMatch = (statusFilter === 'ALL' || status === statusFilter);
+            // Search condition
+            const searchMatch = !query || searchData.includes(query);
+
+            if (catMatch && statusMatch && searchMatch) {
+                matchedRows.push(row);
+                totalCost += cost;
+                totalActual += actual;
+                totalTarget += target;
+                if (status === 'Completed') completedCount++;
+                else inRunCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        // Update Category Badges
+        const elAll = document.getElementById('catCountALL');
+        if (elAll) elAll.innerText = countAll;
+        const elBread = document.getElementById('catCountBread');
+        if (elBread) elBread.innerText = countBread;
+        const elWater = document.getElementById('catCountWater');
+        if (elWater) elWater.innerText = countWater;
+        const elPopcorn = document.getElementById('catCountPopcorn');
+        if (elPopcorn) elPopcorn.innerText = countPopcorn;
+
+        // Update Dynamic KPIs
+        const kpiBatches = document.getElementById('kpiTotalBatches');
+        if (kpiBatches) kpiBatches.innerText = matchedRows.length;
+        const kpiBreakdown = document.getElementById('kpiBatchBreakdown');
+        if (kpiBreakdown) kpiBreakdown.innerText = `${completedCount} Completed • ${inRunCount} In Run`;
+
+        const kpiUnits = document.getElementById('kpiUnitsProduced');
+        if (kpiUnits) kpiUnits.innerText = totalActual.toLocaleString();
+
+        const kpiYield = document.getElementById('kpiYieldCompliance');
+        const kpiYieldDesc = document.getElementById('kpiYieldDesc');
+        if (kpiYield) {
+            const comp = totalTarget > 0 ? ((totalActual / totalTarget) * 100).toFixed(1) : '100.0';
+            kpiYield.innerText = `${comp}%`;
+        }
+        if (kpiYieldDesc) {
+            const diff = totalActual - totalTarget;
+            const diffSign = diff > 0 ? `+${diff}` : `${diff}`;
+            kpiYieldDesc.innerText = `Target: ${totalTarget.toLocaleString()} • Net: ${diffSign} units`;
+        }
+
+        const kpiCost = document.getElementById('kpiTotalCost');
+        const kpiCostDesc = document.getElementById('kpiCostDesc');
+        if (kpiCost) kpiCost.innerText = '₦' + Math.round(totalCost).toLocaleString();
+        if (kpiCostDesc) kpiCostDesc.innerText = `Across ${matchedRows.length} production runs`;
+
+        const visibleCountEl = document.getElementById('visibleRowCount');
+        if (visibleCountEl) visibleCountEl.innerText = `${matchedRows.length} Batches`;
+
+        // Render Pagination
+        renderPagination(matchedRows);
+    }
+
+    function renderPagination(matchedRows) {
+        const total = matchedRows.length;
+        const totalPages = Math.ceil(total / pageSize) || 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = Math.min(startIndex + pageSize, total);
+
+        matchedRows.forEach((row, idx) => {
+            row.style.display = (idx >= startIndex && idx < endIndex) ? '' : 'none';
+        });
+
+        const startEl = document.getElementById('pageStart');
+        const endEl = document.getElementById('pageEnd');
+        const totalEl = document.getElementById('totalItems');
+        if (startEl) startEl.innerText = total === 0 ? 0 : startIndex + 1;
+        if (endEl) endEl.innerText = endIndex;
+        if (totalEl) totalEl.innerText = total;
+
+        const controls = document.getElementById('paginationControls');
+        if (!controls) return;
+        controls.innerHTML = '';
+
+        if (totalPages <= 1) {
+            controls.innerHTML = `<button class="btn btn-xs join-item btn-disabled font-bold">1</button>`;
+            return;
+        }
+
+        // Prev
+        const prevBtn = document.createElement('button');
+        prevBtn.className = `btn btn-xs join-item ${currentPage === 1 ? 'btn-disabled opacity-40' : ''}`;
+        prevBtn.innerHTML = '<i class="fa-solid fa-chevron-left text-[9px]"></i>';
+        prevBtn.onclick = () => { if (currentPage > 1) { currentPage--; applyAllFilters(); } };
+        controls.appendChild(prevBtn);
+
+        // Page buttons
+        for (let p = 1; p <= totalPages; p++) {
+            if (p === 1 || p === totalPages || (p >= currentPage - 1 && p <= currentPage + 1)) {
+                const pBtn = document.createElement('button');
+                pBtn.className = `btn btn-xs join-item font-mono ${p === currentPage ? 'btn-primary font-black' : 'btn-ghost'}`;
+                pBtn.innerText = p;
+                pBtn.onclick = () => { currentPage = p; applyAllFilters(); };
+                controls.appendChild(pBtn);
+            } else if (p === currentPage - 2 || p === currentPage + 2) {
+                const ellipsis = document.createElement('button');
+                ellipsis.className = 'btn btn-xs join-item btn-disabled';
+                ellipsis.innerText = '...';
+                controls.appendChild(ellipsis);
+            }
+        }
+
+        // Next
+        const nextBtn = document.createElement('button');
+        nextBtn.className = `btn btn-xs join-item ${currentPage === totalPages ? 'btn-disabled opacity-40' : ''}`;
+        nextBtn.innerHTML = '<i class="fa-solid fa-chevron-right text-[9px]"></i>';
+        nextBtn.onclick = () => { if (currentPage < totalPages) { currentPage++; applyAllFilters(); } };
+        controls.appendChild(nextBtn);
+    }
+
+    function openDailyEntry() {
+        const modal = document.getElementById('dailyEntryModal');
+        modal.showModal();
+        const sel = document.getElementById('Entry_RecipeId');
+        if (sel && sel.value) onModalRecipeChange(sel.value);
+    }
+
+    function closeDailyEntry() {
+        document.getElementById('dailyEntryModal').close();
+    }
+
+    function filterModalRecipes(category) {
+        document.querySelectorAll('.modal-cat-btn').forEach(btn => {
+            const isMatch = btn.getAttribute('data-cat') === category;
+            btn.classList.toggle('btn-primary', isMatch);
+            btn.classList.toggle('btn-outline', !isMatch);
+            btn.classList.toggle('border-base-300', !isMatch);
+        });
+
+        const sel = document.getElementById('Entry_RecipeId');
+        let firstMatch = null;
+        for (let i = 0; i < sel.options.length; i++) {
+            const opt = sel.options[i];
+            const optCat = opt.getAttribute('data-category');
+            const show = category === 'ALL' || optCat === category || opt.value === '';
+            opt.style.display = show ? '' : 'none';
+            if (show && opt.value && !firstMatch) firstMatch = opt.value;
+        }
+
+        if (firstMatch) {
+            sel.value = firstMatch;
+            onModalRecipeChange(firstMatch);
+        }
+    }
+
+    function onModalRecipeChange(recipeId) {
+        const recipe = recipes.find(r => r.id === parseInt(recipeId));
+        const unitBadge = document.getElementById('entryOutputUnit');
+        const yieldInput = document.getElementById('Entry_ActualYield');
+        const inputTag = document.getElementById('modalInputTag');
+        const inputLabel = document.getElementById('modalInputLabel');
+
+        if (recipe) {
+            unitBadge.innerText = recipe.outputUnit;
+            const inputScale = parseFloat(document.getElementById('Entry_BatchInputQuantity').value) || 1.0;
+            yieldInput.value = Math.round(recipe.expectedYield * inputScale);
+
+            if (recipe.category === 'Water') {
+                inputLabel.innerHTML = 'Production Runs *';
+                inputTag.innerText = 'Runs';
+            } else if (recipe.category === 'Popcorn') {
+                inputLabel.innerHTML = 'Cooking Pots Prepared (~2kg) *';
+                inputTag.innerText = 'Pots';
+            } else {
+                inputLabel.innerHTML = 'Flour Bags Mixed (50kg) *';
+                inputTag.innerText = 'Bags';
+            }
+        } else {
+            unitBadge.innerText = 'units';
+        }
+        refreshPreview();
+    }
+
+    function onModalOrderChange() {
+        const select = document.getElementById('Entry_LinkedOrderId');
+        const opt = select.selectedOptions[0];
+        const hint = document.getElementById('modalOrderHint');
+        if (!select.value || !opt) {
+            hint.innerText = 'Make-to-Stock if unselected';
+            return;
+        }
+        hint.innerText = 'Order linked';
+        try {
+            const raw = opt.getAttribute('data-items');
+            if (!raw) return;
+            const items = JSON.parse(raw);
+            const currentRecipeId = parseInt(document.getElementById('Entry_RecipeId').value) || 0;
+            const match = items.find(i => i.recipeId === currentRecipeId);
+            if (match) {
+                document.getElementById('Entry_ActualYield').value = match.quantity;
+                refreshPreview();
+            } else if (items.length > 0) {
+                document.getElementById('Entry_RecipeId').value = items[0].recipeId;
+                onModalRecipeChange(items[0].recipeId);
+                document.getElementById('Entry_ActualYield').value = items[0].quantity;
+                refreshPreview();
+            }
+        } catch (e) {}
+    }
+
+    function applyModalRepDemand() {
+        const val = parseInt(document.getElementById('modalRepDemandValue').innerText) || 0;
+        if (val > 0) {
+            document.getElementById('Entry_ActualYield').value = val;
+            refreshPreview();
+        }
+    }
+
+    function refreshPreview() {
+        clearTimeout(previewTimer);
+        previewTimer = setTimeout(doRefreshPreview, 250);
+    }
+
+    async function doRefreshPreview() {
+        const recipeId = document.getElementById('Entry_RecipeId').value;
+        const actualYield = document.getElementById('Entry_ActualYield').value;
+        const batchInputQty = document.getElementById('Entry_BatchInputQuantity').value || 1.0;
+        const panel = document.getElementById('previewPanel');
+
+        if (!recipeId || !actualYield || parseInt(actualYield) < 1) {
+            panel.classList.add('hidden');
+            return;
+        }
+
+        document.getElementById('previewLoading').classList.remove('hidden');
+
+        try {
+            const res = await fetch(`${previewUrl}&recipeId=${recipeId}&actualYield=${actualYield}&batchInputQuantity=${batchInputQty}`);
+            if (!res.ok) throw new Error('preview failed');
+            const p = await res.json();
+
+            panel.classList.remove('hidden');
+            document.getElementById('previewBaseline').innerText = `${p.BaselineUnitName} · Scale: ${p.BatchInputQuantity} ${p.BatchInputUnitLabel}`;
+
+            document.getElementById('previewBatchCost').innerText = naira(p.TotalBatchCost, 0);
+            document.getElementById('previewUnitActual').innerText = naira(p.UnitCostAtActualYield, 2);
+            document.getElementById('previewUnitExpected').innerText = naira(p.UnitCostAtExpectedYield, 2);
+
+            if (p.repDemand !== undefined) {
+                document.getElementById('modalRepDemandValue').innerText = p.repDemand;
+            }
+
+            const marginEl = document.getElementById('previewMargin');
+            marginEl.innerText = `${p.MarginAmount >= 0 ? '+' : '-'}${naira(Math.abs(p.MarginAmount), 2)} (${p.MarginPercentage}%)`;
+            marginEl.className = 'font-black text-base ' + (p.MarginAmount < 0 ? 'text-error' : 'text-emerald-600');
+
+            const variance = p.YieldVarianceUnits;
+            document.getElementById('previewVariance').innerText = variance === 0
+                ? 'Actual yield matches the plan exactly.'
+                : variance > 0
+                    ? `Actual yield is ${variance} ${p.OutputUnit} ABOVE plan — unit cost is lower than planned.`
+                    : `Actual yield is ${Math.abs(variance)} ${p.OutputUnit} SHORT of plan — unit cost is higher than planned.`;
+
+            document.getElementById('previewWarning').classList.toggle(
+                'hidden', !(p.MarginAmount < 0));
+        } catch (err) {
+            panel.classList.add('hidden');
+        } finally {
+            document.getElementById('previewLoading').classList.add('hidden');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        applyAllFilters();
+        const sel = document.getElementById('Entry_RecipeId');
+        if (sel && sel.value) onModalRecipeChange(sel.value);
+    });
+</script>
+}

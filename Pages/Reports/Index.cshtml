@@ -1,0 +1,352 @@
+@page
+@model Manufacture.Pages.Reports.IndexModel
+@using Manufacture.Models.DTOs
+@{
+    ViewData["Title"] = Model.Result.ModuleLabel;
+    var query = Model.Result.Query;
+    var selectedLines = query.Lines.ToHashSet();
+    var selectedProducts = query.ProductIds.ToHashSet();
+    var selectedReps = query.RepIds.ToHashSet();
+}
+
+<div class="space-y-6 w-full">
+
+    <!-- ============ Header ============ -->
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Reports</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-chart-column text-primary"></i> @Model.Result.ModuleLabel
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5 max-w-3xl">@Model.Result.ModuleDescription</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <a asp-page="/Dashboard/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-bold px-3.5 text-xs">
+                <i class="fa-solid fa-gauge text-xs"></i> Dashboard
+            </a>
+            <a href="@Model.ExportCsvUrl" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-bold px-3.5 text-xs">
+                <i class="fa-solid fa-file-csv text-success text-xs"></i> Export CSV
+            </a>
+            <a href="@Model.ExportPdfUrl" class="btn btn-sm btn-primary rounded-xl gap-2 font-bold px-4 text-xs shadow-xs">
+                <i class="fa-solid fa-file-pdf text-xs"></i> Export PDF
+            </a>
+        </div>
+    </div>
+
+    <!-- ============ View Switcher ============ -->
+    <div role="tablist" aria-label="Report view" class="tabs-box tabs bg-base-100 border border-base-300 shadow-xs rounded-2xl p-1.5 w-full sm:w-fit">
+        @foreach (var option in Model.ViewOptions)
+        {
+            var isActive = string.Equals(option.Value, Model.View, StringComparison.OrdinalIgnoreCase);
+            <a role="tab"
+               aria-selected="@isActive"
+               href="@Model.ViewUrl(option.Value)"
+               class="tab gap-2 rounded-xl font-bold text-xs px-5 py-2.5 @(isActive ? "tab-active !bg-primary !text-primary-content" : "opacity-70")">
+                <i class="@option.Icon text-xs"></i> @option.Label
+            </a>
+        }
+    </div>
+
+    <!-- ============ Module Tabs ============ -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+        <div class="card-body p-4 space-y-4">
+
+            <div class="flex items-center justify-between flex-wrap gap-2">
+                <h2 class="font-bold text-xs text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-filter text-primary"></i> Reconciliation Module
+                </h2>
+                <span class="badge badge-soft badge-xs font-bold">
+                    <i class="fa-solid fa-calendar-day mr-1"></i>@query.RangeLabel
+                </span>
+            </div>
+
+            <div role="tablist" class="tabs-box tabs tabs-sm bg-base-200 p-1 rounded-xl w-full">
+                @foreach (var option in Model.ModuleOptions)
+                {
+                    var isActive = option.Selected;
+                    <a role="tab"
+                       aria-selected="@isActive"
+                       href="@Model.BuildModuleUrl(option.Value)"
+                       class="tab gap-2 rounded-lg font-bold text-[11px] px-4 py-2 flex-1 justify-center @(isActive ? "tab-active !bg-base-100 !text-base-content shadow-xs" : "opacity-70")">
+                        <i class="@option.Icon text-[10px]"></i> <span class="truncate">@option.Label</span>
+                    </a>
+                }
+            </div>
+
+            <!-- Filter Form: everything the user picks lives in the query string,
+                 so both views and both exports see identical numbers. -->
+            <form method="get" asp-page="/Reports/Index" class="space-y-4">
+                <input type="hidden" name="view" value="@Model.View" />
+
+                <!-- Timeframe -->
+                <div>
+                    <label class="label-text text-[10px] font-bold uppercase opacity-60 mb-1.5 block" for="timeframe-pills">
+                        Timeframe
+                    </label>
+                    <div id="timeframe-pills" class="flex flex-wrap gap-2">
+                        @foreach (var option in Model.TimeframeOptions)
+                        {
+                            var isActive = option.Selected;
+                            <label class="btn btn-xs rounded-xl font-bold text-[11px] gap-1.5 border-base-300 cursor-pointer @(isActive ? "btn-neutral" : "btn-ghost bg-base-200")">
+                                <input type="radio" name="timeframe" value="@option.Value" class="hidden" @(isActive ? "checked" : "") onchange="this.form.submit()" />
+                                <i class="@option.Icon text-[10px]"></i> @option.Label
+                                @if (!string.IsNullOrEmpty(option.Hint))
+                                {
+                                    <span class="tooltip tooltip-right" data-tip="@option.Hint"></span>
+                                }
+                            </label>
+                        }
+                    </div>
+                </div>
+
+                <!-- Custom range (only meaningful for the Custom timeframe) -->
+                @if (Model.IsCustomRange)
+                {
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3 rounded-xl bg-base-200 border border-base-300">
+                        <label class="form-control">
+                            <span class="label-text text-[10px] font-bold uppercase opacity-60">Start date</span>
+                            <input type="date" name="start_date" value="@(query.StartDate == default ? "" : query.StartDate.ToString("yyyy-MM-dd"))" class="input input-sm input-bordered w-full font-mono text-xs" />
+                        </label>
+                        <label class="form-control">
+                            <span class="label-text text-[10px] font-bold uppercase opacity-60">End date</span>
+                            <input type="date" name="end_date" value="@(query.EndDate == default ? "" : query.EndDate.ToString("yyyy-MM-dd"))" class="input input-sm input-bordered w-full font-mono text-xs" />
+                        </label>
+                        <div class="flex items-end">
+                            <button type="submit" class="btn btn-sm btn-neutral rounded-xl font-bold text-xs w-full gap-2">
+                                <i class="fa-solid fa-arrows-rotate text-[10px]"></i> Apply Range
+                            </button>
+                        </div>
+                    </div>
+                }
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+                    <!-- Product line -->
+                    <div class="lg:col-span-3">
+                        <label class="label-text text-[10px] font-bold uppercase opacity-60 mb-1.5 block">Product Line</label>
+                        <div class="flex flex-wrap gap-1.5">
+                            @foreach (var line in Enum.GetValues<ProductType>())
+                            {
+                                var isOn = selectedLines.Contains(line);
+                                <label class="btn btn-xs rounded-xl font-bold text-[11px] gap-1.5 cursor-pointer @(isOn ? "btn-primary" : "btn-ghost bg-base-200 border-base-300")">
+                                    <input type="checkbox" name="category" value="@line" class="hidden" @(isOn ? "checked" : "") onchange="this.form.submit()" />
+                                    @line
+                                </label>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- SKU -->
+                    <div class="lg:col-span-4">
+                        <label class="label-text text-[10px] font-bold uppercase opacity-60 mb-1.5 block" for="sku-list">
+                            Product SKU <span class="font-normal opacity-60 normal-case">(@Model.Result.Catalog.Count available)</span>
+                        </label>
+                        <div id="sku-list" class="max-h-44 overflow-y-auto rounded-xl border border-base-300 bg-base-200/40 p-2 space-y-2">
+                            @foreach (var group in Model.CatalogByLine)
+                            {
+                                <div>
+                                    <div class="text-[9px] font-bold uppercase opacity-50 px-1 mb-1">@group.Key</div>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                                        @foreach (var sku in group)
+                                        {
+                                            var isOn = selectedProducts.Contains(sku.Id);
+                                            <label class="flex items-center gap-2 px-1.5 py-1 rounded-lg hover:bg-base-200 cursor-pointer text-[11px]">
+                                                <input type="checkbox" name="product_id" value="@sku.Id" class="checkbox checkbox-xs checkbox-primary" @(isOn ? "checked" : "") onchange="this.form.submit()" />
+                                                <span class="font-semibold truncate">@sku.Name</span>
+                                                <span class="text-[9px] opacity-50 font-mono ml-auto shrink-0">@ReportColumnCatalog.FormatMoney(sku.SellingPrice)</span>
+                                            </label>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Rep -->
+                    <div class="lg:col-span-3">
+                        <label class="label-text text-[10px] font-bold uppercase opacity-60 mb-1.5 block">Sales Rep</label>
+                        <div class="max-h-44 overflow-y-auto rounded-xl border border-base-300 bg-base-200/40 p-2 space-y-1">
+                            @foreach (var rep in Model.Result.Reps)
+                            {
+                                var isOn = selectedReps.Contains(rep.Id);
+                                <label class="flex items-start gap-2 px-1.5 py-1 rounded-lg hover:bg-base-200 cursor-pointer">
+                                    <input type="checkbox" name="rep_id" value="@rep.Id" class="checkbox checkbox-xs checkbox-primary mt-0.5" @(isOn ? "checked" : "") onchange="this.form.submit()" />
+                                    <span class="min-w-0">
+                                        <span class="block font-semibold text-[11px] truncate">@rep.FullName</span>
+                                        <span class="block text-[9px] opacity-55 truncate">@rep.RouteName &bull; @rep.PosTerminalCode</span>
+                                    </span>
+                                </label>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Route + group by -->
+                    <div class="lg:col-span-2 space-y-3">
+                        <label class="form-control block">
+                            <span class="label-text text-[10px] font-bold uppercase opacity-60 mb-1.5 block">Route</span>
+                            <select name="route" class="select select-sm select-bordered w-full font-semibold text-xs" onchange="this.form.submit()">
+                                <option value="">All routes</option>
+                                @foreach (var route in Model.Result.Routes)
+                                {
+                                    <option value="@route" selected="@(string.Equals(route, query.Route, StringComparison.OrdinalIgnoreCase))">@route</option>
+                                }
+                            </select>
+                        </label>
+
+                        <label class="form-control block">
+                            <span class="label-text text-[10px] font-bold uppercase opacity-60 mb-1.5 block">Group rows by</span>
+                            <select name="group_by" class="select select-sm select-bordered w-full font-semibold text-xs" onchange="this.form.submit()">
+                                @foreach (var option in Model.GroupByOptions)
+                                {
+                                    <option value="@option.Value" selected="@option.Selected">@option.Label</option>
+                                }
+                            </select>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+                    <div class="flex flex-wrap gap-1.5">
+                        @foreach (var label in Model.Result.ActiveFilterLabels)
+                        {
+                            <span class="badge badge-soft badge-xs font-semibold">@label</span>
+                        }
+                    </div>
+                    <a asp-page="/Reports/Index" asp-route-view="@Model.View" class="btn btn-xs btn-ghost font-bold text-[11px] gap-1.5">
+                        <i class="fa-solid fa-rotate-left text-[10px]"></i> Reset filters
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @if (!Model.HasData)
+    {
+        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+            <div class="card-body items-center text-center py-16">
+                <i class="fa-solid fa-folder-open text-4xl opacity-25"></i>
+                <h3 class="font-bold text-sm mt-3">No rows match these filters</h3>
+                <p class="text-xs opacity-60 max-w-sm">
+                    Widen the timeframe or clear a SKU, rep or route filter to bring data back into the report.
+                </p>
+                <a asp-page="/Reports/Index" class="btn btn-sm btn-neutral rounded-xl font-bold text-xs mt-3 gap-2">
+                    <i class="fa-solid fa-rotate-left text-[10px]"></i> Reset filters
+                </a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- ============ Grand Totals ============ -->
+        <div class="stats stats-vertical sm:stats-horizontal xl:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+            @if (Model.Result.Module == Manufacture.Models.Entities.AnalyticsModule.Logistics)
+            {
+                var fleet = Model.Result.LogisticsSummary.Rows;
+                <div class="stat p-4">
+                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Vehicles</div>
+                    <div class="stat-value text-xl font-black font-mono text-base-content">@fleet.Count</div>
+                    <div class="stat-desc opacity-70">On the filtered routes</div>
+                </div>
+                <div class="stat p-4">
+                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Trips</div>
+                    <div class="stat-value text-xl font-black font-mono text-primary">@fleet.Sum(f => f.Trips).ToString("N0")</div>
+                    <div class="stat-desc opacity-70">@fleet.Sum(f => f.DistanceKm).ToString("N0") km covered</div>
+                </div>
+                <div class="stat p-4">
+                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Fuel</div>
+                    <div class="stat-value text-xl font-black font-mono text-warning">@ReportColumnCatalog.FormatMoney(fleet.Sum(f => f.FuelCost))</div>
+                    <div class="stat-desc opacity-70">@fleet.Sum(f => f.Litres).ToString("N0") litres</div>
+                </div>
+                <div class="stat p-4">
+                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Maintenance</div>
+                    <div class="stat-value text-xl font-black font-mono text-error">@ReportColumnCatalog.FormatMoney(fleet.Sum(f => f.MaintenanceCost))</div>
+                    <div class="stat-desc opacity-70">Breakdown spend</div>
+                </div>
+                <div class="stat p-4">
+                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">On-Time</div>
+                    <div class="stat-value text-xl font-black font-mono text-success">
+                        @(fleet.Count == 0 ? "0%" : fleet.Average(f => f.OnTimePercent).ToString("0.#") + "%")
+                    </div>
+                    <div class="stat-desc opacity-70">Fleet average</div>
+                </div>
+            }
+            else
+            {
+                var totals = Model.Result.GrandTotals;
+                <div class="stat p-4">
+                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Requested</div>
+                    <div class="stat-value text-xl font-black font-mono text-info">@totals.OrdersPlaced.ToString("N0")</div>
+                    <div class="stat-desc opacity-70">Placed by reps</div>
+                </div>
+                <div class="stat p-4">
+                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Produced</div>
+                    <div class="stat-value text-xl font-black font-mono text-primary">@totals.Produced.ToString("N0")</div>
+                    <div class="stat-desc opacity-70">@totals.FillRatePercent.ToString("0.#")% fill rate</div>
+                </div>
+                <div class="stat p-4">
+                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Loaded</div>
+                    <div class="stat-value text-xl font-black font-mono text-secondary">@totals.Loaded.ToString("N0")</div>
+                    <div class="stat-desc opacity-70">Released at the bay</div>
+                </div>
+                <div class="stat p-4">
+                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Sold</div>
+                    <div class="stat-value text-xl font-black font-mono text-success">@totals.Sold.ToString("N0")</div>
+                    <div class="stat-desc opacity-70">@totals.SellThroughPercent.ToString("0.#")% sell-through</div>
+                </div>
+                <div class="stat p-4">
+                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Returned</div>
+                    <div class="stat-value text-xl font-black font-mono text-warning">@totals.Returned.ToString("N0")</div>
+                    <div class="stat-desc opacity-70">@totals.Damaged.ToString("N0") damaged</div>
+                </div>
+                <div class="stat p-4">
+                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Revenue</div>
+                    <div class="stat-value text-xl font-black font-mono text-base-content">@ReportColumnCatalog.FormatMoney(totals.ExpectedRevenue)</div>
+                    <div class="stat-desc @(totals.CollectionRatePercent < 92m ? "text-error font-bold" : "opacity-70")">
+                        @totals.CollectionRatePercent.ToString("0.#")% collected
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (Model.IsChartsView)
+        {
+            @await Html.PartialAsync("_Charts", Model)
+        }
+        else
+        {
+            @await Html.PartialAsync("_Table", Model)
+        }
+    }
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="~/js/erp-charts.js"></script>
+    @if (Model.IsChartsView && Model.HasData)
+    {
+        <script>
+            (function () {
+                // Serialised from the same DTO the table renders, so charts and
+                // numbers can never disagree.
+                const payload = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Result.Charts, new System.Text.Json.JsonSerializerOptions {
+                    PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                }));
+
+                window.ErpCharts.render('chart-lifecycle', window.ErpCharts.builders.lifecycleBar, payload.lifecycle);
+                window.ErpCharts.render('chart-revenue', window.ErpCharts.builders.revenueLine, payload.revenue);
+                window.ErpCharts.render('chart-volume', window.ErpCharts.builders.volumeDonut, payload.volume);
+                window.ErpCharts.render('chart-reps', window.ErpCharts.builders.repPerformance, payload.repPerformance);
+
+                if (document.getElementById('chart-logistics')) {
+                    window.ErpCharts.render('chart-logistics', window.ErpCharts.builders.logisticsStack, payload.logistics);
+                }
+            })();
+        </script>
+    }
+}

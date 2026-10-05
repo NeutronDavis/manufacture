@@ -1,3 +1,4 @@
+using Manufacture.Api;
 using Manufacture.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +17,7 @@ builder.Services.AddSession(options =>
 });
 
 // Register Mock Services as Singletons for shared in-memory data
+builder.Services.AddSingleton<IUnitConversionService, UnitConversionService>();
 builder.Services.AddSingleton<MockUserService>();
 builder.Services.AddSingleton<MockEmployeeService>();
 builder.Services.AddSingleton<MockProductionService>();
@@ -25,6 +27,16 @@ builder.Services.AddSingleton<MockPayrollService>();
 builder.Services.AddSingleton<MockLogisticsService>();
 builder.Services.AddSingleton<MockDashboardService>();
 builder.Services.AddSingleton<MockRbacService>();
+
+// Production Recipe Builder & Cost Engine (doc/recipe-costing.md).
+// Resolves live ingredient prices, so it must be registered AFTER the
+// production service it depends on.
+builder.Services.AddSingleton<RecipeCostingEngine>();
+
+// Executive dashboard & reports engine (doc/dashboard-reports.md).
+// Projects the product catalog from the recipe master and the fleet from the
+// logistics service, so it must be registered AFTER both.
+builder.Services.AddSingleton<MockAnalyticsService>();
 
 var app = builder.Build();
 
@@ -50,5 +62,11 @@ app.UseSession();
 app.UseAuthorization();
 
 app.MapRazorPages();
+
+// Read-only analytics endpoints backing the dashboard and the reports engine.
+app.MapAnalyticsApi();
+
+// Dual-mode recipe costing endpoints.
+app.MapRecipeApi();
 
 app.Run();

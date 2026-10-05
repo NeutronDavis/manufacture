@@ -1,7 +1,16 @@
 @page
 @model Manufacture.Pages.Dashboard.IndexModel
+@using Manufacture.Models.DTOs
 @{
     ViewData["Title"] = $"{Model.ActiveRole} Dashboard";
+
+    // camelCase to match what the APIs emit, so the browser and the server
+    // never disagree about a property name.
+    var json = new System.Text.Json.JsonSerializerOptions
+    {
+        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase
+    };
+    var overview = Model.Overview;
 }
 
 <div class="space-y-6 w-full">
@@ -49,6 +58,10 @@
             <div class="flex flex-wrap gap-2">
                 @if (Model.ActiveRole == "SuperAdmin")
                 {
+                    <a asp-page="/Reports/Index" asp-route-view="table" asp-route-module="Operational"
+                       class="btn btn-sm btn-primary rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
+                        <i class="fa-solid fa-chart-column"></i> View Full Reports
+                    </a>
                     <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
                         <i class="fa-solid fa-cart-plus"></i> New POS Sale
                     </a>
@@ -115,160 +128,9 @@
     @if (Model.ActiveRole == "SuperAdmin")
     {
         <div class="space-y-6">
-            <!-- Top 4 KPI Stats using daisyUI stats component -->
-            <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
-                <div class="stat p-5">
-                    <div class="stat-figure text-success text-2xl">
-                        <i class="fa-solid fa-coins"></i>
-                    </div>
-                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Today's Total Sales</div>
-                    <div class="stat-value text-2xl font-black font-mono text-success">₦@Model.Summary.TodaySalesTotal.ToString("N0")</div>
-                    <div class="stat-desc opacity-70">@Model.Summary.TodayOrdersCount completed sales tickets</div>
-                </div>
 
-                <div class="stat p-5">
-                    <div class="stat-figure text-primary text-2xl">
-                        <i class="fa-solid fa-bread-slice"></i>
-                    </div>
-                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Today's Production</div>
-                    <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.Summary.ActualProducedLoavesToday / @Model.Summary.TargetProductionLoavesToday</div>
-                    <div class="stat-desc opacity-70">Loaves Produced vs Daily Target</div>
-                </div>
-
-                <div class="stat p-5">
-                    <div class="stat-figure text-warning text-2xl">
-                        <i class="fa-solid fa-clock-rotate-left"></i>
-                    </div>
-                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Active Pre-Orders</div>
-                    <div class="stat-value text-2xl font-black font-mono text-warning">@Model.Summary.PendingPreOrdersCount</div>
-                    <div class="stat-desc opacity-70">Booked demand tickets</div>
-                </div>
-
-                <div class="stat p-5">
-                    <div class="stat-figure text-info text-2xl">
-                        <i class="fa-solid fa-users"></i>
-                    </div>
-                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Active Workforce</div>
-                    <div class="stat-value text-2xl font-black font-mono text-info">@Model.Employees.Count</div>
-                    <div class="stat-desc opacity-70">Registered personnel on shift</div>
-                </div>
-            </div>
-
-            <!-- Multi-Account Bank Balances & Recent Sales Grid -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                <!-- Multi-Channel Bank Routing Accounts -->
-                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
-                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
-                        <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
-                            <i class="fa-solid fa-building-columns text-primary"></i> Multi-Channel POS Ledgers
-                        </h2>
-                        <span class="badge badge-success badge-xs font-bold">Live</span>
-                    </div>
-
-                    <div class="space-y-3">
-                        <div class="p-3.5 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs">
-                                    <i class="fa-solid fa-money-bill-wave"></i>
-                                </div>
-                                <div>
-                                    <div class="font-bold text-xs text-base-content">Cash Vault Account</div>
-                                    <div class="text-[10px] opacity-60">Counter & Spot Cash</div>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="font-mono font-black text-xs text-emerald-700">₦@Model.Summary.CashSalesAmount.ToString("N0")</div>
-                                <div class="text-[10px] opacity-60">Collected Today</div>
-                            </div>
-                        </div>
-
-                        <div class="p-3.5 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs">
-                                    <i class="fa-solid fa-building-columns"></i>
-                                </div>
-                                <div>
-                                    <div class="font-bold text-xs text-base-content">Bank Transfer Account</div>
-                                    <div class="text-[10px] opacity-60">Direct Bank Inflows</div>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="font-mono font-black text-xs text-blue-700">₦@Model.Summary.BankTransferSalesAmount.ToString("N0")</div>
-                                <div class="text-[10px] opacity-60">Verified Inflows</div>
-                            </div>
-                        </div>
-
-                        <div class="p-3.5 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center font-bold text-xs">
-                                    <i class="fa-solid fa-credit-card"></i>
-                                </div>
-                                <div>
-                                    <div class="font-bold text-xs text-base-content">POS Merchant Account</div>
-                                    <div class="text-[10px] opacity-60">Card Swipe Settlement</div>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="font-mono font-black text-xs text-purple-700">₦@Model.Summary.PosBankSalesAmount.ToString("N0")</div>
-                                <div class="text-[10px] opacity-60">Card Swipes</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Recent Live Transactions Table (2 Columns Span) -->
-                <div class="lg:col-span-2 card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
-                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
-                        <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
-                            <i class="fa-solid fa-receipt text-primary"></i> Real-Time Sales & Dispatch Feed
-                        </h2>
-                        <a asp-page="/Sales/Orders/Index" class="btn btn-xs btn-outline border-base-300 rounded-xl">All Invoices &rarr;</a>
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="table table-sm w-full text-xs">
-                            <thead>
-                                <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
-                                    <th>Order #</th>
-                                    <th>Customer</th>
-                                    <th>Method</th>
-                                    <th>Amount (₦)</th>
-                                    <th>Status</th>
-                                    <th class="text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-base-200">
-                                @foreach (var order in Model.RecentOrders)
-                                {
-                                    <tr class="hover:bg-base-200/60 transition-colors">
-                                        <td class="font-mono font-bold text-base-content">@order.OrderNumber</td>
-                                        <td class="font-semibold text-base-content">@order.CustomerName</td>
-                                        <td>
-                                            <span class="badge badge-soft badge-xs font-semibold">@order.PaymentMethod</span>
-                                        </td>
-                                        <td class="font-mono font-bold text-base-content">₦@order.TotalAmount.ToString("N0")</td>
-                                        <td>
-                                            @if (order.IsPrintedForLoading)
-                                            {
-                                                <span class="badge badge-success badge-xs font-bold">● Printed</span>
-                                            }
-                                            else
-                                            {
-                                                <span class="badge badge-warning badge-xs font-bold">● Unprinted</span>
-                                            }
-                                        </td>
-                                        <td class="text-right">
-                                            <a asp-page="/Sales/Orders/Receipt" asp-route-id="@order.Id" class="btn btn-xs btn-ghost text-primary">Receipt</a>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-            </div>
+            <!-- Executive quick-overview: lifecycle, cumulative KPIs, drill-down -->
+            @await Html.PartialAsync("_ExecutiveOverview", Model)
         </div>
     }
 
@@ -602,3 +464,408 @@
     }
 
 </div>
+
+@* The executive overview partial's script lives here: Razor Pages renders
+   @section only from the page itself, never from a partial, so leaving it
+   in _ExecutiveOverview.cshtml silently dropped the whole drill-down. *@
+@if (Model.ActiveRole == "SuperAdmin")
+{
+@section Scripts {
+    <script>
+        (function () {
+            // Product SKU rows pre-computed for every scope & period.
+            const productData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                overview.ProductDrillDownScopes.ToDictionary(
+                    s => s.ScopeKey,
+                    s => s.Periods.ToDictionary(p => p.Key, p => p.Value)),
+                json));
+
+            // Rep rows pre-computed for every scope & period.
+            const repData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                overview.DrillDownScopes.ToDictionary(
+                    s => s.ScopeKey,
+                    s => s.Periods.ToDictionary(p => p.Key, p => p.Value)),
+                json));
+
+            // Period metadata drives captions and deep links.
+            const periods = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                overview.Periods.Select(p => new
+                {
+                    key = p.Key,
+                    label = p.Label,
+                    dateLabel = p.DateLabel,
+                    timeframe = p.ReportsTimeframe
+                }),
+                json));
+
+            const scopeLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                overview.DrillDownScopes.ToDictionary(s => s.ScopeKey, s => s.ScopeLabel),
+                json));
+
+            const metricLabels = {
+                'OrdersPlaced': 'Orders Placed',
+                'Produced': 'Produced',
+                'Loaded': 'Loaded / Distributed',
+                'Sold': 'Sold',
+                'Returned': 'Returned',
+                'Damaged': 'Damaged'
+            };
+
+            const money = (v) => '₦' + Number(v || 0).toLocaleString('en-NG', { maximumFractionDigits: 0 });
+            const num = (v) => Number(v || 0).toLocaleString('en-NG');
+
+            let scope = 'all';
+            let period = periods[0].key; // Initially "Today"
+            let metric = 'OrdersPlaced';
+            let viewMode = 'products'; // Initially "products"
+
+            const periodOf = (key) => periods.find(p => p.key === key) || periods[0];
+
+            function productRows() {
+                const byPeriod = (productData[scope] || {})[period] || [];
+                let list = byPeriod.slice();
+                const searchEl = document.getElementById('drill-search-input');
+                const term = searchEl ? searchEl.value.trim().toLowerCase() : '';
+                if (term) {
+                    list = list.filter(p =>
+                        (p.productName && p.productName.toLowerCase().indexOf(term) !== -1) ||
+                        (p.productCode && p.productCode.toLowerCase().indexOf(term) !== -1) ||
+                        (p.lineLabel && p.lineLabel.toLowerCase().indexOf(term) !== -1)
+                    );
+                }
+                const sortKey = (metric && metric.toLowerCase()) || 'ordersplaced';
+                return list.sort((a, b) => (b[sortKey] ?? b.ordersPlaced ?? 0) - (a[sortKey] ?? a.ordersPlaced ?? 0));
+            }
+
+            function repRows() {
+                const byPeriod = (repData[scope] || {})[period] || [];
+                let list = byPeriod.slice();
+                const searchEl = document.getElementById('drill-search-input');
+                const term = searchEl ? searchEl.value.trim().toLowerCase() : '';
+                if (term) {
+                    list = list.filter(r =>
+                        (r.repName && r.repName.toLowerCase().indexOf(term) !== -1) ||
+                        (r.route && r.route.toLowerCase().indexOf(term) !== -1) ||
+                        (r.vehicleRegistration && r.vehicleRegistration.toLowerCase().indexOf(term) !== -1)
+                    );
+                }
+                return list.sort((a, b) => b.sold - a.sold);
+            }
+
+            function reportsUrl() {
+                const params = new URLSearchParams({
+                    view: 'table',
+                    module: 'Operational',
+                    timeframe: periodOf(period).timeframe
+                });
+                if (scope !== 'all') params.set('category', scope);
+                return '/Reports?' + params.toString();
+            }
+
+            function paintStrip(selector, attribute, value) {
+                document.querySelectorAll(selector).forEach(b => {
+                    const on = b.dataset[attribute] === value;
+                    b.classList.toggle('btn-neutral', on);
+                    b.classList.toggle('btn-ghost', !on);
+                    b.classList.toggle('bg-base-200', !on);
+                });
+            }
+
+            function render() {
+                const p = periodOf(period);
+                const scopeLabelText = scopeLabels[scope] || 'All Product Lines';
+                const currentMetric = metric || 'OrdersPlaced';
+                const metricDisplay = metricLabels[currentMetric] || currentMetric;
+
+                // Update Header Labels & Badges
+                const stageBadge = document.getElementById('drill-stage-badge');
+                if (stageBadge) stageBadge.textContent = 'Stage: ' + metricDisplay;
+                const scopeBadge = document.getElementById('drill-scope-badge');
+                if (scopeBadge) scopeBadge.textContent = scopeLabelText;
+                const titleEl = document.getElementById('drill-header-title');
+                if (titleEl) {
+                    titleEl.textContent = (period === 'Today' ? "Today's " : p.label + " ") + metricDisplay + " — Product Orders";
+                }
+                const captionEl = document.getElementById('drill-caption');
+                if (captionEl) {
+                    captionEl.textContent = scopeLabelText + ' · ' + p.label + ' (' + p.dateLabel + ') · Operational control breakdown';
+                }
+
+                // Calculate Top Summary Metrics
+                const pList = productRows();
+                let totalMetricUnits = 0;
+                let totalRevenue = 0;
+                let totalProduced = 0;
+                let totalLoaded = 0;
+                let totalSold = 0;
+
+                pList.forEach(item => {
+                    const stageKey = currentMetric.charAt(0).toLowerCase() + currentMetric.slice(1);
+                    totalMetricUnits += (item[stageKey] !== undefined ? item[stageKey] : item.ordersPlaced) || 0;
+                    totalRevenue += item.expectedRevenue || 0;
+                    totalProduced += item.produced || 0;
+                    totalLoaded += item.loaded || 0;
+                    totalSold += item.sold || 0;
+                });
+
+                const metricLabelEl = document.getElementById('drawer-kpi-metric-label');
+                if (metricLabelEl) metricLabelEl.textContent = metricDisplay;
+                const metricValueEl = document.getElementById('drawer-kpi-metric-value');
+                if (metricValueEl) metricValueEl.textContent = num(totalMetricUnits) + ' Units';
+                const revenueValueEl = document.getElementById('drawer-kpi-revenue-value');
+                if (revenueValueEl) revenueValueEl.textContent = money(totalRevenue);
+                const skusValueEl = document.getElementById('drawer-kpi-skus-value');
+                if (skusValueEl) skusValueEl.textContent = pList.length + ' SKUs';
+                const completionValueEl = document.getElementById('drawer-kpi-completion-value');
+                if (completionValueEl) {
+                    const sellThroughPct = totalLoaded > 0 ? Math.round(totalSold / totalLoaded * 1000) / 10 : 0;
+                    completionValueEl.textContent = sellThroughPct + '%';
+                }
+
+                // Update table column header for the active stage
+                const thMetric = document.getElementById('th-product-active-metric');
+                if (thMetric) thMetric.textContent = metricDisplay + ' Qty';
+
+                // Render Product Orders Table
+                const productBody = document.getElementById('drill-product-body');
+                if (productBody) {
+                    productBody.innerHTML = pList.length
+                        ? pList.map(item => {
+                            const stageKey = currentMetric.charAt(0).toLowerCase() + currentMetric.slice(1);
+                            const activeVal = item[stageKey] !== undefined ? item[stageKey] : item.ordersPlaced;
+                            const sharePct = totalMetricUnits > 0 ? Math.round(activeVal / totalMetricUnits * 1000) / 10 : 0;
+
+                            const lineBadgeTone = item.lineLabel === 'Bread'
+                                ? 'badge-warning text-warning-content'
+                                : item.lineLabel === 'Water'
+                                ? 'badge-info text-info-content'
+                                : 'badge-primary text-primary-content';
+
+                            return '<tr class="hover:bg-base-200/50 transition-colors">'
+                                + '<td class="py-3">'
+                                +   '<div class="flex items-center gap-2">'
+                                +     '<div class="w-8 h-8 rounded-lg bg-base-200 flex items-center justify-center text-xs font-bold text-primary">'
+                                +       '<i class="fa-solid fa-box"></i>'
+                                +     '</div>'
+                                +     '<div>'
+                                +       '<div class="font-bold text-base-content text-xs">' + item.productName + '</div>'
+                                +       '<div class="flex items-center gap-1.5 mt-0.5">'
+                                +         '<span class="badge badge-ghost border border-base-300 font-mono text-[9px] py-0 px-1">' + item.productCode + '</span>'
+                                +         '<span class="text-[10px] opacity-50">' + item.outputUnit + '</span>'
+                                +       '</div>'
+                                +     '</div>'
+                                +   '</div>'
+                                + '</td>'
+                                + '<td><span class="badge badge-sm font-bold text-[10px] ' + lineBadgeTone + '">' + item.lineLabel + '</span></td>'
+                                + '<td class="text-right font-mono font-semibold">' + money(item.unitPrice) + '</td>'
+                                + '<td class="text-right bg-primary/5">'
+                                +   '<span class="font-mono font-black text-sm text-primary">' + num(activeVal) + '</span>'
+                                +   '<span class="text-[9px] opacity-60 ml-1">' + item.outputUnit + '</span>'
+                                + '</td>'
+                                + '<td class="text-center">'
+                                +   '<div class="flex items-center justify-center gap-1 text-[10px] font-mono">'
+                                +     '<span class="px-1.5 py-0.5 rounded bg-info/10 text-info font-bold" title="Orders">' + num(item.ordersPlaced) + '</span>'
+                                +     '<span class="opacity-40">&rarr;</span>'
+                                +     '<span class="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold" title="Produced">' + num(item.produced) + '</span>'
+                                +     '<span class="opacity-40">&rarr;</span>'
+                                +     '<span class="px-1.5 py-0.5 rounded bg-secondary/10 text-secondary font-bold" title="Loaded">' + num(item.loaded) + '</span>'
+                                +     '<span class="opacity-40">&rarr;</span>'
+                                +     '<span class="px-1.5 py-0.5 rounded bg-success/10 text-success font-black" title="Sold">' + num(item.sold) + '</span>'
+                                +   '</div>'
+                                + '</td>'
+                                + '<td class="text-right font-mono font-bold text-base-content">' + money(item.expectedRevenue) + '</td>'
+                                + '<td class="text-right">'
+                                +   '<div class="flex items-center gap-1.5 justify-end">'
+                                +     '<progress class="progress progress-primary w-14 h-1.5" value="' + sharePct + '" max="100"></progress>'
+                                +     '<span class="font-mono font-bold text-[10px] w-9">' + sharePct + '%</span>'
+                                +   '</div>'
+                                + '</td>'
+                                + '</tr>';
+                        }).join('')
+                        : '<tr><td colspan="7" class="text-center py-10 opacity-50 text-xs font-medium">No product orders recorded in this scope and period.</td></tr>';
+                }
+
+                // Render Sales Rep Allocations Table
+                const rList = repRows();
+                const repBody = document.getElementById('drill-rep-body');
+                if (repBody) {
+                    repBody.innerHTML = rList.length
+                        ? rList.map(r => {
+                            const damaged = r.damaged > 0 ? 'text-error' : 'opacity-40';
+                            const owed = r.outstandingBalance > 0 ? 'text-error' : 'text-success';
+                            const hasShortfall = r.expectedRevenue > r.cashCollected;
+                            const shortfallBadge = hasShortfall
+                                ? '<span class="badge badge-error badge-xs font-bold gap-1 mt-0.5"><i class="fa-solid fa-triangle-exclamation text-[8px]"></i> Shortfall</span>'
+                                : '';
+                            const vehicleDisplay = r.vehicleRegistration ? r.vehicleRegistration : '—';
+
+                            return '<tr class="hover:bg-base-200/50 transition-colors">'
+                                + '<td class="py-2.5 font-bold text-base-content">'
+                                +   '<div>' + r.repName + '</div>'
+                                +   shortfallBadge
+                                + '</td>'
+                                + '<td>'
+                                +   '<div class="font-medium text-xs">' + r.route + '</div>'
+                                +   '<div class="text-[10px] opacity-60 font-mono">' + vehicleDisplay + '</div>'
+                                + '</td>'
+                                + '<td class="text-right font-mono font-bold text-info">' + num(r.ordersPlaced) + '</td>'
+                                + '<td class="text-right font-mono font-bold text-secondary">' + num(r.loaded) + '</td>'
+                                + '<td class="text-right font-mono font-black text-success">' + num(r.sold) + '</td>'
+                                + '<td class="text-right font-mono font-bold text-warning">' + num(r.returned) + '</td>'
+                                + '<td class="text-right font-mono font-bold ' + damaged + '">' + num(r.damaged) + '</td>'
+                                + '<td class="text-right font-mono font-bold text-base-content">' + money(r.expectedRevenue) + '</td>'
+                                + '<td class="text-right font-mono font-bold text-success">' + money(r.cashCollected) + '</td>'
+                                + '<td class="text-right font-mono font-bold ' + owed + '">' + money(r.outstandingBalance) + '</td>'
+                                + '</tr>';
+                        }).join('')
+                        : '<tr><td colspan="10" class="text-center py-10 opacity-50 text-xs font-medium">No sales rep activity recorded in this scope and period.</td></tr>';
+                }
+
+                // Update Footer Summary Text
+                const footerEl = document.getElementById('drill-footer-summary');
+                if (footerEl) {
+                    footerEl.textContent = 'Showing ' + pList.length + ' products & ' + rList.length + ' reps · ' + num(totalMetricUnits) + ' total ' + metricDisplay.toLowerCase() + ' units';
+                }
+
+                // Update reports deep links
+                const drillLink = document.getElementById('drill-reports-link');
+                if (drillLink) drillLink.setAttribute('href', reportsUrl());
+                const execLink = document.getElementById('exec-reports-link');
+                if (execLink) execLink.setAttribute('href', reportsUrl());
+            }
+
+            // Slide-Over Drawer Opening & Closing
+            window.openDrill = function (scopeKey, periodKey, stageMetric, targetView) {
+                scope = scopeKey || 'all';
+                period = periodKey || 'Today'; // Initially Today!
+                metric = stageMetric || 'OrdersPlaced';
+                viewMode = targetView || 'products'; // Initially products!
+
+                const drillScopeInput = document.getElementById('drill-scope');
+                if (drillScopeInput) drillScopeInput.value = scope;
+                const drillPeriodInput = document.getElementById('drill-period');
+                if (drillPeriodInput) drillPeriodInput.value = period;
+                const drillMetricInput = document.getElementById('drill-metric');
+                if (drillMetricInput) drillMetricInput.value = metric;
+                const drillViewInput = document.getElementById('drill-view-mode');
+                if (drillViewInput) drillViewInput.value = viewMode;
+
+                // Sync UI buttons
+                paintStrip('.drill-scope-btn', 'scope', scope);
+                paintStrip('.drill-period-btn', 'period', period);
+                window.switchDrillTab(viewMode);
+
+                // Reveal Slide-Over Drawer with smooth CSS slide-in
+                const backdrop = document.getElementById('drill-backdrop');
+                if (backdrop) {
+                    backdrop.classList.remove('opacity-0', 'pointer-events-none');
+                    backdrop.classList.add('opacity-100');
+                }
+                const drawer = document.getElementById('drill-drawer');
+                if (drawer) {
+                    drawer.classList.remove('translate-x-full');
+                    drawer.classList.add('translate-x-0');
+                }
+
+                // Prevent body scrolling while drawer is active
+                document.body.classList.add('overflow-hidden');
+
+                render();
+            };
+
+            window.closeDrillDrawer = function () {
+                const backdrop = document.getElementById('drill-backdrop');
+                if (backdrop) {
+                    backdrop.classList.remove('opacity-100');
+                    backdrop.classList.add('opacity-0', 'pointer-events-none');
+                }
+                const drawer = document.getElementById('drill-drawer');
+                if (drawer) {
+                    drawer.classList.remove('translate-x-0');
+                    drawer.classList.add('translate-x-full');
+                }
+                document.body.classList.remove('overflow-hidden');
+            };
+
+            window.switchDrillTab = function (mode) {
+                viewMode = mode;
+                const pContainer = document.getElementById('drill-product-container');
+                const rContainer = document.getElementById('drill-rep-container');
+                const pTab = document.getElementById('tab-btn-products');
+                const rTab = document.getElementById('tab-btn-reps');
+
+                if (mode === 'products') {
+                    if (pContainer) pContainer.classList.remove('hidden');
+                    if (rContainer) rContainer.classList.add('hidden');
+                    if (pTab) pTab.classList.add('tab-active');
+                    if (rTab) rTab.classList.remove('tab-active');
+                } else {
+                    if (pContainer) pContainer.classList.add('hidden');
+                    if (rContainer) rContainer.classList.remove('hidden');
+                    if (pTab) pTab.classList.remove('tab-active');
+                    if (rTab) rTab.classList.add('tab-active');
+                }
+                render();
+            };
+
+            // Dynamic Timeframe & Scope Switching inside Drawer
+            window.applyExecPeriod = function (key) {
+                period = key;
+                const drillPeriodInput = document.getElementById('drill-period');
+                if (drillPeriodInput) drillPeriodInput.value = key;
+                paintStrip('.drill-period-btn', 'period', key);
+
+                document.querySelectorAll('.exec-period-panel').forEach(panel => {
+                    panel.classList.toggle('hidden', panel.dataset.periodPanel !== key);
+                });
+
+                const p = periodOf(key);
+                const captionEl = document.getElementById('exec-period-caption');
+                if (captionEl) {
+                    captionEl.textContent = p.label + ' — ' + p.dateLabel;
+                }
+
+                render();
+            };
+
+            window.selectDrillScope = function (button) {
+                scope = button.dataset.scope;
+                const drillScopeInput = document.getElementById('drill-scope');
+                if (drillScopeInput) drillScopeInput.value = scope;
+                paintStrip('.drill-scope-btn', 'scope', scope);
+                render();
+            };
+
+            window.selectDrillPeriod = function (button) {
+                const key = button.dataset.period;
+                const radio = document.getElementById('exec-period-' + key);
+                if (radio) { radio.checked = true; }
+                window.applyExecPeriod(key);
+            };
+
+            document.querySelectorAll('input[name="exec-period"]').forEach(input => {
+                input.addEventListener('change', () => {
+                    if (input.checked) window.applyExecPeriod(input.value);
+                });
+            });
+
+            const searchInput = document.getElementById('drill-search-input');
+            if (searchInput) {
+                searchInput.addEventListener('input', () => render());
+            }
+
+            // Keyboard Escape key to close drawer
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape') {
+                    window.closeDrillDrawer();
+                }
+            });
+
+            // Initial view setup
+            paintStrip('.drill-scope-btn', 'scope', 'all');
+            window.applyExecPeriod('Today');
+        })();
+    </script>
+}
+}
+

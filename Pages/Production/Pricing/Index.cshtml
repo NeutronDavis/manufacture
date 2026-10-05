@@ -1,0 +1,278 @@
+@page
+@model Manufacture.Pages.Production.Pricing.IndexModel
+@{
+    ViewData["Title"] = "Price & Margin Administration";
+
+    // Keep the edit list aligned 1:1 with the displayed price rows.
+    while (Model.Edits.Count < Model.PriceMaster.Count)
+    {
+        Model.Edits.Add(new UpdateIngredientPriceDto());
+    }
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Production/Recipes/Index" class="hover:underline">Recipes &amp; Costing</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Price &amp; Margin Admin</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-tags text-primary"></i> Admin Price &amp; Margin Dashboard
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Update vendor prices once — every recipe that consumes the material re-costs instantly.
+            </p>
+        </div>
+        <a asp-page="/Production/Recipes/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-bold px-4 text-xs">
+            <i class="fa-solid fa-calculator text-xs"></i> Back to Recipes
+        </a>
+    </div>
+
+    <!-- Portfolio KPIs -->
+    <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+        <div class="stat p-5">
+            <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-sack-dollar"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Master Prices</div>
+            <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.PriceMaster.Count</div>
+            <div class="stat-desc opacity-70">@Model.Categories.Count categories</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-percent"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Weighted Margin</div>
+            <div class="stat-value text-2xl font-black font-mono text-success">@Model.Report.WeightedMarginPercentage%</div>
+            <div class="stat-desc opacity-70">Across the whole product portfolio</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure @(Model.Report.NegativeMarginCount > 0 ? "text-error" : "text-base-content") text-2xl">
+                <i class="fa-solid fa-arrow-trend-down"></i>
+            </div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Below Cost</div>
+            <div class="stat-value text-2xl font-black font-mono @(Model.Report.NegativeMarginCount > 0 ? "text-error" : "text-base-content")">
+                @Model.Report.NegativeMarginCount
+            </div>
+            <div class="stat-desc opacity-70">Products losing money per unit</div>
+        </div>
+
+        <div class="stat p-5">
+            <div class="stat-figure @(Model.Report.ThinMarginCount > 0 ? "text-warning" : "text-base-content") text-2xl">
+                <i class="fa-solid fa-scale-balanced"></i>
+            </div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Thin Margin</div>
+            <div class="stat-value text-2xl font-black font-mono @(Model.Report.ThinMarginCount > 0 ? "text-warning" : "text-base-content")">
+                @Model.Report.ThinMarginCount
+            </div>
+            <div class="stat-desc opacity-70">Under 15% — vulnerable to price rises</div>
+        </div>
+    </div>
+
+    <form method="post" asp-page-handler="UpdatePrices">
+        <div class="space-y-6">
+
+            <!-- Card 1: Master Ingredient Price List (editable) -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+                <div class="card-body p-6 space-y-4">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3 flex-wrap gap-2">
+                        <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-primary"></i> Master Ingredient Price List
+                        </h2>
+                        <div class="flex items-center gap-2">
+                            <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.PriceMaster.Count Materials</span>
+                            <button type="submit" class="btn btn-xs btn-primary rounded-xl font-bold px-3 gap-1.5">
+                                <i class="fa-solid fa-arrows-rotate text-[10px]"></i> Recalculate All Costs
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info rounded-xl text-[11px] py-2.5">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span>
+                            Prices are entered per <strong>@("unit")</strong> exactly as the vendor quotes them
+                            (e.g. per kg, per litre, per piece). Changing a price here immediately
+                            re-derives every recipe's batch cost, unit cost, and margin below.
+                        </span>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm w-full text-xs">
+                            <thead>
+                                <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                                    <th class="py-3 pl-4">Material</th>
+                                    <th>Category</th>
+                                    <th class="text-right">Stock on Hand</th>
+                                    <th class="text-right">Used By</th>
+                                    <th class="text-right w-44">Current Price</th>
+                                    <th class="text-right w-48">New Price (₦)</th>
+                                    <th class="pr-4 text-right">Last Updated</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-base-200">
+                                @for (int i = 0; i < Model.PriceMaster.Count; i++)
+                                {
+                                    var row = Model.PriceMaster[i];
+                                    <tr class="hover:bg-base-200/60 transition-colors">
+                                        <td class="py-2 pl-4">
+                                            <input type="hidden" name="Edits[@i].IngredientId" value="@row.Id" />
+                                            <div class="font-bold text-base-content">@row.Name</div>
+                                            <div class="text-[10px] opacity-50 font-mono">per @row.Unit</div>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-soft badge-xs font-semibold">@row.Category</span>
+                                        </td>
+                                        <td class="font-mono opacity-70 text-right">@row.CurrentStock.ToString("N0") @row.Unit</td>
+                                        <td class="font-mono text-right">
+                                            @if (row.UsedByRecipeCount > 0)
+                                            {
+                                                <span class="badge badge-neutral badge-xs font-bold">@row.UsedByRecipeCount</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="opacity-30 text-xs">unused</span>
+                                            }
+                                        </td>
+                                        <td class="font-mono font-bold text-right text-base-content">
+                                            ₦@row.CurrentUnitCost.ToString("N2")
+                                        </td>
+                                        <td class="py-1.5 pr-1">
+                                            <label class="input input-xs input-bordered w-full rounded-lg flex items-center gap-1 bg-base-100">
+                                                <span class="text-[10px] opacity-50 font-mono">₦</span>
+                                                <input type="number" step="0.01" min="0"
+                                                       name="Edits[@i].NewUnitCost"
+                                                       value="@row.CurrentUnitCost.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                                                       class="grow font-mono font-bold text-xs"
+                                                       data-original="@row.CurrentUnitCost.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
+                                                       oninput="markPriceChange(this)" />
+                                            </label>
+                                        </td>
+                                        <td class="pr-4 text-right">
+                                            @if (row.IsPriceStale)
+                                            {
+                                                <span class="badge badge-warning badge-xs font-bold gap-1">
+                                                    <i class="fa-solid fa-clock"></i> Stale
+                                                </span>
+                                                <div class="text-[10px] opacity-50 mt-0.5">@row.UpdatedAt.ToString("yyyy-MM-dd")</div>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge badge-success badge-xs font-bold gap-1">
+                                                    <i class="fa-solid fa-check"></i> Current
+                                                </span>
+                                                <div class="text-[10px] opacity-50 mt-0.5">@row.UpdatedAt.ToString("yyyy-MM-dd")</div>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Profitability Report -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+                <div class="card-body p-6 space-y-4">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3 flex-wrap gap-2">
+                        <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-primary"></i> Profitability: Actual Unit Production Cost vs Selling Price
+                        </h2>
+                        <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.Report.Rows.Count Products</span>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm w-full text-xs">
+                            <thead>
+                                <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                                    <th class="py-3 pl-4">Product</th>
+                                    <th>Baseline Batch</th>
+                                    <th class="text-right">Batch Cost</th>
+                                    <th class="text-right">Unit Cost</th>
+                                    <th class="text-right">Selling Price</th>
+                                    <th class="text-right">Margin / Unit</th>
+                                    <th class="pr-4">Margin Health</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-base-200">
+                                @foreach (var row in Model.Report.Rows)
+                                {
+                                    var badgeClass = row.HasNegativeMargin ? "badge-error"
+                                                   : row.HasThinMargin ? "badge-warning"
+                                                   : "badge-success";
+                                    var healthText = row.HasNegativeMargin ? "Below Cost"
+                                                   : row.HasThinMargin ? "Thin"
+                                                   : "Healthy";
+                                    <tr class="hover:bg-base-200/60 transition-colors">
+                                        <td class="py-3 pl-4">
+                                            <div class="font-bold text-base-content">@row.RecipeName</div>
+                                            <div class="text-[10px] opacity-50 font-mono">@row.RecipeCode · @row.ProductType</div>
+                                        </td>
+                                        <td class="opacity-80">
+                                            <div class="font-mono text-[10px] leading-snug">@row.BaselineUnitName</div>
+                                            <div class="font-mono text-[10px] opacity-60">@row.ExpectedYield.ToString("N0") @row.OutputUnit</div>
+                                        </td>
+                                        <td class="font-mono text-right text-base-content">₦@row.TotalBatchCost.ToString("N0")</td>
+                                        <td class="font-mono font-bold text-right text-amber-700">₦@row.TotalUnitCost.ToString("N2")</td>
+                                        <td class="font-mono font-bold text-right text-primary">₦@row.SellingPrice.ToString("N2")</td>
+                                        <td class="font-mono font-bold text-right @(row.HasNegativeMargin ? "text-error" : "text-success")">
+                                            @(row.MarginAmount >= 0 ? "+" : "")₦@row.MarginAmount.ToString("N2")
+                                            <div class="text-[10px] opacity-60 font-normal">@row.MarginPercentage%</div>
+                                        </td>
+                                        <td class="pr-4">
+                                            <span class="badge @badgeClass badge-xs font-bold">@healthText</span>
+                                            @if (row.HasMissingPrice)
+                                            {
+                                                <div class="text-[10px] text-warning mt-0.5">
+                                                    <i class="fa-solid fa-triangle-exclamation"></i> missing price
+                                                </div>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                            <tfoot class="bg-base-200/60 font-mono text-xs border-t border-base-300">
+                                <tr class="font-bold">
+                                    <td colspan="2" class="py-3 pl-4 uppercase text-[10px] tracking-wider opacity-70">
+                                        Portfolio Total (at plan)
+                                    </td>
+                                    <td class="text-right py-3 text-base-content">₦@Model.Report.TotalBatchCost.ToString("N0")</td>
+                                    <td colspan="2" class="text-right py-3 opacity-60 text-[10px]">
+                                        revenue ₦@Model.Report.TotalExpectedRevenue.ToString("N0")
+                                    </td>
+                                    <td class="text-right py-3 @(Model.Report.WeightedMarginPercentage < 0 ? "text-error" : "text-success")">
+                                        +₦@Model.Report.TotalExpectedMargin.ToString("N0")
+                                        <div class="text-[10px] opacity-60 font-normal">@Model.Report.WeightedMarginPercentage%</div>
+                                    </td>
+                                    <td class="pr-4"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    // Highlight edited price cells and enable the recalculate button only
+    // when something actually changed.
+    function markPriceChange(input) {
+        const original = input.getAttribute('data-original');
+        const changed = parseFloat(input.value || 0) !== parseFloat(original);
+        const wrapper = input.closest('label');
+        wrapper.classList.toggle('input-warning', changed);
+        wrapper.classList.toggle('input-primary', !changed);
+        wrapper.classList.toggle('font-bold', changed);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('input[name$=".NewUnitCost"]').forEach(markPriceChange);
+    });
+</script>
+}

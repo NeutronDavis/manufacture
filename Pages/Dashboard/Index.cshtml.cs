@@ -14,6 +14,7 @@ namespace Manufacture.Pages.Dashboard
         private readonly MockEmployeeService _employeeService;
         private readonly MockPayrollService _payrollService;
         private readonly MockLogisticsService _logisticsService;
+        private readonly MockAnalyticsService _analytics;
 
         public IndexModel(
             MockDashboardService dashboardService,
@@ -22,7 +23,8 @@ namespace Manufacture.Pages.Dashboard
             MockInventoryService inventoryService,
             MockEmployeeService employeeService,
             MockPayrollService payrollService,
-            MockLogisticsService logisticsService)
+            MockLogisticsService logisticsService,
+            MockAnalyticsService analytics)
         {
             _dashboardService = dashboardService;
             _salesService = salesService;
@@ -31,7 +33,24 @@ namespace Manufacture.Pages.Dashboard
             _employeeService = employeeService;
             _payrollService = payrollService;
             _logisticsService = logisticsService;
+            _analytics = analytics;
         }
+
+        /// <summary>The six-stage lifecycle shown on the executive quick-overview.</summary>
+        public IReadOnlyList<LifecycleStage> Stages { get; } = new[]
+        {
+            new LifecycleStage("Orders Placed", "fa-solid fa-receipt", "info", LifecycleMetric.OrdersPlaced),
+            new LifecycleStage("Produced", "fa-solid fa-bread-slice", "primary", LifecycleMetric.Produced),
+            new LifecycleStage("Loaded", "fa-solid fa-truck-ramp-box", "secondary", LifecycleMetric.Loaded),
+            new LifecycleStage("Sold", "fa-solid fa-basket-shopping", "success", LifecycleMetric.Sold),
+            new LifecycleStage("Returned", "fa-solid fa-rotate-left", "warning", LifecycleMetric.Returned),
+            new LifecycleStage("Damaged", "fa-solid fa-trash-can", "error", LifecycleMetric.Damaged)
+        };
+
+        /// <summary>Cumulative Today / This Week / This Month / This Year KPI cards.</summary>
+        public ExecutiveOverviewDto Overview { get; set; } = new();
+
+        public sealed record LifecycleStage(string Label, string IconClass, string Tone, LifecycleMetric Metric);
 
         public string ActiveRole { get; set; } = "SuperAdmin";
         public string ActiveUserName { get; set; } = "Adekunle Johnson";
@@ -64,6 +83,25 @@ namespace Manufacture.Pages.Dashboard
         // Logistics
         public List<Vehicle> Fleet { get; set; } = new();
         public List<FuelLog> RecentFuelLogs { get; set; } = new();
+
+        /// <summary>
+        /// Deep link into /reports with the card's own context pre-applied, so an
+        /// executive click lands on a report that is already scoped correctly.
+        /// </summary>
+        public static string ReportsUrl(string timeframe, string? category = null, int? repId = null)
+        {
+            var values = new List<string>
+            {
+                "module=Operational",
+                "timeframe=" + Uri.EscapeDataString(timeframe),
+                "view=table"
+            };
+
+            if (category != null) values.Add("category=" + Uri.EscapeDataString(category));
+            if (repId.HasValue) values.Add("rep_id=" + repId.Value);
+
+            return "/Reports?" + string.Join("&", values);
+        }
 
         public void OnGet()
         {
@@ -102,6 +140,13 @@ namespace Manufacture.Pages.Dashboard
             // Load Logistics Data
             Fleet = _logisticsService.GetAllVehicles();
             RecentFuelLogs = _logisticsService.GetAllFuelLogs().Take(5).ToList();
+
+            // Executive quick-overview. Only the SuperAdmin control centre needs it;
+            // every other role keeps its existing operational layout.
+            if (ActiveRole == "SuperAdmin")
+            {
+                Overview = _analytics.GetDashboardOverview();
+            }
         }
     }
 }

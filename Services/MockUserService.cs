@@ -21,7 +21,16 @@ namespace Manufacture.Services
                 new User { Id = 3, Name = "Musa Ibrahim", Email = "store@bakery.com", Role = "StoreManager", PinCode = "333333", Password = "Password123!", PhoneNumber = "+2348033334444", IsActive = true },
                 new User { Id = 4, Name = "Babatunde Alabi", Email = "sales@bakery.com", Role = "SalesRep", PinCode = "444444", Password = "Password123!", PosTerminalId = "POS-01", PhoneNumber = "+2348044445555", IsActive = true },
                 new User { Id = 5, Name = "Goodness Supermarkets", Email = "vendor@bakery.com", Role = "Vendor", PinCode = "555555", Password = "Password123!", PhoneNumber = "+2348055556666", IsActive = true },
-                new User { Id = 6, Name = "Ngozi Eze", Email = "hr@bakery.com", Role = "HrPayrollManager", PinCode = "666666", Password = "Password123!", PhoneNumber = "+2348066667777", IsActive = true }
+                new User { Id = 6, Name = "Ngozi Eze", Email = "hr@bakery.com", Role = "HrPayrollManager", PinCode = "666666", Password = "Password123!", PhoneNumber = "+2348066667777", IsActive = true },
+
+                // The rest of the field roster. MockSalesService binds each of these to a
+                // SalesRepProfile by name, so a rep shown on the dashboard is a person who
+                // can actually sign in, rather than a name invented to fill a chart.
+                new User { Id = 7, Name = "Chiamaka Nwosu", Email = "chiamaka@bakery.com", Role = "SalesRep", PinCode = "444444", Password = "Password123!", PosTerminalId = "POS-03", PhoneNumber = "+2348055556677", IsActive = true },
+                new User { Id = 8, Name = "Ibrahim Sanni", Email = "ibrahim@bakery.com", Role = "SalesRep", PinCode = "444444", Password = "Password123!", PosTerminalId = "POS-02", PhoneNumber = "+2348066667788", IsActive = true },
+                new User { Id = 9, Name = "Blessing Etim", Email = "blessing@bakery.com", Role = "SalesRep", PinCode = "444444", Password = "Password123!", PosTerminalId = "POS-02", PhoneNumber = "+2348077778899", IsActive = true },
+                new User { Id = 10, Name = "Segun Adewale", Email = "segun@bakery.com", Role = "SalesRep", PinCode = "444444", Password = "Password123!", PosTerminalId = "POS-02", PhoneNumber = "+2348088889900", IsActive = true },
+                new User { Id = 11, Name = "Halima Yusuf", Email = "halima@bakery.com", Role = "SalesRep", PinCode = "444444", Password = "Password123!", PosTerminalId = "POS-03", PhoneNumber = "+2348099990011", IsActive = true }
             });
         }
 

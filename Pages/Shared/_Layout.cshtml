@@ -13,8 +13,9 @@
     bool inInventory = currentPath.StartsWith("/Inventory");
     bool inSales = currentPath.StartsWith("/Sales");
     bool inFleet = currentPath.StartsWith("/Logistics");
+    bool inReports = currentPath.StartsWith("/Reports");
     bool inSettings = currentPath.StartsWith("/UserManagement") || currentPath.StartsWith("/Settings");
-    bool inDashboard = !inProduction && !inStaff && !inInventory && !inSales && !inFleet && !inSettings;
+    bool inDashboard = currentPath == "/" || currentPath.StartsWith("/Dashboard");
 }
 <!DOCTYPE html>
 <html lang="en" data-theme="bakeryflow">
@@ -109,6 +110,10 @@
                         </li>
                         <div class="divider my-1"></div>
                         <li><a asp-page="/Dashboard/Index"><i class="fa-solid fa-gauge"></i> Dashboard</a></li>
+                        @if (Rbac.HasAccess(userRole, "Reports"))
+                        {
+                            <li><a asp-page="/Reports/Index" asp-route-view="table"><i class="fa-solid fa-chart-column"></i> Reports</a></li>
+                        }
                         @if (userRole == "SuperAdmin")
                         {
                             <li><a asp-page="/Settings/Theme"><i class="fa-solid fa-palette"></i> Theme & Color Palettes</a></li>
@@ -218,7 +223,14 @@
                                 {
                                     <a asp-page="/Production/Recipes/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Production/Recipes") && currentPath != "/Production/Recipes/Create" ? "erp-nav-active" : "")">
                                         <i class="fa-solid fa-calculator text-[11px] w-3.5 text-center"></i>
-                                        <span>Recipes & Costing</span>
+                                        <span>Recipes &amp; Costing</span>
+                                    </a>
+                                }
+                                @if (Rbac.GetPermissionLevel(userRole, "Recipes").Contains("Edit") || userRole == "SuperAdmin")
+                                {
+                                    <a asp-page="/Production/Pricing/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Production/Pricing") ? "erp-nav-active" : "")">
+                                        <i class="fa-solid fa-tags text-[11px] w-3.5 text-center"></i>
+                                        <span>Price &amp; Margin Admin</span>
                                     </a>
                                 }
                                 @if (Rbac.HasAccess(userRole, "Production"))
@@ -412,7 +424,43 @@
                         </details>
                     }
 
-                    <!-- 7. Settings & RBAC -->
+                    <!-- 7. Reports & Analytics -->
+                    @if (Rbac.HasAccess(userRole, "Reports"))
+                    {
+                        <details class="erp-nav-dropdown" @(inReports ? "open" : "")>
+                            <summary class="@(inReports ? "font-bold text-base-content" : "")">
+                                <div class="flex items-center gap-3">
+                                    <i class="fa-solid fa-chart-column text-sm w-4 text-center"></i>
+                                    <span>Reports</span>
+                                </div>
+                                <i class="fa-solid fa-chevron-right erp-nav-arrow"></i>
+                            </summary>
+                            <div class="erp-nav-sub-menu">
+                                <a asp-page="/Reports/Index" asp-route-view="table" class="erp-nav-sub-item @(currentPath.StartsWith("/Reports") ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-table-list text-[11px] w-3.5 text-center"></i>
+                                    <span>Reconciliation Table</span>
+                                </a>
+                                <a asp-page="/Reports/Index" asp-route-view="charts" class="erp-nav-sub-item">
+                                    <i class="fa-solid fa-chart-pie text-[11px] w-3.5 text-center"></i>
+                                    <span>Charts &amp; Visuals</span>
+                                </a>
+                                <a asp-page="/Reports/Index" asp-route-module="Operational" asp-route-view="table" class="erp-nav-sub-item">
+                                    <i class="fa-solid fa-industry text-[11px] w-3.5 text-center"></i>
+                                    <span>Operational Module</span>
+                                </a>
+                                <a asp-page="/Reports/Index" asp-route-module="Financial" asp-route-view="table" class="erp-nav-sub-item">
+                                    <i class="fa-solid fa-money-bill-transfer text-[11px] w-3.5 text-center"></i>
+                                    <span>Financial Module</span>
+                                </a>
+                                <a asp-page="/Reports/Index" asp-route-module="Logistics" asp-route-view="table" class="erp-nav-sub-item">
+                                    <i class="fa-solid fa-truck-moving text-[11px] w-3.5 text-center"></i>
+                                    <span>Logistics &amp; Fleet</span>
+                                </a>
+                            </div>
+                        </details>
+                    }
+
+                    <!-- 8. Settings & RBAC -->
                     @if (Rbac.HasAccess(userRole, "Settings"))
                     {
                         <details class="erp-nav-dropdown" @(inSettings ? "open" : "")>

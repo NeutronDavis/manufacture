@@ -1,0 +1,101 @@
+# TASK: Refactor Batch Production Logging & Production Planning Engine
+
+## Architectural Rationale & Business Justification (The "Why")
+
+### 1. Correcting the Unit Costing Engine
+In the current layout, logged batch costs display **₦0** and unit costs show blank dashes (`-`). According to the business model defined by Mr. Emeka:
+* The primary objective of logging a daily batch is to calculate the **true per-unit production cost** for that specific run.
+* The system must take the master recipe ingredient list, multiply ingredient quantities by live master inventory prices to get the **Total Batch Material Cost**, and divide that total by the **Actual Physical Yield** logged by the production manager:
+  \\[\text{Actual Unit Production Cost} = \frac{\text{Total Batch Material Cost}}{\text{Actual Physical Yield}}\\]
+
+### 2. Eliminating Hardcoded Bread Terminology Across Categories
+Current forms use hardcoded labels like *"Flour Bags Mixed (50kg)"* and *"Loaves Produced"*, even for Water (e.g., Water 18.9L displaying "0 bags flour / 244 loaves"). 
+* **Bread Line**: Baseline is 1 Bag of Flour (50 kg) \\(\rightarrow\\) Output is Loaves / Packs.
+* **Water Line**: Baseline is 1 Production Run \\(\rightarrow\\) Output is Filled Dispenser Bottles / Pure Water Packs.
+* **Popcorn Line**: Baseline is 1 Cooking Pot (~2 kg corn) \\(\rightarrow\\) Output is Racks / Packets.
+Form labels, unit badges, and ledger columns MUST dynamically adapt based on the selected product category.
+
+### 3. Demand-Driven Production Planning
+Target production numbers should not be arbitrary guesses; they must originate from **Sales Rep Orders Placed** for the day, allowing management to compare **Requested vs. Produced** and catch supply shortfalls early.
+
+### 4. Implementation Context (DTOs & Dummy Services)
+The application currently operates without a live database, using mock data services and Data Transfer Objects (DTOs). All cost calculations, category label switches, and yield variance rules must be implemented cleanly at the DTO and mock service layer so the UI reflects live data immediately.
+
+---
+
+## 1. Updated DTO Data Contracts
+
+Update or create the following Data Transfer Objects in the domain:
+
+```typescript
+export type ProductCategory = 'BREAD' | 'WATER' | 'POPCORN';
+
+export interface BatchProductionRunDTO {
+  id: string;
+  batchNumber: string;               // e.g., "BAT-20261005-01"
+  productCategory: ProductCategory;
+  recipeId: string;
+  recipeName: string;                // e.g., "Jumbo Bread (50kg Recipe)"
+  
+  // Dynamic Batch Input Measures (Values depend on ProductCategory)
+  batchInputQuantity: number;        // e.g., 2 (Bags of Flour / Runs / Cooking Pots)
+  batchInputUnitLabel: string;       // e.g., "50kg Bags of Flour" | "Production Runs" | "Cooking Pots"
+  
+  // Targets & Real Output
+  targetOrderQuantity: number;       // Sourced from Sales Rep Orders Placed
+  actualYieldQuantity: number;       // Entered by Production Manager (Loaves / Bottles / Racks)
+  outputUnitLabel: string;           // "Loaves" | "Dispenser Bottles" | "Racks"
+  
+  // Dynamically Computed Costs
+  totalBatchMaterialCost: number;    // Calculated: SUM(Recipe Ingredient Qty * Master Price) * batchInputQuantity
+  actualUnitProductionCost: number;  // Calculated: totalBatchMaterialCost / actualYieldQuantity
+  expectedUnitProductionCost: number;// Calculated: totalBatchMaterialCost / expectedYield
+  costVariancePerUnit: number;       // actualUnitProductionCost - expectedUnitProductionCost
+  
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  loggedBy: string;
+  timestamp: string;
+}
+
+2. Mock Service Calculation Logic (MockBatchService)
+Implement the following dynamic cost engine methods inside the mock batch service:
+calculateBatchMaterialCost(recipeId, batchInputQuantity):
+Fetches the RecipeDTO and multiplies each ingredient's baseline quantity by batchInputQuantity.
+Multiplies each ingredient by its current price in the Master Inventory.
+Returns the aggregated totalBatchMaterialCost.
+calculateRunUnitCost(totalBatchMaterialCost, actualYieldQuantity):
+If actualYieldQuantity > 0, returns totalBatchMaterialCost / actualYieldQuantity.
+Prevents division-by-zero errors when actual yield has not yet been typed in.
+getCategoryLabels(category: ProductCategory):
+BREAD: { inputLabel: "Flour Bags (50kg)", outputLabel: "Loaves / Packs", placeholderInput: "e.g., 1 bag" }
+WATER: { inputLabel: "Production Run Batch", outputLabel: "Filled Dispenser Bottles", placeholderInput: "e.g., 1 run" }
+POPCORN: { inputLabel: "Cooking Pots (~2kg)", outputLabel: "Racks / Bags", placeholderInput: "e.g., 2 pots" }
+3. UI Component Refactoring Requirements
+A. Dynamic Batch Entry Modal (LogBatchModal)
+Category & Recipe Selector:
+Selecting a Product Category (Bread, Water, Popcorn) immediately filters the Recipe dropdown.
+Dynamically updates all input field labels on the screen using getCategoryLabels().
+Target Auto-Fill:
+Display a read-only badge showing: Demand from Rep Orders: [X] Units so managers know how much needs to be produced.
+Live Material Costing Card:
+As soon as Recipe and Batch Input Quantity are selected, instantly compute and display:
+Estimated Material Cost: ₦[totalBatchMaterialCost]
+When the manager types in Actual Yield Quantity, dynamically compute and display in bold:
+Actual Unit Production Cost: ₦[actualUnitProductionCost] / item
+Yield Variance Indicator: Highlight green if actual yield met expectations, or red if yield fell short (increasing unit cost).
+B. Batch Records Ledger Table (BatchLedgerTable)
+Fix Blank / Zero Columns:
+Replace ₦0 in Logged Batch Cost with the actual computed totalBatchMaterialCost (e.g., ₦48,500.00).
+Replace - in Unit Cost with the calculated actualUnitProductionCost (e.g., ₦242.50 / loaf).
+Category-Specific Table Headers:
+Ensure the batch input column dynamically displays "Input Batch Size" (showing "1 Bag", "1 Run", or "2 Pots") instead of forcing "Bags of Flour" across non-bread rows.
+Variance & Shortfall Badges:
+Show an inline badge comparing Target Order Qty vs. Actual Yield Qty (e.g., 550 / 600 (-50 Shortfall)).
+4. Instructions for Developer
+Update the mock data state with realistic sample production runs for Bread, Water, and Popcorn using the new BatchProductionRunDTO.
+Ensure real-time reactivity in the form: changing input batch size or actual yield must re-calculate unit cost instantly without requiring a page reload.
+Add unit tests verifying cost calculations and category label mapping.
+
+***
+
+💡 **Next Step**: After pasting this into Antigravity, would you like to review how the daily sales rep loading sheets handle stocking variances between what was produced versus what gets loaded onto the delivery trucks?

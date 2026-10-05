@@ -69,6 +69,44 @@ namespace Manufacture.Models.Entities
         public decimal TotalPrice => Quantity * UnitPrice;
     }
 
+    /// <summary>
+    /// A sales rep that carries product into the field. Reps are the reconciliation
+    /// unit for the whole lifecycle: what they requested, sold, returned and damaged.
+    ///
+    /// This is the single owner of the field roster. Every module that needs a rep
+    /// (sales orders, the executive dashboard, /reports) reads it from here, so a
+    /// rep can never be one person on the dashboard and somebody else on an order.
+    /// </summary>
+    public class SalesRepProfile
+    {
+        public int Id { get; set; }
+
+        /// <summary>The login account this rep signs in with, when they have one.</summary>
+        public int? UserId { get; set; }
+
+        public string FullName { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string RouteName { get; set; } = string.Empty;
+
+        /// <summary>The register this rep sells from; must match a seeded PosTerminal.</summary>
+        public string PosTerminalCode { get; set; } = string.Empty;
+
+        /// <summary>The van this rep runs; must match a seeded Vehicle registration.</summary>
+        public string VehicleRegistration { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Which product lines this rep carries, e.g. "Bread &amp; Water". Drives the
+        /// per-rep demand weighting, so a rep sells more of what they actually stock.
+        /// </summary>
+        public string ProductFocus { get; set; } = string.Empty;
+
+        public bool IsActive { get; set; } = true;
+
+        /// <summary>The product lines this rep carries, parsed from <see cref="ProductFocus"/>.</summary>
+        public IEnumerable<string> FocusLines =>
+            ProductFocus.Split('&', ',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
     public class Order
     {
         public int Id { get; set; }

@@ -2,6 +2,26 @@
 @model Manufacture.Pages.Production.Batches.CreateModel
 @{
     ViewData["Title"] = "Record Production Batch";
+    var recipesJson = System.Text.Json.JsonSerializer.Serialize(Model.Recipes.Select(r => new {
+        id = r.Id,
+        name = r.Name,
+        code = r.Code,
+        category = r.ProductType.ToString(),
+        baselineUnit = r.BaselineUnit.ToString(),
+        baselineDisplayName = Manufacture.Services.RecipeCatalog.BaselineDisplayName(r.BaselineUnit),
+        expectedYield = r.ExpectedYield,
+        outputUnit = r.OutputUnit,
+        sellingPrice = r.SellingPrice,
+        materialCostPerBaseline = r.TotalBatchCost
+    }));
+    var ordersJson = System.Text.Json.JsonSerializer.Serialize(Model.AvailableOrders.Select(o => new {
+        id = o.Id,
+        orderNumber = o.OrderNumber,
+        customerName = o.CustomerName,
+        status = o.Status.ToString(),
+        delivery = o.TargetDeliveryDate!.ToString("MMM dd, yyyy") ?? "Today",
+        items = o.Items.Select(i => new { recipeId = i.RecipeId, productName = i.ProductName, quantity = i.Quantity }).ToList()
+    }));
 }
 
 <div class="space-y-6 w-full">
@@ -19,7 +39,7 @@
                 <i class="fa-solid fa-layer-group text-primary"></i> Record Production Batch
             </h1>
             <p class="text-xs opacity-70 mt-0.5">
-                Log flour mixing batches, oven yield outputs, and record real-time actual vs target loaf variances.
+                Log production batches across Bread, Water, and Popcorn lines with live material costing and yield variance tracking.
             </p>
         </div>
         <div>
@@ -29,8 +49,30 @@
         </div>
     </div>
 
+    <!-- Category Filter Bar -->
+    <div class="flex items-center gap-2 overflow-x-auto pb-1">
+        <button type="button" class="btn btn-sm rounded-xl font-bold px-4 text-xs shadow-xs category-tab btn-primary" data-category="ALL" onclick="filterByCategory('ALL')">
+            <i class="fa-solid fa-border-all"></i> All Lines
+        </button>
+        <button type="button" class="btn btn-sm rounded-xl font-bold px-4 text-xs shadow-xs category-tab btn-outline border-base-300" data-category="Bread" onclick="filterByCategory('Bread')">
+            <i class="fa-solid fa-bread-slice text-amber-600"></i> Bread (50kg Bag)
+        </button>
+        <button type="button" class="btn btn-sm rounded-xl font-bold px-4 text-xs shadow-xs category-tab btn-outline border-base-300" data-category="Water" onclick="filterByCategory('Water')">
+            <i class="fa-solid fa-bottle-water text-cyan-600"></i> Water (18.9L Run)
+        </button>
+        <button type="button" class="btn btn-sm rounded-xl font-bold px-4 text-xs shadow-xs category-tab btn-outline border-base-300" data-category="Popcorn" onclick="filterByCategory('Popcorn')">
+            <i class="fa-solid fa-bowl-food text-warning"></i> Popcorn (Cooking Pot)
+        </button>
+    </div>
+
     <!-- Standard 2-Column Full-Width Form Layout -->
-    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+    <form method="post" id="batchForm" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        <input type="hidden" asp-for="BatchInput.ProductCategory" id="hiddenCategory" />
+        <input type="hidden" asp-for="BatchInput.BatchInputUnitLabel" id="hiddenInputUnitLabel" />
+        <input type="hidden" asp-for="BatchInput.OutputUnitLabel" id="hiddenOutputUnitLabel" />
+        <input type="hidden" asp-for="BatchInput.TargetOrderQuantity" id="hiddenTargetOrderQuantity" />
+        <input type="hidden" asp-for="BatchInput.LinkedOrderNumber" id="hiddenLinkedOrderNumber" />
+        <input type="hidden" asp-for="BatchInput.CustomerName" id="hiddenCustomerName" />
         
         <!-- Left Main Form Area (8 Cols) -->
         <div class="lg:col-span-8 space-y-6">
@@ -38,31 +80,70 @@
                 <div class="card-body p-6 space-y-5">
                     
                     <!-- Section Title -->
-                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3 flex-wrap gap-2">
                         <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
-                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
-                                <i class="fa-solid fa-industry"></i>
+                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs" id="sectionIconWrapper">
+                                <i class="fa-solid fa-industry" id="sectionIcon"></i>
                             </div>
-                            <span>Dough Mixing & Oven Output Parameters</span>
+                            <span id="sectionTitle">Dough Mixing &amp; Oven Output Parameters</span>
                         </div>
-                        <span class="badge badge-neutral badge-xs font-bold uppercase tracking-wider">Shift Log</span>
+                        <div class="flex items-center gap-2">
+                            <span class="badge badge-primary badge-soft badge-xs font-mono font-bold" id="categoryBadge">BREAD</span>
+                            <span class="badge badge-neutral badge-xs font-bold uppercase tracking-wider">Shift Log</span>
+                        </div>
+                    </div>
+
+                    <!-- Linked Customer Pre-Order / Sales Order (Full Width) -->
+                    <div class="p-4 rounded-2xl bg-base-200/50 border border-base-300 space-y-2">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <label class="label p-0">
+                                <span class="label-text font-bold text-xs text-base-content flex items-center gap-2">
+                                    <i class="fa-solid fa-file-invoice text-primary"></i> Linked Customer Order / Production Demand
+                                </span>
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <span class="text-[11px] opacity-60">Fulfill specific customer pre-order or make-to-stock</span>
+                                <button type="button" class="btn btn-ghost btn-xs text-error font-bold hidden" id="unlinkOrderBtn" onclick="unlinkOrder()">
+                                    <i class="fa-solid fa-xmark"></i> Unlink (Make-to-Stock)
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                            <div class="sm:col-span-8">
+                                <select asp-for="BatchInput.LinkedOrderId" id="orderSelect" class="select select-bordered select-sm w-full bg-base-100 border-base-300 rounded-xl text-xs font-medium focus:border-primary" onchange="onOrderSelected()">
+                                    <option value="">-- No Linked Order (Make-to-Stock / Floor Inventory) --</option>
+                                    @foreach (var order in Model.AvailableOrders)
+                                    {
+                                        var isSelected = Model.BatchInput.LinkedOrderId == order.Id;
+                                        var itemsSummary = string.Join(", ", order.Items.Select(i => $"{i.ProductName}: {i.Quantity:N0}"));
+                                        <option value="@order.Id" selected="@isSelected">
+                                            @order.OrderNumber &bull; @order.CustomerName &bull; [@itemsSummary] &bull; Due: @(order.TargetDeliveryDate!.ToString("MMM dd") ?? "Today")
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="sm:col-span-4" id="orderStatusPreview">
+                                <span class="badge badge-ghost badge-sm text-[10px] font-semibold opacity-70">General Floor Stock</span>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Input Grid -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         
-                        <!-- Bread Product / Recipe -->
+                        <!-- Product Recipe -->
                         <div class="form-control w-full">
-                            <label class="label pb-1.5">
+                            <label class="label pb-1.5 flex items-center justify-between">
                                 <span class="label-text font-bold text-xs text-base-content">
-                                    Bread Product / Recipe <span class="text-error">*</span>
+                                    Product Recipe <span class="text-error">*</span>
                                 </span>
+                                <span class="text-[10px] opacity-60 font-mono" id="recipePriceBadge">—</span>
                             </label>
-                            <select asp-for="BatchInput.RecipeId" id="recipeSelect" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary" required onchange="updateRecipeEstimate()">
-                                <option value="">-- Choose Product Recipe --</option>
+                            <select asp-for="BatchInput.RecipeId" id="recipeSelect" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary" required onchange="onRecipeChanged()">
                                 @foreach (var r in Model.Recipes)
                                 {
-                                    <option value="@r.Id" data-price="@r.SellingPrice">
+                                    <option value="@r.Id" data-category="@r.ProductType" data-expected="@r.ExpectedYield" data-output="@r.OutputUnit" data-cost="@r.TotalBatchCost" data-price="@r.SellingPrice">
                                         @r.Name (@r.Code) - ₦@r.SellingPrice.ToString("N0")
                                     </option>
                                 }
@@ -74,51 +155,75 @@
                             <label class="label pb-1.5">
                                 <span class="label-text font-bold text-xs text-base-content">Production Shift</span>
                             </label>
-                            <select asp-for="BatchInput.Shift" id="shiftSelect" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary" onchange="calculateVariance()">
+                            <select asp-for="BatchInput.Shift" id="shiftSelect" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
                                 <option value="Morning Shift">Morning Shift (5:00 AM - 1:00 PM)</option>
                                 <option value="Afternoon Shift">Afternoon Shift (1:00 PM - 9:00 PM)</option>
                                 <option value="Night Shift">Night Shift (9:00 PM - 5:00 AM)</option>
                             </select>
                         </div>
 
-                        <!-- Baker In Charge -->
+                        <!-- Baker / Operator in Charge -->
                         <div class="form-control w-full">
                             <label class="label pb-1.5">
                                 <span class="label-text font-bold text-xs text-base-content">
-                                    Baker / Mixer in Charge <span class="text-error">*</span>
+                                    Baker / Operator in Charge <span class="text-error">*</span>
                                 </span>
                             </label>
-                            <input type="text" asp-for="BatchInput.BakerInCharge" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. Emeka Obi" required />
+                            <input type="text" asp-for="BatchInput.BakerInCharge" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" placeholder="e.g. Emeka Obi" required />
                         </div>
 
-                        <!-- Flour Bags Mixed -->
+                        <!-- Dynamic Input Batch Size -->
                         <div class="form-control w-full">
                             <label class="label pb-1.5">
-                                <span class="label-text font-bold text-xs text-base-content">
+                                <span class="label-text font-bold text-xs text-base-content" id="inputBatchLabel">
                                     Flour Bags Mixed (50kg bags) <span class="text-error">*</span>
                                 </span>
                             </label>
-                            <input type="number" step="0.1" min="0.1" asp-for="BatchInput.FlourBagsUsed" id="flourBagsInput" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" placeholder="e.g. 2.0" required oninput="calculateVariance()" />
+                            <div class="join w-full">
+                                <input type="number" step="0.1" min="0.1" asp-for="BatchInput.BatchInputQuantity" id="batchInputQuantity" class="input input-bordered input-sm join-item w-full font-mono bg-base-200 border-base-300 rounded-l-xl text-xs focus:bg-base-100 focus:border-primary font-bold" placeholder="e.g. 1.0" required oninput="recalculateCosts()" />
+                                <span class="join-item bg-base-200 border border-base-300 border-l-0 font-mono text-[10px] font-bold px-3 flex items-center" id="inputBatchUnitTag">
+                                    Bags
+                                </span>
+                            </div>
                         </div>
 
-                        <!-- Target Quantity -->
+                        <!-- Target Quantity & Rep Demand Badge -->
                         <div class="form-control w-full">
-                            <label class="label pb-1.5">
-                                <span class="label-text font-bold text-xs text-base-content">
-                                    Target Quantity (Loaves) <span class="text-error">*</span>
+                            <div class="flex items-center justify-between pb-1.5">
+                                <label class="label p-0">
+                                    <span class="label-text font-bold text-xs text-base-content" id="targetQtyLabel">
+                                        Target Quantity (Loaves) <span class="text-error">*</span>
+                                    </span>
+                                </label>
+                                <button type="button" class="badge badge-primary badge-soft badge-xs font-mono font-bold cursor-pointer gap-1 hover:badge-primary transition-all" id="repDemandButton" onclick="applyRepDemand()" title="Click to fill target with sales rep demand">
+                                    <i class="fa-solid fa-cart-shopping text-[9px]"></i>
+                                    Demand from Rep Orders: <span id="repDemandValue">@Model.CurrentRecipeRepDemand</span>
+                                </button>
+                            </div>
+                            <div class="join w-full">
+                                <input type="number" min="1" asp-for="BatchInput.TargetQuantity" id="targetQtyInput" class="input input-bordered input-sm join-item w-full font-mono bg-base-200 border-base-300 rounded-l-xl text-xs focus:bg-base-100 focus:border-primary font-bold" placeholder="e.g. 100" required oninput="recalculateCosts()" />
+                                <span class="join-item bg-base-200 border border-base-300 border-l-0 font-mono text-[10px] font-bold px-3 flex items-center targetOutputUnitTag">
+                                    loaves
                                 </span>
-                            </label>
-                            <input type="number" min="1" asp-for="BatchInput.TargetQuantity" id="targetQtyInput" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" placeholder="e.g. 200" required oninput="calculateVariance()" />
+                            </div>
                         </div>
 
-                        <!-- Actual Loaves Produced -->
+                        <!-- Actual Quantity Produced -->
                         <div class="form-control w-full">
-                            <label class="label pb-1.5">
-                                <span class="label-text font-bold text-xs text-base-content">
-                                    Actual Loaves Produced <span class="text-error">*</span>
+                            <div class="flex items-center justify-between pb-1.5">
+                                <label class="label p-0">
+                                    <span class="label-text font-bold text-xs text-base-content" id="actualQtyLabel">
+                                        Actual Loaves Produced
+                                    </span>
+                                </label>
+                                <span class="text-[10px] opacity-60 font-mono">0 if in production / planned</span>
+                            </div>
+                            <div class="join w-full">
+                                <input type="number" min="0" asp-for="BatchInput.ActualQuantity" id="actualQtyInput" class="input input-bordered input-sm join-item w-full font-mono bg-base-200 border-base-300 rounded-l-xl text-xs focus:bg-base-100 focus:border-primary font-black text-primary" placeholder="e.g. 0 if currently in production" oninput="recalculateCosts()" />
+                                <span class="join-item bg-base-200 border border-base-300 border-l-0 font-mono text-[10px] font-bold px-3 flex items-center targetOutputUnitTag">
+                                    loaves
                                 </span>
-                            </label>
-                            <input type="number" min="0" asp-for="BatchInput.ActualQuantity" id="actualQtyInput" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-black text-primary" placeholder="e.g. 204" required oninput="calculateVariance()" />
+                            </div>
                         </div>
 
                         <!-- Batch Status -->
@@ -128,8 +233,8 @@
                             </label>
                             <select asp-for="BatchInput.Status" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
                                 <option value="Completed">Completed (Ready for POS Dispatch)</option>
-                                <option value="Baking">Baking / In Oven</option>
-                                <option value="InMixing">In Mixing / Proofing</option>
+                                <option value="Baking">In Production / Baking / Filling</option>
+                                <option value="InMixing">In Mixing / Prepping</option>
                                 <option value="Planned">Planned</option>
                             </select>
                         </div>
@@ -146,10 +251,10 @@
                         <div class="form-control sm:col-span-2 w-full">
                             <label class="label pb-1.5">
                                 <span class="label-text font-bold text-xs text-base-content">
-                                    Shift Notes & Oven Observations
+                                    Shift Notes &amp; Observations
                                 </span>
                             </label>
-                            <textarea asp-for="BatchInput.Notes" class="textarea textarea-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary leading-relaxed" rows="3" placeholder="e.g. Extra 4 loaves from high moisture flour batch; good golden crust and texture."></textarea>
+                            <textarea asp-for="BatchInput.Notes" class="textarea textarea-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary leading-relaxed" rows="3" placeholder="e.g. Clean run; dough weight checked; golden finish."></textarea>
                         </div>
                     </div>
 
@@ -159,7 +264,7 @@
                             <i class="fa-solid fa-calculator text-base" id="varianceIcon"></i>
                             <span id="varianceText" class="font-medium">Enter Target and Actual quantities to preview production yield variance.</span>
                         </div>
-                        <span id="varianceBadge" class="badge badge-neutral badge-xs font-mono font-bold">0 LOAVES</span>
+                        <span id="varianceBadge" class="badge badge-neutral badge-xs font-mono font-bold">0 VARIANCE</span>
                     </div>
 
                 </div>
@@ -169,20 +274,44 @@
         <!-- Right Side Live Metrics & Confirmation Card (4 Cols) -->
         <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
             
-            <!-- Summary Card -->
+            <!-- Summary Costing Card -->
             <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
                 <div class="flex items-center justify-between border-b border-base-200 pb-3">
                     <h2 class="font-black text-sm text-base-content flex items-center gap-2">
-                        <i class="fa-solid fa-chart-pie text-primary"></i> Batch Summary & Action
+                        <i class="fa-solid fa-calculator text-primary"></i> Live Material Costing Card
                     </h2>
-                    <span class="badge badge-success badge-xs font-bold">Live Yield</span>
+                    <span class="badge badge-success badge-xs font-bold gap-1">
+                        <i class="fa-solid fa-bolt text-[9px]"></i> Live Engine
+                    </span>
                 </div>
 
-                <!-- 3 Mini Stats -->
+                <!-- Unit Cost & Material Cost Highlight -->
+                <div class="rounded-2xl bg-amber-50/70 border border-amber-200/80 p-4 space-y-3">
+                    <div>
+                        <div class="text-[10px] uppercase font-bold text-amber-900 tracking-wider">Estimated Material Cost</div>
+                        <div class="text-xl font-black font-mono text-base-content" id="displayTotalMaterialCost">₦0</div>
+                        <div class="text-[10px] opacity-60 font-mono mt-0.5" id="displayMaterialFormula">Scale: 1.0 batch</div>
+                    </div>
+
+                    <div class="pt-2 border-t border-amber-200/60">
+                        <div class="text-[10px] uppercase font-bold text-amber-900 tracking-wider">Actual Unit Production Cost</div>
+                        <div class="text-2xl font-black font-mono text-amber-800" id="displayActualUnitCost">₦0.00 <span class="text-xs font-normal text-slate-600">/ item</span></div>
+                        <div class="text-[11px] font-mono flex items-center justify-between mt-1">
+                            <span class="opacity-70">Plan unit cost:</span>
+                            <span class="font-bold text-base-content" id="displayExpectedUnitCost">₦0.00</span>
+                        </div>
+                        <div class="text-[11px] font-mono flex items-center justify-between mt-0.5">
+                            <span class="opacity-70">Unit cost variance:</span>
+                            <span class="font-bold" id="displayCostVariance">—</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3 Operational Yield Stats -->
                 <div class="space-y-2.5 text-xs font-mono">
                     <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
-                        <span class="font-sans opacity-70">Flour Conversion:</span>
-                        <span class="font-bold text-base-content" id="flourRatioDisplay">— loaves / bag</span>
+                        <span class="font-sans opacity-70" id="conversionLabel">Batch Conversion:</span>
+                        <span class="font-bold text-base-content" id="conversionRatioDisplay">— units / input</span>
                     </div>
 
                     <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
@@ -192,12 +321,12 @@
 
                     <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
                         <span class="font-sans opacity-70">Inventory Effect:</span>
-                        <span class="font-bold text-success" id="inventoryEffectDisplay">+0 Loaves to POS</span>
+                        <span class="font-bold text-success" id="inventoryEffectDisplay">+0 Units to POS</span>
                     </div>
                 </div>
 
-                <p class="text-[11px] opacity-70 leading-relaxed">
-                    Saving this batch will automatically log finished bread loaves to finished inventory for immediate POS dispatch.
+                <p class="text-[11px] opacity-70 leading-relaxed" id="dispatchNoticeText">
+                    Saving this batch will automatically log finished goods to finished inventory for immediate POS dispatch.
                 </p>
 
                 <div class="space-y-2 pt-2 border-t border-base-200">
@@ -211,12 +340,12 @@
                 </div>
             </div>
 
-            <!-- Quick Tip Card -->
+            <!-- Category-Adaptive Production Standard Benchmark Card -->
             <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 text-xs space-y-2">
                 <div class="font-bold text-base-content flex items-center gap-2">
                     <i class="fa-regular fa-lightbulb text-warning"></i> Production Standard
                 </div>
-                <p class="text-[11px] opacity-70 leading-relaxed">
+                <p class="text-[11px] opacity-70 leading-relaxed" id="productionStandardTip">
                     Standard yield benchmark is <strong>95 - 105 loaves per 50kg flour bag</strong> for Family Loaves, and <strong>130 - 140 loaves</strong> for Standard Size.
                 </p>
             </div>
@@ -227,46 +356,302 @@
 
 @section Scripts {
 <script>
-    function updateRecipeEstimate() {
-        const flourBags = parseFloat(document.getElementById('flourBagsInput').value) || 2.0;
-        const targetInput = document.getElementById('targetQtyInput');
-        if (!targetInput.value || parseInt(targetInput.value) === 0) {
-            targetInput.value = Math.round(flourBags * 100);
-            document.getElementById('actualQtyInput').value = Math.round(flourBags * 100);
+    const allRecipes = @Html.Raw(recipesJson);
+    const allOrders = @Html.Raw(ordersJson);
+    const calculationUrl = '@Url.Page("/Production/Batches/Create", "Calculation")';
+    let calcTimer = null;
+    let selectedCategoryFilter = 'ALL';
+
+    function onOrderSelected() {
+        const orderSelect = document.getElementById('orderSelect');
+        const orderId = parseInt(orderSelect.value) || 0;
+        const unlinkBtn = document.getElementById('unlinkOrderBtn');
+        const previewEl = document.getElementById('orderStatusPreview');
+        const hiddenOrderNum = document.getElementById('hiddenLinkedOrderNumber');
+        const hiddenCustomer = document.getElementById('hiddenCustomerName');
+
+        if (!orderId) {
+            hiddenOrderNum.value = '';
+            hiddenCustomer.value = '';
+            unlinkBtn.classList.add('hidden');
+            previewEl.innerHTML = '<span class="badge badge-ghost badge-sm text-[10px] font-semibold opacity-70">General Floor Stock</span>';
+            return;
         }
-        calculateVariance();
+
+        const order = allOrders.find(o => o.id === orderId);
+        if (!order) return;
+
+        hiddenOrderNum.value = order.orderNumber;
+        hiddenCustomer.value = order.customerName;
+        unlinkBtn.classList.remove('hidden');
+        previewEl.innerHTML = `<span class="badge badge-primary badge-soft badge-sm font-bold gap-1 text-[11px] truncate max-w-full" title="${order.customerName}">
+            <i class="fa-solid fa-cart-shopping text-[9px]"></i> ${order.customerName}
+        </span>`;
+
+        // Check if current recipe is in this order
+        const currentRecipeId = parseInt(document.getElementById('recipeSelect').value) || 0;
+        const matchingItem = order.items.find(i => i.recipeId === currentRecipeId);
+
+        if (matchingItem) {
+            document.getElementById('targetQtyInput').value = matchingItem.quantity;
+            document.getElementById('actualQtyInput').value = matchingItem.quantity;
+            recalculateCosts();
+        } else if (order.items && order.items.length > 0) {
+            // Switch recipe to the first item of this order
+            const targetRecipeId = order.items[0].recipeId;
+            const recipeSelect = document.getElementById('recipeSelect');
+            recipeSelect.value = targetRecipeId;
+            onRecipeChanged();
+            document.getElementById('targetQtyInput').value = order.items[0].quantity;
+            document.getElementById('actualQtyInput').value = order.items[0].quantity;
+            recalculateCosts();
+        }
     }
 
-    function calculateVariance() {
+    function unlinkOrder() {
+        document.getElementById('orderSelect').value = '';
+        onOrderSelected();
+    }
+
+    const categorySpecs = {
+        'Bread': {
+            icon: 'fa-solid fa-bread-slice',
+            title: 'Dough Mixing & Oven Output Parameters',
+            badge: 'BREAD',
+            inputLabel: 'Flour Bags Mixed (50kg bags) *',
+            inputUnitTag: 'Bags (50kg)',
+            placeholder: 'e.g., 2.0',
+            outputLabel: 'Actual Loaves Produced *',
+            targetLabel: 'Target Quantity (Loaves) *',
+            conversionName: 'Flour Conversion',
+            conversionUnit: 'loaves / bag',
+            standardTip: 'Standard yield benchmark is <strong>95 - 105 loaves per 50kg flour bag</strong> for Family Loaves, and <strong>130 - 140 loaves</strong> for Standard Size.'
+        },
+        'Water': {
+            icon: 'fa-solid fa-bottle-water',
+            title: 'Water Purification & Bottling Parameters',
+            badge: 'WATER',
+            inputLabel: 'Production Run Batch Size *',
+            inputUnitTag: 'Runs',
+            placeholder: 'e.g., 1.0',
+            outputLabel: 'Filled Dispenser Bottles Produced *',
+            targetLabel: 'Target Quantity (Bottles) *',
+            conversionName: 'Line Conversion',
+            conversionUnit: 'bottles / run',
+            standardTip: 'Water filtration benchmark is <strong>~250 filled 18.9L bottles</strong> per daily line cycle with zero leakage.'
+        },
+        'Popcorn': {
+            icon: 'fa-solid fa-bowl-food',
+            title: 'Popcorn Cooking & Bagging Parameters',
+            badge: 'POPCORN',
+            inputLabel: 'Cooking Pots Prepared (~2kg each) *',
+            inputUnitTag: 'Pots',
+            placeholder: 'e.g., 2.0',
+            outputLabel: 'Actual Racks / Bags Produced *',
+            targetLabel: 'Target Quantity (Bags) *',
+            conversionName: 'Pot Conversion',
+            conversionUnit: 'bags / pot',
+            standardTip: 'Standard popping expansion benchmark is <strong>55 - 65 sealed snack bags</strong> per 2kg corn batch pot.'
+        }
+    };
+
+    function filterByCategory(category) {
+        selectedCategoryFilter = category;
+        document.querySelectorAll('.category-tab').forEach(tab => {
+            const isMatch = tab.getAttribute('data-category') === category;
+            tab.classList.toggle('btn-primary', isMatch);
+            tab.classList.toggle('btn-outline', !isMatch);
+            tab.classList.toggle('border-base-300', !isMatch);
+        });
+
+        const select = document.getElementById('recipeSelect');
+        const currentRecipeId = parseInt(select.value);
+        let firstMatchId = null;
+
+        for (let i = 0; i < select.options.length; i++) {
+            const opt = select.options[i];
+            const optCat = opt.getAttribute('data-category');
+            const show = category === 'ALL' || optCat === category;
+            opt.style.display = show ? '' : 'none';
+            if (show && firstMatchId === null) {
+                firstMatchId = opt.value;
+            }
+        }
+
+        // If current selection is hidden, select first match
+        const currentOpt = select.querySelector(`option[value="${currentRecipeId}"]`);
+        if (!currentOpt || currentOpt.style.display === 'none') {
+            if (firstMatchId) {
+                select.value = firstMatchId;
+            }
+        }
+
+        onRecipeChanged();
+    }
+
+    function onRecipeChanged() {
+        const recipeId = parseInt(document.getElementById('recipeSelect').value) || 0;
+        const recipe = allRecipes.find(r => r.id === recipeId);
+        if (!recipe) return;
+
+        const cat = recipe.category;
+        const spec = categorySpecs[cat] || categorySpecs['Bread'];
+
+        // Update Hidden Form fields
+        document.getElementById('hiddenCategory').value = cat;
+        document.getElementById('hiddenInputUnitLabel').value = spec.inputUnitTag;
+        document.getElementById('hiddenOutputUnitLabel').value = recipe.outputUnit;
+
+        // Update Labels & UI Elements
+        document.getElementById('sectionTitle').innerText = spec.title;
+        document.getElementById('sectionIcon').className = spec.icon;
+        document.getElementById('categoryBadge').innerText = spec.badge;
+        document.getElementById('categoryBadge').className = 'badge badge-xs font-mono font-bold ' + 
+            (cat === 'Water' ? 'badge-info badge-soft' : cat === 'Popcorn' ? 'badge-warning badge-soft' : 'badge-primary badge-soft');
+
+        document.getElementById('inputBatchLabel').innerText = spec.inputLabel;
+        document.getElementById('inputBatchUnitTag').innerText = spec.inputUnitTag;
+        document.getElementById('batchInputQuantity').placeholder = spec.placeholder;
+
+        document.getElementById('targetQtyLabel').innerText = spec.targetLabel;
+        document.getElementById('actualQtyLabel').innerText = spec.outputLabel;
+        document.getElementById('conversionLabel').innerText = spec.conversionName + ':';
+        document.getElementById('productionStandardTip').innerHTML = spec.standardTip;
+
+        document.querySelectorAll('.targetOutputUnitTag').forEach(el => el.innerText = recipe.outputUnit);
+        document.getElementById('recipePriceBadge').innerText = `Selling: ₦${recipe.sellingPrice.toLocaleString()}`;
+
+        // Fetch Rep Demand & Costs
+        fetchCalculation(recipeId);
+    }
+
+    function fetchCalculation(recipeId) {
+        const inputQty = parseFloat(document.getElementById('batchInputQuantity').value) || 1.0;
+        const actualQty = parseInt(document.getElementById('actualQtyInput').value) || 0;
+
+        fetch(`${calculationUrl}&recipeId=${recipeId}&batchInputQuantity=${inputQty}&actualYieldQuantity=${actualQty}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('repDemandValue').innerText = data.repDemand;
+                    document.getElementById('hiddenTargetOrderQuantity').value = data.repDemand;
+                    
+                    const repBtn = document.getElementById('repDemandButton');
+                    if (data.repDemand > 0) {
+                        repBtn.classList.remove('badge-soft');
+                        repBtn.classList.add('badge-primary');
+                    } else {
+                        repBtn.classList.add('badge-soft');
+                    }
+
+                    // If target was empty or default, suggest planned yield or demand
+                    const targetInput = document.getElementById('targetQtyInput');
+                    const actualInput = document.getElementById('actualQtyInput');
+                    if (!targetInput.value || parseInt(targetInput.value) === 0) {
+                        const suggested = data.repDemand > 0 ? data.repDemand : data.plannedYield;
+                        targetInput.value = suggested;
+                        actualInput.value = suggested;
+                    }
+
+                    recalculateCosts(data);
+                }
+            })
+            .catch(() => recalculateCosts());
+    }
+
+    function applyRepDemand() {
+        const demand = parseInt(document.getElementById('repDemandValue').innerText) || 0;
+        if (demand > 0) {
+            document.getElementById('targetQtyInput').value = demand;
+            document.getElementById('actualQtyInput').value = demand;
+            recalculateCosts();
+        }
+    }
+
+    function recalculateCosts(serverData) {
+        const recipeId = parseInt(document.getElementById('recipeSelect').value) || 0;
+        const recipe = allRecipes.find(r => r.id === recipeId);
+        const inputScale = parseFloat(document.getElementById('batchInputQuantity').value) || 1.0;
         const target = parseInt(document.getElementById('targetQtyInput').value) || 0;
         const actual = parseInt(document.getElementById('actualQtyInput').value) || 0;
-        const flourBags = parseFloat(document.getElementById('flourBagsInput').value) || 0;
-        
+
+        if (!recipe) return;
+
+        const cat = recipe.category;
+        const spec = categorySpecs[cat] || categorySpecs['Bread'];
+
+        // Compute material costs
+        let totalMaterialCost = 0;
+        let actualUnitCost = 0;
+        let expectedUnitCost = 0;
+
+        if (serverData && serverData.totalBatchMaterialCost !== undefined) {
+            totalMaterialCost = serverData.totalBatchMaterialCost;
+            actualUnitCost = serverData.actualUnitProductionCost;
+            expectedUnitCost = serverData.expectedUnitProductionCost;
+        } else {
+            totalMaterialCost = (recipe.materialCostPerBaseline || 0) * inputScale;
+            const plannedYield = (recipe.expectedYield || 100) * inputScale;
+            expectedUnitCost = plannedYield > 0 ? (totalMaterialCost / plannedYield) : 0;
+            actualUnitCost = actual > 0 ? (totalMaterialCost / actual) : 0;
+        }
+
+        // Render Material Cost
+        document.getElementById('displayTotalMaterialCost').innerText = '₦' + Math.round(totalMaterialCost).toLocaleString();
+        document.getElementById('displayMaterialFormula').innerText = `Scale: ${inputScale.toFixed(1)} ${spec.inputUnitTag}`;
+
+        // Render Unit Costs
+        document.getElementById('displayActualUnitCost').innerHTML = actual > 0 
+            ? `₦${actualUnitCost.toFixed(2)} <span class="text-xs font-normal text-slate-600">/ ${recipe.outputUnit}</span>`
+            : `<span class="opacity-40">—</span>`;
+
+        document.getElementById('displayExpectedUnitCost').innerText = `₦${expectedUnitCost.toFixed(2)}`;
+
+        // Cost Variance
+        const costVarEl = document.getElementById('displayCostVariance');
+        if (actual > 0) {
+            const costDiff = actualUnitCost - expectedUnitCost;
+            if (costDiff > 0.01) {
+                costVarEl.className = 'font-bold text-error';
+                costVarEl.innerText = `+₦${costDiff.toFixed(2)} / unit (Cost Increase)`;
+            } else if (costDiff < -0.01) {
+                costVarEl.className = 'font-bold text-success';
+                costVarEl.innerText = `-₦${Math.abs(costDiff).toFixed(2)} / unit (Favorable Yield)`;
+            } else {
+                costVarEl.className = 'font-bold opacity-70';
+                costVarEl.innerText = `₦0.00 (On Plan)`;
+            }
+        } else {
+            costVarEl.className = 'font-bold opacity-40';
+            costVarEl.innerText = '—';
+        }
+
+        // Conversion Ratio
+        const ratioEl = document.getElementById('conversionRatioDisplay');
+        if (inputScale > 0 && actual > 0) {
+            const ratio = (actual / inputScale).toFixed(1);
+            ratioEl.innerText = `${ratio} ${spec.conversionUnit}`;
+        } else {
+            ratioEl.innerText = `— ${spec.conversionUnit}`;
+        }
+
+        // Yield Compliance
+        const complianceEl = document.getElementById('yieldComplianceDisplay');
+        if (target > 0) {
+            const comp = ((actual / target) * 100).toFixed(1);
+            complianceEl.innerText = `${comp}%`;
+        } else {
+            complianceEl.innerText = `100.0%`;
+        }
+
+        // Inventory Effect
+        document.getElementById('inventoryEffectDisplay').innerText = `+${actual.toLocaleString()} ${recipe.outputUnit} to POS`;
+
+        // Real-Time Variance Calculation Alert Box
         const alertBox = document.getElementById('varianceAlert');
         const alertText = document.getElementById('varianceText');
         const alertIcon = document.getElementById('varianceIcon');
         const alertBadge = document.getElementById('varianceBadge');
-
-        const flourRatioDisplay = document.getElementById('flourRatioDisplay');
-        const yieldComplianceDisplay = document.getElementById('yieldComplianceDisplay');
-        const inventoryEffectDisplay = document.getElementById('inventoryEffectDisplay');
-
-        // Flour ratio
-        if (flourBags > 0 && actual > 0) {
-            const ratio = (actual / flourBags).toFixed(1);
-            flourRatioDisplay.innerText = `${ratio} loaves / bag`;
-        } else {
-            flourRatioDisplay.innerText = `— loaves / bag`;
-        }
-
-        // Inventory effect
-        inventoryEffectDisplay.innerText = `+${actual} Loaves to POS`;
-
-        // Yield compliance
-        if (target > 0) {
-            const compliance = ((actual / target) * 100).toFixed(1);
-            yieldComplianceDisplay.innerText = `${compliance}%`;
-        }
 
         if (target > 0 && actual >= 0) {
             const variance = actual - target;
@@ -275,19 +660,19 @@
             if (variance > 0) {
                 alertBox.classList.add('alert-success');
                 alertIcon.className = 'fa-solid fa-circle-check text-base';
-                alertText.innerText = `Extra Output: +${variance} loaves produced above target yield!`;
+                alertText.innerText = `Extra Output: +${variance} ${recipe.outputUnit} produced above target yield! Unit cost decreased to ₦${actualUnitCost.toFixed(2)}.`;
                 alertBadge.className = 'badge badge-success badge-xs font-mono font-bold';
-                alertBadge.innerText = `+${variance} LOAVES`;
+                alertBadge.innerText = `+${variance} EXTRA`;
             } else if (variance < 0) {
                 alertBox.classList.add('alert-warning');
                 alertIcon.className = 'fa-solid fa-triangle-exclamation text-base';
-                alertText.innerText = `Shortfall: ${Math.abs(variance)} loaves short of target (check dough weight / scrap).`;
+                alertText.innerText = `Shortfall: ${Math.abs(variance)} ${recipe.outputUnit} short of target! Actual unit cost increased to ₦${actualUnitCost.toFixed(2)}.`;
                 alertBadge.className = 'badge badge-warning badge-xs font-mono font-bold';
-                alertBadge.innerText = `${variance} LOAVES`;
+                alertBadge.innerText = `${variance} SHORT`;
             } else {
                 alertBox.classList.add('alert-info');
                 alertIcon.className = 'fa-solid fa-circle-info text-base';
-                alertText.innerText = `Exact match: 100% target yield achieved with 0 variance.`;
+                alertText.innerText = `Exact match: 100% target yield achieved with 0 variance. Unit cost: ₦${actualUnitCost.toFixed(2)}.`;
                 alertBadge.className = 'badge badge-info badge-xs font-mono font-bold';
                 alertBadge.innerText = `0 VARIANCE`;
             }
@@ -295,7 +680,8 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        calculateVariance();
+        onRecipeChanged();
+        onOrderSelected();
     });
 </script>
 }

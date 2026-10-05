@@ -1,0 +1,212 @@
+@model Manufacture.Pages.Reports.IndexModel
+@using Manufacture.Models.DTOs
+
+<div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+    <div class="card-body p-0">
+
+        <!-- Toolbar -->
+        <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-base-300">
+            <div>
+                <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-table-list text-primary"></i>
+                    @Model.Result.ModuleLabel — @Model.Result.GroupByLabel
+                </h2>
+                <p class="text-[10px] opacity-60 mt-0.5">
+                    Showing @((Model.Result.Page - 1) * Model.Result.Limit + 1)–@(Math.Min(Model.Result.Page * Model.Result.Limit, Model.Result.TotalRows))
+                    of @Model.Result.TotalRows.ToString("N0") rows &bull; @Model.Result.Query.RangeLabel
+                </p>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <label class="text-[10px] font-bold uppercase opacity-60" for="page-size">Rows</label>
+                <select id="page-size" class="select select-xs select-bordered font-mono font-bold text-xs"
+                        onchange="location.href=this.options[this.selectedIndex].dataset.url;">
+                    @foreach (var size in Model.PageSizeOptions)
+                    {
+                        <option value="@size" data-url="@Model.PageSizeUrl(size)" selected="@(size == Model.CurrentPageSize)">@size</option>
+                    }
+                </select>
+                <a href="@Model.ExportCsvUrl" class="btn btn-xs btn-outline border-base-300 rounded-xl font-bold gap-1.5">
+                    <i class="fa-solid fa-file-csv text-success text-[10px]"></i> CSV
+                </a>
+                <a href="@Model.ExportPdfUrl" class="btn btn-xs btn-neutral rounded-xl font-bold gap-1.5">
+                    <i class="fa-solid fa-file-pdf text-[10px]"></i> PDF
+                </a>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+            <table class="table table-sm w-full text-xs">
+                <thead>
+                    <tr class="uppercase text-[10px] tracking-wider border-b border-base-300 bg-base-200/60">
+                        @foreach (var column in Model.Result.Columns)
+                        {
+                            var isSorted = string.Equals(Model.Result.Query.Sort, column.Key, StringComparison.OrdinalIgnoreCase);
+                            var isAsc = string.Equals(Model.Result.Query.Direction, "asc", StringComparison.OrdinalIgnoreCase);
+                            <th class="@(column.IsNumeric ? "text-right" : "text-left") py-2.5 px-3 whitespace-nowrap">
+                                @if (column.IsSortable)
+                                {
+                                    <a href="@Model.SortUrl(column.Key)"
+                                       class="inline-flex items-center gap-1 hover:text-primary @(isSorted ? "text-primary font-black" : "opacity-70")"
+                                       aria-label="Sort by @column.Label">
+                                        @column.Label
+                                        @if (isSorted)
+                                        {
+                                            <i class="fa-solid @(isAsc ? "fa-arrow-up-long" : "fa-arrow-down-long") text-[8px]"></i>
+                                        }
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span class="opacity-70">@column.Label</span>
+                                }
+                            </th>
+                        }
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-base-200">
+                    @foreach (var row in Model.Result.Rows)
+                    {
+                        <tr class="transition-colors
+                            @(row.AlertLevel == ReportAlertLevel.Error ? "bg-error/10 hover:bg-error/20" :
+                              row.AlertLevel == ReportAlertLevel.Warning ? "bg-warning/10 hover:bg-warning/20" :
+                              "hover:bg-base-200/60")">
+                            @foreach (var column in Model.Result.Columns)
+                            {
+                                var isNumeric = column.IsNumeric;
+                                <td class="@(isNumeric ? "text-right font-mono font-bold" : "font-semibold") px-3 py-2 whitespace-nowrap @(isNumeric ? "text-base-content" : "text-base-content")">
+                                    @if (column.Kind == ReportColumnKind.Alert)
+                                    {
+                                        @if (row.AlertLevel != ReportAlertLevel.None)
+                                        {
+                                            <span class="badge badge-xs font-bold @(row.AlertLevel == ReportAlertLevel.Error ? "badge-error" : "badge-warning")">
+                                                <i class="fa-solid @(row.AlertLevel == ReportAlertLevel.Error ? "fa-circle-exclamation" : "fa-triangle-exclamation") text-[8px] mr-1"></i>
+                                                @row.AlertMessage
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <i class="fa-solid fa-circle-check text-success text-[10px]" title="Within tolerance"></i>
+                                        }
+                                    }
+                                    else if (column.Key == nameof(ReportRowDto.EntityLabel))
+                                    {
+                                        <div class="flex flex-col">
+                                            <span>@row.EntityLabel</span>
+                                            @if (!string.IsNullOrWhiteSpace(row.EntitySubLabel))
+                                            {
+                                                <span class="text-[9px] opacity-55 font-normal">@row.EntitySubLabel</span>
+                                            }
+                                        </div>
+                                    }
+                                    else if (column.Key == nameof(ReportRowDto.VehicleRegistration))
+                                    {
+                                        <span class="font-mono font-bold">@row.VehicleRegistration</span>
+                                    }
+                                    else if (column.Kind == ReportColumnKind.Percent)
+                                    {
+                                        var value = ReportColumnCatalog.NumericValue(row, column.Key);
+                                        var tone = value >= 90m ? "text-success" : value >= 70m ? "text-warning" : "text-error";
+                                        <span class="@tone">@ReportColumnCatalog.FormatValue(row, column.Key, column)</span>
+                                    }
+                                    else
+                                    {
+                                        @ReportColumnCatalog.FormatValue(row, column.Key, column)
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Totals footer mirrors the PDF closing band -->
+        <div class="px-5 py-3 bg-neutral text-neutral-content flex flex-wrap items-center justify-between gap-3">
+            <div class="text-[10px] font-bold uppercase opacity-70 tracking-wider">Totals — all @Model.Result.TotalRows.ToString("N0") rows</div>
+            <div class="flex flex-wrap gap-x-5 gap-y-1 text-[11px]">
+                @foreach (var total in TotalsForTable())
+                {
+                    <span><span class="opacity-60">@total.Label</span> <span class="font-mono font-black">@total.Value</span></span>
+                }
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        @if (Model.Result.TotalPages > 1)
+        {
+            <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-t border-base-300">
+                <div class="text-[11px] opacity-60 font-semibold">
+                    Page @Model.Result.Page of @Model.Result.TotalPages
+                </div>
+
+                <div class="join">
+                    <a href="@Model.PageUrl(Model.Result.Page - 1)"
+                       class="btn btn-xs join-item rounded-l-xl font-bold @(Model.IsPageFirst ? "btn-disabled" : "btn-ghost bg-base-200")"
+                       aria-label="Previous page">
+                        <i class="fa-solid fa-chevron-left text-[10px]"></i>
+                    </a>
+
+                    @foreach (var pageNumber in Model.PageNumbers)
+                    {
+                        <a href="@Model.PageUrl(pageNumber)"
+                           class="btn btn-xs join-item font-mono font-bold @(pageNumber == Model.Result.Page ? "btn-neutral" : "btn-ghost bg-base-200")">
+                            @pageNumber
+                        </a>
+                    }
+
+                    <a href="@Model.PageUrl(Model.Result.Page + 1)"
+                       class="btn btn-xs join-item rounded-r-xl font-bold @(Model.IsPageLast ? "btn-disabled" : "btn-ghost bg-base-200")"
+                       aria-label="Next page">
+                        <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                    </a>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@functions {
+    // The on-screen totals strip mirrors ReportPdfService.TotalsFor so the table,
+    // the PDF and the CSV all report the same closing figures.
+    private List<(string Label, string Value)> TotalsForTable()
+    {
+        var model = (Manufacture.Pages.Reports.IndexModel)Model!;
+        var result = model.Result;
+        var t = result.GrandTotals;
+        var items = new List<(string, string)>();
+
+        if (result.Module == Manufacture.Models.Entities.AnalyticsModule.Logistics)
+        {
+            var fleet = result.LogisticsSummary.Rows;
+            items.Add(("Trips", fleet.Sum(f => f.Trips).ToString("N0")));
+            items.Add(("Distance", fleet.Sum(f => f.DistanceKm).ToString("N0") + " km"));
+            items.Add(("Fuel", ReportColumnCatalog.FormatMoney(fleet.Sum(f => f.FuelCost))));
+            items.Add(("Maint.", ReportColumnCatalog.FormatMoney(fleet.Sum(f => f.MaintenanceCost))));
+            items.Add(("On-time", fleet.Count == 0 ? "0%" : fleet.Average(f => f.OnTimePercent).ToString("0.#") + "%"));
+            return items;
+        }
+
+        if (result.Module == Manufacture.Models.Entities.AnalyticsModule.Financial)
+        {
+            items.Add(("Expected", ReportColumnCatalog.FormatMoney(t.ExpectedRevenue)));
+            items.Add(("Cash", ReportColumnCatalog.FormatMoney(result.Tender.Cash)));
+            items.Add(("Transfer", ReportColumnCatalog.FormatMoney(result.Tender.BankTransfer)));
+            items.Add(("POS Bank", ReportColumnCatalog.FormatMoney(result.Tender.PosBank)));
+            items.Add(("Outstanding", ReportColumnCatalog.FormatMoney(t.OutstandingBalance)));
+            items.Add(("Collection", t.CollectionRatePercent.ToString("0.#") + "%"));
+            return items;
+        }
+
+        items.Add(("Requested", t.OrdersPlaced.ToString("N0")));
+        items.Add(("Produced", t.Produced.ToString("N0")));
+        items.Add(("Loaded", t.Loaded.ToString("N0")));
+        items.Add(("Sold", t.Sold.ToString("N0")));
+        items.Add(("Returned", t.Returned.ToString("N0")));
+        items.Add(("Damaged", t.Damaged.ToString("N0")));
+        items.Add(("Fill rate", t.FillRatePercent.ToString("0.#") + "%"));
+        items.Add(("Sell-through", t.SellThroughPercent.ToString("0.#") + "%"));
+        return items;
+    }
+}
