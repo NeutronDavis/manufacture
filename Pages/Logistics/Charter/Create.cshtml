@@ -1,0 +1,489 @@
+@page
+@model Manufacture.Pages.Logistics.Charter.CreateModel
+@using Manufacture.Models.Entities
+@{
+    ViewData["Title"] = "New Commercial Charter & Haulage Booking";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumbs & Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Logistics/Index" class="hover:underline">Fleet Logistics</a>
+                <span>&gt;</span>
+                <a asp-page="/Logistics/Charter/Index" class="hover:underline">Charter Bookings</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">New Booking</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-truck-fast text-primary"></i> Commercial Haulage &amp; Charter Booking
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Multi-leg layover dispatch, nationwide route rate lookup, and real-time net revenue quote
+            </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <a asp-page="/Logistics/Charter/Index" class="btn btn-ghost btn-sm rounded-xl font-bold text-xs border border-base-300">
+                <i class="fa-solid fa-arrow-left"></i> Bookings Ledger
+            </a>
+            <a asp-page="/Logistics/Rates/Index" target="_blank" class="btn btn-outline btn-sm rounded-xl font-bold text-xs gap-1.5">
+                <i class="fa-solid fa-map-location-dot"></i> View Rates Matrix
+            </a>
+        </div>
+    </div>
+
+    <!-- Booking Form & Sticky Quote Summary (12-column grid) -->
+    <form method="post" id="charterForm" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        
+        <!-- Left Section (~67% width, 8 Cols): Form Content -->
+        <div class="lg:col-span-8 space-y-6">
+
+            <!-- 1. Customer & Vehicle Details -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
+                <div class="flex items-center justify-between pb-3 border-b border-base-200">
+                    <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                        <div class="w-7 h-7 rounded-lg bg-neutral text-neutral-content flex items-center justify-center text-xs font-bold shadow-xs">
+                            1
+                        </div>
+                        <span>Client &amp; Vehicle Assignment</span>
+                    </div>
+                    <span class="badge badge-neutral badge-xs font-bold uppercase tracking-wider">Haulage Contract</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div class="form-control w-full">
+                        <label class="label pb-1.5">
+                            <span class="label-text font-bold text-xs text-base-content">
+                                Client / Chartering Company Name <span class="text-error">*</span>
+                            </span>
+                        </label>
+                        <input type="text" asp-for="Booking.CustomerName" class="input input-sm input-bordered w-full rounded-xl text-xs bg-base-200 border-base-300 focus:bg-base-100 focus:border-primary font-bold" placeholder="e.g. Dangote Sugar Refinery / Premier Logistics" required />
+                        <span asp-validation-for="Booking.CustomerName" class="text-error text-[10px]"></span>
+                    </div>
+
+                    <div class="form-control w-full">
+                        <label class="label pb-1.5">
+                            <span class="label-text font-bold text-xs text-base-content">
+                                Customer Contact Phone <span class="text-error">*</span>
+                            </span>
+                        </label>
+                        <input type="tel" asp-for="Booking.CustomerPhone" class="input input-sm input-bordered w-full rounded-xl text-xs font-mono bg-base-200 border-base-300 focus:bg-base-100 focus:border-primary font-bold" placeholder="e.g. +234 803 123 4567" required />
+                        <span asp-validation-for="Booking.CustomerPhone" class="text-error text-[10px]"></span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div class="form-control w-full">
+                        <label class="label pb-1.5">
+                            <span class="label-text font-bold text-xs text-base-content">
+                                Assigned Fleet Vehicle <span class="text-error">*</span>
+                            </span>
+                        </label>
+                        <select asp-for="Booking.VehicleId" id="vehicleSelector" class="select select-sm select-bordered w-full rounded-xl text-xs bg-base-200 border-base-300 focus:bg-base-100 focus:border-primary font-bold" required onchange="onVehicleChanged()">
+                            @foreach (var v in Model.AvailableVehicles)
+                            {
+                                <option value="@v.Id" data-driver="@v.AssignedDriverName" data-type="@v.Type" data-plate="@v.RegistrationNumber">
+                                    @v.RegistrationNumber - @v.MakeAndModel (@v.Type)
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="form-control w-full">
+                        <label class="label pb-1.5">
+                            <span class="label-text font-bold text-xs text-base-content">
+                                Primary Assigned Driver
+                            </span>
+                        </label>
+                        <input type="text" asp-for="Booking.DriverName" id="driverNameInput" class="input input-sm input-bordered w-full rounded-xl text-xs bg-base-200/60 border-base-300 font-bold" readonly />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div class="form-control w-full">
+                        <label class="label pb-1.5">
+                            <span class="label-text font-bold text-xs text-base-content">
+                                Departure Date <span class="text-error">*</span>
+                            </span>
+                        </label>
+                        <input type="date" asp-for="Booking.DepartureDate" class="input input-sm input-bordered w-full rounded-xl text-xs font-mono bg-base-200 border-base-300 focus:bg-base-100 focus:border-primary font-bold" required />
+                    </div>
+
+                    <div class="form-control w-full">
+                        <label class="label pb-1.5">
+                            <span class="label-text font-bold text-xs text-base-content">
+                                Estimated Return Date <span class="opacity-60 font-normal">(Optional)</span>
+                            </span>
+                        </label>
+                        <input type="date" asp-for="Booking.ReturnDate" class="input input-sm input-bordered w-full rounded-xl text-xs font-mono bg-base-200 border-base-300 focus:bg-base-100 focus:border-primary font-bold" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Multi-Leg Layover Route Builder -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
+                <div class="flex items-center justify-between pb-3 border-b border-base-200">
+                    <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                        <div class="w-7 h-7 rounded-lg bg-neutral text-neutral-content flex items-center justify-center text-xs font-bold shadow-xs">
+                            2
+                        </div>
+                        <div>
+                            <span>Multi-Leg Layover Route Builder</span>
+                            <p class="text-[11px] text-base-content/60 font-normal">Configure single-drop or multi-stop layovers with per-leg fuel terms</p>
+                        </div>
+                    </div>
+
+                    <button type="button" onclick="addNewLeg()" class="btn btn-sm btn-neutral rounded-xl gap-1.5 font-bold text-xs shadow-xs">
+                        <i class="fa-solid fa-plus text-[10px]"></i> Add Layover Leg
+                    </button>
+                </div>
+
+                <!-- Container for Dynamic Legs -->
+                <div id="legsContainer" class="space-y-4">
+                    <!-- Legs will be dynamically rendered and updated here by JavaScript -->
+                </div>
+            </div>
+
+            <!-- 3. Trip Incidentals & Road Expenses -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
+                <div class="flex items-center gap-2.5 pb-3 border-b border-base-200">
+                    <div class="w-7 h-7 rounded-lg bg-neutral text-neutral-content flex items-center justify-center text-xs font-bold shadow-xs">
+                        3
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-black text-base-content">Trip Incidentals &amp; Operational Overhead</h2>
+                        <p class="text-[11px] text-base-content/60">En route road disbursements deducted from gross freight revenue</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                    <div class="form-control w-full">
+                        <label class="label pb-1.5"><span class="label-text font-bold text-xs text-base-content">Driver Allowance (₦)</span></label>
+                        <div class="relative w-full">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold opacity-40">₦</span>
+                            <input type="number" step="1000" asp-for="Booking.DriverAllowance" id="driverAllowance" class="input input-sm input-bordered w-full pl-7 rounded-xl text-xs font-bold bg-base-200 border-base-300 focus:bg-base-100 focus:border-primary" oninput="recalculateTotals()" />
+                        </div>
+                        <span class="text-[10px] text-base-content/50 mt-1">Per-diem food &amp; lodging</span>
+                    </div>
+
+                    <div class="form-control w-full">
+                        <label class="label pb-1.5"><span class="label-text font-bold text-xs text-base-content">Security / Escort Fee (₦)</span></label>
+                        <div class="relative w-full">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold opacity-40">₦</span>
+                            <input type="number" step="1000" asp-for="Booking.SecurityEscortFee" id="securityFee" class="input input-sm input-bordered w-full pl-7 rounded-xl text-xs font-bold bg-base-200 border-base-300 focus:bg-base-100 focus:border-primary" oninput="recalculateTotals()" />
+                        </div>
+                        <span class="text-[10px] text-base-content/50 mt-1">Armed police/patrol escort</span>
+                    </div>
+
+                    <div class="form-control w-full">
+                        <label class="label pb-1.5"><span class="label-text font-bold text-xs text-base-content">Tolls, Levies &amp; LGA Dues (₦)</span></label>
+                        <div class="relative w-full">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold opacity-40">₦</span>
+                            <input type="number" step="1000" asp-for="Booking.TollsAndRoadLevies" id="tollsFee" class="input input-sm input-bordered w-full pl-7 rounded-xl text-xs font-bold bg-base-200 border-base-300 focus:bg-base-100 focus:border-primary" oninput="recalculateTotals()" />
+                        </div>
+                        <span class="text-[10px] text-base-content/50 mt-1">Checkpoints &amp; road tickets</span>
+                    </div>
+                </div>
+
+                <div class="form-control w-full pt-2">
+                    <label class="label pb-1.5"><span class="label-text font-bold text-xs text-base-content">Trip Manifest Notes / Special Handling Instructions</span></label>
+                    <textarea asp-for="Booking.Notes" rows="3" class="textarea textarea-bordered w-full rounded-xl text-xs bg-base-200 border-base-300 focus:bg-base-100 focus:border-primary font-medium" placeholder="e.g. 800 bags of industrial flour, deliver to warehouse gate 2 before 4:00 PM. Client provides diesel at Onitsha depot."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Section (~33% width, 4 Cols): Sticky Real-time Quote Card -->
+        <div class="lg:col-span-4 sticky top-20 space-y-4">
+            <div class="card bg-base-100 border border-base-300 shadow-md rounded-2xl overflow-hidden">
+                <div class="bg-neutral text-neutral-content p-5">
+                    <div class="flex items-center justify-between">
+                        <div class="text-[10px] uppercase font-bold tracking-wider opacity-70">Commercial Haulage Quote</div>
+                        <span id="tripTypeBadge" class="badge badge-sm badge-warning font-bold text-[10px]">Single Leg</span>
+                    </div>
+                    <div class="mt-3">
+                        <div class="text-[11px] opacity-70">Net Company Revenue</div>
+                        <div id="netRevenueDisplay" class="text-3xl font-black tracking-tight text-white font-mono mt-0.5">₦0</div>
+                    </div>
+                </div>
+
+                <div class="p-6 space-y-4 text-xs">
+                    <div class="space-y-2.5 pb-4 border-b border-base-200">
+                        <div class="flex justify-between items-center text-base-content/70">
+                            <span>Gross Charter Billable:</span>
+                            <span id="grossCharterDisplay" class="font-bold text-base-content font-mono">₦0</span>
+                        </div>
+                        <div class="flex justify-between items-center text-error">
+                            <span>Total Trip Incidentals:</span>
+                            <span id="totalIncidentalsDisplay" class="font-bold text-error font-mono">-₦0</span>
+                        </div>
+                        <div class="flex justify-between items-center text-base-content/60 text-[11px] pl-2 border-l-2 border-base-200">
+                            <span>Driver Stipend:</span>
+                            <span id="driverStipendDisplay" class="font-mono">₦0</span>
+                        </div>
+                        <div class="flex justify-between items-center text-base-content/60 text-[11px] pl-2 border-l-2 border-base-200">
+                            <span>Security / Escort:</span>
+                            <span id="securityEscortDisplay" class="font-mono">₦0</span>
+                        </div>
+                        <div class="flex justify-between items-center text-base-content/60 text-[11px] pl-2 border-l-2 border-base-200">
+                            <span>Tolls &amp; LGA Levies:</span>
+                            <span id="tollsLeviesDisplay" class="font-mono">₦0</span>
+                        </div>
+                    </div>
+
+                    <!-- Profitability Ratio Indicator -->
+                    <div>
+                        <div class="flex justify-between text-[11px] font-bold mb-1.5">
+                            <span class="text-base-content/70">Projected Net Margin:</span>
+                            <span id="profitMarginPercent" class="text-emerald-600 font-mono font-black">0%</span>
+                        </div>
+                        <progress id="profitProgressBar" class="progress progress-success w-full h-2 rounded-full" value="0" max="100"></progress>
+                    </div>
+
+                    <div class="alert alert-info py-2.5 px-3 rounded-xl text-[11px] flex items-start gap-2 shadow-xs">
+                        <i class="fa-solid fa-circle-info text-xs mt-0.5"></i>
+                        <span>Rates auto-calculated from the nationwide pricing matrix. Rates with fuel include enterprise diesel coverage.</span>
+                    </div>
+
+                    <button type="submit" class="btn btn-neutral w-full rounded-xl font-black text-xs py-3 shadow-xs gap-2">
+                        <i class="fa-solid fa-circle-check"></i> Confirm &amp; Book Charter Trip
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<datalist id="nigerianStatesList">
+    @foreach (var state in Model.NigerianStates)
+    {
+        <option value="@state" />
+    }
+</datalist>
+
+@section Scripts {
+<script>
+    // Embedded Active Route Rates Matrix
+    const routeRates = @Html.Raw(Model.RouteRatesJson);
+
+    // Initial Legs State
+    let legs = [
+        {
+            legNumber: 1,
+            originState: "Lagos",
+            destinationState: "Rivers (Port Harcourt)",
+            fuelOption: "WithFuel",
+            legCost: 2100000
+        }
+    ];
+
+    function onVehicleChanged() {
+        const selector = document.getElementById('vehicleSelector');
+        const selected = selector.options[selector.selectedIndex];
+        if (selected) {
+            const driver = selected.getAttribute('data-driver') || 'Assigned Driver';
+            document.getElementById('driverNameInput').value = driver;
+        }
+        recalculateTotals();
+    }
+
+    function addNewLeg() {
+        const lastLeg = legs[legs.length - 1];
+        const newOrigin = lastLeg ? lastLeg.destinationState : "Lagos";
+        
+        legs.push({
+            legNumber: legs.length + 1,
+            originState: newOrigin,
+            destinationState: "",
+            fuelOption: "WithFuel",
+            legCost: 0
+        });
+
+        renderLegs();
+        recalculateTotals();
+    }
+
+    function removeLeg(index) {
+        if (legs.length <= 1) {
+            alert("A charter booking must have at least one trip leg.");
+            return;
+        }
+        legs.splice(index, 1);
+        // Re-index
+        legs.forEach((l, idx) => l.legNumber = idx + 1);
+        renderLegs();
+        recalculateTotals();
+    }
+
+    function findRateMatch(origin, destination) {
+        if (!origin || !destination) return null;
+        return routeRates.find(r => 
+            r.originState.toLowerCase().trim() === origin.toLowerCase().trim() &&
+            r.destinationState.toLowerCase().trim() === destination.toLowerCase().trim()
+        );
+    }
+
+    function onLegFieldChanged(index, field, value) {
+        legs[index][field] = value;
+
+        // Auto update leg cost from matrix
+        const match = findRateMatch(legs[index].originState, legs[index].destinationState);
+        if (match) {
+            legs[index].legCost = legs[index].fuelOption === "WithFuel" ? match.rateWithFuel : match.rateWithoutFuel;
+        } else {
+            // Default estimate if not in matrix
+            legs[index].legCost = legs[index].fuelOption === "WithFuel" ? 1800000 : 1100000;
+        }
+
+        renderLegs();
+        recalculateTotals();
+    }
+
+    function onFuelToggleChanged(index, isWithFuel) {
+        legs[index].fuelOption = isWithFuel ? "WithFuel" : "WithoutFuel";
+        const match = findRateMatch(legs[index].originState, legs[index].destinationState);
+        if (match) {
+            legs[index].legCost = isWithFuel ? match.rateWithFuel : match.rateWithoutFuel;
+        }
+        renderLegs();
+        recalculateTotals();
+    }
+
+    function renderLegs() {
+        const container = document.getElementById('legsContainer');
+        container.innerHTML = '';
+
+        legs.forEach((leg, index) => {
+            const isWithFuel = leg.fuelOption === "WithFuel";
+            const legDiv = document.createElement('div');
+            legDiv.className = "card bg-base-200/50 border border-base-300 p-5 rounded-2xl space-y-4";
+            
+            legDiv.innerHTML = `
+                <div class="flex items-center justify-between pb-2 border-b border-base-300/60">
+                    <div class="flex items-center gap-2">
+                        <span class="badge badge-neutral badge-sm font-black text-[10px]">Leg ${leg.legNumber}</span>
+                        <span class="text-xs font-bold text-base-content">
+                            ${leg.originState || 'Origin'} → ${leg.destinationState || 'Destination'}
+                        </span>
+                    </div>
+                    ${legs.length > 1 ? `
+                        <button type="button" onclick="removeLeg(${index})" class="btn btn-ghost btn-xs text-error hover:bg-error/10 rounded-lg font-bold gap-1">
+                            <i class="fa-solid fa-trash text-[10px]"></i> Remove Leg
+                        </button>
+                    ` : ''}
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="form-control w-full">
+                        <label class="label pb-1.5"><span class="label-text font-bold text-xs text-base-content">Origin State <span class="text-error">*</span></span></label>
+                        <input list="nigerianStatesList" 
+                               name="Booking.Legs[${index}].OriginState" 
+                               value="${leg.originState}" 
+                               class="input input-sm input-bordered w-full rounded-xl text-xs font-bold bg-base-100 border-base-300 focus:border-primary" 
+                               onchange="onLegFieldChanged(${index}, 'originState', this.value)" 
+                               required />
+                    </div>
+
+                    <div class="form-control w-full">
+                        <label class="label pb-1.5"><span class="label-text font-bold text-xs text-base-content">Destination State / Layover Drop <span class="text-error">*</span></span></label>
+                        <input list="nigerianStatesList" 
+                               name="Booking.Legs[${index}].DestinationState" 
+                               value="${leg.destinationState}" 
+                               class="input input-sm input-bordered w-full rounded-xl text-xs font-bold text-primary bg-base-100 border-base-300 focus:border-primary" 
+                               placeholder="e.g. Rivers (Port Harcourt), Kano, Abuja" 
+                               onchange="onLegFieldChanged(${index}, 'destinationState', this.value)" 
+                               required />
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 mt-1 border-t border-base-300/60 bg-base-100 p-3.5 rounded-xl">
+                    <!-- Fuel Toggle Switch -->
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-bold ${!isWithFuel ? 'text-blue-600 font-black' : 'text-base-content/60'}">
+                            <i class="fa-solid fa-ban text-[10px]"></i> Freight Only (No Fuel)
+                        </span>
+                        
+                        <input type="checkbox" 
+                               class="toggle toggle-sm toggle-success cursor-pointer" 
+                               ${isWithFuel ? 'checked' : ''} 
+                               onchange="onFuelToggleChanged(${index}, this.checked)" />
+
+                        <span class="text-xs font-bold ${isWithFuel ? 'text-emerald-600 font-black' : 'text-base-content/60'}">
+                            <i class="fa-solid fa-gas-pump text-[10px]"></i> Fuel Inclusive (Company Fuel)
+                        </span>
+
+                        <input type="hidden" name="Booking.Legs[${index}].FuelOption" value="${leg.fuelOption}" />
+                        <input type="hidden" name="Booking.Legs[${index}].LegNumber" value="${leg.legNumber}" />
+                    </div>
+
+                    <!-- Calculated Leg Cost -->
+                    <div class="flex items-center justify-between sm:justify-end gap-2.5">
+                        <span class="text-xs font-bold text-base-content/70">Leg Billable:</span>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold opacity-50">₦</span>
+                            <input type="number" 
+                                   name="Booking.Legs[${index}].LegCost" 
+                                   value="${leg.legCost}" 
+                                   class="input input-sm input-bordered pl-7 w-36 rounded-xl text-xs font-black text-right font-mono ${isWithFuel ? 'text-emerald-600' : 'text-blue-600'}" 
+                                   onchange="onLegFieldChanged(${index}, 'legCost', parseFloat(this.value) || 0)" />
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(legDiv);
+        });
+    }
+
+    function recalculateTotals() {
+        const grossCharter = legs.reduce((sum, l) => sum + (parseFloat(l.legCost) || 0), 0);
+        
+        const driverAllowance = parseFloat(document.getElementById('driverAllowance').value) || 0;
+        const securityFee = parseFloat(document.getElementById('securityFee').value) || 0;
+        const tollsFee = parseFloat(document.getElementById('tollsFee').value) || 0;
+
+        const totalIncidentals = driverAllowance + securityFee + tollsFee;
+        const netRevenue = grossCharter - totalIncidentals;
+
+        // Update displays
+        document.getElementById('grossCharterDisplay').textContent = '₦' + grossCharter.toLocaleString('en-US');
+        document.getElementById('totalIncidentalsDisplay').textContent = '-₦' + totalIncidentals.toLocaleString('en-US');
+        document.getElementById('driverStipendDisplay').textContent = '₦' + driverAllowance.toLocaleString('en-US');
+        document.getElementById('securityEscortDisplay').textContent = '₦' + securityFee.toLocaleString('en-US');
+        document.getElementById('tollsLeviesDisplay').textContent = '₦' + tollsFee.toLocaleString('en-US');
+        document.getElementById('netRevenueDisplay').textContent = '₦' + netRevenue.toLocaleString('en-US');
+
+        // Trip Type Badge
+        const typeBadge = document.getElementById('tripTypeBadge');
+        if (legs.length > 1) {
+            typeBadge.textContent = legs.length + ' Layovers (Multi-Leg)';
+            typeBadge.className = 'badge badge-sm badge-primary font-bold text-[10px]';
+        } else {
+            typeBadge.textContent = 'Direct Haulage (Single Leg)';
+            typeBadge.className = 'badge badge-sm badge-warning font-bold text-[10px]';
+        }
+
+        // Profit Margin
+        const marginPct = grossCharter > 0 ? Math.max(0, Math.round((netRevenue / grossCharter) * 100)) : 0;
+        document.getElementById('profitMarginPercent').textContent = marginPct + '%';
+        const pBar = document.getElementById('profitProgressBar');
+        pBar.value = marginPct;
+        if (marginPct >= 70) {
+            pBar.className = 'progress progress-success w-full h-2 rounded-full';
+        } else if (marginPct >= 40) {
+            pBar.className = 'progress progress-warning w-full h-2 rounded-full';
+        } else {
+            pBar.className = 'progress progress-error w-full h-2 rounded-full';
+        }
+    }
+
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', () => {
+        onVehicleChanged();
+        renderLegs();
+        recalculateTotals();
+    });
+</script>
+}

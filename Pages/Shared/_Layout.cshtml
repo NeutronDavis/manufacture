@@ -12,7 +12,7 @@
     bool inStaff = currentPath.StartsWith("/HR") || currentPath.StartsWith("/Payroll");
     bool inInventory = currentPath.StartsWith("/Inventory");
     bool inSales = currentPath.StartsWith("/Sales");
-    bool inFleet = currentPath.StartsWith("/Logistics");
+    bool inFleet = currentPath.StartsWith("/Logistics", StringComparison.OrdinalIgnoreCase) || currentPath.StartsWith("/Fleet", StringComparison.OrdinalIgnoreCase);
     bool inReports = currentPath.StartsWith("/Reports");
     bool inSettings = currentPath.StartsWith("/UserManagement") || currentPath.StartsWith("/Settings");
     bool inDashboard = currentPath == "/" || currentPath.StartsWith("/Dashboard");
@@ -368,6 +368,19 @@
                                     <i class="fa-solid fa-gauge text-[11px] w-3.5 text-center"></i>
                                     <span>Logistics Overview</span>
                                 </a>
+                                <a asp-page="/Logistics/Charter/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Logistics/Charter") || currentPath.StartsWith("/Fleet/Charter") ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-truck-moving text-[11px] w-3.5 text-center"></i>
+                                    <span>Charter Bookings</span>
+                                </a>
+                             
+                                <a asp-page="/Logistics/Rates/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Logistics/Rates") || currentPath.StartsWith("/Fleet/Rates") ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-map-location-dot text-[11px] w-3.5 text-center"></i>
+                                    <span>Route Rates Matrix</span>
+                                </a>
+                                <a asp-page="/Logistics/WeeklyRunningCosts/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Logistics/WeeklyRunningCosts", StringComparison.OrdinalIgnoreCase) || currentPath.StartsWith("/Fleet/WeeklyRunningCosts", StringComparison.OrdinalIgnoreCase) || currentPath.StartsWith("/Fleet/Weekly-Running-Costs", StringComparison.OrdinalIgnoreCase) ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-calendar-week text-[11px] w-3.5 text-center"></i>
+                                    <span>Weekly Running Costs</span>
+                                </a>
                                 <a asp-page="/Logistics/Vehicles/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Logistics/Vehicles") ? "erp-nav-active" : "")">
                                     <i class="fa-solid fa-van-shuttle text-[11px] w-3.5 text-center"></i>
                                     <span>Vehicles Directory</span>
@@ -375,10 +388,6 @@
                                 <a asp-page="/Logistics/FuelLogs/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Logistics/FuelLogs") ? "erp-nav-active" : "")">
                                     <i class="fa-solid fa-gas-pump text-[11px] w-3.5 text-center"></i>
                                     <span>Fuel Purchase Logs</span>
-                                </a>
-                                <a asp-page="/Logistics/FuelLogs/Create" class="erp-nav-sub-item @(currentPath == "/Logistics/FuelLogs/Create" ? "erp-nav-active" : "")">
-                                    <i class="fa-solid fa-receipt text-[11px] w-3.5 text-center"></i>
-                                    <span>Record Fuel Expense</span>
                                 </a>
                             </div>
                         </details>

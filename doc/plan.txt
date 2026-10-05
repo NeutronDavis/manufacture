@@ -1,101 +1,122 @@
-# TASK: Refactor Batch Production Logging & Production Planning Engine
+# TASK: Refactor Fleet & Logistics Module (Haulage, Charter Booking & Weekly Running Expenses)
 
 ## Architectural Rationale & Business Justification (The "Why")
 
-### 1. Correcting the Unit Costing Engine
-In the current layout, logged batch costs display **₦0** and unit costs show blank dashes (`-`). According to the business model defined by Mr. Emeka:
-* The primary objective of logging a daily batch is to calculate the **true per-unit production cost** for that specific run.
-* The system must take the master recipe ingredient list, multiply ingredient quantities by live master inventory prices to get the **Total Batch Material Cost**, and divide that total by the **Actual Physical Yield** logged by the production manager:
-  \\[\text{Actual Unit Production Cost} = \frac{\text{Total Batch Material Cost}}{\text{Actual Physical Yield}}\\]
+### 1. The Dual-Role Fleet Operational Model
+The current fleet module treats vehicles as generic internal asset trackers. However, according to Mr. Emeka, the enterprise operates two distinct logistics functions:
+* **Internal Sales Distribution Fleet**: Trucks/vans that load bakery, water, and popcorn inventory daily for sales rep distribution routes.
+* **VIP Vehicle Logistics & Commercial Haulage Division**: A revenue-generating charter service where external vendors and corporate clients call in to book trucks or VIP vehicles for state-to-state transport and freight delivery across Nigeria.
 
-### 2. Eliminating Hardcoded Bread Terminology Across Categories
-Current forms use hardcoded labels like *"Flour Bags Mixed (50kg)"* and *"Loaves Produced"*, even for Water (e.g., Water 18.9L displaying "0 bags flour / 244 loaves"). 
-* **Bread Line**: Baseline is 1 Bag of Flour (50 kg) \\(\rightarrow\\) Output is Loaves / Packs.
-* **Water Line**: Baseline is 1 Production Run \\(\rightarrow\\) Output is Filled Dispenser Bottles / Pure Water Packs.
-* **Popcorn Line**: Baseline is 1 Cooking Pot (~2 kg corn) \\(\rightarrow\\) Output is Racks / Packets.
-Form labels, unit badges, and ledger columns MUST dynamically adapt based on the selected product category.
+### 2. 360° Statewide Pricing Matrix (With vs. Without Fuel)
+Commercial haulage rates must not be manually guessed on every phone call. The system requires a pre-configured **Nationwide Route Rate Sheet** covering destination states across Nigeria. Every route must support two distinct pricing tiers:
+* **Fuel-Inclusive Rate ("With Fuel")**: Company provides diesel/petrol for the entire journey.
+* **Freight-Only Rate ("Without Fuel")**: Client/chartering vendor provides fuel for the truck.
 
-### 3. Demand-Driven Production Planning
-Target production numbers should not be arbitrary guesses; they must originate from **Sales Rep Orders Placed** for the day, allowing management to compare **Requested vs. Produced** and catch supply shortfalls early.
+### 3. Multi-Leg Layovers & Trip-Specific Incidentals
+Logistics calls frequently involve multi-stop trips (e.g., Factory \\(\rightarrow\\) State A \\(\rightarrow\\) State B \\(\rightarrow\\) Destination). Furthermore, haulage runs incur variable road expenses—such as **driver allowances, security/police escort fees, local government levies, and toll charges**—which must be itemized per booking to calculate net trip profitability.
 
-### 4. Implementation Context (DTOs & Dummy Services)
-The application currently operates without a live database, using mock data services and Data Transfer Objects (DTOs). All cost calculations, category label switches, and yield variance rules must be implemented cleanly at the DTO and mock service layer so the UI reflects live data immediately.
+### 4. Weekly Fleet Fueling & Maintenance Reconciliation
+Vehicles typically refuel once or twice a week (e.g., Mondays and Thursdays). Rather than forcing fuel and repair bills into single daily loaf/unit production costs, fleet running costs are aggregated over the **Sunday-to-Saturday operating week** to calculate weekly corporate operational overhead.
+
+### 5. Application Context (DTOs & Dummy Services)
+The application currently operates using Data Transfer Objects (DTOs) and mock/dummy data services. All pricing calculations, multi-leg layover aggregations, and weekly expense totals must be implemented cleanly at the DTO and mock service layer.
 
 ---
 
-## 1. Updated DTO Data Contracts
+## 1. DTO & Data Contract Specifications
 
-Update or create the following Data Transfer Objects in the domain:
+Create or update the following Data Transfer Objects:
 
 ```typescript
-export type ProductCategory = 'BREAD' | 'WATER' | 'POPCORN';
+export type FuelOption = 'WITH_FUEL' | 'WITHOUT_FUEL';
+export type VehicleStatus = 'AVAILABLE' | 'ON_TRIP' | 'MAINTENANCE' | 'INACTIVE';
 
-export interface BatchProductionRunDTO {
+export interface RouteRateDTO {
   id: string;
-  batchNumber: string;               // e.g., "BAT-20261005-01"
-  productCategory: ProductCategory;
-  recipeId: string;
-  recipeName: string;                // e.g., "Jumbo Bread (50kg Recipe)"
-  
-  // Dynamic Batch Input Measures (Values depend on ProductCategory)
-  batchInputQuantity: number;        // e.g., 2 (Bags of Flour / Runs / Cooking Pots)
-  batchInputUnitLabel: string;       // e.g., "50kg Bags of Flour" | "Production Runs" | "Cooking Pots"
-  
-  // Targets & Real Output
-  targetOrderQuantity: number;       // Sourced from Sales Rep Orders Placed
-  actualYieldQuantity: number;       // Entered by Production Manager (Loaves / Bottles / Racks)
-  outputUnitLabel: string;           // "Loaves" | "Dispenser Bottles" | "Racks"
-  
-  // Dynamically Computed Costs
-  totalBatchMaterialCost: number;    // Calculated: SUM(Recipe Ingredient Qty * Master Price) * batchInputQuantity
-  actualUnitProductionCost: number;  // Calculated: totalBatchMaterialCost / actualYieldQuantity
-  expectedUnitProductionCost: number;// Calculated: totalBatchMaterialCost / expectedYield
-  costVariancePerUnit: number;       // actualUnitProductionCost - expectedUnitProductionCost
-  
-  status: 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
-  loggedBy: string;
-  timestamp: string;
+  originState: string;               // e.g., "Lagos"
+  destinationState: string;          // e.g., "Rivers (Port Harcourt)"
+  vehicleTypeRequired: string;       // e.g., "30-Ton Haulage Truck", "VIP Van"
+  rateWithFuel: number;              // Standard rate including company diesel
+  rateWithoutFuel: number;           // Discounted rate when client provides fuel
+  estimatedHours: number;
 }
 
-2. Mock Service Calculation Logic (MockBatchService)
-Implement the following dynamic cost engine methods inside the mock batch service:
-calculateBatchMaterialCost(recipeId, batchInputQuantity):
-Fetches the RecipeDTO and multiplies each ingredient's baseline quantity by batchInputQuantity.
-Multiplies each ingredient by its current price in the Master Inventory.
-Returns the aggregated totalBatchMaterialCost.
-calculateRunUnitCost(totalBatchMaterialCost, actualYieldQuantity):
-If actualYieldQuantity > 0, returns totalBatchMaterialCost / actualYieldQuantity.
-Prevents division-by-zero errors when actual yield has not yet been typed in.
-getCategoryLabels(category: ProductCategory):
-BREAD: { inputLabel: "Flour Bags (50kg)", outputLabel: "Loaves / Packs", placeholderInput: "e.g., 1 bag" }
-WATER: { inputLabel: "Production Run Batch", outputLabel: "Filled Dispenser Bottles", placeholderInput: "e.g., 1 run" }
-POPCORN: { inputLabel: "Cooking Pots (~2kg)", outputLabel: "Racks / Bags", placeholderInput: "e.g., 2 pots" }
-3. UI Component Refactoring Requirements
-A. Dynamic Batch Entry Modal (LogBatchModal)
-Category & Recipe Selector:
-Selecting a Product Category (Bread, Water, Popcorn) immediately filters the Recipe dropdown.
-Dynamically updates all input field labels on the screen using getCategoryLabels().
-Target Auto-Fill:
-Display a read-only badge showing: Demand from Rep Orders: [X] Units so managers know how much needs to be produced.
-Live Material Costing Card:
-As soon as Recipe and Batch Input Quantity are selected, instantly compute and display:
-Estimated Material Cost: ₦[totalBatchMaterialCost]
-When the manager types in Actual Yield Quantity, dynamically compute and display in bold:
-Actual Unit Production Cost: ₦[actualUnitProductionCost] / item
-Yield Variance Indicator: Highlight green if actual yield met expectations, or red if yield fell short (increasing unit cost).
-B. Batch Records Ledger Table (BatchLedgerTable)
-Fix Blank / Zero Columns:
-Replace ₦0 in Logged Batch Cost with the actual computed totalBatchMaterialCost (e.g., ₦48,500.00).
-Replace - in Unit Cost with the calculated actualUnitProductionCost (e.g., ₦242.50 / loaf).
-Category-Specific Table Headers:
-Ensure the batch input column dynamically displays "Input Batch Size" (showing "1 Bag", "1 Run", or "2 Pots") instead of forcing "Bags of Flour" across non-bread rows.
-Variance & Shortfall Badges:
-Show an inline badge comparing Target Order Qty vs. Actual Yield Qty (e.g., 550 / 600 (-50 Shortfall)).
-4. Instructions for Developer
-Update the mock data state with realistic sample production runs for Bread, Water, and Popcorn using the new BatchProductionRunDTO.
-Ensure real-time reactivity in the form: changing input batch size or actual yield must re-calculate unit cost instantly without requiring a page reload.
-Add unit tests verifying cost calculations and category label mapping.
+export interface TripLegDTO {
+  legNumber: number;
+  originState: string;
+  destinationState: string;
+  fuelOption: FuelOption;
+  legCost: number;                   // Derived from RouteRateDTO
+}
 
-***
+export interface CharterBookingDTO {
+  id: string;
+  bookingRef: string;                // e.g., "LOG-20261005-01"
+  customerName: string;
+  customerPhone: string;
+  vehicleId: string;
+  vehicleRegNumber: string;          // e.g., "KJA-412AA"
+  driverId: string;
+  driverName: string;
+  
+  // Route & Multi-Leg Layover Details
+  isMultiLeg: boolean;
+  legs: TripLegDTO[];
+  
+  // Trip Incidentals
+  driverAllowance: number;           // Daily/Trip driver stipend
+  securityEscortFee: number;         // Security/police escort costs (if required)
+  tollsAndRoadLevies: number;        // Checkpoint, union, and toll charges
+  
+  // Computed Financials
+  grossCharterFee: number;           // SUM(legCost)
+  totalTripIncidentals: number;      // SUM(allowance + security + tolls)
+  netCharterRevenue: number;         // grossCharterFee - totalTripIncidentals
+  
+  tripStatus: 'BOOKED' | 'IN_TRANSIT' | 'COMPLETED' | 'CANCELLED';
+  departureDate: string;
+  returnDate?: string;
+}
 
-💡 **Next Step**: After pasting this into Antigravity, would you like to review how the daily sales rep loading sheets handle stocking variances between what was produced versus what gets loaded onto the delivery trucks?
+export interface WeeklyFleetExpenseDTO {
+  id: string;
+  operatingWeekStart: string;        // Sunday (YYYY-MM-DD)
+  operatingWeekEnd: string;          // Saturday (YYYY-MM-DD)
+  vehicleId: string;
+  fuelExpenseTotal: number;          // Aggregated weekly diesel purchases
+  maintenanceExpenseTotal: number;   // Servicing, tire repairs, spare parts
+  incidentalsTotal: number;
+  totalWeeklyRunningCost: number;
+}
+
+ Mock Data Service Logic (MockFleetService)
+Implement the following business logic inside the mock fleet service:
+calculateTripRate(legs: TripLegDTO[]):
+Searches RouteRateDTO matrix for origin/destination pairs.
+Applies rateWithFuel or rateWithoutFuel depending on the fuelOption selected for each leg.
+Aggregates multi-leg trip fees to compute grossCharterFee.
+calculateTripProfitability(booking: CharterBookingDTO):
+totalTripIncidentals = driverAllowance + securityEscortFee + tollsAndRoadLevies.
+netCharterRevenue = grossCharterFee - totalTripIncidentals.
+getWeeklyFleetExpenses(operatingWeekStart):
+Filters fuel and maintenance entries between Sunday and Saturday for each vehicle.
+Aggregates weekly totals to feed overall company profitability reports.
+3. UI Component Requirements
+A. Route & Rate Matrix Manager (/fleet/rates)
+Table view listing state-to-state routes with searchable columns (Origin, Destination, Vehicle Type, Rate With Fuel, Rate Without Fuel).
+Inline modal to quickly add or update route prices when fuel market prices change.
+B. Commercial Haulage & Charter Booking Screen (/fleet/charter/new)
+Customer & Route Builder:
+Customer name and contact phone inputs.
+Vehicle and Driver selector dropdowns.
+Multi-Leg Layover Builder:
+Dynamic route list allowing staff to add multiple legs: [ Leg 1: Lagos → Benin ], [ Leg 2: Benin → Port Harcourt ].
+Per-leg toggle switch: [ ⛽ With Fuel ] vs [ 🚫 Without Fuel ].
+Auto-calculates base route charges from the rate matrix.
+Trip Incidentals Section:
+Numeric input fields for Driver Allowance, Security / Escort Fee, and Road Levies / Tolls.
+Live Quote Summary Card:
+Real-time display showing: Gross Charter Rate, Total Incidentals, and Net Company Revenue.
+C. Weekly Fleet Fuel & Maintenance Ledger (/fleet/weekly-running-costs)
+Week picker locked to the business operating week (Sunday to Saturday).
+Matrix table tracking each fleet vehicle across rows with columns for: [ Vehicle Reg | Primary Driver | Weekly Fuel Logged (₦) | Servicing & Repairs (₦) | Total Weekly Running Cost ].

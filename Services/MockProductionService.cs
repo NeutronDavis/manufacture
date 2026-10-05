@@ -100,10 +100,10 @@ namespace Manufacture.Services
             var salt = _ingredients.First(i => i.ItemCode == "RAW-SLT-01" || i.Name.Contains("Salt"));
             var preservative = _ingredients.First(i => i.ItemCode == "RAW-PRV-01" || i.Name.Contains("Preservative"));
             var milkFlavour = _ingredients.First(i => i.ItemCode == "RAW-FLV-01" || i.Name.Contains("Flavour"));
-            var water = _ingredients.First(i => i.ItemCode == "RAW-WTR-01" || i.Name.Contains("Water"));
+            var water = _ingredients.First(i => i.ItemCode == "RAW-WTR-01" || (i.Name.Contains("Water") && !i.Name.Contains("Bottle")));
             var jumboWrap = _ingredients.First(i => i.ItemCode == "PKG-NYL-JMB" || i.Name.Contains("Jumbo"));
             var mediumWrap = _ingredients.First(i => i.ItemCode == "PKG-NYL-MED" || i.Name.Contains("Medium"));
-            var waterBottle = _ingredients.First(i => i.ItemCode == "PKG-BTL-189" || i.Name.Contains("18.9L") || i.Name.Contains("Bottle"));
+            var waterBottle = _ingredients.First(i => i.ItemCode == "PKG-BTL-189" || i.Name.Contains("Dispenser Water Bottle"));
             var popcornBag = _ingredients.First(i => i.ItemCode == "PKG-BAG-POP" || i.Name.Contains("Popcorn Small Bag"));
             var maize = _ingredients.First(i => i.ItemCode == "RAW-CRN-01" || i.Name.Contains("Maize"));
             var fryingOil = _ingredients.First(i => i.ItemCode == "RAW-OIL-01" || i.Name.Contains("Oil"));

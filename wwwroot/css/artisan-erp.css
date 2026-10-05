@@ -58,6 +58,13 @@ body {
     color: var(--color-base-content, #181a2a);
 }
 
+/* Form Controls & Field Stacking */
+.form-control {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
 /* Theme Color Cascading onto Utility Classes */
 [data-theme] .bg-white,
 [data-theme] .card.bg-white,

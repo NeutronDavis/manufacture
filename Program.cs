@@ -10,6 +10,23 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AddPageRoute("/Production/Recipes/Index", "Recipes");
     options.Conventions.AddPageRoute("/Production/Recipes/Details", "Recipes/Details/{id:int}");
     options.Conventions.AddPageRoute("/Production/Recipes/Edit", "Recipes/Edit/{id:int}");
+
+    // Fleet & Logistics Aliases (doc/plan.txt)
+    options.Conventions.AddPageRoute("/Logistics/Rates/Index", "Fleet/Rates");
+    options.Conventions.AddPageRoute("/Logistics/Rates/Create", "Fleet/Rates/Create");
+    options.Conventions.AddPageRoute("/Logistics/Rates/Create", "Fleet/Rates/New");
+    options.Conventions.AddPageRoute("/Logistics/Rates/Edit", "Fleet/Rates/Edit/{id:int}");
+    options.Conventions.AddPageRoute("/Logistics/Charter/Index", "Fleet/Charter");
+    options.Conventions.AddPageRoute("/Logistics/Charter/Create", "Fleet/Charter/New");
+    options.Conventions.AddPageRoute("/Logistics/Charter/Details", "Fleet/Charter/Details/{id:int}");
+    options.Conventions.AddPageRoute("/Logistics/WeeklyRunningCosts/Index", "Fleet/Weekly-Running-Costs");
+    options.Conventions.AddPageRoute("/Logistics/WeeklyRunningCosts/Index", "Fleet/WeeklyRunningCosts");
+    options.Conventions.AddPageRoute("/Logistics/Maintenance/Create", "Fleet/Maintenance/Create");
+    options.Conventions.AddPageRoute("/Logistics/Maintenance/Create", "Fleet/Maintenance/New");
+    options.Conventions.AddPageRoute("/Logistics/FuelLogs/Create", "Fleet/FuelLogs/Create");
+    options.Conventions.AddPageRoute("/Logistics/FuelLogs/Create", "Fleet/FuelLogs/New");
+    options.Conventions.AddPageRoute("/Logistics/Vehicles/Create", "Fleet/Vehicles/Create");
+    options.Conventions.AddPageRoute("/Logistics/Vehicles/Create", "Fleet/Vehicles/New");
 });
 builder.Services.AddHttpContextAccessor();
 

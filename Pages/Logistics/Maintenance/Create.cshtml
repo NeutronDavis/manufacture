@@ -1,0 +1,225 @@
+@page
+@model Manufacture.Pages.Logistics.Maintenance.CreateModel
+@{
+    ViewData["Title"] = "Record Fleet Maintenance";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Logistics/Index" class="hover:underline">Fleet Logistics</a>
+                <span>&gt;</span>
+                <a asp-page="/Logistics/WeeklyRunningCosts/Index" class="hover:underline">Weekly Running Costs</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Record Maintenance</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-wrench text-primary"></i> Record Vehicle Maintenance & Repairs
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Log scheduled mechanical servicing, replacement parts, tires, and workshop invoices.
+            </p>
+        </div>
+        <div>
+            <a href="@(string.IsNullOrEmpty(Model.ReturnUrl) ? "/Logistics/WeeklyRunningCosts/Index" : Model.ReturnUrl)" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <!-- Standard 2-Column Full-Width Form Layout -->
+    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        <input type="hidden" asp-for="ReturnUrl" />
+
+        <!-- Left Section (~70% width, 8 Cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            <!-- Vehicle & Service Scope Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-truck-pickup"></i>
+                            </div>
+                            <span>Vehicle &amp; Service Classification</span>
+                        </div>
+                        <span class="badge badge-info badge-xs font-bold uppercase tracking-wider">Fleet Asset</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Target Fleet Vehicle <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <select asp-for="MaintenanceInput.VehicleId" id="selectVehicle" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" required onchange="updateSummary()">
+                                @foreach (var v in Model.AllVehicles)
+                                {
+                                    <option value="@v.Id" data-reg="@v.RegistrationNumber" data-model="@v.MakeAndModel">
+                                        @v.RegistrationNumber - @v.MakeAndModel (@v.Type)
+                                    </option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Service Date <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="date" asp-for="MaintenanceInput.ServiceDate" id="inputDate" value="@DateTime.UtcNow.ToString("yyyy-MM-dd")" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" required onchange="updateSummary()" />
+                        </div>
+                    </div>
+
+                    <div class="form-control w-full">
+                        <label class="label pb-1.5">
+                            <span class="label-text font-bold text-xs text-base-content">
+                                Service &amp; Repair Description <span class="text-error">*</span>
+                            </span>
+                        </label>
+                        <textarea asp-for="MaintenanceInput.Description" id="inputDesc" rows="3" class="textarea textarea-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" placeholder="e.g. Engine oil replacement (15W-40), OEM oil filter, front brake pad replacement, and wheel balancing" required oninput="updateSummary()"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Financials & Vendor Invoice Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-file-invoice-dollar"></i>
+                            </div>
+                            <span>Workshop Invoice &amp; Expense Breakdown</span>
+                        </div>
+                        <span class="badge badge-success badge-xs font-bold uppercase tracking-wider">Accounting</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Total Maintenance Cost (₦) <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="number" step="500" min="100" asp-for="MaintenanceInput.Cost" id="inputCost" class="input input-bordered input-sm w-full font-mono text-blue-600 bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-black" required oninput="updateSummary()" />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Workshop / Mechanic / Vendor
+                                </span>
+                            </label>
+                            <input type="text" asp-for="MaintenanceInput.WorkshopOrVendor" id="inputVendor" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" placeholder="e.g. Mandilas Motors Lagos" oninput="updateSummary()" />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Invoice / Receipt Number
+                                </span>
+                            </label>
+                            <input type="text" asp-for="MaintenanceInput.InvoiceNumber" id="inputInvoice" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" placeholder="e.g. INV-2026-891" oninput="updateSummary()" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Section (~30% width, 4 Cols) -->
+        <div class="lg:col-span-4 space-y-6">
+            <!-- Maintenance Summary Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl sticky top-20">
+                <div class="card-body p-6 space-y-4">
+                    <div class="flex items-center gap-2 font-bold text-base-content text-sm border-b border-base-200 pb-3">
+                        <i class="fa-solid fa-clipboard-check text-primary"></i>
+                        <span>Expense Summary Preview</span>
+                    </div>
+
+                    <div class="bg-base-200/50 p-4 rounded-xl space-y-3">
+                        <div class="text-center pb-2 border-b border-base-300">
+                            <div class="text-[10px] uppercase font-bold text-base-content/60">Asset Plate Number</div>
+                            <div class="font-black text-sm text-base-content mt-0.5" id="summaryVehicleReg">
+                                Loading...
+                            </div>
+                            <div class="text-[11px] text-base-content/60" id="summaryVehicleModel"></div>
+                        </div>
+
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-base-content/70">Service Date:</span>
+                            <span class="font-mono font-bold text-base-content" id="summaryDate">-</span>
+                        </div>
+
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-base-content/70">Workshop / Vendor:</span>
+                            <span class="font-semibold text-base-content truncate max-w-[130px]" id="summaryVendor">-</span>
+                        </div>
+
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-base-content/70">Invoice Ref:</span>
+                            <span class="font-mono text-base-content" id="summaryInvoice">-</span>
+                        </div>
+
+                        <div class="flex justify-between items-center text-xs pt-2 border-t border-base-300 bg-blue-500/10 p-2.5 rounded-lg">
+                            <span class="text-blue-700 dark:text-blue-400 font-bold">Total Service Cost:</span>
+                            <span class="font-mono font-black text-blue-700 dark:text-blue-400 text-sm" id="summaryCost">₦0</span>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="pt-2 space-y-2">
+                        <button type="submit" class="btn btn-neutral w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
+                            <i class="fa-solid fa-check"></i> Save Maintenance Log
+                        </button>
+                        <a href="@(string.IsNullOrEmpty(Model.ReturnUrl) ? "/Logistics/WeeklyRunningCosts/Index" : Model.ReturnUrl)" class="btn btn-ghost w-full rounded-xl font-semibold text-xs border border-base-300">
+                            Cancel
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Maintenance Guidelines Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-5 space-y-2 text-xs">
+                    <div class="flex items-center gap-2 font-bold text-base-content">
+                        <i class="fa-solid fa-shield-halved text-primary"></i>
+                        <span>Preventative Maintenance Policy</span>
+                    </div>
+                    <ul class="list-disc list-inside space-y-1 text-base-content/70 text-[11px] leading-relaxed">
+                        <li>Submitting this record automatically updates the vehicle's <strong>Last Service Date</strong> in the fleet register.</li>
+                        <li>Routine servicing (oil, filters) is required every 5,000 km or 90 days.</li>
+                        <li>Retain physical vendor invoices and attach reference numbers for monthly accounting audit.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    function updateSummary() {
+        const vehicleSelect = document.getElementById('selectVehicle');
+        const selectedOpt = vehicleSelect.options[vehicleSelect.selectedIndex];
+        const reg = selectedOpt ? selectedOpt.getAttribute('data-reg') : 'Selected Vehicle';
+        const model = selectedOpt ? selectedOpt.getAttribute('data-model') : '';
+        const date = document.getElementById('inputDate').value || '-';
+        const cost = parseFloat(document.getElementById('inputCost').value) || 0;
+        const vendor = document.getElementById('inputVendor').value || 'In-House';
+        const invoice = document.getElementById('inputInvoice').value || 'Pending';
+
+        document.getElementById('summaryVehicleReg').textContent = reg;
+        document.getElementById('summaryVehicleModel').textContent = model;
+        document.getElementById('summaryDate').textContent = date;
+        document.getElementById('summaryVendor').textContent = vendor;
+        document.getElementById('summaryInvoice').textContent = invoice;
+        document.getElementById('summaryCost').textContent = '₦' + cost.toLocaleString('en-US');
+    }
+    document.addEventListener('DOMContentLoaded', updateSummary);
+</script>

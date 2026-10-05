@@ -18,10 +18,14 @@ namespace Manufacture.Pages.Logistics.FuelLogs
         [BindProperty]
         public FuelLogDto LogInput { get; set; } = new();
 
+        [BindProperty(SupportsGet = true)]
+        public string? ReturnUrl { get; set; }
+
         public List<Vehicle> Vehicles { get; set; } = new();
 
-        public void OnGet(int? vehicleId)
+        public void OnGet(int? vehicleId, string? returnUrl)
         {
+            ReturnUrl = returnUrl;
             Vehicles = _logisticsService.GetAllVehicles();
             if (vehicleId.HasValue) LogInput.VehicleId = vehicleId.Value;
             LogInput.LitresDispensed = 45;
@@ -39,6 +43,12 @@ namespace Manufacture.Pages.Logistics.FuelLogs
 
             var log = _logisticsService.CreateFuelLog(LogInput);
             TempData["SuccessMessage"] = $"Fuel expense of ₦{log.TotalCost:N0} ({log.LitresDispensed}L) logged for vehicle {log.VehicleRegNumber}.";
+
+            if (!string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
+            {
+                return Redirect(ReturnUrl);
+            }
+
             return RedirectToPage("/Logistics/FuelLogs/Index");
         }
     }

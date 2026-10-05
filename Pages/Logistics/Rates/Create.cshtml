@@ -1,0 +1,247 @@
+@page
+@model Manufacture.Pages.Logistics.Rates.CreateModel
+@{
+    ViewData["Title"] = "Add Route Rate";
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Logistics/Index" class="hover:underline">Fleet Logistics</a>
+                <span>&gt;</span>
+                <a asp-page="/Logistics/Rates/Index" class="hover:underline">Route Rates</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Add Rate</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-map-location-dot text-primary"></i> Add Interstate Route Rate
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Define standard baseline tariff pricing for commercial haulage and internal transfer runs.
+            </p>
+        </div>
+        <div>
+            <a asp-page="/Logistics/Rates/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Rates Matrix
+            </a>
+        </div>
+    </div>
+
+    <!-- Standard 2-Column Full-Width Form Layout -->
+    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        <!-- Left Section (~70% width, 8 Cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            <!-- Route Corridor Details Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-route"></i>
+                            </div>
+                            <span>Corridor Origin & Destination</span>
+                        </div>
+                        <span class="badge badge-neutral badge-xs font-bold uppercase tracking-wider">Lanes</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Origin State <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input list="statesList" asp-for="RateInput.OriginState" id="inputOrigin" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" placeholder="Select or type origin..." required oninput="updateSummary()" />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Destination State <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input list="statesList" asp-for="RateInput.DestinationState" id="inputDest" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" placeholder="Select or type destination..." required oninput="updateSummary()" />
+                        </div>
+                    </div>
+
+                    <datalist id="statesList">
+                        @foreach (var state in Model.NigerianStates)
+                        {
+                            <option value="@state"></option>
+                        }
+                    </datalist>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2 border-t border-base-200">
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Required Vehicle Class <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <select asp-for="RateInput.VehicleTypeRequired" id="inputVehicleType" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" required onchange="updateSummary()">
+                                @foreach (var vt in Model.AvailableVehicleTypes)
+                                {
+                                    <option value="@vt">@vt</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Est. Transit Duration (Hours) <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="number" min="1" max="168" asp-for="RateInput.EstimatedHours" id="inputHours" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" placeholder="14" required oninput="updateSummary()" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pricing Structure Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-naira-sign"></i>
+                            </div>
+                            <span>Dual Tariff Structure (With / Without Fuel)</span>
+                        </div>
+                        <span class="badge badge-success badge-xs font-bold uppercase tracking-wider">Tariff</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Rate With Fuel (₦) <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="number" step="1000" asp-for="RateInput.RateWithFuel" id="inputWithFuel" class="input input-bordered input-sm w-full font-mono text-emerald-600 bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-black" required oninput="updateSummary()" />
+                            <label class="label pt-1"><span class="label-text-alt text-[11px] opacity-60">Company supplies all diesel fuel & incidentals.</span></label>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Rate Without Fuel (₦) <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="number" step="1000" asp-for="RateInput.RateWithoutFuel" id="inputWithoutFuel" class="input input-bordered input-sm w-full font-mono text-base-content bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-black" required oninput="updateSummary()" />
+                            <label class="label pt-1"><span class="label-text-alt text-[11px] opacity-60">Client or broker provides fueling during haulage run.</span></label>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 border-t border-base-200 flex items-center gap-3">
+                        <input type="checkbox" asp-for="RateInput.IsActive" id="inputIsActive" class="checkbox checkbox-sm checkbox-neutral rounded-md" />
+                        <div>
+                            <label for="inputIsActive" class="text-xs font-bold text-base-content cursor-pointer">
+                                Active Route Lane
+                            </label>
+                            <p class="text-[11px] text-base-content/60">
+                                Make this lane immediately available for quoting in the Charter booking engine.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Section (~30% width, 4 Cols) -->
+        <div class="lg:col-span-4 space-y-6">
+            <!-- Corridor Summary Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl sticky top-20">
+                <div class="card-body p-6 space-y-4">
+                    <div class="flex items-center gap-2 font-bold text-base-content text-sm border-b border-base-200 pb-3">
+                        <i class="fa-solid fa-clipboard-check text-primary"></i>
+                        <span>Lane Tariff Preview</span>
+                    </div>
+
+                    <div class="bg-base-200/50 p-4 rounded-xl space-y-3">
+                        <div class="text-center pb-2 border-b border-base-300">
+                            <div class="text-[10px] uppercase font-bold text-base-content/60">Corridor Lane</div>
+                            <div class="font-black text-sm text-base-content mt-0.5" id="summaryRoute">
+                                Lagos → Select Dest
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-base-content/70">Vehicle Class:</span>
+                            <span class="font-semibold text-base-content" id="summaryVehicle">30-Ton Haulage Truck</span>
+                        </div>
+
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-base-content/70">Est. Duration:</span>
+                            <span class="font-mono font-bold text-base-content" id="summaryHours">14 hrs</span>
+                        </div>
+
+                        <div class="flex justify-between items-center text-xs pt-2 border-t border-base-300">
+                            <span class="text-base-content/70">With Diesel:</span>
+                            <span class="font-mono font-black text-emerald-600" id="summaryWithFuel">₦1,850,000</span>
+                        </div>
+
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-base-content/70">Without Diesel:</span>
+                            <span class="font-mono font-black text-base-content" id="summaryWithoutFuel">₦1,150,000</span>
+                        </div>
+
+                        <div class="flex justify-between items-center text-xs pt-2 border-t border-base-300 bg-primary/5 p-2 rounded-lg">
+                            <span class="text-primary font-bold">Fuel Allowance:</span>
+                            <span class="font-mono font-black text-primary" id="summaryFuelAllowance">₦700,000</span>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="pt-2 space-y-2">
+                        <button type="submit" class="btn btn-neutral w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
+                            <i class="fa-solid fa-check"></i> Save Route Rate
+                        </button>
+                        <a asp-page="/Logistics/Rates/Index" class="btn btn-ghost w-full rounded-xl font-semibold text-xs border border-base-300">
+                            Cancel
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rate Guidelines Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-5 space-y-2 text-xs">
+                    <div class="flex items-center gap-2 font-bold text-base-content">
+                        <i class="fa-solid fa-circle-info text-info"></i>
+                        <span>Pricing Guidelines</span>
+                    </div>
+                    <ul class="list-disc list-inside space-y-1 text-base-content/70 text-[11px] leading-relaxed">
+                        <li>The <strong>Rate With Fuel</strong> should incorporate projected round-trip diesel consumption plus a 10% road contingency buffer.</li>
+                        <li><strong>Rate Without Fuel</strong> is dry-lease rate for clients providing their own bulk depot diesel vouchers.</li>
+                        <li>Ensure estimated transit hours account for interstate highway checkpoints and bridge traffic.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    function updateSummary() {
+        const origin = document.getElementById('inputOrigin').value || 'Origin';
+        const dest = document.getElementById('inputDest').value || 'Destination';
+        const vehicle = document.getElementById('inputVehicleType').value || '';
+        const hours = document.getElementById('inputHours').value || '0';
+        const withFuel = parseFloat(document.getElementById('inputWithFuel').value) || 0;
+        const withoutFuel = parseFloat(document.getElementById('inputWithoutFuel').value) || 0;
+        const diff = Math.max(0, withFuel - withoutFuel);
+
+        document.getElementById('summaryRoute').textContent = origin + ' → ' + dest;
+        document.getElementById('summaryVehicle').textContent = vehicle;
+        document.getElementById('summaryHours').textContent = hours + ' hrs';
+        document.getElementById('summaryWithFuel').textContent = '₦' + withFuel.toLocaleString('en-US');
+        document.getElementById('summaryWithoutFuel').textContent = '₦' + withoutFuel.toLocaleString('en-US');
+        document.getElementById('summaryFuelAllowance').textContent = '₦' + diff.toLocaleString('en-US');
+    }
+    document.addEventListener('DOMContentLoaded', updateSummary);
+</script>

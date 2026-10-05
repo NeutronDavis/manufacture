@@ -20,13 +20,100 @@
                 Delivery vans, truck haulage, daily fuel consumption logs, and maintenance tracking.
             </p>
         </div>
-        <div class="flex items-center gap-2">
-            <a asp-page="/Logistics/FuelLogs/Create" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
-                <i class="fa-solid fa-gas-pump text-xs"></i> Log Fuel Expense
+        <div class="flex items-center gap-2 flex-wrap justify-end">
+            <a asp-page="/Logistics/Rates/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-map-location-dot text-xs"></i> Route Rates
             </a>
-            <a asp-page="/Logistics/Vehicles/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 text-xs shadow-xs">
-                <i class="fa-solid fa-plus text-xs"></i> Add Vehicle
+            <a asp-page="/Logistics/WeeklyRunningCosts/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-calendar-week text-xs"></i> Weekly Running Costs
             </a>
+            <a asp-page="/Logistics/Charter/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 text-xs shadow-xs">
+                <i class="fa-solid fa-truck-fast text-xs"></i> Book Charter
+            </a>
+        </div>
+    </div>
+
+    <!-- Dual-Role Fleet Division Showcase Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Division 1: Commercial Haulage & VIP Charter -->
+        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 relative overflow-hidden">
+            <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-neutral text-neutral-content flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-truck-moving"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-sm font-black text-base-content">Commercial Haulage & VIP Charter</h2>
+                            <span class="badge badge-xs badge-primary font-bold text-[9px]">Revenue Unit</span>
+                        </div>
+                        <p class="text-[11px] text-base-content/60">Interstate 360° freight charters across Nigerian corridors</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-base-200 text-center">
+                <div class="bg-base-200/50 p-2 rounded-xl">
+                    <div class="text-[10px] text-base-content/60 font-semibold">Bookings</div>
+                    <div class="text-base font-black text-base-content">@Model.CharterBookings.Count</div>
+                </div>
+                <div class="bg-base-200/50 p-2 rounded-xl">
+                    <div class="text-[10px] text-base-content/60 font-semibold">Route Lanes</div>
+                    <div class="text-base font-black text-primary">@Model.RouteRates.Count</div>
+                </div>
+                <div class="bg-base-200/50 p-2 rounded-xl">
+                    <div class="text-[10px] text-base-content/60 font-semibold">Net Profit</div>
+                    <div class="text-base font-black text-emerald-600">₦@Model.CharterBookings.Sum(b => b.NetCharterRevenue).ToString("N0")</div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 mt-4">
+                <a asp-page="/Logistics/Charter/Index" class="btn btn-xs btn-outline rounded-lg flex-1 font-bold text-[11px]">
+                    View Bookings Ledger
+                </a>
+                <a asp-page="/Logistics/Charter/Create" class="btn btn-xs btn-neutral rounded-lg flex-1 font-bold text-[11px]">
+                    + New Charter Run
+                </a>
+            </div>
+        </div>
+
+        <!-- Division 2: Weekly Fleet Running Costs Reconciliation -->
+        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 relative overflow-hidden">
+            <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-calendar-check"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-sm font-black text-base-content">Weekly Running Costs Ledger</h2>
+                            <span class="badge badge-xs badge-neutral font-bold text-[9px]">Sunday - Saturday</span>
+                        </div>
+                        <p class="text-[11px] text-base-content/60">Aggregated diesel fueling, servicing and incidentals</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-base-200 text-center">
+                <div class="bg-base-200/50 p-2 rounded-xl">
+                    <div class="text-[10px] text-base-content/60 font-semibold">Weekly Fuel</div>
+                    <div class="text-base font-black text-emerald-600">₦@Model.CurrentWeekExpenses.Sum(e => e.FuelExpenseTotal).ToString("N0")</div>
+                </div>
+                <div class="bg-base-200/50 p-2 rounded-xl">
+                    <div class="text-[10px] text-base-content/60 font-semibold">Repairs & Parts</div>
+                    <div class="text-base font-black text-blue-600">₦@Model.CurrentWeekExpenses.Sum(e => e.MaintenanceExpenseTotal).ToString("N0")</div>
+                </div>
+                <div class="bg-base-200/50 p-2 rounded-xl">
+                    <div class="text-[10px] text-base-content/60 font-semibold">Weekly Overhead</div>
+                    <div class="text-base font-black text-base-content">₦@Model.CurrentWeekExpenses.Sum(e => e.TotalWeeklyRunningCost).ToString("N0")</div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 mt-4">
+                <a asp-page="/Logistics/WeeklyRunningCosts/Index" class="btn btn-xs btn-neutral w-full rounded-lg font-bold text-[11px]">
+                    Open Weekly Operating Cost Matrix &rarr;
+                </a>
+            </div>
         </div>
     </div>
 

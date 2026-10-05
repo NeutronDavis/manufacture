@@ -67,9 +67,14 @@
                     </div>
 
                     <div class="pt-2 border-t border-base-200 flex justify-between items-center text-xs">
-                        <a asp-page="/Logistics/FuelLogs/Create" asp-route-vehicleId="@v.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg gap-1 font-semibold hover:border-primary">
-                            <i class="fa-solid fa-gas-pump text-[10px]"></i> Log Fuel
-                        </a>
+                        <div class="flex items-center gap-1.5">
+                            <a asp-page="/Logistics/FuelLogs/Create" asp-route-vehicleId="@v.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg gap-1 font-semibold hover:border-primary">
+                                <i class="fa-solid fa-gas-pump text-[10px]"></i> Fuel
+                            </a>
+                            <a asp-page="/Logistics/Maintenance/Create" asp-route-vehicleId="@v.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg gap-1 font-semibold hover:border-primary">
+                                <i class="fa-solid fa-wrench text-[10px]"></i> Service
+                            </a>
+                        </div>
                         <span class="text-[11px] opacity-60">Serviced: @v.LastServiceDate.ToString("yyyy-MM-dd")</span>
                     </div>
                 </div>

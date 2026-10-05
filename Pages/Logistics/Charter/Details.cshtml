@@ -1,0 +1,276 @@
+@page "{id:int}"
+@model Manufacture.Pages.Logistics.Charter.DetailsModel
+@using Manufacture.Models.Entities
+@{
+    var b = Model.Booking!;
+    ViewData["Title"] = $"Charter Manifest {b.BookingRef}";
+    var marginPct = b.GrossCharterFee > 0 ? Math.Round((b.NetCharterRevenue / b.GrossCharterFee) * 100) : 0;
+}
+
+<div class="space-y-6">
+    <!-- Breadcrumbs & Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
+        <div>
+            <div class="text-xs breadcrumbs p-0 mb-1">
+                <ul>
+                    <li><a asp-page="/Dashboard/Index" class="opacity-60">Dashboard</a></li>
+                    <li><a asp-page="/Logistics/Index" class="opacity-60">Fleet & Logistics</a></li>
+                    <li><a asp-page="/Logistics/Charter/Index" class="opacity-60">Charter Bookings</a></li>
+                    <li class="font-bold text-base-content">@b.BookingRef</li>
+                </ul>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-neutral text-neutral-content flex items-center justify-center font-bold text-lg">
+                    <i class="fa-solid fa-truck-ramp-box"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-xl font-black text-base-content tracking-tight">Trip Manifest: @b.BookingRef</h1>
+                        @{
+                            string statusClass = b.TripStatus switch
+                            {
+                                CharterTripStatus.Booked => "badge-info",
+                                CharterTripStatus.InTransit => "badge-warning",
+                                CharterTripStatus.Completed => "badge-success",
+                                CharterTripStatus.Cancelled => "badge-error",
+                                _ => "badge-ghost"
+                            };
+                        }
+                        <span class="badge badge-sm @statusClass font-bold">@b.TripStatus</span>
+                    </div>
+                    <p class="text-xs text-base-content/60">Interstate Haulage & VIP Charter Waybill Manifest</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button onclick="window.print()" class="btn btn-outline btn-sm rounded-xl font-bold text-xs gap-1.5">
+                <i class="fa-solid fa-print"></i> Print Manifest
+            </button>
+
+            <!-- Quick Trip Status Actions -->
+            @if (b.TripStatus == CharterTripStatus.Booked)
+            {
+                <form method="post" asp-page-handler="UpdateStatus" asp-route-id="@b.Id" asp-route-newStatus="@CharterTripStatus.InTransit">
+                    <button type="submit" class="btn btn-warning btn-sm rounded-xl font-bold text-xs gap-1.5 shadow-xs">
+                        <i class="fa-solid fa-truck-moving"></i> Dispatch (In-Transit)
+                    </button>
+                </form>
+            }
+            else if (b.TripStatus == CharterTripStatus.InTransit)
+            {
+                <form method="post" asp-page-handler="UpdateStatus" asp-route-id="@b.Id" asp-route-newStatus="@CharterTripStatus.Completed">
+                    <button type="submit" class="btn btn-success btn-sm rounded-xl font-bold text-xs gap-1.5 shadow-xs text-white">
+                        <i class="fa-solid fa-circle-check"></i> Mark Completed
+                    </button>
+                </form>
+            }
+
+            <a asp-page="/Logistics/Charter/Index" class="btn btn-ghost btn-sm rounded-xl font-bold text-xs">
+                Back to Ledger
+            </a>
+        </div>
+    </div>
+
+    <!-- Printable Commercial Manifest Shell -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Left 2 Cols: Manifest Details & Layovers -->
+        <div class="lg:col-span-2 space-y-6">
+            
+            <!-- Client & Vehicle Dispatch Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5">
+                <div class="flex items-center justify-between pb-3 border-b border-base-200">
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-base-content/60">Dispatch & Client Profile</h2>
+                    <span class="text-xs text-base-content/50">Created: @b.CreatedAt.ToString("dd MMM yyyy, HH:mm") UTC</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                    <div class="space-y-1">
+                        <div class="text-[11px] font-semibold text-base-content/50">Client / Chartering Entity</div>
+                        <div class="text-sm font-black text-base-content">@b.CustomerName</div>
+                        <div class="text-xs text-base-content/70 flex items-center gap-1.5">
+                            <i class="fa-solid fa-phone text-[10px]"></i> @b.CustomerPhone
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="text-[11px] font-semibold text-base-content/50">Assigned Fleet Asset</div>
+                        <div class="text-sm font-black text-base-content">@b.VehicleRegNumber</div>
+                        <div class="text-xs text-base-content/70">
+                            @(Model.Vehicle?.MakeAndModel ?? "Commercial Fleet Unit")
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="text-[11px] font-semibold text-base-content/50">Designated Driver</div>
+                        <div class="text-sm font-black text-base-content">@b.DriverName</div>
+                        <div class="text-xs text-base-content/70">
+                            Phone: @(Model.Vehicle?.DriverPhoneNumber ?? "N/A")
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="text-[11px] font-semibold text-base-content/50">Transit Schedule</div>
+                        <div class="text-xs font-bold text-base-content">
+                            Dep: @b.DepartureDate.ToString("ddd, dd MMM yyyy")
+                        </div>
+                        <div class="text-[11px] text-base-content/60">
+                            Return: @(b.ReturnDate?.ToString("ddd, dd MMM yyyy") ?? "One-Way Drop-off")
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Route Corridors & Layover Breakdown -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 space-y-4">
+                <div class="flex items-center justify-between pb-2 border-b border-base-200">
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-sm font-black text-base-content">Multi-Leg Route Corridors</h2>
+                        <span class="badge badge-sm badge-neutral font-bold">@b.Legs.Count @(b.Legs.Count == 1 ? "Leg" : "Layovers")</span>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table table-sm text-xs">
+                        <thead>
+                            <tr class="bg-base-200/60 text-base-content font-bold border-b border-base-300">
+                                <th class="py-2.5 px-3">Leg</th>
+                                <th class="py-2.5 px-3">Corridor Origin & Destination</th>
+                                <th class="py-2.5 px-3 text-center">Fuel Arrangement</th>
+                                <th class="py-2.5 px-3 text-right">Leg Rate (₦)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-base-200">
+                            @foreach (var leg in b.Legs)
+                            {
+                                <tr>
+                                    <td class="py-3 px-3 font-black">
+                                        <span class="w-5 h-5 rounded-full bg-base-200 inline-flex items-center justify-center text-[10px]">
+                                            @leg.LegNumber
+                                        </span>
+                                    </td>
+                                    <td class="py-3 px-3">
+                                        <div class="flex items-center gap-2 font-bold text-base-content">
+                                            <span>@leg.OriginState</span>
+                                            <i class="fa-solid fa-arrow-right text-[10px] text-base-content/40"></i>
+                                            <span class="text-primary font-black">@leg.DestinationState</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-3 text-center">
+                                        @if (leg.FuelOption == FuelOption.WithFuel)
+                                        {
+                                            <span class="badge badge-sm badge-success font-bold text-[10px]">
+                                                <i class="fa-solid fa-gas-pump mr-1"></i> ⛽ Company Fuel Included
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge badge-sm badge-info font-bold text-[10px]">
+                                                <i class="fa-solid fa-ban mr-1"></i> 🚫 Freight Only (Client Fuels)
+                                            </span>
+                                        }
+                                    </td>
+                                    <td class="py-3 px-3 text-right font-black text-base-content">
+                                        ₦@leg.LegCost.ToString("N0")
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr class="border-t border-base-300 font-bold bg-base-200/40">
+                                <td colspan="3" class="text-right py-2 px-3 text-xs">Total Gross Charter Freight Fee:</td>
+                                <td class="text-right py-2 px-3 text-sm font-black text-base-content">₦@b.GrossCharterFee.ToString("N0")</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Notes & Dispatch Remarks -->
+            @if (!string.IsNullOrWhiteSpace(b.Notes))
+            {
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 space-y-2">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-base-content/60">Dispatch Notes & Cargo Instructions</h3>
+                    <p class="text-xs text-base-content/80 leading-relaxed bg-base-200/40 p-3 rounded-xl">
+                        @b.Notes
+                    </p>
+                </div>
+            }
+        </div>
+
+        <!-- Right 1 Col: Financial Profitability Card -->
+        <div class="lg:col-span-1 space-y-4">
+            <div class="card bg-base-100 border border-base-300 shadow-md rounded-2xl overflow-hidden">
+                <div class="bg-neutral text-neutral-content p-5">
+                    <div class="text-[11px] uppercase font-bold tracking-wider opacity-70">Charter Profitability</div>
+                    <div class="text-3xl font-black tracking-tight text-white mt-1">
+                        ₦@b.NetCharterRevenue.ToString("N0")
+                    </div>
+                    <div class="text-xs text-emerald-400 font-bold mt-1">
+                        Net Revenue Quote (@marginPct% Margin)
+                    </div>
+                </div>
+
+                <div class="p-5 space-y-4 text-xs">
+                    <div class="space-y-2.5 pb-4 border-b border-base-200">
+                        <div class="flex justify-between items-center text-sm font-bold text-base-content">
+                            <span>Gross Freight Fee:</span>
+                            <span>₦@b.GrossCharterFee.ToString("N0")</span>
+                        </div>
+
+                        <div class="divider my-1"></div>
+
+                        <div class="text-[11px] uppercase font-bold text-base-content/50">En Route Incidentals Deducted:</div>
+
+                        <div class="flex justify-between items-center text-base-content/70">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-utensils text-[10px] text-base-content/40"></i> Driver Allowance:
+                            </span>
+                            <span class="font-semibold text-error">-₦@b.DriverAllowance.ToString("N0")</span>
+                        </div>
+
+                        <div class="flex justify-between items-center text-base-content/70">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-shield-halved text-[10px] text-base-content/40"></i> Security / Escort Fee:
+                            </span>
+                            <span class="font-semibold text-error">-₦@b.SecurityEscortFee.ToString("N0")</span>
+                        </div>
+
+                        <div class="flex justify-between items-center text-base-content/70">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-road text-[10px] text-base-content/40"></i> Tolls, Levies & LGA Dues:
+                            </span>
+                            <span class="font-semibold text-error">-₦@b.TollsAndRoadLevies.ToString("N0")</span>
+                        </div>
+
+                        <div class="flex justify-between items-center font-bold text-error pt-1 border-t border-dashed border-base-300">
+                            <span>Total En Route Incidentals:</span>
+                            <span>-₦@b.TotalTripIncidentals.ToString("N0")</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="flex justify-between items-center font-black text-sm text-emerald-600">
+                            <span>Net Company Revenue:</span>
+                            <span>₦@b.NetCharterRevenue.ToString("N0")</span>
+                        </div>
+                        <progress class="progress progress-success w-full h-2 rounded-full" value="@marginPct" max="100"></progress>
+                    </div>
+
+                    <div class="pt-3 border-t border-base-200 space-y-2 no-print">
+                        <form method="post" asp-page-handler="UpdateStatus" asp-route-id="@b.Id" class="flex items-center gap-2">
+                            <select name="newStatus" class="select select-xs select-bordered rounded-lg flex-1 text-xs">
+                                <option value="@CharterTripStatus.Booked" selected="@(b.TripStatus == CharterTripStatus.Booked)">Booked</option>
+                                <option value="@CharterTripStatus.InTransit" selected="@(b.TripStatus == CharterTripStatus.InTransit)">In Transit</option>
+                                <option value="@CharterTripStatus.Completed" selected="@(b.TripStatus == CharterTripStatus.Completed)">Completed</option>
+                                <option value="@CharterTripStatus.Cancelled" selected="@(b.TripStatus == CharterTripStatus.Cancelled)">Cancelled</option>
+                            </select>
+                            <button type="submit" class="btn btn-neutral btn-xs rounded-lg font-bold">Update</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

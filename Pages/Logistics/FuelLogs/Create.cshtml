@@ -23,14 +23,15 @@
             </p>
         </div>
         <div>
-            <a asp-page="/Logistics/FuelLogs/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
-                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Fuel Logs
+            <a href="@(string.IsNullOrEmpty(Model.ReturnUrl) ? "/Logistics/FuelLogs/Index" : Model.ReturnUrl)" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back
             </a>
         </div>
     </div>
 
     <!-- Standard 2-Column Full-Width Form Layout -->
     <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        <input type="hidden" asp-for="ReturnUrl" />
         
         <!-- Left Section (~70% width, 8 Cols) -->
         <div class="lg:col-span-8 space-y-6">

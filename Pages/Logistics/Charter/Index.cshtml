@@ -1,0 +1,254 @@
+@page
+@model Manufacture.Pages.Logistics.Charter.IndexModel
+@using Manufacture.Models.Entities
+@{
+    ViewData["Title"] = "Commercial Haulage & Charter Bookings";
+}
+
+<div class="space-y-6">
+    <!-- Breadcrumbs & Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs breadcrumbs p-0 mb-1">
+                <ul>
+                    <li><a asp-page="/Dashboard/Index" class="opacity-60">Dashboard</a></li>
+                    <li><a asp-page="/Logistics/Index" class="opacity-60">Logistics & Fleet</a></li>
+                    <li class="font-bold text-base-content">Charter Bookings</li>
+                </ul>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-neutral text-neutral-content flex items-center justify-center font-bold text-lg">
+                    <i class="fa-solid fa-truck-moving"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black text-base-content tracking-tight">Commercial Haulage & Charter Bookings</h1>
+                    <p class="text-xs text-base-content/60">Interstate freight transport, VIP vehicle charter dispatch, and trip profitability tracking</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <a asp-page="/Logistics/Rates/Index" class="btn btn-outline btn-sm rounded-xl font-bold text-xs gap-1.5">
+                <i class="fa-solid fa-map-location-dot"></i> Route Pricing Matrix
+            </a>
+            <a asp-page="/Logistics/Charter/Create" class="btn btn-neutral btn-sm rounded-xl font-bold text-xs gap-1.5 shadow-xs">
+                <i class="fa-solid fa-plus"></i> New Charter Booking
+            </a>
+        </div>
+    </div>
+
+    <!-- KPI Summary Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="card bg-base-100 border border-base-300 shadow-xs p-4 rounded-2xl">
+            <div class="flex items-center justify-between">
+                <div class="text-xs font-semibold text-base-content/60">Total Charter Bookings</div>
+                <div class="w-8 h-8 rounded-xl bg-base-200 flex items-center justify-center text-xs font-bold text-base-content">
+                    <i class="fa-solid fa-file-invoice"></i>
+                </div>
+            </div>
+            <div class="mt-2 text-2xl font-black text-base-content">@Model.TotalBookingsCount</div>
+            <div class="text-[11px] text-base-content/50 mt-1">Interstate haulage runs logged</div>
+        </div>
+
+        <div class="card bg-base-100 border border-base-300 shadow-xs p-4 rounded-2xl">
+            <div class="flex items-center justify-between">
+                <div class="text-xs font-semibold text-base-content/60">Active On Road</div>
+                <div class="w-8 h-8 rounded-xl bg-warning/10 text-warning flex items-center justify-center text-xs font-bold">
+                    <i class="fa-solid fa-route"></i>
+                </div>
+            </div>
+            <div class="mt-2 text-2xl font-black text-warning">@Model.InTransitCount</div>
+            <div class="text-[11px] text-base-content/50 mt-1">Vehicles currently in transit</div>
+        </div>
+
+        <div class="card bg-base-100 border border-base-300 shadow-xs p-4 rounded-2xl">
+            <div class="flex items-center justify-between">
+                <div class="text-xs font-semibold text-base-content/60">Gross Freight Billable</div>
+                <div class="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center text-xs font-bold">
+                    <i class="fa-solid fa-money-bill-wave"></i>
+                </div>
+            </div>
+            <div class="mt-2 text-2xl font-black text-blue-600">₦@Model.TotalGrossRevenue.ToString("N0")</div>
+            <div class="text-[11px] text-base-content/50 mt-1">Total commercial freight invoiced</div>
+        </div>
+
+        <div class="card bg-base-100 border border-base-300 shadow-xs p-4 rounded-2xl">
+            <div class="flex items-center justify-between">
+                <div class="text-xs font-semibold text-base-content/60">Net Corporate Profit</div>
+                <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xs font-bold">
+                    <i class="fa-solid fa-sack-dollar"></i>
+                </div>
+            </div>
+            <div class="mt-2 text-2xl font-black text-emerald-600">₦@Model.TotalNetRevenue.ToString("N0")</div>
+            <div class="text-[11px] text-base-content/50 mt-1">After driver, escort & road levies</div>
+        </div>
+    </div>
+
+    <!-- Filters & Status Tabs -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+        <!-- Status Filter Pills -->
+        <div class="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto pb-1 md:pb-0">
+            <a asp-page="/Logistics/Charter/Index" asp-route-StatusFilter="All" asp-route-Search="@Model.Search" 
+               class="btn btn-xs rounded-xl font-bold @(Model.StatusFilter == "All" ? "btn-neutral" : "btn-ghost")">
+                All (@Model.Bookings.Count)
+            </a>
+            <a asp-page="/Logistics/Charter/Index" asp-route-StatusFilter="Booked" asp-route-Search="@Model.Search" 
+               class="btn btn-xs rounded-xl font-bold @(Model.StatusFilter == "Booked" ? "btn-neutral" : "btn-ghost")">
+                Booked
+            </a>
+            <a asp-page="/Logistics/Charter/Index" asp-route-StatusFilter="InTransit" asp-route-Search="@Model.Search" 
+               class="btn btn-xs rounded-xl font-bold @(Model.StatusFilter == "InTransit" ? "btn-neutral" : "btn-ghost")">
+                In Transit
+            </a>
+            <a asp-page="/Logistics/Charter/Index" asp-route-StatusFilter="Completed" asp-route-Search="@Model.Search" 
+               class="btn btn-xs rounded-xl font-bold @(Model.StatusFilter == "Completed" ? "btn-neutral" : "btn-ghost")">
+                Completed
+            </a>
+            <a asp-page="/Logistics/Charter/Index" asp-route-StatusFilter="Cancelled" asp-route-Search="@Model.Search" 
+               class="btn btn-xs rounded-xl font-bold @(Model.StatusFilter == "Cancelled" ? "btn-neutral" : "btn-ghost")">
+                Cancelled
+            </a>
+        </div>
+
+        <!-- Search Bar -->
+        <form method="get" class="flex items-center gap-2 w-full md:w-80">
+            <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
+            <div class="relative w-full">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-base-content/40"></i>
+                <input type="text" name="Search" value="@Model.Search" placeholder="Search reference, customer or truck..." 
+                       class="input input-sm input-bordered w-full pl-9 rounded-xl text-xs" />
+            </div>
+            <button type="submit" class="btn btn-sm btn-neutral rounded-xl text-xs px-3">Search</button>
+            @if (!string.IsNullOrWhiteSpace(Model.Search))
+            {
+                <a asp-page="/Logistics/Charter/Index" asp-route-StatusFilter="@Model.StatusFilter" class="btn btn-sm btn-ghost rounded-xl text-xs">Clear</a>
+            }
+        </form>
+    </div>
+
+    <!-- Bookings Table -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="table table-sm text-xs">
+                <thead>
+                    <tr class="bg-base-200/60 text-base-content font-bold border-b border-base-300">
+                        <th class="py-3 px-4">Booking Ref</th>
+                        <th class="py-3 px-4">Client / Contact</th>
+                        <th class="py-3 px-4">Route Corridors & Layovers</th>
+                        <th class="py-3 px-4">Vehicle & Driver</th>
+                        <th class="py-3 px-4 text-right">Gross Freight (₦)</th>
+                        <th class="py-3 px-4 text-right">Net Profit (₦)</th>
+                        <th class="py-3 px-4 text-center">Status</th>
+                        <th class="py-3 px-4 text-right">Manifest</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-base-200">
+                    @if (!Model.Bookings.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-12 text-base-content/50">
+                                <div class="flex flex-col items-center justify-center gap-2">
+                                    <i class="fa-solid fa-truck-ramp-box text-3xl opacity-30"></i>
+                                    <span class="font-medium">No charter bookings found.</span>
+                                    <a asp-page="/Logistics/Charter/Create" class="btn btn-xs btn-neutral rounded-lg mt-2">
+                                        Create New Charter Booking
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var b in Model.Bookings)
+                        {
+                            <tr class="hover:bg-base-200/30 transition-colors">
+                                <td class="py-3 px-4">
+                                    <a asp-page="/Logistics/Charter/Details" asp-route-id="@b.Id" class="font-black text-primary hover:underline">
+                                        @b.BookingRef
+                                    </a>
+                                    <div class="text-[10px] text-base-content/50">
+                                        Dep: @b.DepartureDate.ToString("dd MMM yyyy")
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="font-bold text-base-content">@b.CustomerName</div>
+                                    <div class="text-[10px] text-base-content/50 flex items-center gap-1">
+                                        <i class="fa-solid fa-phone text-[9px]"></i> @b.CustomerPhone
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4">
+                                    @if (b.IsMultiLeg)
+                                    {
+                                        <div class="space-y-1">
+                                            <div class="flex items-center gap-1.5 flex-wrap">
+                                                <span class="badge badge-xs badge-neutral font-bold text-[9px]">@b.Legs.Count Legs</span>
+                                                <span class="font-bold text-base-content">@b.Legs.First().OriginState</span>
+                                                @foreach (var leg in b.Legs)
+                                                {
+                                                    <i class="fa-solid fa-arrow-right text-[9px] text-base-content/40"></i>
+                                                    <span class="font-bold text-base-content">@leg.DestinationState</span>
+                                                }
+                                            </div>
+                                            <div class="text-[10px] text-base-content/50">
+                                                @b.Legs.Count(l => l.FuelOption == FuelOption.WithFuel) with fuel, @b.Legs.Count(l => l.FuelOption == FuelOption.WithoutFuel) freight only
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (b.Legs.Any())
+                                    {
+                                        var single = b.Legs.First();
+                                        <div>
+                                            <div class="flex items-center gap-1.5 font-bold text-base-content">
+                                                <span>@single.OriginState</span>
+                                                <i class="fa-solid fa-arrow-right text-[9px] text-base-content/40"></i>
+                                                <span class="text-primary font-black">@single.DestinationState</span>
+                                            </div>
+                                            <span class="badge badge-xs @(single.FuelOption == FuelOption.WithFuel ? "badge-success" : "badge-info") font-semibold text-[9px] mt-0.5">
+                                                @(single.FuelOption == FuelOption.WithFuel ? "⛽ Company Fuel" : "🚫 Client Fuels")
+                                            </span>
+                                        </div>
+                                    }
+                                </td>
+                                <td class="py-3 px-4">
+                                    <div class="font-bold text-base-content">@b.VehicleRegNumber</div>
+                                    <div class="text-[10px] text-base-content/50 flex items-center gap-1">
+                                        <i class="fa-solid fa-id-badge text-[9px]"></i> @b.DriverName
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-right font-black text-base-content">
+                                    ₦@b.GrossCharterFee.ToString("N0")
+                                </td>
+                                <td class="py-3 px-4 text-right font-black text-emerald-600">
+                                    ₦@b.NetCharterRevenue.ToString("N0")
+                                    <div class="text-[10px] text-base-content/50 font-normal">
+                                        Incid: -₦@b.TotalTripIncidentals.ToString("N0")
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-center">
+                                    @{
+                                        string statusClass = b.TripStatus switch
+                                        {
+                                            CharterTripStatus.Booked => "badge-info",
+                                            CharterTripStatus.InTransit => "badge-warning",
+                                            CharterTripStatus.Completed => "badge-success",
+                                            CharterTripStatus.Cancelled => "badge-error",
+                                            _ => "badge-ghost"
+                                        };
+                                    }
+                                    <span class="badge badge-sm @statusClass font-bold whitespace-nowrap">
+                                        @b.TripStatus
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 text-right">
+                                    <a asp-page="/Logistics/Charter/Details" asp-route-id="@b.Id" class="btn btn-ghost btn-xs rounded-lg font-bold gap-1 text-primary">
+                                        <span>View</span> <i class="fa-solid fa-chevron-right text-[9px]"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

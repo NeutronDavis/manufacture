@@ -15,11 +15,17 @@ namespace Manufacture.Pages.Logistics
 
         public List<Vehicle> Vehicles { get; set; } = new();
         public List<FuelLog> FuelLogs { get; set; } = new();
+        public List<CharterBooking> CharterBookings { get; set; } = new();
+        public List<RouteRate> RouteRates { get; set; } = new();
+        public List<WeeklyFleetExpense> CurrentWeekExpenses { get; set; } = new();
 
         public void OnGet()
         {
             Vehicles = _logisticsService.GetAllVehicles();
             FuelLogs = _logisticsService.GetAllFuelLogs();
+            CharterBookings = _logisticsService.GetAllCharterBookings();
+            RouteRates = _logisticsService.GetAllRouteRates();
+            CurrentWeekExpenses = _logisticsService.GetWeeklyFleetExpenses(DateTime.UtcNow);
         }
     }
 }
