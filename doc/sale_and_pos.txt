@@ -1,0 +1,148 @@
+# TASK: Implement Sales Rep Route Loading, Daily Credit Reconciliation & Supermarket POS Module
+
+## Architectural Rationale & Business Justification (The "Why")
+
+### 1. Separation of Order Placement vs. Physical Distribution Loading
+Sales reps submit daily stock requests (`Orders Placed`) [1, 2]. However, actual physical vehicle loading (`Quantity Loaded`) must be logged independently by dispatch staff [3]. A rep requesting 100 Jumbo loaves may only receive 50 due to factory production limits [3]. Route sheets and financial expectations must be calculated strictly from **signed-off loaded stock** [3].
+
+### 2. Route Returns, Damaged Goods & Inventory Rollover Math
+Upon route completion, the sales manager records actual verified sales [4, 5]. Unsold inventory is retained in the rep's vehicle as **Closing Stock** [4]. Damaged or spoiled goods are recorded separately for stock write-off [3, 4]. On subsequent days, newly loaded stock is added to the rep's carried-over closing stock to establish active route inventory [4, 6]:
+\\[\text{Active Route Inventory Today} = \text{Yesterday's Closing Stock} + \text{Today's Newly Loaded Stock}\\]
+
+### 3. Aggregated Lump-Sum Cash Collection & Running Credit Balances
+Reps frequently collect past debts from supermarket accounts or issue new route credit, meaning daily cash/transfer collections rarely match that day's exact sales volume [5-7]. **Staff MUST NOT be forced to break down cash collections by individual product sizes/SKUs** [7]. Instead, the system records total cash/transfers collected as a single daily transaction and automatically computes the rep's running account balance [5, 7]:
+\\[\text{New Account Balance} = \text{Previous Balance} + \text{Expected Today's Sales Value} - \text{Total Payments Collected Today}\\]
+
+### 4. POS & Supermarket Accounts
+Supermarket and POS accounts have custom agreed selling prices set centrally in Admin [8, 9]. When inventory is supplied to a supermarket account, the system records the supply, **automatically deducts the items from system inventory**, and charges the total monetary value to that account's running credit balance [9, 10].
+
+---
+
+## 1. DTO & Data Contract Specifications
+
+Create or update the following Data Transfer Objects:
+
+```typescript
+export type ProductCategory = 'BREAD' | 'WATER' | 'POPCORN';
+
+export interface RouteSKUItemDTO {
+  productId: string;
+  productName: string;
+  category: ProductCategory;
+  unitSellingPrice: number;          // Sourced from Admin Price Master
+  
+  // Daily Route Inventory Flow
+  yesterdayClosingStock: number;     // Carried over from previous day
+  todayNewlyLoadedQty: number;       // Logged independently by dispatch
+  totalActiveInventory: number;      // (yesterdayClosingStock + todayNewlyLoadedQty)
+  
+  qtySold: number;                   // Recorded at route closing
+  qtyReturned: number;               // Unsold closing stock retained in vehicle
+  qtyDamaged: number;                // Spoiled/defective items
+  
+  expectedItemRevenue: number;       // (qtySold * unitSellingPrice)
+}
+
+export interface DailyRepRouteSheetDTO {
+  id: string;
+  routeSheetRef: string;             // e.g., "RTE-20261014-01"
+  date: string;                      // YYYY-MM-DD
+  repId: string;
+  repName: string;
+  repCode: string;                   // Assigned unique Rep ID (e.g., "REP-014")
+  vehicleRegNumber: string;
+  
+  items: RouteSKUItemDTO[];
+  
+  // Daily Financial Reconciliation
+  totalExpectedSalesRevenue: number; // SUM(qtySold * unitSellingPrice) across all SKUs
+  previousAccountBalance: number;    // Cumulative balance before today's route
+  
+  // Lump-Sum Payments Collected (Aggregated — NO SKU breakdown)
+  cashCollected: number;
+  bankTransferCollected: number;
+  posTerminalCollected: number;
+  totalPaymentsCollectedToday: number; // (cash + transfer + pos)
+  
+  // Net Updated Running Balance
+  newOutstandingAccountBalance: number; // (previousAccountBalance + totalExpectedSalesRevenue - totalPaymentsCollectedToday)
+  
+  status: 'ORDERED' | 'LOADED_ON_ROUTE' | 'RECONCILED' | 'CLOSED';
+}
+
+export interface SupermarketPOSAccountDTO {
+  id: string;
+  accountName: string;               // e.g., "City Supermarket - Branch A"
+  contactPerson: string;
+  phone: string;
+  assignedRepId: string;
+  customAgreedPrices: Record<string, number>; // Map of productId -> custom Price
+  currentOutstandingCredit: number;
+}
+
+
+
+
+
+
+
+
+2. Mock Data Service Logic (MockSalesService)
+Implement the following business rules inside the mock sales service:
+calculateRouteInventory(item: RouteSKUItemDTO):
+Computes totalActiveInventory = item.yesterdayClosingStock + item.todayNewlyLoadedQty
+.
+Validates that item.qtySold + item.qtyReturned + item.qtyDamaged === item.totalActiveInventory
+.
+reconcileDailyRepAccount(routeSheet: DailyRepRouteSheetDTO):
+Sums expectedItemRevenue across all SKUs to determine totalExpectedSalesRevenue
+.
+totalPaymentsCollectedToday = routeSheet.cashCollected + routeSheet.bankTransferCollected + routeSheet.posTerminalCollected
+.
+Computes newOutstandingAccountBalance = routeSheet.previousAccountBalance + totalExpectedSalesRevenue - totalPaymentsCollectedToday
+.
+Carries over unsold qtyReturned as next day's yesterdayClosingStock
+.
+fulfillSupermarketOrder(accountId, itemsDelivered):
+Calculates order value using customAgreedPrices mapped to the supermarket account
+.
+Deducts quantities directly from available central/rep inventory
+.
+Adds the total order monetary value to currentOutstandingCredit
+.
+
+
+3. UI Component Requirements
+A. Sales Rep Daily Loading & Dispatch Sheet (/sales/dispatch)
+Order vs. Loading Verification:
+Table displaying [ SKU Name | Rep Order Requested | Physical Quantity Loaded | Unit Selling Price ]
+.
+Dispatch sign-off action that locks todayNewlyLoadedQty into the route sheet
+.
+B. End-of-Day Rep Route Closing & Payment Drawer (/sales/closing-reconciliation)
+Physical Quantity Closing Matrix:
+Table displaying: [ SKU Name | Yesterday Closing Stock | Today Loaded | Active Inventory | Qty Sold | Unsold Closing Stock | Damaged Qty | Expected Revenue ]
+.
+Aggregated Lump-Sum Payment Collection Panel (No SKU Breakdown):
+Currency input fields: Cash Brought Back (₦), Bank Transfers Received (₦), and POS Payments (₦)
+.
+Prominent callout box displaying:
+Today's Expected Route Revenue: ₦[totalExpectedSalesRevenue]
+Previous Account Debt: ₦[previousAccountBalance]
+Total Payments Submitted: ₦[totalPaymentsCollectedToday]
+Updated Running Account Balance: ₦[newOutstandingAccountBalance] (Highlighted red if outstanding debt increases, green if reduced)
+.
+C. Supermarket POS Account & Custom Price Manager (/sales/pos-accounts)
+Directory listing registered POS/supermarket accounts, contact phone numbers, assigned rep IDs, and current credit balances
+.
+Modal to assign custom selling prices per SKU for specific supermarket accounts
+.
+Order fulfillment logging form that auto-deducts inventory and charges account balance
+.
+4. Instructions for Developer
+Populate mock state data with 3+ sample sales reps across Bread (Jumbo, Medium, Family, Round, 6-in-1), Water (18.9L, Water Bags), and Popcorn product categories
+.
+Ensure real-time recalculation of newOutstandingAccountBalance as payment amounts are typed in without requiring a page refresh
+.
+Include unit tests verifying that unsold closing stock correctly rolls over as yesterdayClosingStock for the next day's route sheet
+.

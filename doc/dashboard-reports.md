@@ -60,8 +60,9 @@ plant can actually make. Bread SKUs: Jumbo, Medium, Family Loaf, Round, 6-in-1.
 
 ### E. Money
 `₦` + `N0` everywhere. Tender is split three ways — **cash**, **bank transfer**,
-**POS bank** — and each channel is compared against `PlannedCashShare` (32% of
-invoiced revenue) to produce the **cash variance** per rep.
+**POS bank** — and each channel is compared against `PlannedCashShare` (configured
+dynamically by the Administrator in the **Settings > Treasury Policy** module,
+defaulting to 32% of invoiced revenue) to produce the **cash variance** per rep.
 
 ### F. Roles
 The `Reports` module was added to the RBAC matrix: SuperAdmin Full;

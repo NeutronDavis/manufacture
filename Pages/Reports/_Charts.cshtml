@@ -98,7 +98,7 @@
                         <i class="fa-solid fa-ranking-star text-primary"></i> Rep Performance Ranking
                     </h2>
                     <p class="text-[10px] opacity-60 mt-0.5">
-                        Units sold per rep, with cash held against the 32% plan. A positive variance is cash still in the rep's hands.
+                        Units sold per rep, with cash held against the @Model.Result.Charts.RepPerformance.PlannedCashPercent.ToString("0.#")% plan. A positive variance is cash still in the rep's hands.
                     </p>
                 </div>
                 <a asp-page="/Reports/Index"

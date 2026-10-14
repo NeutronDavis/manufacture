@@ -9,11 +9,28 @@ namespace Manufacture.Services
         private readonly List<PosTerminal> _terminals = new();
         private readonly List<Order> _orders = new();
         private readonly List<SalesRepProfile> _reps = new();
+        private readonly List<DailyRepRouteSheet> _routeSheets = new();
+        private readonly List<SupermarketAccount> _supermarketAccounts = new();
 
-        public MockSalesService(MockUserService userService, MockLogisticsService logisticsService)
+        private readonly MockProductionService? _productionService;
+        private readonly MockInventoryService? _inventoryService;
+        private readonly MockSettingsService? _settingsService;
+
+        public MockSalesService(
+            MockUserService userService,
+            MockLogisticsService logisticsService,
+            MockProductionService? productionService = null,
+            MockInventoryService? inventoryService = null,
+            MockSettingsService? settingsService = null)
         {
+            _productionService = productionService;
+            _inventoryService = inventoryService;
+            _settingsService = settingsService;
+
             SeedInitialData();
             SeedReps(userService, logisticsService);
+            SeedSupermarketAccounts();
+            SeedRouteSheets();
         }
 
         private void SeedInitialData()
@@ -305,6 +322,73 @@ namespace Manufacture.Services
             return true;
         }
 
+        public PosTerminal CreateTerminal(PosTerminal terminal)
+        {
+            terminal.Id = _terminals.Any() ? _terminals.Max(t => t.Id) + 1 : 1;
+            if (string.IsNullOrWhiteSpace(terminal.TerminalCode))
+            {
+                terminal.TerminalCode = $"POS-{terminal.Id:00}";
+            }
+            if (string.IsNullOrWhiteSpace(terminal.TerminalName))
+            {
+                terminal.TerminalName = $"Checkout Register #{terminal.Id}";
+            }
+            if (string.IsNullOrWhiteSpace(terminal.CashAccountName))
+            {
+                terminal.CashAccountName = $"Cash Drawer Till #{terminal.Id}";
+            }
+            if (string.IsNullOrWhiteSpace(terminal.TransferAccountName))
+            {
+                terminal.TransferAccountName = "FirstBank PLC - 3021948291";
+            }
+            if (string.IsNullOrWhiteSpace(terminal.PosBankAccountName))
+            {
+                terminal.PosBankAccountName = $"Moniepoint POS #{terminal.Id:00} - 9028129";
+            }
+            if (!terminal.AssignedUserId.HasValue)
+            {
+                terminal.AssignedUserName = "Unassigned";
+            }
+
+            _terminals.Add(terminal);
+            return terminal;
+        }
+
+        public bool UpdateTerminal(PosTerminal model)
+        {
+            var existing = GetTerminalById(model.Id);
+            if (existing == null) return false;
+
+            if (!string.IsNullOrWhiteSpace(model.TerminalCode))
+                existing.TerminalCode = model.TerminalCode.Trim();
+
+            if (!string.IsNullOrWhiteSpace(model.TerminalName))
+                existing.TerminalName = model.TerminalName.Trim();
+
+            if (!string.IsNullOrWhiteSpace(model.CashAccountName))
+                existing.CashAccountName = model.CashAccountName.Trim();
+
+            if (!string.IsNullOrWhiteSpace(model.TransferAccountName))
+                existing.TransferAccountName = model.TransferAccountName.Trim();
+
+            if (!string.IsNullOrWhiteSpace(model.PosBankAccountName))
+                existing.PosBankAccountName = model.PosBankAccountName.Trim();
+
+            existing.IsActive = model.IsActive;
+            existing.AssignedUserId = model.AssignedUserId;
+            existing.AssignedUserName = string.IsNullOrWhiteSpace(model.AssignedUserName) ? "Unassigned" : model.AssignedUserName.Trim();
+
+            return true;
+        }
+
+        public bool ToggleTerminalStatus(int id)
+        {
+            var terminal = GetTerminalById(id);
+            if (terminal == null) return false;
+            terminal.IsActive = !terminal.IsActive;
+            return true;
+        }
+
         // Orders
         public List<Order> GetAllOrders() => _orders.OrderByDescending(o => o.Id).ToList();
         public List<Order> GetPreOrders() => _orders.Where(o => o.Type == OrderType.PreOrder).OrderByDescending(o => o.Id).ToList();
@@ -421,6 +505,555 @@ namespace Manufacture.Services
                 query = query.Where(o => o.Items.Any(i => i.RecipeId == recipeId.Value));
             }
             return query.OrderByDescending(o => o.Id).ToList();
+        }
+
+        // =========================================================================
+        // Supermarket POS Accounts & Custom Agreed Pricing
+        // =========================================================================
+
+        private void SeedSupermarketAccounts()
+        {
+            var goodness = _customers.FirstOrDefault(c => c.Id == 2) ?? new Customer
+            {
+                Id = 2, Name = "Goodness Supermarket Ikeja", MemberCode = "SUP-101",
+                Category = CustomerCategory.Supermarket, PhoneNumber = "+2348033221100",
+                Address = "12 Oba Akran Way, Ikeja", OutstandingBalance = 45000
+            };
+            var grandSquare = _customers.FirstOrDefault(c => c.Id == 3) ?? new Customer
+            {
+                Id = 3, Name = "Grand Square Supermarket VI", MemberCode = "SUP-102",
+                Category = CustomerCategory.Supermarket, PhoneNumber = "+2348055443322",
+                Address = "Victoria Island, Lagos", OutstandingBalance = 0
+            };
+
+            _supermarketAccounts.AddRange(new[]
+            {
+                new SupermarketAccount
+                {
+                    Id = 1,
+                    CustomerId = 2,
+                    AccountName = goodness.Name,
+                    ContactPerson = "Mrs. Ngozi Okafor",
+                    PhoneNumber = goodness.PhoneNumber,
+                    Address = goodness.Address,
+                    AssignedRepId = 1,
+                    AssignedRepName = "Babatunde Alabi",
+                    CreditLimit = 200000m,
+                    PaymentTerms = "Net 15 Days",
+                    CurrentOutstandingCredit = goodness.OutstandingBalance,
+                    CustomAgreedPrices = new Dictionary<int, decimal>
+                    {
+                        { 1, 1320m }, // Jumbo Bread discounted from ₦1400 to ₦1320
+                        { 2, 850m },  // Medium Loaf discounted from ₦900 to ₦850
+                        { 6, 230m }   // Water 18.9L discounted from ₦250 to ₦230
+                    }
+                },
+                new SupermarketAccount
+                {
+                    Id = 2,
+                    CustomerId = 3,
+                    AccountName = grandSquare.Name,
+                    ContactPerson = "Mr. Femi Adeyemi",
+                    PhoneNumber = grandSquare.PhoneNumber,
+                    Address = grandSquare.Address,
+                    AssignedRepId = 2,
+                    AssignedRepName = "Chiamaka Nwosu",
+                    CreditLimit = 300000m,
+                    PaymentTerms = "Net 30 Days",
+                    CurrentOutstandingCredit = grandSquare.OutstandingBalance,
+                    CustomAgreedPrices = new Dictionary<int, decimal>
+                    {
+                        { 1, 1300m }, // Jumbo Bread ₦1300
+                        { 3, 1020m }, // Special 61 ₦1020
+                        { 7, 180m }   // Popcorn 40g ₦180
+                    }
+                },
+                new SupermarketAccount
+                {
+                    Id = 3,
+                    CustomerId = 4,
+                    AccountName = "Alhaja Basirat Bread Depot (Vendor)",
+                    ContactPerson = "Alhaja Basirat",
+                    PhoneNumber = "+2348099887766",
+                    Address = "Oshodi Market Shop 44",
+                    AssignedRepId = 6,
+                    AssignedRepName = "Halima Yusuf",
+                    CreditLimit = 150000m,
+                    PaymentTerms = "Net 7 Days",
+                    CurrentOutstandingCredit = 120000m,
+                    CustomAgreedPrices = new Dictionary<int, decimal>
+                    {
+                        { 1, 1250m },
+                        { 2, 800m },
+                        { 4, 760m }
+                    }
+                },
+                new SupermarketAccount
+                {
+                    Id = 4,
+                    CustomerId = 5,
+                    AccountName = "Madam Ngozi Wholesalers",
+                    ContactPerson = "Madam Ngozi Eze",
+                    PhoneNumber = "+2348077665544",
+                    Address = "Agege Main Depot",
+                    AssignedRepId = 5,
+                    AssignedRepName = "Segun Adewale",
+                    CreditLimit = 100000m,
+                    PaymentTerms = "Net 14 Days",
+                    CurrentOutstandingCredit = 15000m,
+                    CustomAgreedPrices = new Dictionary<int, decimal>
+                    {
+                        { 2, 820m },
+                        { 4, 770m },
+                        { 5, 710m }
+                    }
+                }
+            });
+        }
+
+        public List<SupermarketAccount> GetAllSupermarketAccounts() => _supermarketAccounts.OrderBy(a => a.AccountName).ToList();
+
+        public SupermarketAccount? GetSupermarketAccountById(int id) =>
+            _supermarketAccounts.FirstOrDefault(a => a.Id == id || a.CustomerId == id);
+
+        public bool SetCustomAgreedPrice(int accountId, int productId, decimal customPrice)
+        {
+            var account = GetSupermarketAccountById(accountId);
+            if (account == null) return false;
+            account.CustomAgreedPrices[productId] = Math.Max(0m, customPrice);
+            return true;
+        }
+
+        public bool SetBatchCustomAgreedPrices(int accountId, Dictionary<int, decimal> prices)
+        {
+            var account = GetSupermarketAccountById(accountId);
+            if (account == null) return false;
+            foreach (var kvp in prices)
+            {
+                if (kvp.Value > 0)
+                {
+                    account.CustomAgreedPrices[kvp.Key] = kvp.Value;
+                }
+                else
+                {
+                    account.CustomAgreedPrices.Remove(kvp.Key);
+                }
+            }
+            return true;
+        }
+
+        public bool RecordSupermarketPayment(int accountId, decimal amountPaid, string paymentMethod, string reference)
+        {
+            var account = GetSupermarketAccountById(accountId);
+            if (account == null || amountPaid <= 0) return false;
+            account.CurrentOutstandingCredit = Math.Max(0m, account.CurrentOutstandingCredit - amountPaid);
+            var customer = GetCustomerById(account.CustomerId);
+            if (customer != null)
+            {
+                customer.OutstandingBalance = account.CurrentOutstandingCredit;
+            }
+            return true;
+        }
+
+        public bool SaveSupermarketAccount(SupermarketAccount model)
+        {
+            var existing = GetSupermarketAccountById(model.Id);
+            if (existing != null)
+            {
+                existing.AccountName = model.AccountName;
+                existing.ContactPerson = model.ContactPerson;
+                existing.PhoneNumber = model.PhoneNumber;
+                existing.Address = model.Address;
+                existing.CreditLimit = model.CreditLimit;
+                existing.PaymentTerms = model.PaymentTerms;
+                existing.AssignedRepId = model.AssignedRepId;
+                var rep = GetRepById(model.AssignedRepId);
+                if (rep != null) existing.AssignedRepName = rep.FullName;
+                return true;
+            }
+            else
+            {
+                int newId = _supermarketAccounts.Any() ? _supermarketAccounts.Max(a => a.Id) + 1 : 1;
+                model.Id = newId;
+                var rep = GetRepById(model.AssignedRepId);
+                if (rep != null) model.AssignedRepName = rep.FullName;
+                _supermarketAccounts.Add(model);
+                return true;
+            }
+        }
+
+        public bool FulfillSupermarketOrder(int accountId, int repId, List<OrderItemDto> items, string notes)
+        {
+            var account = GetSupermarketAccountById(accountId);
+            if (account == null || items == null || items.Count == 0) return false;
+
+            var rep = GetRepById(repId) ?? _reps.FirstOrDefault(r => r.Id == account.AssignedRepId) ?? _reps.First();
+            var customer = GetCustomerById(account.CustomerId);
+
+            // Calculate total based on custom agreed prices, fallback to item.UnitPrice
+            decimal orderTotal = 0m;
+            var processedItems = new List<OrderItem>();
+
+            for (int i = 0; i < items.Count; i++)
+            {
+                var it = items[i];
+                var price = account.CustomAgreedPrices.TryGetValue(it.RecipeId, out var custom) ? custom : it.UnitPrice;
+                orderTotal += (it.Quantity * price);
+
+                processedItems.Add(new OrderItem
+                {
+                    Id = i + 1,
+                    RecipeId = it.RecipeId,
+                    ProductName = it.ProductName,
+                    Quantity = it.Quantity,
+                    UnitPrice = price
+                });
+
+                // Deduct from finished inventory if inventory service is wired
+                if (_inventoryService != null)
+                {
+                    // Finished goods stock tracking
+                }
+            }
+
+            // Charge the supermarket account running credit balance
+            account.CurrentOutstandingCredit += orderTotal;
+            if (customer != null)
+            {
+                customer.OutstandingBalance = account.CurrentOutstandingCredit;
+            }
+
+            // Record as a fulfilled order
+            var order = new Order
+            {
+                Id = _orders.Any() ? _orders.Max(o => o.Id) + 1 : 1,
+                OrderNumber = $"SUP-{DateTime.UtcNow:yyyyMMdd}-{_orders.Count + 1:000}",
+                Type = OrderType.ImmediateSale,
+                CustomerId = account.CustomerId,
+                CustomerName = account.AccountName,
+                CustomerCategory = CustomerCategory.Supermarket,
+                SalesRepUserId = rep.UserId,
+                SalesRepName = rep.FullName,
+                PosTerminalCode = rep.PosTerminalCode,
+                PaymentMethod = PaymentMethod.CreditOwing,
+                Status = OrderStatus.Dispatched,
+                OrderDate = DateTime.UtcNow,
+                TargetDeliveryDate = DateTime.UtcNow,
+                Discount = 0,
+                AmountPaid = 0,
+                Notes = string.IsNullOrWhiteSpace(notes) ? "Delivered to supermarket on credit" : notes,
+                Items = processedItems
+            };
+            _orders.Add(order);
+
+            return true;
+        }
+
+        // =========================================================================
+        // Sales Rep Daily Route Loading & Financial Reconciliation Sheets
+        // =========================================================================
+
+        public List<(int Id, string Code, string Name, ProductType Category, decimal Price)> GetCatalogSkus()
+        {
+            if (_productionService != null)
+            {
+                var recipes = _productionService.GetAllRecipes();
+                if (recipes.Any())
+                {
+                    return recipes.Select(r => (r.Id, r.Code, r.Name, r.ProductType, r.SellingPrice)).ToList();
+                }
+            }
+
+            // Canonical fallback master
+            return new List<(int, string, string, ProductType, decimal)>
+            {
+                (1, "BRD-JMB",  "Jumbo Family Bread",       ProductType.Bread,   1400m),
+                (2, "BRD-MED",  "Medium Loaf Bread",        ProductType.Bread,   900m),
+                (3, "BRD-61",   "Special 61 Butter Bread",  ProductType.Bread,   1100m),
+                (4, "BRD-RND",  "Round Family Loaf",        ProductType.Bread,   850m),
+                (5, "BRD-6IN1", "6-in-1 Multigrain Loaf",   ProductType.Bread,   780m),
+                (6, "WTR-189",  "Purified Water 18.9L",     ProductType.Water,   250m),
+                (7, "POP-40",   "Popcorn 40g Bag",          ProductType.Popcorn, 200m)
+            };
+        }
+
+        private void SeedRouteSheets()
+        {
+            var skus = GetCatalogSkus();
+            var today = DateTime.UtcNow.Date;
+
+            // Sheet 1: Babatunde Alabi - Loaded & out on route
+            var rep1 = _reps.FirstOrDefault(r => r.Id == 1) ?? _reps.First();
+            var sheet1 = new DailyRepRouteSheet
+            {
+                Id = 1,
+                RouteSheetRef = $"RTE-{today:yyyyMMdd}-001",
+                Date = today,
+                RepId = rep1.Id,
+                RepName = rep1.FullName,
+                RepCode = "REP-001",
+                VehicleRegNumber = rep1.VehicleRegistration,
+                RouteName = rep1.RouteName,
+                PosTerminalCode = rep1.PosTerminalCode,
+                PreviousAccountBalance = 22000m,
+                Status = RouteSheetStatus.LoadedOnRoute,
+                SignedOffByDispatcher = "Kelechi Nnamdi (Dispatch Mgr)",
+                SignedOffAt = today.AddHours(7).AddMinutes(30),
+                Notes = "Morning wholesale & supermarket dispatch.",
+                Items = skus.Select(sku =>
+                {
+                    int yest = sku.Id == 1 ? 12 : (sku.Id == 2 ? 8 : 0);
+                    int loaded = sku.Id == 1 ? 88 : (sku.Id == 2 ? 92 : (sku.Id == 6 ? 40 : (sku.Id == 7 ? 50 : 0)));
+                    return new RouteSKUItem
+                    {
+                        ProductId = sku.Id,
+                        ProductCode = sku.Code,
+                        ProductName = sku.Name,
+                        Category = sku.Category,
+                        UnitSellingPrice = sku.Price,
+                        RepOrderRequestedQty = loaded + 10,
+                        YesterdayClosingStock = yest,
+                        TodayNewlyLoadedQty = loaded
+                    };
+                }).ToList()
+            };
+
+            // Sheet 2: Chiamaka Nwosu - Order placed, waiting for loading verification
+            var rep2 = _reps.FirstOrDefault(r => r.Id == 2) ?? _reps.Skip(1).FirstOrDefault() ?? _reps.First();
+            var sheet2 = new DailyRepRouteSheet
+            {
+                Id = 2,
+                RouteSheetRef = $"RTE-{today:yyyyMMdd}-002",
+                Date = today,
+                RepId = rep2.Id,
+                RepName = rep2.FullName,
+                RepCode = "REP-002",
+                VehicleRegNumber = rep2.VehicleRegistration,
+                RouteName = rep2.RouteName,
+                PosTerminalCode = rep2.PosTerminalCode,
+                PreviousAccountBalance = 10000m,
+                Status = RouteSheetStatus.Ordered,
+                Notes = "Island route: awaiting vehicle bay release.",
+                Items = skus.Select(sku =>
+                {
+                    int yest = sku.Id == 1 ? 10 : (sku.Id == 7 ? 5 : 0);
+                    int req = sku.Id == 1 ? 120 : (sku.Id == 3 ? 60 : (sku.Id == 7 ? 80 : 0));
+                    return new RouteSKUItem
+                    {
+                        ProductId = sku.Id,
+                        ProductCode = sku.Code,
+                        ProductName = sku.Name,
+                        Category = sku.Category,
+                        UnitSellingPrice = sku.Price,
+                        RepOrderRequestedQty = req,
+                        YesterdayClosingStock = yest,
+                        TodayNewlyLoadedQty = 0 // Not loaded yet
+                    };
+                }).ToList()
+            };
+
+            // Sheet 3: Ibrahim Sanni - Reconciled & Closed
+            var rep3 = _reps.FirstOrDefault(r => r.Id == 3) ?? _reps.Skip(2).FirstOrDefault() ?? _reps.First();
+            var sheet3 = new DailyRepRouteSheet
+            {
+                Id = 3,
+                RouteSheetRef = $"RTE-{today:yyyyMMdd}-003",
+                Date = today,
+                RepId = rep3.Id,
+                RepName = rep3.FullName,
+                RepCode = "REP-003",
+                VehicleRegNumber = rep3.VehicleRegistration,
+                RouteName = rep3.RouteName,
+                PosTerminalCode = rep3.PosTerminalCode,
+                PreviousAccountBalance = 15000m,
+                CashCollected = 75000m,
+                BankTransferCollected = 60000m,
+                PosTerminalCollected = 14500m,
+                Status = RouteSheetStatus.Reconciled,
+                SignedOffByDispatcher = "Kelechi Nnamdi (Dispatch Mgr)",
+                SignedOffAt = today.AddHours(7).AddMinutes(15),
+                ReconciledBy = "Adekunle Johnson (SuperAdmin)",
+                ReconciledAt = today.AddHours(14).AddMinutes(45),
+                Notes = "Yaba & Surulere route: full reconciliation complete.",
+                Items = skus.Select(sku =>
+                {
+                    int loaded = sku.Id == 1 ? 80 : (sku.Id == 6 ? 150 : 0);
+                    int sold = sku.Id == 1 ? 76 : (sku.Id == 6 ? 142 : 0);
+                    int ret = sku.Id == 1 ? 3 : (sku.Id == 6 ? 8 : 0);
+                    int dmg = sku.Id == 1 ? 1 : 0;
+                    return new RouteSKUItem
+                    {
+                        ProductId = sku.Id,
+                        ProductCode = sku.Code,
+                        ProductName = sku.Name,
+                        Category = sku.Category,
+                        UnitSellingPrice = sku.Price,
+                        RepOrderRequestedQty = loaded,
+                        YesterdayClosingStock = 0,
+                        TodayNewlyLoadedQty = loaded,
+                        QtySold = sold,
+                        QtyReturned = ret,
+                        QtyDamaged = dmg
+                    };
+                }).ToList()
+            };
+
+            _routeSheets.AddRange(new[] { sheet1, sheet2, sheet3 });
+        }
+
+        public (int ActiveInventory, bool IsBalanced) CalculateRouteInventory(RouteSKUItem item)
+        {
+            var active = item.YesterdayClosingStock + item.TodayNewlyLoadedQty;
+            var isBalanced = (item.QtySold + item.QtyReturned + item.QtyDamaged) == active;
+            return (active, isBalanced);
+        }
+
+        public List<DailyRepRouteSheet> GetAllRouteSheets(DateTime? date = null, int? repId = null, RouteSheetStatus? status = null)
+        {
+            var query = _routeSheets.AsQueryable();
+            if (date.HasValue) query = query.Where(s => s.Date.Date == date.Value.Date);
+            if (repId.HasValue && repId.Value > 0) query = query.Where(s => s.RepId == repId.Value);
+            if (status.HasValue) query = query.Where(s => s.Status == status.Value);
+            return query.OrderByDescending(s => s.Date).ThenByDescending(s => s.Id).ToList();
+        }
+
+        public DailyRepRouteSheet? GetRouteSheetById(int id) =>
+            _routeSheets.FirstOrDefault(s => s.Id == id);
+
+        public DailyRepRouteSheet CreateRouteSheet(int repId, DateTime date, Dictionary<int, int>? requestedQuantities = null)
+        {
+            var rep = GetRepById(repId) ?? _reps.First();
+            var skus = GetCatalogSkus();
+
+            // Find yesterday's closing stock for this rep
+            var previousSheet = _routeSheets
+                .Where(s => s.RepId == repId && s.Date < date.Date)
+                .OrderByDescending(s => s.Date)
+                .FirstOrDefault();
+
+            // Previous balance
+            decimal prevBalance = previousSheet?.NewOutstandingAccountBalance ?? 0m;
+
+            var sheet = new DailyRepRouteSheet
+            {
+                Id = _routeSheets.Any() ? _routeSheets.Max(s => s.Id) + 1 : 1,
+                RouteSheetRef = $"RTE-{date:yyyyMMdd}-{_routeSheets.Count + 1:000}",
+                Date = date.Date,
+                RepId = rep.Id,
+                RepName = rep.FullName,
+                RepCode = $"REP-{rep.Id:000}",
+                VehicleRegNumber = rep.VehicleRegistration,
+                RouteName = rep.RouteName,
+                PosTerminalCode = rep.PosTerminalCode,
+                PreviousAccountBalance = prevBalance,
+                Status = RouteSheetStatus.Ordered,
+                Notes = $"Daily route order for {rep.FullName}"
+            };
+
+            foreach (var sku in skus)
+            {
+                int yesterdayStock = 0;
+                if (previousSheet != null)
+                {
+                    var prevItem = previousSheet.Items.FirstOrDefault(i => i.ProductId == sku.Id);
+                    if (prevItem != null)
+                    {
+                        yesterdayStock = prevItem.QtyReturned;
+                    }
+                }
+
+                int req = 0;
+                if (requestedQuantities != null && requestedQuantities.TryGetValue(sku.Id, out var r))
+                {
+                    req = r;
+                }
+
+                sheet.Items.Add(new RouteSKUItem
+                {
+                    ProductId = sku.Id,
+                    ProductCode = sku.Code,
+                    ProductName = sku.Name,
+                    Category = sku.Category,
+                    UnitSellingPrice = sku.Price,
+                    RepOrderRequestedQty = req,
+                    YesterdayClosingStock = yesterdayStock,
+                    TodayNewlyLoadedQty = 0 // Awaiting loading sign-off
+                });
+            }
+
+            _routeSheets.Add(sheet);
+            return sheet;
+        }
+
+        public bool SignOffDispatch(int sheetId, Dictionary<int, int> loadedQuantities, string dispatcherName, string notes)
+        {
+            var sheet = GetRouteSheetById(sheetId);
+            if (sheet == null) return false;
+
+            if (loadedQuantities != null)
+            {
+                foreach (var item in sheet.Items)
+                {
+                    if (loadedQuantities.TryGetValue(item.ProductId, out var loaded))
+                    {
+                        item.TodayNewlyLoadedQty = Math.Max(0, loaded);
+                    }
+                }
+            }
+
+            sheet.SignedOffByDispatcher = string.IsNullOrWhiteSpace(dispatcherName) ? "Loading Bay Supervisor" : dispatcherName;
+            sheet.SignedOffAt = DateTime.UtcNow;
+            sheet.Status = RouteSheetStatus.LoadedOnRoute;
+            if (!string.IsNullOrWhiteSpace(notes)) sheet.Notes = notes;
+
+            return true;
+        }
+
+        public bool ReconcileDailyRepAccount(ReconciliationInputDto input)
+        {
+            var sheet = GetRouteSheetById(input.RouteSheetId);
+            if (sheet == null) return false;
+
+            foreach (var item in sheet.Items)
+            {
+                input.SoldQuantities.TryGetValue(item.ProductId, out var sold);
+                input.ReturnedQuantities.TryGetValue(item.ProductId, out var returned);
+                input.DamagedQuantities.TryGetValue(item.ProductId, out var damaged);
+
+                item.QtySold = Math.Max(0, sold);
+                item.QtyReturned = Math.Max(0, returned);
+                item.QtyDamaged = Math.Max(0, damaged);
+            }
+
+            sheet.CashCollected = Math.Max(0m, input.CashCollected);
+            sheet.BankTransferCollected = Math.Max(0m, input.BankTransferCollected);
+            sheet.PosTerminalCollected = Math.Max(0m, input.PosTerminalCollected);
+
+            sheet.ReconciledBy = string.IsNullOrWhiteSpace(input.CashierName) ? "Main Cashier" : input.CashierName;
+            sheet.ReconciledAt = DateTime.UtcNow;
+            sheet.Status = RouteSheetStatus.Reconciled;
+            if (!string.IsNullOrWhiteSpace(input.Notes)) sheet.Notes = input.Notes;
+
+            // Carry over unsold closing stock for the next day's route sheet if one already exists
+            var nextDaySheet = _routeSheets
+                .Where(s => s.RepId == sheet.RepId && s.Date > sheet.Date)
+                .OrderBy(s => s.Date)
+                .FirstOrDefault();
+
+            if (nextDaySheet != null)
+            {
+                foreach (var item in sheet.Items)
+                {
+                    var nextItem = nextDaySheet.Items.FirstOrDefault(i => i.ProductId == item.ProductId);
+                    if (nextItem != null)
+                    {
+                        nextItem.YesterdayClosingStock = item.QtyReturned;
+                    }
+                }
+                nextDaySheet.PreviousAccountBalance = sheet.NewOutstandingAccountBalance;
+            }
+
+            return true;
         }
     }
 }

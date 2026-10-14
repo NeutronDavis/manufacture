@@ -1,0 +1,389 @@
+@page
+@model Manufacture.Pages.Sales.Dispatch.IndexModel
+@{
+    ViewData["Title"] = "Sales Rep Daily Loading & Dispatch";
+    var sheet = Model.SelectedSheet;
+}
+
+<div class="space-y-6 w-full pb-12">
+    <!-- Header & Breadcrumbs -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Sales/Index" class="hover:underline">Sales &amp; POS</a>
+                <span>&gt;</span>
+                <span>Route Loading &amp; Dispatch</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2.5">
+                <i class="fa-solid fa-truck-ramp-box text-primary"></i> Sales Rep Daily Loading &amp; Dispatch Sheet
+            </h1>
+            <p class="text-xs opacity-70 mt-1 max-w-4xl">
+                Independent loading bay verification. Sales reps request daily stock, but physical vehicle inventory is verified, counted, and signed off here by dispatch staff before vehicles leave the factory gate.
+            </p>
+        </div>
+        <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+            <button type="button" onclick="document.getElementById('newSheetModal').showModal()" class="btn btn-sm btn-primary rounded-xl text-xs gap-2 font-bold shadow-xs">
+                <i class="fa-solid fa-file-circle-plus text-xs"></i> New Route Sheet
+            </button>
+            <a asp-page="/Sales/Reconciliation/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-bold">
+                <i class="fa-solid fa-calculator text-xs"></i> End-of-Day Closing
+            </a>
+            <a asp-page="/Sales/Index" class="btn btn-sm btn-ghost rounded-xl text-xs gap-1 opacity-70">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Sales Hub
+            </a>
+        </div>
+    </div>
+
+    <!-- Alert Notifications -->
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success shadow-xs rounded-2xl text-xs py-3.5">
+            <i class="fa-solid fa-circle-check text-base"></i>
+            <div>
+                <div class="font-bold">Dispatch Action Completed</div>
+                <div>@TempData["SuccessMessage"]</div>
+            </div>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3.5">
+            <i class="fa-solid fa-circle-exclamation text-base"></i>
+            <div>
+                <div class="font-bold">Error</div>
+                <div>@TempData["ErrorMessage"]</div>
+            </div>
+        </div>
+    }
+
+    <!-- KPI Summary Stats -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider opacity-60">Route Sheets Today</span>
+                <div class="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-clipboard-list"></i>
+                </div>
+            </div>
+            <div class="text-3xl font-black font-mono text-base-content mt-2">@Model.RouteSheets.Count</div>
+            <div class="text-[11px] opacity-70 mt-1">Scheduled distribution routes</div>
+        </div>
+
+        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider opacity-60">Loaded &amp; Dispatched</span>
+                <div class="w-8 h-8 rounded-xl bg-success/10 text-success flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-truck-moving"></i>
+                </div>
+            </div>
+            <div class="text-3xl font-black font-mono text-success mt-2">
+                @Model.RouteSheets.Count(s => s.Status == Manufacture.Models.Entities.RouteSheetStatus.LoadedOnRoute || s.Status == Manufacture.Models.Entities.RouteSheetStatus.Reconciled)
+            </div>
+            <div class="text-[11px] opacity-70 mt-1">Signed off &amp; exited plant gate</div>
+        </div>
+
+        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider opacity-60">Pending Loading Sign-off</span>
+                <div class="w-8 h-8 rounded-xl bg-warning/10 text-warning flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-boxes-packing"></i>
+                </div>
+            </div>
+            <div class="text-3xl font-black font-mono text-warning mt-2">
+                @Model.RouteSheets.Count(s => s.Status == Manufacture.Models.Entities.RouteSheetStatus.Ordered)
+            </div>
+            <div class="text-[11px] opacity-70 mt-1">Awaiting physical loading check</div>
+        </div>
+
+        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider opacity-60">Total Active Units Loaded</span>
+                <div class="w-8 h-8 rounded-xl bg-info/10 text-info flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-cubes"></i>
+                </div>
+            </div>
+            <div class="text-3xl font-black font-mono text-base-content mt-2">
+                @Model.RouteSheets.Sum(s => s.Items.Sum(i => i.TodayNewlyLoadedQty)).ToString("N0")
+            </div>
+            <div class="text-[11px] opacity-70 mt-1">Verified physical stock loaded</div>
+        </div>
+    </div>
+
+    <!-- Main Workspace Layout: Rep Sheets List + Active Dispatch Sheet -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left: Route Sheets Roster (4 cols) -->
+        <div class="lg:col-span-4 card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+            <div class="p-4 border-b border-base-300 bg-base-200/50 flex items-center justify-between">
+                <div class="font-bold text-xs uppercase tracking-wider opacity-70 flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-primary"></i> Daily Route Sheets
+                </div>
+                <form method="get" class="flex items-center gap-1.5">
+                    <input type="date" name="FilterDate" value="@((Model.FilterDate ?? DateTime.UtcNow).ToString("yyyy-MM-dd"))" onchange="this.form.submit()" class="input input-xs input-bordered rounded-lg text-[10px] font-mono" />
+                </form>
+            </div>
+
+            <div class="divide-y divide-base-200 max-h-[600px] overflow-y-auto">
+                @if (Model.RouteSheets.Count == 0)
+                {
+                    <div class="p-6 text-center text-xs opacity-60">
+                        No route sheets found for this date. Click "New Route Sheet" above to generate one.
+                    </div>
+                }
+                @foreach (var s in Model.RouteSheets)
+                {
+                    var isSelected = sheet != null && sheet.Id == s.Id;
+                    <a asp-page="/Sales/Dispatch/Index" asp-route-sheetId="@s.Id" asp-route-FilterDate="@((Model.FilterDate ?? DateTime.UtcNow).ToString("yyyy-MM-dd"))" 
+                       class="block p-4 transition-colors hover:bg-base-200/60 @(isSelected ? "bg-primary/5 border-l-4 border-primary" : "")">
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <span class="font-mono font-bold text-xs text-base-content">@s.RouteSheetRef</span>
+                                <div class="font-semibold text-xs text-base-content mt-0.5">@s.RepName</div>
+                                <div class="text-[10px] opacity-60 flex items-center gap-1 mt-0.5">
+                                    <i class="fa-solid fa-van-shuttle text-[9px]"></i> @s.VehicleRegNumber &bull; @s.RouteName
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                @if (s.Status == Manufacture.Models.Entities.RouteSheetStatus.Ordered)
+                                {
+                                    <span class="badge badge-warning badge-xs font-bold uppercase text-[9px] py-1">Ordered</span>
+                                }
+                                else if (s.Status == Manufacture.Models.Entities.RouteSheetStatus.LoadedOnRoute)
+                                {
+                                    <span class="badge badge-info badge-xs font-bold uppercase text-[9px] py-1">On Route</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-success badge-xs font-bold uppercase text-[9px] py-1">Reconciled</span>
+                                }
+                                <div class="text-[10px] font-mono opacity-60 mt-1">
+                                    @s.Items.Sum(i => i.TodayNewlyLoadedQty) units
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                }
+            </div>
+        </div>
+
+        <!-- Right: Active Sheet Verification & Sign-Off Matrix (8 cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            @if (sheet == null)
+            {
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-12 text-center text-xs opacity-60">
+                    Select a route sheet from the left or create a new one to begin loading verification.
+                </div>
+            }
+            else
+            {
+                <!-- Sheet Header Details -->
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-base-300 pb-4">
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-mono font-black text-lg text-base-content">@sheet.RouteSheetRef</span>
+                                @if (sheet.Status == Manufacture.Models.Entities.RouteSheetStatus.Ordered)
+                                {
+                                    <span class="badge badge-warning badge-sm font-bold gap-1 text-[10px]">
+                                        <i class="fa-solid fa-clock"></i> Awaiting Loading Sign-off
+                                    </span>
+                                }
+                                else if (sheet.Status == Manufacture.Models.Entities.RouteSheetStatus.LoadedOnRoute)
+                                {
+                                    <span class="badge badge-info badge-sm font-bold gap-1 text-[10px]">
+                                        <i class="fa-solid fa-truck-fast"></i> Dispatched &bull; Loaded On Route
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-success badge-sm font-bold gap-1 text-[10px]">
+                                        <i class="fa-solid fa-check-double"></i> Reconciled &bull; Closed
+                                    </span>
+                                }
+                            </div>
+                            <div class="text-xs opacity-70 mt-1 flex items-center gap-3 flex-wrap">
+                                <span><strong class="text-base-content">Sales Rep:</strong> @sheet.RepName (@sheet.RepCode)</span>
+                                <span><strong class="text-base-content">Van Registration:</strong> <span class="font-mono font-bold">@sheet.VehicleRegNumber</span></span>
+                                <span><strong class="text-base-content">Route:</strong> @sheet.RouteName</span>
+                                <span><strong class="text-base-content">Date:</strong> @sheet.Date.ToString("yyyy-MM-dd")</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="window.print()" class="btn btn-xs btn-outline border-base-300 rounded-xl font-bold gap-1 text-[11px]">
+                                <i class="fa-solid fa-print"></i> Print Gate Pass
+                            </button>
+                            @if (sheet.Status == Manufacture.Models.Entities.RouteSheetStatus.LoadedOnRoute)
+                            {
+                                <a asp-page="/Sales/Reconciliation/Index" asp-route-sheetId="@sheet.Id" class="btn btn-xs btn-primary rounded-xl font-bold gap-1 text-[11px] shadow-xs">
+                                    <i class="fa-solid fa-cash-register"></i> End-of-Day Closing
+                                </a>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Dispatch Form -->
+                    <form method="post" asp-page-handler="SignOff" class="space-y-4">
+                        <input type="hidden" name="sheetId" value="@sheet.Id" />
+                        
+                        <div class="overflow-x-auto">
+                            <table class="table table-sm w-full text-xs">
+                                <thead>
+                                    <tr class="opacity-70 uppercase text-[10px] tracking-wider border-b border-base-300 bg-base-200/50">
+                                        <th class="py-3 pl-3">SKU &amp; Product Name</th>
+                                        <th class="text-right">Yesterday Closing</th>
+                                        <th class="text-right">Rep Requested</th>
+                                        <th class="text-right font-bold text-primary">Physical Loaded Qty</th>
+                                        <th class="text-right">Active Route Stock</th>
+                                        <th class="text-right">Unit Price</th>
+                                        <th class="text-right pr-3">Loaded Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-base-200 font-mono">
+                                    @for (int i = 0; i < sheet.Items.Count; i++)
+                                    {
+                                        var it = sheet.Items[i];
+                                        var isOrdered = sheet.Status == Manufacture.Models.Entities.RouteSheetStatus.Ordered;
+                                        <tr class="hover:bg-base-200/40">
+                                            <td class="py-2.5 pl-3 font-sans">
+                                                <div class="font-bold text-base-content text-xs">@it.ProductName</div>
+                                                <div class="text-[10px] opacity-60">@it.ProductCode &bull; @it.Category</div>
+                                            </td>
+                                            <td class="text-right opacity-80">
+                                                @(it.YesterdayClosingStock > 0 ? it.YesterdayClosingStock.ToString("N0") : "—")
+                                            </td>
+                                            <td class="text-right opacity-80">
+                                                @(it.RepOrderRequestedQty > 0 ? it.RepOrderRequestedQty.ToString("N0") : "—")
+                                            </td>
+                                            <td class="text-right">
+                                                @if (isOrdered && Model.CanEdit)
+                                                {
+                                                    <input type="number" 
+                                                           name="loadedQuantities[@it.ProductId]" 
+                                                           value="@(it.TodayNewlyLoadedQty > 0 ? it.TodayNewlyLoadedQty : it.RepOrderRequestedQty)" 
+                                                           min="0" 
+                                                           class="input input-xs input-bordered rounded-lg w-20 text-right font-mono font-bold text-primary" />
+                                                }
+                                                else
+                                                {
+                                                    <span class="font-bold text-primary text-xs">@it.TodayNewlyLoadedQty.ToString("N0")</span>
+                                                }
+                                            </td>
+                                            <td class="text-right font-bold text-base-content">
+                                                @it.TotalActiveInventory.ToString("N0")
+                                            </td>
+                                            <td class="text-right opacity-80">
+                                                ₦@it.UnitSellingPrice.ToString("N0")
+                                            </td>
+                                            <td class="text-right pr-3 font-bold text-base-content">
+                                                ₦@((it.TodayNewlyLoadedQty * it.UnitSellingPrice).ToString("N0"))
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                                <tfoot>
+                                    <tr class="font-bold border-t-2 border-base-300 text-xs bg-base-200/30">
+                                        <td class="pl-3 py-3 font-sans">Total Physical Stock</td>
+                                        <td class="text-right font-mono">@sheet.Items.Sum(i => i.YesterdayClosingStock).ToString("N0")</td>
+                                        <td class="text-right font-mono">@sheet.Items.Sum(i => i.RepOrderRequestedQty).ToString("N0")</td>
+                                        <td class="text-right font-mono text-primary text-sm">@sheet.Items.Sum(i => i.TodayNewlyLoadedQty).ToString("N0")</td>
+                                        <td class="text-right font-mono text-sm">@sheet.Items.Sum(i => i.TotalActiveInventory).ToString("N0")</td>
+                                        <td></td>
+                                        <td class="text-right pr-3 font-mono text-primary text-sm">
+                                            ₦@sheet.Items.Sum(i => i.TodayNewlyLoadedQty * i.UnitSellingPrice).ToString("N0")
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <!-- Sign-off or Status Box -->
+                        @if (sheet.Status == Manufacture.Models.Entities.RouteSheetStatus.Ordered && Model.CanEdit)
+                        {
+                            <div class="card bg-base-200/70 border border-base-300 rounded-2xl p-5 space-y-4">
+                                <div class="font-bold text-xs uppercase tracking-wider opacity-70 flex items-center gap-2">
+                                    <i class="fa-solid fa-stamp text-primary"></i> Dispatch Staff Gate Pass Sign-Off
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div class="space-y-1">
+                                        <label class="text-xs font-semibold">Dispatcher Name:</label>
+                                        <input type="text" name="dispatcherName" value="Kelechi Nnamdi (Dispatch Mgr)" required class="input input-sm input-bordered w-full rounded-xl text-xs font-bold" />
+                                    </div>
+                                    <div class="space-y-1">
+                                        <label class="text-xs font-semibold">Dispatch / Bay Notes:</label>
+                                        <input type="text" name="notes" placeholder="Vehicle condition, seal number, route memo..." class="input input-sm input-bordered w-full rounded-xl text-xs" />
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between pt-2">
+                                    <span class="text-[11px] opacity-70">
+                                        Signing off locks physical quantities and authorizes the security gate to release vehicle <strong>@sheet.VehicleRegNumber</strong>.
+                                    </span>
+                                    <button type="submit" class="btn btn-sm btn-primary rounded-xl font-bold gap-2 shadow-xs text-xs px-6">
+                                        <i class="fa-solid fa-signature"></i> Sign Off &amp; Authorize Gate Exit
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="p-4 rounded-xl bg-base-200/50 border border-base-300 flex items-center justify-between text-xs flex-wrap gap-2">
+                                <div class="flex items-center gap-2">
+                                    <i class="fa-solid fa-circle-check text-success text-base"></i>
+                                    <div>
+                                        <strong>Signed Off By:</strong> @(sheet.SignedOffByDispatcher ?? "Dispatch Bay Supervisor")
+                                        <span class="opacity-60 font-mono ml-1">(@(sheet.SignedOffAt?.ToString("MMM dd, yyyy HH:mm") ?? "—"))</span>
+                                    </div>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(sheet.Notes))
+                                {
+                                    <div class="text-[11px] opacity-70">
+                                        <em>"@sheet.Notes"</em>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </form>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Modal: New Route Sheet -->
+<dialog id="newSheetModal" class="modal">
+    <div class="modal-box rounded-2xl border border-base-300 max-w-lg space-y-4">
+        <form method="dialog">
+            <button class="btn btn-sm btn-circle btn-ghost absolute right-4 top-4">✕</button>
+        </form>
+        <h3 class="font-bold text-base text-base-content flex items-center gap-2">
+            <i class="fa-solid fa-file-circle-plus text-primary"></i> Create Daily Route Sheet
+        </h3>
+        <p class="text-xs opacity-70">
+            Initialize a new route sheet for a sales rep. Unsold stock from their previous route will automatically carry over.
+        </p>
+
+        <form method="post" asp-page-handler="CreateSheet" class="space-y-4">
+            <div class="space-y-1">
+                <label class="text-xs font-bold">Select Sales Rep:</label>
+                <select name="newRepId" class="select select-sm select-bordered w-full rounded-xl text-xs font-semibold" required>
+                    @foreach (var rep in Model.Reps)
+                    {
+                        <option value="@rep.Id">@rep.FullName (@rep.RouteName - @rep.VehicleRegistration)</option>
+                    }
+                </select>
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-xs font-bold">Route Date:</label>
+                <input type="date" name="sheetDate" value="@DateTime.UtcNow.ToString("yyyy-MM-dd")" class="input input-sm input-bordered w-full rounded-xl text-xs font-mono font-bold" required />
+            </div>
+
+            <div class="modal-action border-t border-base-300 pt-3">
+                <button type="button" onclick="document.getElementById('newSheetModal').close()" class="btn btn-sm btn-ghost rounded-xl text-xs">Cancel</button>
+                <button type="submit" class="btn btn-sm btn-primary rounded-xl text-xs font-bold px-5">Generate Sheet</button>
+            </div>
+        </form>
+    </div>
+</dialog>

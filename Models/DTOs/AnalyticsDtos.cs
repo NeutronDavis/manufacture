@@ -562,6 +562,9 @@ namespace Manufacture.Models.DTOs
     public class RepPerformanceChartDto
     {
         public List<RepPerformancePointDto> Rows { get; set; } = new();
+
+        /// <summary>Benchmark cash share percentage currently configured in settings.</summary>
+        public decimal PlannedCashPercent { get; set; } = 32m;
     }
 
     public class LogisticsPointDto

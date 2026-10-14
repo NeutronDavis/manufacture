@@ -1,0 +1,240 @@
+@page
+@model Manufacture.Pages.Sales.Terminals.CreateModel
+@{
+    ViewData["Title"] = "Register New POS Terminal";
+}
+
+<div class="space-y-6 w-full pb-12">
+    <!-- Breadcrumb & Header Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="breadcrumbs text-sm mb-1 text-base-content/70">
+                <ul>
+                    <li><a asp-page="/Sales/Index" class="hover:text-primary">Sales & POS</a></li>
+                    <li><a asp-page="/Sales/Terminals/Index" class="hover:text-primary">POS Terminals</a></li>
+                    <li class="font-semibold text-base-content">Register New Terminal</li>
+                </ul>
+            </div>
+            <h1 class="text-3xl font-extrabold tracking-tight text-base-content flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+                Register New POS Terminal
+            </h1>
+            <p class="text-sm text-base-content/70">
+                Configure a new checkout terminal register, assign an authorized sales operator, and route financial accounts across Cash, Bank, and POS merchant channels.
+            </p>
+        </div>
+        <div>
+            <a asp-page="/Sales/Terminals/Index" class="btn btn-sm btn-outline gap-1.5 font-semibold">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                Back to Terminals
+            </a>
+        </div>
+    </div>
+
+    <!-- 2-Column Form Layout -->
+    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        @Html.AntiForgeryToken()
+
+        <!-- Left Column: Form Fields (8 Cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            
+            <!-- Terminal Specifications Card -->
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl">
+                <div class="card-body p-6 space-y-4">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                            </div>
+                            <span>Terminal Specifications & Operator</span>
+                        </div>
+                        <span class="badge badge-primary badge-sm font-semibold">New Terminal</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="form-control">
+                            <label class="label"><span class="label-text font-semibold text-xs">Terminal Code *</span></label>
+                            <input type="text" asp-for="Terminal.TerminalCode" class="input input-bordered input-sm w-full font-mono font-bold" required placeholder="e.g. POS-04" />
+                            <span class="text-[11px] text-base-content/50 mt-1">Unique machine hardware identifier.</span>
+                        </div>
+
+                        <div class="form-control">
+                            <label class="label"><span class="label-text font-semibold text-xs">Operational Status *</span></label>
+                            <select asp-for="Terminal.IsActive" class="select select-bordered select-sm w-full font-bold">
+                                <option value="true" selected>Active & Ready</option>
+                                <option value="false">Inactive / Offline</option>
+                            </select>
+                            <span class="text-[11px] text-base-content/50 mt-1">Inactive registers cannot perform POS checkouts.</span>
+                        </div>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-semibold text-xs">Terminal Description / Display Name *</span></label>
+                        <input type="text" asp-for="Terminal.TerminalName" class="input input-bordered input-sm w-full font-medium" required placeholder="e.g. Van 3 Mobile Bread Register" />
+                        <span class="text-[11px] text-base-content/50 mt-1">Descriptive title shown on receipts and route sheets.</span>
+                    </div>
+
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-semibold text-xs">Assigned Sales Rep / Cashier</span></label>
+                        <select asp-for="Terminal.AssignedUserId" class="select select-bordered select-sm w-full">
+                            <option value="">-- Unassigned (Shared Register / Floating Till) --</option>
+                            @foreach (var user in Model.EligibleUsers)
+                            {
+                                <option value="@user.Id">@user.Name (@user.Role) - @user.PhoneNumber</option>
+                            }
+                        </select>
+                        <span class="text-[11px] text-base-content/50 mt-1">Owner responsible for daily route float and drawer balancing.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Multi-Account Banking Card -->
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl">
+                <div class="card-body p-6 space-y-4">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-8 h-8 rounded-lg bg-success/10 text-success flex items-center justify-center text-sm font-bold">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </div>
+                            <span>Multi-Channel Banking Ledger Routing</span>
+                        </div>
+                        <span class="badge badge-success badge-sm font-semibold">Tender Routing</span>
+                    </div>
+
+                    <!-- 1. Cash Drawer Account -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold text-xs text-success flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-md bg-success/15 text-success flex items-center justify-center shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                </span>
+                                <span>1. Cash Drawer Ledger Name *</span>
+                            </span>
+                        </label>
+                        <input type="text" asp-for="Terminal.CashAccountName" class="input input-bordered input-sm w-full font-mono font-medium" required placeholder="e.g. Bakery Till #4 (Main Cash Drawer)" />
+                        <span class="text-[11px] text-base-content/50 mt-1">Internal till ledger tracking physical banknotes received.</span>
+                    </div>
+
+                    <!-- 2. Bank Direct Transfer Account -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold text-xs text-info flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-md bg-info/15 text-info flex items-center justify-center shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+                                    </svg>
+                                </span>
+                                <span>2. Bank Direct Transfer Account *</span>
+                            </span>
+                        </label>
+                        <input type="text" asp-for="Terminal.TransferAccountName" class="input input-bordered input-sm w-full font-mono font-medium" required placeholder="e.g. FirstBank PLC - 3021948291 (Bakery Ops)" />
+                        <span class="text-[11px] text-base-content/50 mt-1">Corporate bank account credited when customers pay via bank transfer.</span>
+                    </div>
+
+                    <!-- 3. POS Machine Bank Account -->
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text font-semibold text-xs text-secondary flex items-center gap-2">
+                                <span class="w-6 h-6 rounded-md bg-secondary/15 text-secondary flex items-center justify-center shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                    </svg>
+                                </span>
+                                <span>3. POS Machine Bank / Terminal ID *</span>
+                            </span>
+                        </label>
+                        <input type="text" asp-for="Terminal.PosBankAccountName" class="input input-bordered input-sm w-full font-mono font-medium" required placeholder="e.g. Moniepoint POS #04 - 9028129" />
+                        <span class="text-[11px] text-base-content/50 mt-1">Physical terminal merchant ID or sweep account for card payments.</span>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-3 pt-4 border-t border-base-200">
+                        <a asp-page="/Sales/Terminals/Index" class="btn btn-ghost btn-sm">Cancel</a>
+                        <button type="submit" class="btn btn-primary btn-sm px-6">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                            Register POS Terminal
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Info & Operational Notes (4 Cols) -->
+        <div class="lg:col-span-4 space-y-6">
+            
+            <!-- Information Callout Card -->
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-5 space-y-4">
+                <h3 class="font-bold text-sm text-base-content flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-info" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    Terminal Multi-Account Architecture
+                </h3>
+                <p class="text-xs text-base-content/70 leading-relaxed">
+                    Artisan ERP routes revenue into 3 separate financial ledgers for every single checkout terminal:
+                </p>
+                
+                <div class="space-y-3 text-xs">
+                    <div class="p-3 bg-success/10 border border-success/20 rounded-xl space-y-1">
+                        <strong class="text-success font-bold flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-md bg-success/20 text-success flex items-center justify-center shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                            </span>
+                            <span>Cash Tender</span>
+                        </strong>
+                        <p class="text-base-content/70">
+                            Reconciled daily during the evening physical till count against the sales rep's route sheet.
+                        </p>
+                    </div>
+
+                    <div class="p-3 bg-info/10 border border-info/20 rounded-xl space-y-1">
+                        <strong class="text-info font-bold flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-md bg-info/20 text-info flex items-center justify-center shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+                                </svg>
+                            </span>
+                            <span>Direct Transfer</span>
+                        </strong>
+                        <p class="text-base-content/70">
+                            Verified through bank notifications and matched directly to invoice order numbers.
+                        </p>
+                    </div>
+
+                    <div class="p-3 bg-secondary/10 border border-secondary/20 rounded-xl space-y-1">
+                        <strong class="text-secondary font-bold flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-md bg-secondary/20 text-secondary flex items-center justify-center shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                </svg>
+                            </span>
+                            <span>POS Card Machine</span>
+                        </strong>
+                        <p class="text-base-content/70">
+                            Settled via fintech aggregators (Moniepoint, OPay, PalmPay) with merchant transaction logs.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Navigation Card -->
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-5 space-y-3">
+                <h3 class="font-bold text-sm text-base-content">Quick Actions</h3>
+                <div class="space-y-2">
+                    <a asp-page="/Sales/Terminals/Index" class="btn btn-outline btn-sm w-full justify-start text-xs font-semibold">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
+                        All Registered Terminals
+                    </a>
+                    <a asp-page="/Sales/Orders/Create" class="btn btn-outline btn-sm w-full justify-start text-xs font-semibold">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                        Open POS Checkout
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </form>
+</div>

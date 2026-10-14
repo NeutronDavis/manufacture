@@ -27,6 +27,7 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AddPageRoute("/Logistics/FuelLogs/Create", "Fleet/FuelLogs/New");
     options.Conventions.AddPageRoute("/Logistics/Vehicles/Create", "Fleet/Vehicles/Create");
     options.Conventions.AddPageRoute("/Logistics/Vehicles/Create", "Fleet/Vehicles/New");
+    options.Conventions.AddPageRoute("/Sales/PosAccounts/Index", "Sales/Supermarkets");
 });
 builder.Services.AddHttpContextAccessor();
 
@@ -45,9 +46,10 @@ builder.Services.AddSingleton<MockUserService>();
 builder.Services.AddSingleton<MockEmployeeService>();
 builder.Services.AddSingleton<MockInventoryService>();
 builder.Services.AddSingleton<MockProductionService>();
+builder.Services.AddSingleton<MockLogisticsService>();
+builder.Services.AddSingleton<MockSettingsService>();
 builder.Services.AddSingleton<MockSalesService>();
 builder.Services.AddSingleton<MockPayrollService>();
-builder.Services.AddSingleton<MockLogisticsService>();
 builder.Services.AddSingleton<MockDashboardService>();
 builder.Services.AddSingleton<MockRbacService>();
 

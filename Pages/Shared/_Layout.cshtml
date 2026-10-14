@@ -339,6 +339,18 @@
                                 }
                                 @if (userRole == "SuperAdmin" || userRole == "SalesRep")
                                 {
+                                    <a asp-page="/Sales/Dispatch/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Sales/Dispatch") ? "erp-nav-active" : "")">
+                                        <i class="fa-solid fa-truck-ramp-box text-[11px] w-3.5 text-center"></i>
+                                        <span>Route Dispatch Bay</span>
+                                    </a>
+                                    <a asp-page="/Sales/Reconciliation/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Sales/Reconciliation") ? "erp-nav-active" : "")">
+                                        <i class="fa-solid fa-scale-balanced text-[11px] w-3.5 text-center"></i>
+                                        <span>Route Reconciliation</span>
+                                    </a>
+                                    <a asp-page="/Sales/PosAccounts/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Sales/PosAccounts") ? "erp-nav-active" : "")">
+                                        <i class="fa-solid fa-shop text-[11px] w-3.5 text-center"></i>
+                                        <span>Supermarket Accounts</span>
+                                    </a>
                                     <a asp-page="/Sales/Terminals/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Sales/Terminals") ? "erp-nav-active" : "")">
                                         <i class="fa-solid fa-desktop text-[11px] w-3.5 text-center"></i>
                                         <span>POS Terminals</span>
@@ -481,6 +493,10 @@
                                 <i class="fa-solid fa-chevron-right erp-nav-arrow"></i>
                             </summary>
                             <div class="erp-nav-sub-menu">
+                                <a asp-page="/Settings/Treasury" class="erp-nav-sub-item @(currentPath.StartsWith("/Settings/Treasury") ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-scale-balanced text-[11px] w-3.5 text-center"></i>
+                                    <span>Treasury &amp; Policy</span>
+                                </a>
                                 <a asp-page="/Settings/Theme" class="erp-nav-sub-item @(currentPath == "/Settings/Theme" ? "erp-nav-active" : "")">
                                     <i class="fa-solid fa-palette text-[11px] w-3.5 text-center"></i>
                                     <span>Theme & Palettes</span>

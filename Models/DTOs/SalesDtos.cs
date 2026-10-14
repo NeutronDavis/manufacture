@@ -55,4 +55,42 @@ namespace Manufacture.Models.DTOs
         public string PosBankAccountName { get; set; } = "Moniepoint POS - 9028129";
         public bool IsActive { get; set; } = true;
     }
+
+    public class SignOffLoadingInputDto
+    {
+        public int RouteSheetId { get; set; }
+        public Dictionary<int, int> LoadedQuantities { get; set; } = new();
+        public string DispatcherName { get; set; } = "Loading Bay Supervisor";
+        public string Notes { get; set; } = string.Empty;
+    }
+
+    public class ReconciliationInputDto
+    {
+        public int RouteSheetId { get; set; }
+        public Dictionary<int, int> SoldQuantities { get; set; } = new();
+        public Dictionary<int, int> ReturnedQuantities { get; set; } = new();
+        public Dictionary<int, int> DamagedQuantities { get; set; } = new();
+
+        public decimal CashCollected { get; set; }
+        public decimal BankTransferCollected { get; set; }
+        public decimal PosTerminalCollected { get; set; }
+
+        public string CashierName { get; set; } = "Main Cashier";
+        public string Notes { get; set; } = string.Empty;
+    }
+
+    public class SetCustomPriceInputDto
+    {
+        public int AccountId { get; set; }
+        public int ProductId { get; set; }
+        public decimal CustomPrice { get; set; }
+    }
+
+    public class SupplySupermarketInputDto
+    {
+        public int AccountId { get; set; }
+        public int RepId { get; set; }
+        public List<OrderItemDto> Items { get; set; } = new();
+        public string Notes { get; set; } = string.Empty;
+    }
 }

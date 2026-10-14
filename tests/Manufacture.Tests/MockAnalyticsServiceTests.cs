@@ -729,6 +729,47 @@ namespace Manufacture.Tests
         // Helpers
         // =============================================================
 
+        [Fact]
+        public void TreasuryPolicySetting_DynamicallyUpdatesCashVarianceCalculation()
+        {
+            var settings = new MockSettingsService();
+            var analytics = new MockAnalyticsService(
+                new MockProductionService(),
+                _users,
+                _logistics,
+                _sales,
+                settings);
+
+            var query = new ReportsQueryDto
+            {
+                Timeframe = ReportTimeframe.Monthly,
+                AnchorDate = Anchor,
+                Module = AnalyticsModule.Financial,
+                GroupBy = ReportGroupBy.SalesRep,
+                Limit = 100
+            };
+
+            // Initial query with default 32% benchmark
+            var resultDefault = analytics.QueryReports(query);
+            Assert.Equal(32m, resultDefault.Charts.RepPerformance.PlannedCashPercent);
+            var repDefault = resultDefault.Charts.RepPerformance.Rows.First();
+
+            // Update policy to 50% cash benchmark
+            settings.UpdateTreasuryPolicy(50m, 6m, "Updated test policy", "TestAdmin");
+            var resultUpdated = analytics.QueryReports(query);
+            Assert.Equal(50m, resultUpdated.Charts.RepPerformance.PlannedCashPercent);
+            var repUpdated = resultUpdated.Charts.RepPerformance.Rows.First(r => r.RepId == repDefault.RepId);
+
+            // With higher expected cash share (50% vs 32%), planned cash target is higher,
+            // so actual cash - planned target yields a smaller (or more negative) variance.
+            Assert.True(repUpdated.VarianceAmount < repDefault.VarianceAmount);
+
+            // Reset back to defaults
+            settings.ResetTreasuryPolicyToDefaults("TestAdmin");
+            var resultReset = analytics.QueryReports(query);
+            Assert.Equal(32m, resultReset.Charts.RepPerformance.PlannedCashPercent);
+        }
+
         private ReportResultDto Query(DateTime anchor, ReportTimeframe timeframe, ReportGroupBy groupBy) =>
             _analytics.QueryReports(new ReportsQueryDto
             {

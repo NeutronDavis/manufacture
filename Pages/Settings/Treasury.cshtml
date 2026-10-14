@@ -1,0 +1,404 @@
+@page
+@model Manufacture.Pages.Settings.TreasuryModel
+@{
+    ViewData["Title"] = "Treasury Policy & Sales Rep Cash Benchmark";
+}
+
+<div class="space-y-6 w-full pb-12">
+    <!-- Header & Breadcrumbs -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Home</a>
+                <span>&gt;</span>
+                <a asp-page="/Settings/Index" class="hover:underline">Settings</a>
+                <span>&gt;</span>
+                <span>Treasury Policy</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2.5">
+                <i class="fa-solid fa-scale-balanced text-primary"></i> Treasury Policy &amp; Rep Cash Benchmark
+            </h1>
+            <p class="text-xs opacity-70 mt-1">
+                Configure the corporate tender ratio policy for field sales reps. This benchmark dictates the expected physical cash versus digital tender (transfer &amp; POS) threshold and drives all cash variance calculations across reconciliation reports.
+            </p>
+        </div>
+        <div class="flex items-center gap-2 self-start sm:self-auto">
+            <a asp-page="/Reports/Index" asp-route-view="charts" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-bold">
+                <i class="fa-solid fa-chart-column text-xs"></i> View Reps in Reports
+            </a>
+            <a asp-page="/Settings/Index" class="btn btn-sm btn-ghost rounded-xl text-xs gap-1.5 opacity-70">
+                <i class="fa-solid fa-arrow-left text-xs"></i> All Settings
+            </a>
+        </div>
+    </div>
+
+    <!-- Alert Notifications -->
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success shadow-xs rounded-2xl text-xs py-3.5">
+            <i class="fa-solid fa-circle-check text-base"></i>
+            <div>
+                <div class="font-bold">Policy Updated Successfully</div>
+                <div>@TempData["SuccessMessage"]</div>
+            </div>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3.5">
+            <i class="fa-solid fa-circle-exclamation text-base"></i>
+            <div>
+                <div class="font-bold">Action Failed</div>
+                <div>@TempData["ErrorMessage"]</div>
+            </div>
+        </div>
+    }
+
+    <!-- Top KPI Stat Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- 1. Planned Cash Quota -->
+        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider opacity-60">Planned Cash Quota</span>
+                <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-money-bill-wave"></i>
+                </div>
+            </div>
+            <div class="text-3xl font-black font-mono text-base-content mt-2">
+                @Model.Policy.PlannedCashPercent.ToString("0.#")<span class="text-lg font-bold opacity-60">%</span>
+            </div>
+            <div class="text-[11px] opacity-70 mt-1 flex items-center gap-1.5">
+                <span class="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
+                Physical banknote target
+            </div>
+        </div>
+
+        <!-- 2. Planned Digital Share -->
+        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider opacity-60">Digital Channels Target</span>
+                <div class="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-credit-card"></i>
+                </div>
+            </div>
+            <div class="text-3xl font-black font-mono text-primary mt-2">
+                @Model.Policy.PlannedDigitalPercent.ToString("0.#")<span class="text-lg font-bold opacity-60">%</span>
+            </div>
+            <div class="text-[11px] opacity-70 mt-1 flex items-center gap-1.5">
+                <span class="inline-block w-2 h-2 rounded-full bg-primary"></span>
+                Bank Transfer &amp; POS Bank
+            </div>
+        </div>
+
+        <!-- 3. Alert Tolerance -->
+        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider opacity-60">Float Alert Tolerance</span>
+                <div class="w-8 h-8 rounded-xl bg-warning/10 text-warning flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+            </div>
+            <div class="text-3xl font-black font-mono text-base-content mt-2">
+                +@Model.Policy.AlertTolerancePercent.ToString("0.#")<span class="text-lg font-bold opacity-60">%</span>
+            </div>
+            <div class="text-[11px] opacity-70 mt-1">
+                Flags "Cash float above plan" if exceeded
+            </div>
+        </div>
+
+        <!-- 4. Last Audit Status -->
+        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5">
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider opacity-60">Policy Audit</span>
+                <div class="w-8 h-8 rounded-xl bg-success/10 text-success flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-user-shield"></i>
+                </div>
+            </div>
+            <div class="text-sm font-bold text-base-content truncate mt-2" title="@Model.Policy.UpdatedBy">
+                @Model.Policy.UpdatedBy
+            </div>
+            <div class="text-[10px] font-mono opacity-60 mt-1">
+                @Model.Policy.LastUpdatedUtc.ToString("MMM dd, yyyy HH:mm") UTC
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Configuration Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left: Form Controls (7 cols) -->
+        <div class="lg:col-span-7 card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-6">
+            <div class="border-b border-base-300 pb-4 flex items-center justify-between">
+                <div>
+                    <h2 class="font-bold text-base text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-primary"></i> Benchmark Configuration Form
+                    </h2>
+                    <p class="text-[11px] opacity-60 mt-0.5">
+                        Adjust policy parameters. Changes immediately update calculations for all active sales reps.
+                    </p>
+                </div>
+                @if (!Model.CanEdit)
+                {
+                    <span class="badge badge-warning badge-sm font-bold text-[10px]">View Only Mode</span>
+                }
+            </div>
+
+            <form method="post" asp-page-handler="Save" id="treasuryForm" class="space-y-6">
+                
+                <!-- 1. Planned Cash Quota Slider & Number -->
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label for="cashPercentInput" class="text-xs font-bold text-base-content flex items-center gap-1.5">
+                            <i class="fa-solid fa-coins text-amber-500"></i> Benchmark Cash Share (%)
+                        </label>
+                        <div class="flex items-center gap-1">
+                            <input type="number" 
+                                   id="cashPercentInput" 
+                                   name="PlannedCashPercent" 
+                                   value="@Model.PlannedCashPercent" 
+                                   min="0" 
+                                   max="100" 
+                                   step="0.5" 
+                                   @(Model.CanEdit ? "" : "disabled")
+                                   class="input input-sm input-bordered font-mono font-bold text-right w-24 rounded-xl text-sm" 
+                                   oninput="syncSlider(this.value)" />
+                            <span class="text-xs font-bold opacity-60">%</span>
+                        </div>
+                    </div>
+
+                    <!-- Range Slider -->
+                    <input type="range" 
+                           id="cashPercentSlider" 
+                           min="0" 
+                           max="100" 
+                           step="0.5" 
+                           value="@Model.PlannedCashPercent" 
+                           @(Model.CanEdit ? "" : "disabled")
+                           class="range range-primary range-sm w-full" 
+                           oninput="syncNumber(this.value)" />
+                    
+                    <div class="flex justify-between text-[10px] font-mono opacity-50 px-1">
+                        <span>0% (Full Cashless)</span>
+                        <span>25%</span>
+                        <span>50%</span>
+                        <span>75%</span>
+                        <span>100% (All Cash)</span>
+                    </div>
+
+                    <!-- Quick Preset Buttons -->
+                    @if (Model.CanEdit)
+                    {
+                        <div class="pt-2">
+                            <div class="text-[10px] uppercase font-bold tracking-wider opacity-60 mb-1.5">Quick Presets:</div>
+                            <div class="flex flex-wrap gap-1.5">
+                                <button type="button" onclick="applyPreset(15)" class="btn btn-xs btn-outline border-base-300 rounded-lg text-[10px] font-semibold hover:btn-primary">
+                                    15% Strict Cashless
+                                </button>
+                                <button type="button" onclick="applyPreset(25)" class="btn btn-xs btn-outline border-base-300 rounded-lg text-[10px] font-semibold hover:btn-primary">
+                                    25% Modern Trade
+                                </button>
+                                <button type="button" onclick="applyPreset(32)" class="btn btn-xs btn-outline border-base-300 rounded-lg text-[10px] font-semibold hover:btn-primary">
+                                    32% Standard Retail (Default)
+                                </button>
+                                <button type="button" onclick="applyPreset(45)" class="btn btn-xs btn-outline border-base-300 rounded-lg text-[10px] font-semibold hover:btn-primary">
+                                    45% High-Cash Route
+                                </button>
+                                <button type="button" onclick="applyPreset(60)" class="btn btn-xs btn-outline border-base-300 rounded-lg text-[10px] font-semibold hover:btn-primary">
+                                    60% Informal Market
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- 2. Variance Alert Tolerance -->
+                <div class="space-y-2 border-t border-base-300 pt-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label for="toleranceInput" class="text-xs font-bold text-base-content flex items-center gap-1.5">
+                                <i class="fa-solid fa-bell text-warning"></i> Cash Variance Alert Tolerance (%)
+                            </label>
+                            <p class="text-[10px] opacity-60 mt-0.5">
+                                If a sales rep's positive cash variance exceeds this percentage of total expected revenue, an operational warning flag is displayed on reconciliation rows.
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <input type="number" 
+                                   id="toleranceInput" 
+                                   name="AlertTolerancePercent" 
+                                   value="@Model.AlertTolerancePercent" 
+                                   min="0" 
+                                   max="50" 
+                                   step="0.5" 
+                                   @(Model.CanEdit ? "" : "disabled")
+                                   class="input input-sm input-bordered font-mono font-bold text-right w-24 rounded-xl text-sm" />
+                            <span class="text-xs font-bold opacity-60">%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Policy Memo / Directive -->
+                <div class="space-y-2 border-t border-base-300 pt-5">
+                    <label for="memoInput" class="text-xs font-bold text-base-content flex items-center gap-1.5">
+                        <i class="fa-solid fa-file-signature text-primary"></i> Policy Memo &amp; Route Directive
+                    </label>
+                    <p class="text-[10px] opacity-60">
+                        Operational context and rationale for route supervisors, auditors, and sales team leaders.
+                    </p>
+                    <textarea id="memoInput" 
+                              name="PolicyMemo" 
+                              rows="3" 
+                              @(Model.CanEdit ? "" : "disabled")
+                              class="textarea textarea-bordered w-full text-xs rounded-xl focus:outline-none" 
+                              placeholder="Enter operational memo or directive for sales reps...">@Model.PolicyMemo</textarea>
+                </div>
+
+                <!-- Form Action Buttons -->
+                @if (Model.CanEdit)
+                {
+                    <div class="border-t border-base-300 pt-5 flex items-center justify-between gap-3 flex-wrap">
+                        <div class="flex items-center gap-2">
+                            <button type="submit" class="btn btn-sm btn-primary rounded-xl px-5 text-xs font-bold gap-2 shadow-xs">
+                                <i class="fa-solid fa-floppy-disk text-xs"></i> Save Benchmark Policy
+                            </button>
+                            <a asp-page="/Settings/Treasury" class="btn btn-sm btn-ghost rounded-xl text-xs">
+                                Cancel
+                            </a>
+                        </div>
+                        <button type="submit" 
+                                asp-page-handler="Reset" 
+                                onclick="return confirm('Restore corporate benchmark to factory default (32.0% Cash / 68.0% Digital)?');" 
+                                class="btn btn-sm btn-outline border-base-300 text-error hover:bg-error hover:text-error-content rounded-xl text-xs gap-1.5">
+                            <i class="fa-solid fa-rotate-left text-xs"></i> Reset to Default (32%)
+                        </button>
+                    </div>
+                }
+            </form>
+        </div>
+
+        <!-- Right: Real-Time Preview & System Architecture Guide (5 cols) -->
+        <div class="lg:col-span-5 space-y-6">
+            
+            <!-- Live Simulation Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-bold text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles text-primary"></i> Live Policy Visualizer
+                    </h3>
+                    <span class="badge badge-neutral badge-xs font-mono font-bold">₦1,000,000 Order</span>
+                </div>
+                <p class="text-[11px] opacity-70">
+                    See how this benchmark splits an invoiced sales delivery of <strong>₦1,000,000</strong> across tender channels:
+                </p>
+
+                <!-- Stacked Progress Bar -->
+                <div class="space-y-1.5">
+                    <div class="h-6 w-full rounded-xl overflow-hidden flex bg-base-200 border border-base-300">
+                        <div id="previewCashBar" class="bg-amber-500 text-amber-950 font-bold text-[10px] flex items-center justify-center transition-all duration-200" style="width: @Model.PlannedCashPercent%;">
+                            <span id="previewCashBarLabel">@Model.PlannedCashPercent.ToString("0.#")%</span>
+                        </div>
+                        <div id="previewDigitalBar" class="bg-primary text-primary-content font-bold text-[10px] flex items-center justify-center transition-all duration-200" style="width: @Model.Policy.PlannedDigitalPercent%;">
+                            <span id="previewDigitalBarLabel">@Model.Policy.PlannedDigitalPercent.ToString("0.#")%</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between text-[10px] font-semibold">
+                        <span class="text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                            <i class="fa-solid fa-circle text-[7px]"></i> Banknote Cash: <strong id="previewCashMoney">₦@((1000000m * Model.PlannedCashPercent / 100m).ToString("N0"))</strong>
+                        </span>
+                        <span class="text-primary flex items-center gap-1">
+                            <i class="fa-solid fa-circle text-[7px]"></i> Digital / POS: <strong id="previewDigitalMoney">₦@((1000000m * (100m - Model.PlannedCashPercent) / 100m).ToString("N0"))</strong>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Live Rule Callout -->
+                <div class="rounded-xl bg-base-200/70 p-3.5 space-y-2 text-xs border border-base-300">
+                    <div class="font-bold flex items-center gap-1.5 text-base-content text-[11px]">
+                        <i class="fa-solid fa-calculator text-primary"></i> Live Variance Formula:
+                    </div>
+                    <div class="font-mono text-[11px] bg-base-100 p-2 rounded-lg border border-base-300 text-center font-bold">
+                        Variance = Actual Cash - (Expected × <span id="formulaPct">@((Model.PlannedCashPercent / 100m).ToString("0.00"))</span>)
+                    </div>
+                    <div class="text-[10px] opacity-70 leading-relaxed">
+                        If a rep collects more cash than this target, <strong>Cash Variance</strong> is positive (rendered in amber warning on reports). If they collect less cash, variance is negative (green).
+                    </div>
+                </div>
+            </div>
+
+            <!-- Operational Context Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                <h3 class="font-bold text-sm text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-circle-question text-info"></i> How the System Uses This Policy
+                </h3>
+                
+                <ul class="space-y-3 text-xs opacity-80">
+                    <li class="flex items-start gap-2.5">
+                        <div class="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold">1</div>
+                        <div>
+                            <strong>Sales Rep Performance Ranking:</strong> In <em>Reports &gt; Charts &gt; Rep Performance</em>, each rep's cash holding is matched against this percentage.
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-2.5">
+                        <div class="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold">2</div>
+                        <div>
+                            <strong>Cash Float Flagging:</strong> If a sales rep's cash variance exceeds the <strong>@Model.Policy.AlertTolerancePercent.ToString("0.#")%</strong> tolerance, their account is flagged with <em>"Cash float above plan"</em>.
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-2.5">
+                        <div class="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-bold">3</div>
+                        <div>
+                            <strong>Instant Live Reflection:</strong> Updating this benchmark immediately updates the calculations across the Executive Dashboard, Chart Tooltips, and PDF/CSV Export Catalog.
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function formatMoney(amount) {
+        return '₦' + Math.round(amount).toLocaleString('en-US');
+    }
+
+    function updatePreview(pct) {
+        var p = parseFloat(pct);
+        if (isNaN(p)) p = 0;
+        p = Math.max(0, Math.min(100, p));
+
+        var dig = 100 - p;
+        var total = 1000000;
+        var cashAmt = total * (p / 100);
+        var digAmt = total * (dig / 100);
+
+        document.getElementById('previewCashBar').style.width = p + '%';
+        document.getElementById('previewCashBarLabel').textContent = p.toFixed(1) + '%';
+        document.getElementById('previewDigitalBar').style.width = dig + '%';
+        document.getElementById('previewDigitalBarLabel').textContent = dig.toFixed(1) + '%';
+
+        document.getElementById('previewCashMoney').textContent = formatMoney(cashAmt);
+        document.getElementById('previewDigitalMoney').textContent = formatMoney(digAmt);
+
+        document.getElementById('formulaPct').textContent = (p / 100).toFixed(2);
+    }
+
+    function syncSlider(val) {
+        document.getElementById('cashPercentSlider').value = val;
+        updatePreview(val);
+    }
+
+    function syncNumber(val) {
+        document.getElementById('cashPercentInput').value = val;
+        updatePreview(val);
+    }
+
+    function applyPreset(pct) {
+        document.getElementById('cashPercentInput').value = pct;
+        document.getElementById('cashPercentSlider').value = pct;
+        updatePreview(pct);
+    }
+</script>
+}

@@ -294,11 +294,12 @@
                             afterBody: function (items) {
                                 var row = rows[items[0].dataIndex];
                                 if (!row) return '';
+                                var planPct = (payload && payload.plannedCashPercent != null) ? payload.plannedCashPercent : 32;
                                 return [
                                     'Route: ' + row.route,
                                     'Expected: ' + money(row.expectedRevenue),
                                     'Outstanding: ' + money(row.outstandingBalance),
-                                    'Variance is cash held versus the 32% plan.'
+                                    'Variance is cash held versus the ' + planPct + '% plan.'
                                 ];
                             }
                         }

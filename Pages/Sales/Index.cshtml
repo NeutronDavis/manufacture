@@ -65,6 +65,87 @@
         </div>
     </div>
 
+    <!-- Route Sales, Dispatch & Credit Reconciliation Modules -->
+    <div>
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-black text-base-content flex items-center gap-2">
+                <i class="fa-solid fa-route text-primary"></i> Route Sales & Daily Credit Management
+            </h2>
+            <span class="text-xs text-base-content/60">Independent Dispatch &bull; Aggregated Drawer &bull; Agreed Supermarket Pricing</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- 1. Route Dispatch Bay -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs hover:shadow-md hover:border-primary transition-all duration-200 rounded-2xl p-6 flex flex-col justify-between">
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-truck-ramp-box"></i>
+                        </div>
+                        <span class="badge badge-primary badge-sm font-semibold">Step 1: Dispatch</span>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base text-base-content">Route Loading & Dispatch</h3>
+                        <p class="text-xs text-base-content/70 mt-1 leading-relaxed">
+                            Separation of order request vs. physical loading verification. Warehouse bay staff sign-off and printable vehicle gate-passes.
+                        </p>
+                    </div>
+                </div>
+                <div class="pt-4 border-t border-base-200 mt-4">
+                    <a asp-page="/Sales/Dispatch/Index" class="btn btn-primary btn-sm w-full gap-2 font-bold">
+                        <i class="fa-solid fa-clipboard-check text-xs"></i> Open Dispatch Bay
+                    </a>
+                </div>
+            </div>
+
+            <!-- 2. Daily Route Reconciliation -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs hover:shadow-md hover:border-warning transition-all duration-200 rounded-2xl p-6 flex flex-col justify-between">
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="w-10 h-10 rounded-xl bg-warning/10 text-warning flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-scale-balanced"></i>
+                        </div>
+                        <span class="badge badge-warning badge-sm font-semibold">Step 2: Balance</span>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base text-base-content">Daily Credit & Stock Reconcile</h3>
+                        <p class="text-xs text-base-content/70 mt-1 leading-relaxed">
+                            Sold + Returned + Damaged == Active inventory validation. Aggregated lump-sum payment drawer with treasury policy variance audit.
+                        </p>
+                    </div>
+                </div>
+                <div class="pt-4 border-t border-base-200 mt-4">
+                    <a asp-page="/Sales/Reconciliation/Index" class="btn btn-warning btn-sm w-full gap-2 font-bold text-warning-content">
+                        <i class="fa-solid fa-calculator text-xs"></i> Reconcile Route Sheets
+                    </a>
+                </div>
+            </div>
+
+            <!-- 3. Supermarket Accounts & Pricing -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs hover:shadow-md hover:border-info transition-all duration-200 rounded-2xl p-6 flex flex-col justify-between">
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <div class="w-10 h-10 rounded-xl bg-info/10 text-info flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-shop"></i>
+                        </div>
+                        <span class="badge badge-info badge-sm font-semibold">B2B Contracts</span>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base text-base-content">Supermarket POS Accounts</h3>
+                        <p class="text-xs text-base-content/70 mt-1 leading-relaxed">
+                            Agreed custom unit prices per SKU, institutional credit limits, running account balances, and direct store fulfillment charging.
+                        </p>
+                    </div>
+                </div>
+                <div class="pt-4 border-t border-base-200 mt-4">
+                    <a asp-page="/Sales/PosAccounts/Index" class="btn btn-outline btn-info btn-sm w-full gap-2 font-bold">
+                        <i class="fa-solid fa-tags text-xs"></i> Manage Supermarkets
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Multi-Account POS Terminals Overview -->
     <div>
         <div class="flex items-center justify-between mb-3">

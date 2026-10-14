@@ -1,0 +1,189 @@
+@page
+@model Manufacture.Pages.Settings.IndexModel
+@{
+    ViewData["Title"] = "System Settings & Configuration";
+}
+
+<div class="space-y-6 w-full pb-12">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Home</a>
+                <span>&gt;</span>
+                <span>Settings Hub</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2.5">
+                <i class="fa-solid fa-gear text-primary"></i> System Settings &amp; Administration
+            </h1>
+            <p class="text-xs opacity-70 mt-1">
+                Configure global enterprise parameters, corporate treasury benchmarks for sales reps, role permissions, and user credentials.
+            </p>
+        </div>
+        <div>
+            <a asp-page="/Settings/Treasury" class="btn btn-sm btn-primary rounded-xl text-xs gap-2 font-bold shadow-xs">
+                <i class="fa-solid fa-scale-balanced text-xs"></i> Configure Treasury Benchmark
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Cards Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- 1. Treasury & Sales Rep Cash Policy Card (Featured) -->
+        <div class="card bg-base-100 border-2 border-primary/40 hover:border-primary transition-all shadow-xs rounded-2xl overflow-hidden">
+            <div class="p-6 space-y-4">
+                <div class="flex items-start justify-between">
+                    <div class="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-xl font-black shadow-xs">
+                        <i class="fa-solid fa-scale-balanced"></i>
+                    </div>
+                    <span class="badge badge-primary badge-sm font-bold uppercase text-[9px] px-2.5 py-1">
+                        Active: @Model.TreasuryPolicy.PlannedCashPercent.ToString("0.#")% Cash / @Model.TreasuryPolicy.PlannedDigitalPercent.ToString("0.#")% Digital
+                    </span>
+                </div>
+                <div>
+                    <h2 class="text-lg font-black text-base-content flex items-center gap-2">
+                        Treasury Policy &amp; Rep Benchmark
+                    </h2>
+                    <p class="text-xs opacity-70 mt-1 leading-relaxed">
+                        Set the physical cash collection quota versus digital payment targets (bank transfer &amp; POS) for sales reps, and adjust variance float tolerances.
+                    </p>
+                </div>
+                
+                <div class="p-3 bg-base-200/60 rounded-xl space-y-1.5 border border-base-300 text-xs">
+                    <div class="flex justify-between">
+                        <span class="opacity-70">Current Cash Benchmark:</span>
+                        <span class="font-mono font-bold text-amber-500">@Model.TreasuryPolicy.PlannedCashPercent.ToString("0.#")%</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="opacity-70">Digital Tender Share:</span>
+                        <span class="font-mono font-bold text-primary">@Model.TreasuryPolicy.PlannedDigitalPercent.ToString("0.#")%</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="opacity-70">Float Alert Tolerance:</span>
+                        <span class="font-mono font-bold text-warning">+@Model.TreasuryPolicy.AlertTolerancePercent.ToString("0.#")%</span>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <a asp-page="/Settings/Treasury" class="btn btn-sm btn-primary w-full rounded-xl text-xs font-bold gap-2 shadow-xs">
+                        <i class="fa-solid fa-sliders text-xs"></i> Adjust Treasury Policy
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. User Accounts & POS PINs Card -->
+        <div class="card bg-base-100 border border-base-300 hover:border-base-content/30 transition-all shadow-xs rounded-2xl overflow-hidden">
+            <div class="p-6 space-y-4">
+                <div class="flex items-start justify-between">
+                    <div class="w-12 h-12 rounded-2xl bg-secondary/10 text-secondary flex items-center justify-center text-xl font-black shadow-xs">
+                        <i class="fa-solid fa-users-gear"></i>
+                    </div>
+                    <span class="badge badge-neutral badge-sm font-bold text-[9px] uppercase px-2.5 py-1">
+                        Access Control
+                    </span>
+                </div>
+                <div>
+                    <h2 class="text-lg font-black text-base-content flex items-center gap-2">
+                        User Accounts &amp; PINs
+                    </h2>
+                    <p class="text-xs opacity-70 mt-1 leading-relaxed">
+                        Manage system users, employee credentials, fast numeric passcodes for POS reps, and account activation statuses.
+                    </p>
+                </div>
+
+                <div class="p-3 bg-base-200/60 rounded-xl space-y-1.5 border border-base-300 text-xs">
+                    <div class="flex justify-between">
+                        <span class="opacity-70">Authentication Mode:</span>
+                        <span class="font-bold">Password &amp; 6-Digit PIN</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="opacity-70">Data Retention:</span>
+                        <span class="font-bold text-success">Soft-Delete Preserved</span>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex gap-2">
+                    <a asp-page="/UserManagement/Index" class="btn btn-sm btn-outline border-base-300 flex-1 rounded-xl text-xs font-bold gap-1.5">
+                        <i class="fa-solid fa-list-check text-xs"></i> View Users
+                    </a>
+                    <a asp-page="/UserManagement/Create" class="btn btn-sm btn-neutral rounded-xl text-xs font-bold gap-1.5">
+                        <i class="fa-solid fa-user-plus text-xs"></i> New User
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. RBAC Permissions Matrix Card -->
+        <div class="card bg-base-100 border border-base-300 hover:border-base-content/30 transition-all shadow-xs rounded-2xl overflow-hidden">
+            <div class="p-6 space-y-4">
+                <div class="flex items-start justify-between">
+                    <div class="w-12 h-12 rounded-2xl bg-accent/10 text-accent flex items-center justify-center text-xl font-black shadow-xs">
+                        <i class="fa-solid fa-shield-halved"></i>
+                    </div>
+                    <span class="badge badge-neutral badge-sm font-bold text-[9px] uppercase px-2.5 py-1">
+                        Security
+                    </span>
+                </div>
+                <div>
+                    <h2 class="text-lg font-black text-base-content flex items-center gap-2">
+                        Role-Based Access Matrix
+                    </h2>
+                    <p class="text-xs opacity-70 mt-1 leading-relaxed">
+                        Configure fine-grained module privileges (View Only, Edit, Full Access) across all 6 corporate personas.
+                    </p>
+                </div>
+
+                <div class="p-3 bg-base-200/60 rounded-xl space-y-1.5 border border-base-300 text-xs">
+                    <div class="flex justify-between">
+                        <span class="opacity-70">Protected Modules:</span>
+                        <span class="font-bold">Production, Sales, Fleet, Reports, Settings</span>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <a asp-page="/UserManagement/Permissions" class="btn btn-sm btn-outline border-base-300 w-full rounded-xl text-xs font-bold gap-2">
+                        <i class="fa-solid fa-table-cells text-xs"></i> Manage RBAC Matrix
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Theme & Color Palettes Card -->
+        <div class="card bg-base-100 border border-base-300 hover:border-base-content/30 transition-all shadow-xs rounded-2xl overflow-hidden">
+            <div class="p-6 space-y-4">
+                <div class="flex items-start justify-between">
+                    <div class="w-12 h-12 rounded-2xl bg-info/10 text-info flex items-center justify-center text-xl font-black shadow-xs">
+                        <i class="fa-solid fa-palette"></i>
+                    </div>
+                    <span class="badge badge-neutral badge-sm font-bold text-[9px] uppercase px-2.5 py-1">
+                        Visuals
+                    </span>
+                </div>
+                <div>
+                    <h2 class="text-lg font-black text-base-content flex items-center gap-2">
+                        Theme &amp; Color Palettes
+                    </h2>
+                    <p class="text-xs opacity-70 mt-1 leading-relaxed">
+                        Switch visual appearance, daisyUI themes, and custom brand themes for the entire ERP suite.
+                    </p>
+                </div>
+
+                <div class="p-3 bg-base-200/60 rounded-xl space-y-1.5 border border-base-300 text-xs">
+                    <div class="flex justify-between">
+                        <span class="opacity-70">Default Theme:</span>
+                        <span class="font-bold">BakeryFlow Artisan</span>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <a asp-page="/Settings/Theme" class="btn btn-sm btn-outline border-base-300 w-full rounded-xl text-xs font-bold gap-2">
+                        <i class="fa-solid fa-palette text-xs"></i> Select Themes
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

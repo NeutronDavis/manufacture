@@ -21,8 +21,11 @@ namespace Manufacture.Services
     /// </summary>
     public class MockAnalyticsService
     {
+        private readonly MockSettingsService _settingsService;
+
         /// <summary>Planned cash share of revenue; the benchmark for cash variance.</summary>
-        private const decimal PlannedCashShare = 0.32m;
+        public decimal PlannedCashShare => _settingsService.PlannedCashShare;
+        public decimal PlannedCashPercent => _settingsService.PlannedCashPercent;
 
         private const string ScopeAll = "all";
 
@@ -47,12 +50,14 @@ namespace Manufacture.Services
             MockProductionService productionService,
             MockUserService userService,
             MockLogisticsService logisticsService,
-            MockSalesService salesService)
+            MockSalesService salesService,
+            MockSettingsService? settingsService = null)
         {
             _productionService = productionService;
             _userService = userService;
             _logisticsService = logisticsService;
             _salesService = salesService;
+            _settingsService = settingsService ?? new MockSettingsService();
 
             foreach (var vehicle in _logisticsService.GetAllVehicles())
             {
@@ -831,7 +836,7 @@ namespace Manufacture.Services
                         ? 0m
                         : Math.Round(row.CashVarianceAmount / totals.ExpectedRevenue * 100m, 1);
 
-                    return row.FlagCollection();
+                    return row.FlagCollection(_settingsService.AlertTolerancePercent);
                 })
                 .ToList();
 
@@ -1068,6 +1073,7 @@ namespace Manufacture.Services
 
             return new RepPerformanceChartDto
             {
+                PlannedCashPercent = PlannedCashPercent,
                 Rows = cells
                     .GroupBy(c => c.RepId)
                     .Select(g =>
@@ -1598,7 +1604,7 @@ namespace Manufacture.Services
         }
 
         /// <summary>Adds the settlement red flag used by the financial module.</summary>
-        public static ReportRowDto FlagCollection(this ReportRowDto row)
+        public static ReportRowDto FlagCollection(this ReportRowDto row, decimal tolerancePercent = 6m)
         {
             if (row.ExpectedRevenue > 0 && row.CollectionRatePercent < 92m)
             {
@@ -1608,7 +1614,7 @@ namespace Manufacture.Services
                     : row.AlertMessage + " / unsettled account";
             }
 
-            if (row.CashVarianceAmount > 0 && row.ExpectedRevenue > 0 && row.CashVariancePercent > 6m)
+            if (row.CashVarianceAmount > 0 && row.ExpectedRevenue > 0 && row.CashVariancePercent > tolerancePercent)
             {
                 row.AlertLevel = ReportAlertLevel.Warning;
                 row.AlertMessage = string.IsNullOrEmpty(row.AlertMessage)
