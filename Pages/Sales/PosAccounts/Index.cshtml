@@ -36,10 +36,10 @@
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                 Cash & Stock Reconciliation
             </a>
-            <button onclick="document.getElementById('modal_new_account').showModal()" class="btn btn-primary btn-sm">
+            <a asp-page="./Create" class="btn btn-primary btn-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                 New Supermarket Account
-            </button>
+            </a>
         </div>
     </div>
 
@@ -175,9 +175,12 @@
                                         </div>
                                     </div>
 
-                                    <div class="text-right">
-                                        <a asp-page="./Index" asp-route-accountId="@acc.Id" class="btn btn-xs @(isSelected ? "btn-primary" : "btn-outline")">
-                                            @(isSelected ? "Selected" : "Manage")
+                                    <div class="text-right flex flex-col gap-1.5 items-end">
+                                        <a asp-page="./Edit" asp-route-id="@acc.Id" class="btn btn-xs btn-primary font-semibold">
+                                            Manage
+                                        </a>
+                                        <a asp-page="./Index" asp-route-accountId="@acc.Id" class="btn btn-xs @(isSelected ? "btn-neutral" : "btn-ghost")">
+                                            @(isSelected ? "Viewing" : "Preview")
                                         </a>
                                     </div>
                                 </div>
@@ -221,15 +224,19 @@
                                 </div>
                             </div>
 
-                            <div class="flex items-center gap-2">
-                                <button onclick="openDirectDeliveryModal(@sel.Id, '@sel.AccountName', @sel.AssignedRepId)" class="btn btn-primary btn-sm">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <a asp-page="./Edit" asp-route-id="@sel.Id" class="btn btn-primary btn-sm">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                    Manage Store Details
+                                </a>
+                                <a asp-page="./Supply" asp-route-id="@sel.Id" class="btn btn-outline btn-sm">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     Direct Supply
-                                </button>
-                                <button onclick="openPaymentModal(@sel.Id, '@sel.AccountName', @sel.CurrentOutstandingCredit)" class="btn btn-outline btn-sm">
+                                </a>
+                                <a asp-page="./Payment" asp-route-id="@sel.Id" class="btn btn-outline btn-sm">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                     Pay Credit
-                                </button>
+                                </a>
                             </div>
                         </div>
 
@@ -358,224 +365,4 @@
     </div>
 </div>
 
-<!-- ========================================================================= -->
-<!-- Modal 1: Create New Supermarket Account                                    -->
-<!-- ========================================================================= -->
-<dialog id="modal_new_account" class="modal">
-    <div class="modal-box w-11/12 max-w-lg">
-        <form method="dialog">
-            <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
-        </form>
-        <h3 class="font-bold text-lg text-base-content flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-            Add New Supermarket / Vendor Account
-        </h3>
-        <p class="text-xs text-base-content/60 mt-1">Set up institutional credit limit and designate the assigned sales representative.</p>
 
-        <form method="post" asp-page-handler="SaveAccount" class="space-y-4 mt-4">
-            @Html.AntiForgeryToken()
-            <input type="hidden" name="Id" value="0" />
-
-            <div class="form-control">
-                <label class="label"><span class="label-text font-semibold text-xs">Supermarket / Company Name *</span></label>
-                <input type="text" name="AccountName" class="input input-bordered input-sm w-full" required placeholder="e.g. Hubmart Stores Lekki" />
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-                <div class="form-control">
-                    <label class="label"><span class="label-text font-semibold text-xs">Contact Person</span></label>
-                    <input type="text" name="ContactPerson" class="input input-bordered input-sm w-full" placeholder="Store Manager Name" />
-                </div>
-                <div class="form-control">
-                    <label class="label"><span class="label-text font-semibold text-xs">Phone Number</span></label>
-                    <input type="text" name="PhoneNumber" class="input input-bordered input-sm w-full" placeholder="+234 80..." />
-                </div>
-            </div>
-
-            <div class="form-control">
-                <label class="label"><span class="label-text font-semibold text-xs">Physical Store Address</span></label>
-                <input type="text" name="Address" class="input input-bordered input-sm w-full" placeholder="Street, Plaza, City" />
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-                <div class="form-control">
-                    <label class="label"><span class="label-text font-semibold text-xs">Assigned Route Sales Rep</span></label>
-                    <select name="AssignedRepId" class="select select-bordered select-sm w-full">
-                        @foreach (var rep in Model.SalesReps)
-                        {
-                            <option value="@rep.Id">@rep.FullName (@rep.RouteName)</option>
-                        }
-                    </select>
-                </div>
-                <div class="form-control">
-                    <label class="label"><span class="label-text font-semibold text-xs">Payment Terms</span></label>
-                    <select name="PaymentTerms" class="select select-bordered select-sm w-full">
-                        <option value="Net 7 Days">Net 7 Days</option>
-                        <option value="Net 15 Days" selected>Net 15 Days</option>
-                        <option value="Net 30 Days">Net 30 Days</option>
-                        <option value="Payment on Next Delivery">Payment on Next Delivery</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="form-control">
-                <label class="label"><span class="label-text font-semibold text-xs">Credit Limit Approved (₦)</span></label>
-                <input type="number" step="1000" min="0" name="CreditLimit" value="250000" class="input input-bordered input-sm w-full font-mono font-bold" />
-            </div>
-
-            <div class="modal-action mt-6">
-                <button type="button" onclick="document.getElementById('modal_new_account').close()" class="btn btn-ghost btn-sm">Cancel</button>
-                <button type="submit" class="btn btn-primary btn-sm">Create Account</button>
-            </div>
-        </form>
-    </div>
-</dialog>
-
-<!-- ========================================================================= -->
-<!-- Modal 2: Direct Supermarket Delivery & Credit Billing                      -->
-<!-- ========================================================================= -->
-<dialog id="modal_direct_delivery" class="modal">
-    <div class="modal-box w-11/12 max-w-lg">
-        <form method="dialog">
-            <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
-        </form>
-        <h3 class="font-bold text-lg text-base-content flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-            Supermarket Direct Delivery (Credit Supply)
-        </h3>
-        <p class="text-xs text-base-content/60 mt-1">Fulfill an immediate store replenishment invoice directly charged against the account credit facility.</p>
-
-        <form method="post" asp-page-handler="FulfillOrder" class="space-y-4 mt-4">
-            @Html.AntiForgeryToken()
-            <input type="hidden" id="delivery_account_id" name="accountId" value="" />
-
-            <div class="bg-base-200/60 p-3 rounded-lg text-xs space-y-1">
-                <div>Account: <strong id="delivery_account_name" class="text-base-content font-bold"></strong></div>
-                <div class="text-base-content/60">Unit price will automatically adhere to the agreed contracted rate for this supermarket.</div>
-            </div>
-
-            <div class="form-control">
-                <label class="label"><span class="label-text font-semibold text-xs">Dispatching Sales Rep / Van</span></label>
-                <select id="delivery_rep_id" name="repId" class="select select-bordered select-sm w-full">
-                    @foreach (var rep in Model.SalesReps)
-                    {
-                        <option value="@rep.Id">@rep.FullName (@rep.VehicleRegistration - @rep.RouteName)</option>
-                    }
-                </select>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-                <div class="form-control">
-                    <label class="label"><span class="label-text font-semibold text-xs">Product SKU to Supply</span></label>
-                    <select id="delivery_recipe_id" name="recipeId" class="select select-bordered select-sm w-full" onchange="calculateDeliveryTotal()">
-                        @foreach (var sku in Model.CatalogSkus)
-                        {
-                            <option value="@sku.Id" data-price="@sku.Price">@sku.Name (₦@sku.Price:N0)</option>
-                        }
-                    </select>
-                </div>
-                <div class="form-control">
-                    <label class="label"><span class="label-text font-semibold text-xs">Quantity Delivered</span></label>
-                    <input type="number" id="delivery_qty" name="quantity" min="1" value="50" class="input input-bordered input-sm w-full font-bold font-mono" oninput="calculateDeliveryTotal()" />
-                </div>
-            </div>
-
-            <div class="form-control">
-                <label class="label"><span class="label-text font-semibold text-xs">Delivery Note / Invoice Ref</span></label>
-                <input type="text" name="notes" placeholder="e.g. Waybill #WB-8831 signed by receiving supervisor" class="input input-bordered input-sm w-full" />
-            </div>
-
-            <div class="bg-primary/5 border border-primary/20 p-3 rounded-lg flex items-center justify-between">
-                <span class="text-xs font-semibold text-base-content">Calculated Supply Charge:</span>
-                <span id="delivery_total_display" class="text-base font-bold text-primary font-mono">₦0.00</span>
-            </div>
-
-            <div class="modal-action mt-6">
-                <button type="button" onclick="document.getElementById('modal_direct_delivery').close()" class="btn btn-ghost btn-sm">Cancel</button>
-                <button type="submit" class="btn btn-primary btn-sm">Confirm Delivery & Post Credit</button>
-            </div>
-        </form>
-    </div>
-</dialog>
-
-<!-- ========================================================================= -->
-<!-- Modal 3: Record Supermarket Payment                                        -->
-<!-- ========================================================================= -->
-<dialog id="modal_record_payment" class="modal">
-    <div class="modal-box w-11/12 max-w-md">
-        <form method="dialog">
-            <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
-        </form>
-        <h3 class="font-bold text-lg text-base-content flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            Record Supermarket Credit Payment
-        </h3>
-        <p class="text-xs text-base-content/60 mt-1">Pay down the supermarket's outstanding receivables.</p>
-
-        <form method="post" asp-page-handler="RecordPayment" class="space-y-4 mt-4">
-            @Html.AntiForgeryToken()
-            <input type="hidden" id="payment_account_id" name="accountId" value="" />
-
-            <div class="bg-base-200/60 p-3 rounded-lg text-xs space-y-1">
-                <div>Account: <strong id="payment_account_name" class="text-base-content font-bold"></strong></div>
-                <div>Current Balance: <strong id="payment_current_balance" class="text-error font-mono font-bold">₦0.00</strong></div>
-            </div>
-
-            <div class="form-control">
-                <label class="label"><span class="label-text font-semibold text-xs">Amount Paid (₦) *</span></label>
-                <input type="number" step="100" min="1" id="payment_amount" name="amountPaid" class="input input-bordered input-sm w-full font-bold font-mono text-success text-base" required />
-            </div>
-
-            <div class="form-control">
-                <label class="label"><span class="label-text font-semibold text-xs">Payment Method</span></label>
-                <select name="paymentMethod" class="select select-bordered select-sm w-full">
-                    <option value="BankTransfer" selected>Bank Direct Transfer (Treasury Account)</option>
-                    <option value="Cheque">Bank Corporate Cheque</option>
-                    <option value="PosTerminal">POS Terminal Card Sweep</option>
-                    <option value="Cash">Cash Handover to Treasury</option>
-                </select>
-            </div>
-
-            <div class="form-control">
-                <label class="label"><span class="label-text font-semibold text-xs">Transaction Reference / Cheque #</span></label>
-                <input type="text" name="reference" placeholder="e.g. TRF-ZENITH-99214" class="input input-bordered input-sm w-full" />
-            </div>
-
-            <div class="modal-action mt-6">
-                <button type="button" onclick="document.getElementById('modal_record_payment').close()" class="btn btn-ghost btn-sm">Cancel</button>
-                <button type="submit" class="btn btn-success btn-sm text-success-content">Apply Payment Credit</button>
-            </div>
-        </form>
-    </div>
-</dialog>
-
-@section Scripts {
-<script>
-    function openDirectDeliveryModal(accountId, accountName, assignedRepId) {
-        document.getElementById('delivery_account_id').value = accountId;
-        document.getElementById('delivery_account_name').innerText = accountName;
-        if (assignedRepId) {
-            document.getElementById('delivery_rep_id').value = assignedRepId;
-        }
-        calculateDeliveryTotal();
-        document.getElementById('modal_direct_delivery').showModal();
-    }
-
-    function calculateDeliveryTotal() {
-        const select = document.getElementById('delivery_recipe_id');
-        const selectedOption = select.options[select.selectedIndex];
-        const unitPrice = parseFloat(selectedOption?.getAttribute('data-price') || 0);
-        const qty = parseInt(document.getElementById('delivery_qty').value || 0, 10);
-        const total = unitPrice * qty;
-        document.getElementById('delivery_total_display').innerText = '₦' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    function openPaymentModal(accountId, accountName, currentBalance) {
-        document.getElementById('payment_account_id').value = accountId;
-        document.getElementById('payment_account_name').innerText = accountName;
-        document.getElementById('payment_current_balance').innerText = '₦' + currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        document.getElementById('payment_amount').value = currentBalance;
-        document.getElementById('modal_record_payment').showModal();
-    }
-</script>
-}

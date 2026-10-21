@@ -660,26 +660,62 @@ namespace Manufacture.Services
             var existing = GetSupermarketAccountById(model.Id);
             if (existing != null)
             {
-                existing.AccountName = model.AccountName;
-                existing.ContactPerson = model.ContactPerson;
-                existing.PhoneNumber = model.PhoneNumber;
-                existing.Address = model.Address;
-                existing.CreditLimit = model.CreditLimit;
-                existing.PaymentTerms = model.PaymentTerms;
+                existing.AccountName = model.AccountName.Trim();
+                existing.ContactPerson = model.ContactPerson.Trim();
+                existing.PhoneNumber = model.PhoneNumber.Trim();
+                existing.Address = model.Address.Trim();
+                existing.CreditLimit = Math.Max(0m, model.CreditLimit);
+                existing.PaymentTerms = string.IsNullOrWhiteSpace(model.PaymentTerms) ? "Net 15 Days" : model.PaymentTerms.Trim();
+                existing.IsActive = model.IsActive;
                 existing.AssignedRepId = model.AssignedRepId;
                 var rep = GetRepById(model.AssignedRepId);
                 if (rep != null) existing.AssignedRepName = rep.FullName;
+
+                var cust = GetCustomerById(existing.CustomerId);
+                if (cust != null)
+                {
+                    cust.Name = existing.AccountName;
+                    cust.PhoneNumber = existing.PhoneNumber;
+                    cust.Address = existing.Address;
+                    cust.IsActive = existing.IsActive;
+                }
                 return true;
             }
             else
             {
+                int newCustId = _customers.Any() ? _customers.Max(c => c.Id) + 1 : 1;
+                var newCust = new Customer
+                {
+                    Id = newCustId,
+                    Name = model.AccountName.Trim(),
+                    MemberCode = $"SUP-{newCustId + 100}",
+                    Category = CustomerCategory.Supermarket,
+                    PhoneNumber = model.PhoneNumber.Trim(),
+                    Address = model.Address.Trim(),
+                    OutstandingBalance = 0,
+                    IsActive = model.IsActive
+                };
+                _customers.Add(newCust);
+
                 int newId = _supermarketAccounts.Any() ? _supermarketAccounts.Max(a => a.Id) + 1 : 1;
                 model.Id = newId;
+                model.CustomerId = newCustId;
+                model.PaymentTerms = string.IsNullOrWhiteSpace(model.PaymentTerms) ? "Net 15 Days" : model.PaymentTerms.Trim();
                 var rep = GetRepById(model.AssignedRepId);
                 if (rep != null) model.AssignedRepName = rep.FullName;
                 _supermarketAccounts.Add(model);
                 return true;
             }
+        }
+
+        public bool ToggleSupermarketStatus(int id)
+        {
+            var account = GetSupermarketAccountById(id);
+            if (account == null) return false;
+            account.IsActive = !account.IsActive;
+            var cust = GetCustomerById(account.CustomerId);
+            if (cust != null) cust.IsActive = account.IsActive;
+            return true;
         }
 
         public bool FulfillSupermarketOrder(int accountId, int repId, List<OrderItemDto> items, string notes)

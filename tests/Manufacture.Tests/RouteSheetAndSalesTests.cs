@@ -278,6 +278,77 @@ namespace Manufacture.Tests
         }
 
         [Fact]
+        public void SupermarketAccountEdit_UpdatesDetailsAndSyncsCustomer()
+        {
+            // Arrange
+            var account = _salesService.GetSupermarketAccountById(1);
+            Assert.NotNull(account);
+            int origCustId = account.CustomerId;
+
+            var editModel = new SupermarketAccount
+            {
+                Id = account.Id,
+                CustomerId = account.CustomerId,
+                AccountName = "Goodness Mega Store (Updated)",
+                ContactPerson = "Chief Emeka Okafor",
+                PhoneNumber = "+234 803 999 8888",
+                Address = "Plot 99 Commercial Avenue, Ikeja",
+                CreditLimit = 600000m,
+                PaymentTerms = "Net 30 Days",
+                AssignedRepId = 2,
+                IsActive = true
+            };
+
+            // Act
+            var ok = _salesService.SaveSupermarketAccount(editModel);
+
+            // Assert
+            Assert.True(ok);
+            var updated = _salesService.GetSupermarketAccountById(1);
+            Assert.NotNull(updated);
+            Assert.Equal("Goodness Mega Store (Updated)", updated.AccountName);
+            Assert.Equal("Chief Emeka Okafor", updated.ContactPerson);
+            Assert.Equal("+234 803 999 8888", updated.PhoneNumber);
+            Assert.Equal("Plot 99 Commercial Avenue, Ikeja", updated.Address);
+            Assert.Equal(600000m, updated.CreditLimit);
+            Assert.Equal("Net 30 Days", updated.PaymentTerms);
+            Assert.Equal(2, updated.AssignedRepId);
+
+            // Verify linked customer ledger was synced
+            var customer = _salesService.GetCustomerById(origCustId);
+            Assert.NotNull(customer);
+            Assert.Equal("Goodness Mega Store (Updated)", customer.Name);
+            Assert.Equal("+234 803 999 8888", customer.PhoneNumber);
+            Assert.Equal("Plot 99 Commercial Avenue, Ikeja", customer.Address);
+        }
+
+        [Fact]
+        public void SupermarketAccount_ToggleStatus_SuspendsAndReactivates()
+        {
+            // Arrange
+            var account = _salesService.GetSupermarketAccountById(1);
+            Assert.NotNull(account);
+            bool originalStatus = account.IsActive;
+
+            // Act: Toggle
+            var ok = _salesService.ToggleSupermarketStatus(account.Id);
+
+            // Assert
+            Assert.True(ok);
+            var afterToggle = _salesService.GetSupermarketAccountById(1);
+            Assert.NotNull(afterToggle);
+            Assert.Equal(!originalStatus, afterToggle.IsActive);
+
+            var customer = _salesService.GetCustomerById(afterToggle.CustomerId);
+            Assert.NotNull(customer);
+            Assert.Equal(!originalStatus, customer.IsActive);
+
+            // Re-toggle back
+            _salesService.ToggleSupermarketStatus(account.Id);
+            Assert.Equal(originalStatus, _salesService.GetSupermarketAccountById(1)!.IsActive);
+        }
+
+        [Fact]
         public void TreasuryPolicySettings_ConfiguresAllowableVariance()
         {
             // Arrange

@@ -1,0 +1,255 @@
+@page "{id:int?}"
+@model Manufacture.Pages.Sales.PosAccounts.SupplyModel
+@{
+    ViewData["Title"] = "Direct Supermarket Delivery & Credit Supply";
+    var sel = Model.SelectedAccount;
+    var availableCredit = sel != null ? Math.Max(0m, sel.CreditLimit - sel.CurrentOutstandingCredit) : 0m;
+}
+
+<div class="space-y-6 w-full pb-12">
+    <!-- Header & Breadcrumbs -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="breadcrumbs text-sm mb-1 text-base-content/70">
+                <ul>
+                    <li><a asp-page="/Sales/Index" class="hover:text-primary">Sales & POS</a></li>
+                    <li><a asp-page="/Sales/PosAccounts/Index" class="hover:text-primary">Supermarket Accounts</a></li>
+                    <li class="font-semibold text-base-content">Direct Supply (Credit Replenishment)</li>
+                </ul>
+            </div>
+            <h1 class="text-3xl font-extrabold tracking-tight text-base-content flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Direct Supermarket Delivery
+            </h1>
+            <p class="text-sm text-base-content/70">
+                Fulfill an immediate store replenishment invoice directly charged against the account credit facility at agreed contract rates.
+            </p>
+        </div>
+        <div>
+            <a asp-page="/Sales/PosAccounts/Index" class="btn btn-sm btn-outline gap-1.5 font-semibold">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Directory
+            </a>
+        </div>
+    </div>
+
+    <!-- Feedback Alerts -->
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-error shadow-sm flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>@Model.ErrorMessage</span>
+            </div>
+            <button class="btn btn-ghost btn-xs" onclick="this.parentElement.remove()">✕</button>
+        </div>
+    }
+
+    <!-- 2-Column Responsive Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left Column: Delivery Form (8 Cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <span>Direct Replenishment Invoice Details</span>
+                        </div>
+                        <span class="badge badge-primary badge-sm font-semibold">Credit Invoice</span>
+                    </div>
+
+                    <form method="post" class="space-y-4">
+                        @Html.AntiForgeryToken()
+
+                        <!-- Supermarket Account Selector -->
+                        <div class="form-control">
+                            <label class="label"><span class="label-text font-semibold text-xs">Destination Supermarket Store *</span></label>
+                            <select name="accountId" class="select select-bordered select-sm w-full font-bold" onchange="window.location.href='?id=' + this.value">
+                                @foreach (var a in Model.Accounts)
+                                {
+                                    <option value="@a.Id" selected="@(sel != null && sel.Id == a.Id)">
+                                        @a.AccountName — Owning: ₦@a.CurrentOutstandingCredit.ToString("N0") / Limit: ₦@a.CreditLimit.ToString("N0")
+                                    </option>
+                                }
+                            </select>
+                        </div>
+
+                        @if (sel != null)
+                        {
+                            <!-- Account Snapshot Header -->
+                            <div class="grid grid-cols-3 gap-3 bg-base-200/50 p-3.5 rounded-xl text-xs">
+                                <div>
+                                    <span class="text-base-content/60 block">Approved Limit:</span>
+                                    <strong class="font-mono text-base-content font-bold">₦@sel.CreditLimit.ToString("N0")</strong>
+                                </div>
+                                <div>
+                                    <span class="text-base-content/60 block">Current Balance:</span>
+                                    <strong class="font-mono text-error font-bold">₦@sel.CurrentOutstandingCredit.ToString("N0")</strong>
+                                </div>
+                                <div>
+                                    <span class="text-base-content/60 block">Available Headroom:</span>
+                                    <strong class="font-mono text-success font-bold">₦@availableCredit.ToString("N0")</strong>
+                                </div>
+                            </div>
+
+                            <!-- Dispatching Sales Rep -->
+                            <div class="form-control">
+                                <label class="label"><span class="label-text font-semibold text-xs">Dispatching Sales Rep / Delivery Van *</span></label>
+                                <select name="repId" class="select select-bordered select-sm w-full">
+                                    @foreach (var rep in Model.SalesReps)
+                                    {
+                                        <option value="@rep.Id" selected="@(rep.Id == sel.AssignedRepId)">
+                                            @rep.FullName (@rep.VehicleRegistration - @rep.RouteName)
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+
+                            <!-- Product SKU & Quantity -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="form-control">
+                                    <label class="label"><span class="label-text font-semibold text-xs">Product SKU to Supply *</span></label>
+                                    <select id="skuSelect" name="recipeId" class="select select-bordered select-sm w-full" onchange="updateSupplyPrice()">
+                                        @foreach (var sku in Model.CatalogSkus)
+                                        {
+                                            var hasCustom = sel.CustomAgreedPrices.TryGetValue(sku.Id, out var customRate);
+                                            var effectivePrice = hasCustom ? customRate : sku.Price;
+                                            <option value="@sku.Id" data-price="@effectivePrice" data-iscustom="@hasCustom">
+                                                @sku.Name - ₦@effectivePrice.ToString("N0") @(hasCustom ? "(Contract Rate)" : "(Master Rate)")
+                                            </option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="form-control">
+                                    <label class="label"><span class="label-text font-semibold text-xs">Quantity Delivered (Units) *</span></label>
+                                    <input type="number" id="supplyQty" name="quantity" min="1" value="50" class="input input-bordered input-sm w-full font-mono font-bold" oninput="updateSupplyPrice()" required />
+                                </div>
+                            </div>
+
+                            <!-- Delivery Note / Reference -->
+                            <div class="form-control">
+                                <label class="label"><span class="label-text font-semibold text-xs">Delivery Note / Waybill Reference</span></label>
+                                <input type="text" name="notes" placeholder="e.g. Waybill #WB-9921 signed by receiving store manager" class="input input-bordered input-sm w-full" />
+                            </div>
+
+                            <!-- Live Calculation Banner -->
+                            <div class="p-4 bg-primary/5 border border-primary/20 rounded-xl flex items-center justify-between">
+                                <div>
+                                    <div class="text-xs font-semibold text-base-content/70">Calculated Supply Charge:</div>
+                                    <div class="text-[11px] text-base-content/50" id="rateInfo">Agreed unit rate will be charged to the account credit facility.</div>
+                                </div>
+                                <div class="text-2xl font-black font-mono text-primary" id="totalChargeDisplay">
+                                    ₦0.00
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-end gap-3 pt-4 border-t border-base-200">
+                                <a asp-page="/Sales/PosAccounts/Index" class="btn btn-ghost btn-sm">Discard</a>
+                                <button type="submit" class="btn btn-primary btn-sm px-6">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    Confirm Delivery & Charge Account Credit
+                                </button>
+                            </div>
+                        }
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Information & Policies (4 Cols) -->
+        <div class="lg:col-span-4 space-y-6">
+            @if (sel != null)
+            {
+                <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-5 space-y-3">
+                    <h3 class="font-bold text-sm text-base-content flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                        </div>
+                        <span>Store Information</span>
+                    </h3>
+
+                    <div class="space-y-2 text-xs">
+                        <div class="flex justify-between">
+                            <span class="text-base-content/60">Store:</span>
+                            <span class="font-bold text-base-content">@sel.AccountName</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-base-content/60">Contact:</span>
+                            <span>@sel.ContactPerson (@sel.PhoneNumber)</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-base-content/60">Address:</span>
+                            <span class="text-right max-w-[180px]">@sel.Address</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-base-content/60">Terms:</span>
+                            <span class="badge badge-neutral badge-xs font-semibold">@sel.PaymentTerms</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-base-content/60">Assigned Rep:</span>
+                            <span class="font-semibold text-primary">@sel.AssignedRepName</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-t border-base-200">
+                        <a asp-page="/Sales/PosAccounts/Edit" asp-route-id="@sel.Id" class="btn btn-outline btn-xs w-full">
+                            Manage Store Details & Prices
+                        </a>
+                    </div>
+                </div>
+            }
+
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-5 space-y-3">
+                <h3 class="font-bold text-sm text-base-content flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-info/10 text-info flex items-center justify-center font-bold">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <span>Delivery Billing Rules</span>
+                </h3>
+                <div class="space-y-2 text-xs text-base-content/70">
+                    <p>• Prices automatically prioritize custom agreed rates before standard recipes.</p>
+                    <p>• Delivery value is directly added to the supermarket's outstanding receivables.</p>
+                    <p>• Waybill references are logged in the customer ledger for end-of-month reconciliation.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function updateSupplyPrice() {
+        const select = document.getElementById('skuSelect');
+        if (!select) return;
+        const opt = select.options[select.selectedIndex];
+        const price = parseFloat(opt?.getAttribute('data-price') || 0);
+        const qty = parseInt(document.getElementById('supplyQty')?.value || 0, 10);
+        const isCustom = opt?.getAttribute('data-iscustom') === 'True';
+        const total = price * qty;
+
+        document.getElementById('totalChargeDisplay').innerText = '₦' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('rateInfo').innerText = (isCustom ? 'Contracted negotiated rate: ₦' : 'Master catalog rate: ₦') + price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' per unit.';
+    }
+
+    document.addEventListener('DOMContentLoaded', updateSupplyPrice);
+</script>
+}

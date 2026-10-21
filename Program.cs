@@ -28,6 +28,10 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AddPageRoute("/Logistics/Vehicles/Create", "Fleet/Vehicles/Create");
     options.Conventions.AddPageRoute("/Logistics/Vehicles/Create", "Fleet/Vehicles/New");
     options.Conventions.AddPageRoute("/Sales/PosAccounts/Index", "Sales/Supermarkets");
+    options.Conventions.AddPageRoute("/Sales/PosAccounts/Create", "Sales/Supermarkets/Create");
+    options.Conventions.AddPageRoute("/Sales/PosAccounts/Edit", "Sales/Supermarkets/Edit/{id:int?}");
+    options.Conventions.AddPageRoute("/Sales/PosAccounts/Supply", "Sales/Supermarkets/Supply/{id:int?}");
+    options.Conventions.AddPageRoute("/Sales/PosAccounts/Payment", "Sales/Supermarkets/Payment/{id:int?}");
 });
 builder.Services.AddHttpContextAccessor();
 

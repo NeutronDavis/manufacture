@@ -24,8 +24,8 @@ namespace Manufacture.Pages.Reports
         public string ActiveRole { get; set; } = "SuperAdmin";
         public bool CanView => _rbac.HasAccess(ActiveRole, RbacModule);
 
-        /// <summary>"table" (default) or "charts".</summary>
-        public string View { get; set; } = ReportViews.Table;
+        /// <summary>"charts" (default) or "table".</summary>
+        public string View { get; set; } = ReportViews.Charts;
 
         public ReportResultDto Result { get; set; } = new();
 
@@ -83,24 +83,42 @@ namespace Manufacture.Pages.Reports
         // Query binding
         // =============================================================
 
-        private ReportsQueryDto BuildQuery() => new()
+        private ReportsQueryDto BuildQuery()
         {
-            Timeframe = ParseEnum(Request.Query["timeframe"], ReportTimeframe.Week),
-            AnchorDate = ParseDate(Request.Query["date"]) ?? DateTime.UtcNow.Date,
-            StartDate = ParseDate(Request.Query["start_date"]) ?? default,
-            EndDate = ParseDate(Request.Query["end_date"]) ?? default,
-            Lines = ParseEnumList<ProductType>(Request.Query["category"]),
-            ProductIds = ParseIntList(Request.Query["product_id"]),
-            RepIds = ParseIntList(Request.Query["rep_id"]),
-            Route = Request.Query["route"].ToString().Trim(),
-            Module = ParseEnum(Request.Query["module"], AnalyticsModule.Operational),
-            GroupBy = ParseEnum(Request.Query["group_by"], ReportGroupBy.ProductLine),
-            ChartGroupByRep = string.Equals(Request.Query["group_by"].ToString(), "rep", StringComparison.OrdinalIgnoreCase),
-            Sort = Request.Query["sort"].ToString().Trim(),
-            Direction = string.Equals(Request.Query["dir"].ToString(), "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc",
-            Page = ParseInt(Request.Query["page"]) ?? 1,
-            Limit = ParseInt(Request.Query["limit"]) ?? 12
-        };
+            var rawTf = Request.Query["timeframe"].ToString().Trim();
+            var startDate = ParseDate(Request.Query["start_date"]);
+            var endDate = ParseDate(Request.Query["end_date"]);
+
+            ReportTimeframe timeframe;
+            if (string.Equals(rawTf, "Custom", StringComparison.OrdinalIgnoreCase) ||
+                (string.IsNullOrEmpty(rawTf) && (startDate.HasValue || endDate.HasValue)))
+            {
+                timeframe = ReportTimeframe.Custom;
+            }
+            else
+            {
+                timeframe = ParseEnum(Request.Query["timeframe"], ReportTimeframe.Week);
+            }
+
+            return new ReportsQueryDto
+            {
+                Timeframe = timeframe,
+                AnchorDate = ParseDate(Request.Query["date"]) ?? DateTime.UtcNow.Date,
+                StartDate = startDate ?? default,
+                EndDate = endDate ?? default,
+                Lines = ParseEnumList<ProductType>(Request.Query["category"]),
+                ProductIds = ParseIntList(Request.Query["product_id"]),
+                RepIds = ParseIntList(Request.Query["rep_id"]),
+                Route = Request.Query["route"].ToString().Trim(),
+                Module = ParseEnum(Request.Query["module"], AnalyticsModule.Operational),
+                GroupBy = ParseEnum(Request.Query["group_by"], ReportGroupBy.ProductLine),
+                ChartGroupByRep = string.Equals(Request.Query["group_by"].ToString(), "rep", StringComparison.OrdinalIgnoreCase),
+                Sort = Request.Query["sort"].ToString().Trim(),
+                Direction = string.Equals(Request.Query["dir"].ToString(), "asc", StringComparison.OrdinalIgnoreCase) ? "asc" : "desc",
+                Page = ParseInt(Request.Query["page"]) ?? 1,
+                Limit = ParseInt(Request.Query["limit"]) ?? 12
+            };
+        }
 
         private static T ParseEnum<T>(StringValues value, T fallback) where T : struct, Enum =>
             Enum.TryParse<T>(value.ToString(), ignoreCase: true, out var parsed) ? parsed : fallback;
@@ -136,9 +154,9 @@ namespace Manufacture.Pages.Reports
             .Where(v => v.Length > 0);
 
         private static string NormaliseView(string raw) =>
-            string.Equals(raw, ReportViews.Charts, StringComparison.OrdinalIgnoreCase)
-                ? ReportViews.Charts
-                : ReportViews.Table;
+            string.Equals(raw, ReportViews.Table, StringComparison.OrdinalIgnoreCase)
+                ? ReportViews.Table
+                : ReportViews.Charts;
 
         private void BuildOptions()
         {
@@ -146,8 +164,8 @@ namespace Manufacture.Pages.Reports
 
             ViewOptions = new List<ToggleOption>
             {
-                new() { Value = ReportViews.Table,  Label = "Table View",  Icon = "fa-solid fa-table-list", Hint = "Row-by-row detail with sorting and pagination", Selected = !IsChartsView },
-                new() { Value = ReportViews.Charts, Label = "Charts & Visuals", Icon = "fa-solid fa-chart-column", Hint = "Interactive dashboards built on the same filters", Selected = IsChartsView }
+                new() { Value = ReportViews.Charts, Label = "Charts & Visuals", Icon = "fa-solid fa-chart-column", Hint = "Interactive dashboards and trends built on these filters", Selected = IsChartsView },
+                new() { Value = ReportViews.Table,  Label = "Table View",  Icon = "fa-solid fa-table-list", Hint = "Row-by-row detail with sorting and pagination", Selected = !IsChartsView }
             };
 
             ModuleOptions = new List<ToggleOption>

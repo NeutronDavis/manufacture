@@ -1,0 +1,211 @@
+@page "{id:int?}"
+@model Manufacture.Pages.Sales.PosAccounts.PaymentModel
+@{
+    ViewData["Title"] = "Record Supermarket Credit Payment";
+    var sel = Model.SelectedAccount;
+}
+
+<div class="space-y-6 w-full pb-12">
+    <!-- Header & Breadcrumbs -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="breadcrumbs text-sm mb-1 text-base-content/70">
+                <ul>
+                    <li><a asp-page="/Sales/Index" class="hover:text-primary">Sales & POS</a></li>
+                    <li><a asp-page="/Sales/PosAccounts/Index" class="hover:text-primary">Supermarket Accounts</a></li>
+                    <li class="font-semibold text-base-content">Record Credit Payment</li>
+                </ul>
+            </div>
+            <h1 class="text-3xl font-extrabold tracking-tight text-base-content flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Record Supermarket Credit Payment
+            </h1>
+            <p class="text-sm text-base-content/70">
+                Post an inbound bank transfer, cheque, or POS sweep to pay down the supermarket's outstanding receivables.
+            </p>
+        </div>
+        <div>
+            <a asp-page="/Sales/PosAccounts/Index" class="btn btn-sm btn-outline gap-1.5 font-semibold">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Directory
+            </a>
+        </div>
+    </div>
+
+    <!-- Feedback Alerts -->
+    @if (!string.IsNullOrEmpty(Model.ErrorMessage))
+    {
+        <div class="alert alert-error shadow-sm flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>@Model.ErrorMessage</span>
+            </div>
+            <button class="btn btn-ghost btn-xs" onclick="this.parentElement.remove()">✕</button>
+        </div>
+    }
+
+    <!-- 2-Column Responsive Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Left Column: Payment Form (8 Cols) -->
+        <div class="lg:col-span-8 space-y-6">
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-8 h-8 rounded-lg bg-success/10 text-success flex items-center justify-center font-bold">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                            </div>
+                            <span>Inbound Payment Details</span>
+                        </div>
+                        <span class="badge badge-success badge-sm font-semibold">Payment Receipt</span>
+                    </div>
+
+                    <form method="post" class="space-y-4">
+                        @Html.AntiForgeryToken()
+
+                        <!-- Supermarket Selector -->
+                        <div class="form-control">
+                            <label class="label"><span class="label-text font-semibold text-xs">Supermarket Account *</span></label>
+                            <select name="accountId" class="select select-bordered select-sm w-full font-bold" onchange="window.location.href='?id=' + this.value">
+                                @foreach (var a in Model.Accounts)
+                                {
+                                    <option value="@a.Id" selected="@(sel != null && sel.Id == a.Id)">
+                                        @a.AccountName — Current Balance: ₦@a.CurrentOutstandingCredit.ToString("N0")
+                                    </option>
+                                }
+                            </select>
+                        </div>
+
+                        @if (sel != null)
+                        {
+                            <!-- Balance Indicator Banner -->
+                            <div class="bg-base-200/50 p-4 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    <div class="text-xs text-base-content/60 font-medium">Current Outstanding Balance:</div>
+                                    <div class="text-2xl font-black font-mono text-error">₦@sel.CurrentOutstandingCredit.ToString("N2")</div>
+                                </div>
+                                <div>
+                                    <button type="button" 
+                                            onclick="document.getElementById('amountPaidInput').value = '@sel.CurrentOutstandingCredit.ToString("F2")'" 
+                                            class="btn btn-outline btn-xs gap-1">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                        Pay Full Balance
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Amount Paid -->
+                            <div class="form-control">
+                                <label class="label"><span class="label-text font-semibold text-xs">Amount Received (₦) *</span></label>
+                                <input type="number" 
+                                       step="100" 
+                                       min="1" 
+                                       id="amountPaidInput"
+                                       name="amountPaid" 
+                                       value="@(sel.CurrentOutstandingCredit > 0 ? sel.CurrentOutstandingCredit.ToString("F2") : "10000.00")"
+                                       class="input input-bordered input-sm w-full font-mono font-bold text-success text-lg" 
+                                       required />
+                                <span class="text-[11px] text-base-content/50 mt-1">Amount credited to the supermarket's receivables account.</span>
+                            </div>
+
+                            <!-- Payment Method & Transaction Reference -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div class="form-control">
+                                    <label class="label"><span class="label-text font-semibold text-xs">Payment Method</span></label>
+                                    <select name="paymentMethod" class="select select-bordered select-sm w-full font-medium">
+                                        <option value="BankTransfer" selected>Bank Direct Transfer (Treasury Account)</option>
+                                        <option value="Cheque">Bank Corporate Cheque</option>
+                                        <option value="PosTerminal">POS Terminal Card Sweep</option>
+                                        <option value="Cash">Cash Handover to Treasury</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-control">
+                                    <label class="label"><span class="label-text font-semibold text-xs">Transaction Reference / Cheque #</span></label>
+                                    <input type="text" name="reference" placeholder="e.g. TRF-ZENITH-99214 or CHQ-004481" class="input input-bordered input-sm w-full font-mono" />
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-end gap-3 pt-4 border-t border-base-200">
+                                <a asp-page="/Sales/PosAccounts/Index" class="btn btn-ghost btn-sm">Discard</a>
+                                <button type="submit" class="btn btn-success btn-sm px-6 text-success-content">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    Apply Payment Credit
+                                </button>
+                            </div>
+                        }
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Info & Details (4 Cols) -->
+        <div class="lg:col-span-4 space-y-6">
+            @if (sel != null)
+            {
+                <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-5 space-y-3">
+                    <h3 class="font-bold text-sm text-base-content flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                        </div>
+                        <span>Store Overview</span>
+                    </h3>
+
+                    <div class="space-y-2 text-xs">
+                        <div class="flex justify-between">
+                            <span class="text-base-content/60">Store:</span>
+                            <span class="font-bold text-base-content">@sel.AccountName</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-base-content/60">Credit Limit:</span>
+                            <span class="font-mono font-bold text-base-content">₦@sel.CreditLimit.ToString("N0")</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-base-content/60">Payment Terms:</span>
+                            <span class="badge badge-neutral badge-xs font-semibold">@sel.PaymentTerms</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-base-content/60">Assigned Rep:</span>
+                            <span class="font-semibold text-primary">@sel.AssignedRepName</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-t border-base-200">
+                        <a asp-page="/Sales/PosAccounts/Edit" asp-route-id="@sel.Id" class="btn btn-outline btn-xs w-full">
+                            Manage Store Details & Prices
+                        </a>
+                    </div>
+                </div>
+            }
+
+            <div class="card bg-base-100 border border-base-200 shadow-sm rounded-2xl p-5 space-y-3">
+                <h3 class="font-bold text-sm text-base-content flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-info/10 text-info flex items-center justify-center font-bold">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <span>Treasury Reconciliation</span>
+                </h3>
+                <div class="space-y-2 text-xs text-base-content/70">
+                    <p>• Payments are instantly credited to the customer ledger balance.</p>
+                    <p>• Bank transfer reference numbers are matched during daily cashier reconciliation.</p>
+                    <p>• Credit headroom is automatically restored upon payment posting.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

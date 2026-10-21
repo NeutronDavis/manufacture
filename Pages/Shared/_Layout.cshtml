@@ -112,7 +112,7 @@
                         <li><a asp-page="/Dashboard/Index"><i class="fa-solid fa-gauge"></i> Dashboard</a></li>
                         @if (Rbac.HasAccess(userRole, "Reports"))
                         {
-                            <li><a asp-page="/Reports/Index" asp-route-view="table"><i class="fa-solid fa-chart-column"></i> Reports</a></li>
+                            <li><a asp-page="/Reports/Index"><i class="fa-solid fa-chart-column"></i> Reports</a></li>
                         }
                         @if (userRole == "SuperAdmin")
                         {
@@ -457,23 +457,23 @@
                                 <i class="fa-solid fa-chevron-right erp-nav-arrow"></i>
                             </summary>
                             <div class="erp-nav-sub-menu">
-                                <a asp-page="/Reports/Index" asp-route-view="table" class="erp-nav-sub-item @(currentPath.StartsWith("/Reports") ? "erp-nav-active" : "")">
-                                    <i class="fa-solid fa-table-list text-[11px] w-3.5 text-center"></i>
-                                    <span>Reconciliation Table</span>
-                                </a>
-                                <a asp-page="/Reports/Index" asp-route-view="charts" class="erp-nav-sub-item">
+                                <a asp-page="/Reports/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Reports") && !Context.Request.Query.ContainsKey("view") && !Context.Request.Query.ContainsKey("module") ? "erp-nav-active" : "")">
                                     <i class="fa-solid fa-chart-pie text-[11px] w-3.5 text-center"></i>
                                     <span>Charts &amp; Visuals</span>
                                 </a>
-                                <a asp-page="/Reports/Index" asp-route-module="Operational" asp-route-view="table" class="erp-nav-sub-item">
+                                <a asp-page="/Reports/Index" asp-route-view="table" class="erp-nav-sub-item @(currentPath.StartsWith("/Reports") && Context.Request.Query["view"] == "table" ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-table-list text-[11px] w-3.5 text-center"></i>
+                                    <span>Reconciliation Table</span>
+                                </a>
+                                <a asp-page="/Reports/Index" asp-route-module="Operational" class="erp-nav-sub-item @(currentPath.StartsWith("/Reports") && Context.Request.Query["module"] == "Operational" ? "erp-nav-active" : "")">
                                     <i class="fa-solid fa-industry text-[11px] w-3.5 text-center"></i>
                                     <span>Operational Module</span>
                                 </a>
-                                <a asp-page="/Reports/Index" asp-route-module="Financial" asp-route-view="table" class="erp-nav-sub-item">
+                                <a asp-page="/Reports/Index" asp-route-module="Financial" class="erp-nav-sub-item @(currentPath.StartsWith("/Reports") && Context.Request.Query["module"] == "Financial" ? "erp-nav-active" : "")">
                                     <i class="fa-solid fa-money-bill-transfer text-[11px] w-3.5 text-center"></i>
                                     <span>Financial Module</span>
                                 </a>
-                                <a asp-page="/Reports/Index" asp-route-module="Logistics" asp-route-view="table" class="erp-nav-sub-item">
+                                <a asp-page="/Reports/Index" asp-route-module="Logistics" class="erp-nav-sub-item @(currentPath.StartsWith("/Reports") && Context.Request.Query["module"] == "Logistics" ? "erp-nav-active" : "")">
                                     <i class="fa-solid fa-truck-moving text-[11px] w-3.5 text-center"></i>
                                     <span>Logistics &amp; Fleet</span>
                                 </a>
