@@ -49,3 +49,6 @@ desktop.ini
 *~
 *.lock
 *.log
+
+## Ignore all contents inside doc
+doc/*
