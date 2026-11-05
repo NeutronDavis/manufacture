@@ -79,6 +79,20 @@
 
                         <div class="form-control w-full">
                             <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Vehicle Function</span>
+                            </label>
+                            <select asp-for="VehicleInput.Function" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
+                                <option value="Deliveries">Deliveries</option>
+                                <option value="VIP Logistics">VIP Logistics</option>
+                                <option value="Commercial Haulage">Commercial Haulage</option>
+                                <option value="Internal Distribution">Internal Distribution</option>
+                                <option value="Staff Transport">Staff Transport</option>
+                                <option value="General Operations">General Operations</option>
+                            </select>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
                                 <span class="label-text font-bold text-xs text-base-content">Fuel Type</span>
                             </label>
                             <select asp-for="VehicleInput.FuelType" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
@@ -93,7 +107,17 @@
                                     Assigned Driver Name <span class="text-error">*</span>
                                 </span>
                             </label>
-                            <input type="text" asp-for="VehicleInput.AssignedDriverName" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" placeholder="e.g. Usman Danjuma" required />
+                            <select asp-for="VehicleInput.AssignedDriverName" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary" required>
+                                <option value="">-- Select Logistics &amp; Fleet driver --</option>
+                                @foreach (var driver in Model.FleetDrivers)
+                                {
+                                    <option value="@driver.FullName">@driver.FullName &mdash; @driver.Designation</option>
+                                }
+                            </select>
+                            <span class="text-[10px] text-base-content/50 mt-1">
+                                Drivers are sourced from the HR staff directory (Logistics &amp; Fleet department).
+                            </span>
+                            <span asp-validation-for="VehicleInput.AssignedDriverName" class="text-error text-[10px]"></span>
                         </div>
 
                         <div class="form-control w-full">

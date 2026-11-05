@@ -14,15 +14,17 @@
     string TimeframeLabel(KpiPeriodCardDto period) =>
         period.Key == "This Week" ? "This Week (Sun–Sat)" : period.Label;
 
-    // All six stages in strict funnel order.
+    // All eight stages in strict pipeline order.
     var stageColumns = new (string Label, Func<LifecycleTotalsDto, int> Select, string Subtitle, string Tone, string BgTone, string BorderTone)[]
     {
-        ("Orders Placed",        t => t.OrdersPlaced, "Requested by reps",       "text-info",      "bg-info/10",      "border-info/30"),
-        ("Produced",             t => t.Produced,     "Plant manufactured",      "text-primary",   "bg-primary/10",   "border-primary/30"),
-        ("Loaded",               t => t.Loaded,       "Physical truck loading",  "text-secondary", "bg-secondary/10", "border-secondary/30"),
-        ("Sold",                 t => t.Sold,         "Route verified volume",   "text-success",   "bg-success/10",   "border-success/30"),
-        ("Returned",             t => t.Returned,     "Unsold return stock",     "text-warning",   "bg-warning/10",   "border-warning/30"),
-        ("Damaged",              t => t.Damaged,      "Reconciliation loss",     "text-error",     "bg-error/10",     "border-error/30")
+        ("Orders Placed",        t => t.OrdersPlaced,    "Requested by reps",       "text-info",      "bg-info/10",      "border-info/30"),
+        ("Produced",             t => t.Produced,        "Plant manufactured",      "text-primary",   "bg-primary/10",   "border-primary/30"),
+        ("Loaded",               t => t.Loaded,          "Physical truck loading",  "text-secondary", "bg-secondary/10", "border-secondary/30"),
+        ("Factory Defects",      t => t.FactoryDefects,  "Rejected before loading", "text-warning",   "bg-warning/10",   "border-warning/30"),
+        ("Sold",                 t => t.Sold,            "Route verified volume",   "text-success",   "bg-success/10",   "border-success/30"),
+        ("Closing Stock",        t => t.Returned,        "Rolls into tomorrow",     "text-accent",    "bg-accent/10",    "border-accent/30"),
+        ("Damaged",              t => t.Damaged,         "In-transit write-off",    "text-error",     "bg-error/10",     "border-error/30"),
+        ("Returns",              t => t.CustomerReturns, "Prior-sale replacements", "text-neutral",   "bg-neutral/10",   "border-neutral/30")
     };
 
     int StageValue(LifecycleTotalsDto totals, LifecycleMetric metric) => metric switch
@@ -30,9 +32,12 @@
         LifecycleMetric.OrdersPlaced => totals.OrdersPlaced,
         LifecycleMetric.Produced => totals.Produced,
         LifecycleMetric.Loaded => totals.Loaded,
+        LifecycleMetric.FactoryDefects => totals.FactoryDefects,
         LifecycleMetric.Sold => totals.Sold,
         LifecycleMetric.Returned => totals.Returned,
-        _ => totals.Damaged
+        LifecycleMetric.Damaged => totals.Damaged,
+        LifecycleMetric.CustomerReturns => totals.CustomerReturns,
+        _ => 0
     };
 
     decimal FillRate(LifecycleTotalsDto t) => t.OrdersPlaced <= 0 ? 0m : Math.Round(t.Loaded / (decimal)t.OrdersPlaced * 100m, 1);
@@ -84,7 +89,7 @@
                                 <i class="fa-solid fa-arrows-split-up-and-left text-primary"></i> Lifecycle Flow &bull; @TimeframeLabel(period)
                             </h2>
                             <p class="text-[11px] opacity-65 mt-0.5">
-                                Strict 6-stage operational pipeline from initial rep request to return reconciliation. Click any KPI stage to view product orders.
+                                Strict 8-stage operational pipeline from rep request through production, loading, factory rejects, sales, closing stock, transit damage and customer returns. Click any stage to open its grouped breakdown.
                             </p>
                         </div>
                         <div class="flex items-center gap-2">
@@ -93,8 +98,8 @@
                         </div>
                     </div>
 
-                    <!-- 6-Stage Sequential Pipeline Cards: Clicking ANY stage opens the Product Orders Side Bar Drawer! -->
-                    <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
+                    <!-- 8-Stage Sequential Pipeline Cards: clicking a stage opens its grouped side panel. -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2.5">
                         @for (int i = 0; i < Model.Stages.Count; i++)
                         {
                             var stage = Model.Stages[i];
@@ -103,21 +108,22 @@
                             var stageNum = i + 1;
 
                             <div class="relative group cursor-pointer"
-                                 onclick="openDrill('all', '@period.Key', '@stage.Metric', 'products')">
-                                <div class="card bg-base-100 border border-base-300 rounded-xl hover:border-primary hover:shadow-md transition-all duration-200 h-full p-3.5 space-y-2 flex flex-col justify-between group-hover:-translate-y-0.5">
-                                    @* <div class="flex items-center justify-between">
+                                 title="@stageCol.Subtitle"
+                                 onclick="openDrill('all', '@period.Key', '@stage.Metric', 'stage')">
+                                <div class="card bg-base-100 border border-base-300 rounded-xl hover:border-primary hover:shadow-md transition-all duration-200 h-full p-3 space-y-2 flex flex-col justify-between group-hover:-translate-y-0.5">
+                                    <div class="flex items-center justify-between">
                                         <span class="w-5 h-5 rounded-full @stageCol.BgTone @stageCol.Tone flex items-center justify-center text-[10px] font-black font-mono border @stageCol.BorderTone">
                                             @stageNum
                                         </span>
-                                        <i class="@stage.IconClass text-sm @stageCol.Tone"></i>
-                                    </div> *@
+                                        <i class="@stage.IconClass text-xs @stageCol.Tone"></i>
+                                    </div>
                                     <div>
-                                        <div class="text-[10px] font-bold uppercase tracking-wider opacity-60">@stageCol.Label</div>
-                                        <div class="font-mono font-black text-2xl text-base-content tracking-tight mt-0.5">
+                                        <div class="text-[9px] font-bold uppercase tracking-wider opacity-60 leading-tight">@stageCol.Label</div>
+                                        <div class="font-mono font-black text-xl text-base-content tracking-tight mt-0.5">
                                             @stageVal.ToString("N0")
                                         </div>
                                     </div>
-                                    <div class="pt-1.5 border-t border-base-200/80 flex items-center justify-between text-[10px] opacity-60">
+                                    <div class="pt-1.5 border-t border-base-200/80 flex items-center justify-between text-[9px] opacity-60">
                                         <span class="truncate">@stageCol.Subtitle</span>
                                         <i class="fa-solid fa-arrow-right text-[8px] opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-primary"></i>
                                     </div>
@@ -181,33 +187,41 @@
                                     </span>
                                 </div>
 
-                                <!-- Micro-Lifecycle Breakdown (6 Stages) -->
+                                <!-- Micro-Lifecycle Breakdown (8 Stages) -->
                                 <div>
                                     <div class="text-[10px] font-bold uppercase tracking-wider opacity-50 mb-2">Micro-Lifecycle Breakdown</div>
-                                    <div class="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-base-200/40 border border-base-300 text-center">
+                                    <div class="grid grid-cols-4 gap-1.5 p-2.5 rounded-xl bg-base-200/40 border border-base-300 text-center">
                                         <div>
                                             <div class="text-[8px] font-bold uppercase opacity-55">Orders</div>
-                                            <div class="font-mono font-bold text-xs text-info mt-0.5">@t.OrdersPlaced.ToString("N0")</div>
+                                            <div class="font-mono font-bold text-[11px] text-info mt-0.5">@t.OrdersPlaced.ToString("N0")</div>
                                         </div>
                                         <div>
                                             <div class="text-[8px] font-bold uppercase opacity-55">Produced</div>
-                                            <div class="font-mono font-bold text-xs text-primary mt-0.5">@t.Produced.ToString("N0")</div>
+                                            <div class="font-mono font-bold text-[11px] text-primary mt-0.5">@t.Produced.ToString("N0")</div>
                                         </div>
                                         <div>
                                             <div class="text-[8px] font-bold uppercase opacity-55">Loaded</div>
-                                            <div class="font-mono font-bold text-xs text-secondary mt-0.5">@t.Loaded.ToString("N0")</div>
+                                            <div class="font-mono font-bold text-[11px] text-secondary mt-0.5">@t.Loaded.ToString("N0")</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-[8px] font-bold uppercase opacity-55">Defects</div>
+                                            <div class="font-mono font-bold text-[11px] text-warning mt-0.5">@t.FactoryDefects.ToString("N0")</div>
                                         </div>
                                         <div>
                                             <div class="text-[8px] font-bold uppercase opacity-55">Sold</div>
-                                            <div class="font-mono font-black text-xs text-success mt-0.5">@t.Sold.ToString("N0")</div>
+                                            <div class="font-mono font-black text-[11px] text-success mt-0.5">@t.Sold.ToString("N0")</div>
                                         </div>
                                         <div>
-                                            <div class="text-[8px] font-bold uppercase opacity-55">Returned</div>
-                                            <div class="font-mono font-bold text-xs text-warning mt-0.5">@t.Returned.ToString("N0")</div>
+                                            <div class="text-[8px] font-bold uppercase opacity-55">Closing</div>
+                                            <div class="font-mono font-bold text-[11px] text-accent mt-0.5">@t.Returned.ToString("N0")</div>
                                         </div>
                                         <div>
                                             <div class="text-[8px] font-bold uppercase opacity-55">Damaged</div>
-                                            <div class="font-mono font-bold text-xs @(t.Damaged > 0 ? "text-error" : "opacity-40") mt-0.5">@t.Damaged.ToString("N0")</div>
+                                            <div class="font-mono font-bold text-[11px] @(t.Damaged > 0 ? "text-error" : "opacity-40") mt-0.5">@t.Damaged.ToString("N0")</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-[8px] font-bold uppercase opacity-55">Returns</div>
+                                            <div class="font-mono font-bold text-[11px] text-neutral mt-0.5">@t.CustomerReturns.ToString("N0")</div>
                                         </div>
                                     </div>
                                 </div>
@@ -267,10 +281,10 @@
                 </span>
             </div>
             <h3 class="font-black text-lg text-base-content tracking-tight flex items-center gap-2" id="drill-header-title">
-                Today's Product Orders & Allocations
+                Today's Orders Placed — By Sales Rep
             </h3>
             <p class="text-xs opacity-60" id="drill-caption">
-                Showing all product SKU line orders for today.
+                Quantities requested by each sales rep before route departure.
             </p>
         </div>
         <button type="button"
@@ -285,16 +299,22 @@
     <input type="hidden" id="drill-metric" value="OrdersPlaced" />
     <input type="hidden" id="drill-period" value="@defaultPeriod.Key" />
     <input type="hidden" id="drill-scope" value="all" />
-    <input type="hidden" id="drill-view-mode" value="products" />
+    <input type="hidden" id="drill-view-mode" value="stage" />
 
     <!-- Drawer Body -->
     <div class="p-6 space-y-5 overflow-y-auto flex-1">
-        <!-- Navigation Tabs: Product Orders (SKU List) vs Sales Rep Allocations -->
+        <!-- Navigation Tabs: Stage Breakdown vs Product Orders (SKU List) vs Sales Rep Allocations -->
         <div class="flex items-center justify-between border-b border-base-300 pb-2 flex-wrap gap-2">
             <div class="tabs tabs-boxed bg-base-200/60 p-1 rounded-xl">
                 <button type="button"
-                        id="tab-btn-products"
+                        id="tab-btn-stage"
                         class="tab tab-sm font-bold text-xs tab-active rounded-lg transition-all"
+                        onclick="switchDrillTab('stage')">
+                    <i class="fa-solid fa-diagram-project mr-1.5 text-xs"></i> Stage Breakdown
+                </button>
+                <button type="button"
+                        id="tab-btn-products"
+                        class="tab tab-sm font-bold text-xs rounded-lg transition-all"
                         onclick="switchDrillTab('products')">
                     <i class="fa-solid fa-box-open mr-1.5 text-xs"></i> Product Orders (SKU List)
                 </button>
@@ -309,7 +329,7 @@
             <!-- Instant Search Bar -->
             <div class="relative">
                 <i class="fa-solid fa-magnifying-glass text-[10px] opacity-40 absolute left-2.5 top-2.5"></i>
-                <input type="text" id="drill-search-input" placeholder="Search product or rep..."
+                <input type="text" id="drill-search-input" placeholder="Search stage group..."
                        class="input input-xs input-bordered pl-7 rounded-xl text-xs w-44 sm:w-56 focus:w-64 transition-all" />
             </div>
         </div>
@@ -344,8 +364,38 @@
             </div>
         </div>
 
+        <!-- VIEW 0: Stage-specific grouped breakdown (the eight KPI cards) -->
+        <div id="drill-stage-container" class="space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-base-200 bg-base-200/40 px-4 py-2.5">
+                <div class="flex items-center gap-2">
+                    <span id="drill-stage-grouping-badge" class="badge badge-primary badge-sm font-bold text-[10px]">
+                        By Sales Rep
+                    </span>
+                    <span id="drill-stage-total-badge" class="badge badge-ghost border border-base-300 badge-sm font-mono font-bold text-[10px]">
+                        0 units
+                    </span>
+                </div>
+                <span id="drill-stage-note" class="text-[10px] opacity-60 max-w-xl text-right">
+                    Click any stage KPI to see its grouped operational detail.
+                </span>
+            </div>
+
+            <div class="rounded-xl border border-base-200 bg-base-100 overflow-x-auto shadow-xs">
+                <table class="table table-sm w-full text-xs">
+                    <thead class="bg-base-200/60">
+                        <tr id="drill-stage-head" class="uppercase text-[10px] tracking-wider border-b border-base-300 opacity-70">
+                            <!-- Dynamic stage columns rendered via JS -->
+                        </tr>
+                    </thead>
+                    <tbody id="drill-stage-body" class="divide-y divide-base-200 font-medium">
+                        <!-- Dynamic stage rows rendered via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- VIEW 1: Product Orders (SKU List) Table -->
-        <div id="drill-product-container" class="rounded-xl border border-base-200 bg-base-100 overflow-x-auto shadow-xs">
+        <div id="drill-product-container" class="rounded-xl border border-base-200 bg-base-100 overflow-x-auto shadow-xs hidden">
             <table class="table table-sm w-full text-xs">
                 <thead class="bg-base-200/60">
                     <tr class="uppercase text-[10px] tracking-wider border-b border-base-300 opacity-70">
@@ -374,7 +424,7 @@
                         <th class="text-right">Requested<br />Qty</th>
                         <th class="text-right">Loaded<br />Qty</th>
                         <th class="text-right">Sold<br />Qty</th>
-                        <th class="text-right">Returned<br />Qty</th>
+                        <th class="text-right">Closing Stock<br />Qty</th>
                         <th class="text-right">Damaged<br />Qty</th>
                         <th class="text-right">Expected<br />Revenue</th>
                         <th class="text-right">Cash<br />Collected</th>

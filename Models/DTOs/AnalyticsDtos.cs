@@ -49,8 +49,19 @@ namespace Manufacture.Models.DTOs
         public int Produced { get; set; }
         public int Loaded { get; set; }
         public int Sold { get; set; }
+
+        /// <summary>Unsold, good stock returned by reps (closing stock).</summary>
         public int Returned { get; set; }
+
+        /// <summary>Stock damaged in transit or on route and written off.</summary>
         public int Damaged { get; set; }
+
+        /// <summary>Defective units identified inside the factory before loading.</summary>
+        public int FactoryDefects { get; set; }
+
+        /// <summary>Expired/spoiled items returned by customers from prior sales.</summary>
+        public int CustomerReturns { get; set; }
+
         public int TicketCount { get; set; }
 
         public decimal ExpectedRevenue { get; set; }
@@ -65,6 +76,12 @@ namespace Manufacture.Models.DTOs
 
         /// <summary>Damaged as a percentage of stock that came back.</summary>
         public decimal DamagePercent => Ratio(Damaged, Returned);
+
+        /// <summary>Factory rejects as a percentage of what was produced.</summary>
+        public decimal FactoryDefectPercent => Ratio(FactoryDefects, Produced);
+
+        /// <summary>Prior-sale customer returns as a percentage of what sold.</summary>
+        public decimal CustomerReturnPercent => Ratio(CustomerReturns, Sold);
 
         /// <summary>Collected as a percentage of invoiced revenue.</summary>
         public decimal CollectionRatePercent => Ratio(Collected, ExpectedRevenue);
@@ -114,6 +131,8 @@ namespace Manufacture.Models.DTOs
         public int Sold { get; set; }
         public int Returned { get; set; }
         public int Damaged { get; set; }
+        public int FactoryDefects { get; set; }
+        public int CustomerReturns { get; set; }
         public decimal ExpectedRevenue { get; set; }
         public decimal Collected { get; set; }
 
@@ -133,6 +152,8 @@ namespace Manufacture.Models.DTOs
             LifecycleMetric.Sold => Sold,
             LifecycleMetric.Returned => Returned,
             LifecycleMetric.Damaged => Damaged,
+            LifecycleMetric.FactoryDefects => FactoryDefects,
+            LifecycleMetric.CustomerReturns => CustomerReturns,
             _ => 0
         };
     }
@@ -177,10 +198,14 @@ namespace Manufacture.Models.DTOs
         public int Sold { get; set; }
         public int Returned { get; set; }
         public int Damaged { get; set; }
+        public int FactoryDefects { get; set; }
+        public int CustomerReturns { get; set; }
         public decimal ExpectedRevenue { get; set; }
         public decimal FillRatePercent => OrdersPlaced <= 0 ? 0m : Math.Round(Loaded / (decimal)OrdersPlaced * 100m, 1);
         public decimal SellThroughPercent => Loaded <= 0 ? 0m : Math.Round(Sold / (decimal)Loaded * 100m, 1);
         public decimal DamagePercent => Loaded <= 0 ? 0m : Math.Round(Damaged / (decimal)Loaded * 100m, 1);
+        public decimal FactoryDefectPercent => Produced <= 0 ? 0m : Math.Round(FactoryDefects / (decimal)Produced * 100m, 1);
+        public decimal CustomerReturnPercent => Sold <= 0 ? 0m : Math.Round(CustomerReturns / (decimal)Sold * 100m, 1);
     }
 
     /// <summary>
@@ -192,6 +217,67 @@ namespace Manufacture.Models.DTOs
         public string ScopeKey { get; set; } = string.Empty;
         public string ScopeLabel { get; set; } = string.Empty;
         public Dictionary<string, List<ProductDrillDownRowDto>> Periods { get; set; } = new();
+    }
+
+    /// <summary>
+    /// One row of a lifecycle-stage drill-down. The grouping columns are populated
+    /// according to the metric: reps for orders, categories for production/rejects,
+    /// vehicle + category for loading, and rep + category for sold/closing stock.
+    /// </summary>
+    public class StageDrillDownRowDto
+    {
+        public string GroupKey { get; set; } = string.Empty;
+        public string GroupLabel { get; set; } = string.Empty;
+        public string GroupSubLabel { get; set; } = string.Empty;
+        public string CategoryLabel { get; set; } = string.Empty;
+        public string RepName { get; set; } = string.Empty;
+        public string Route { get; set; } = string.Empty;
+        public string VehicleRegistration { get; set; } = string.Empty;
+        public string VehicleName { get; set; } = string.Empty;
+        public string OutputUnit { get; set; } = "units";
+
+        public int OrdersPlaced { get; set; }
+        public int Produced { get; set; }
+        public int Loaded { get; set; }
+        public int FactoryDefects { get; set; }
+        public int Sold { get; set; }
+        public int ClosingStock { get; set; }
+        public int Damaged { get; set; }
+        public int CustomerReturns { get; set; }
+
+        public decimal ExpectedRevenue { get; set; }
+
+        /// <summary>The value of the metric this drill-down was opened for.</summary>
+        public int MetricValue { get; set; }
+
+        /// <summary>This row's share of the metric total, as a percentage.</summary>
+        public decimal SharePercent { get; set; }
+    }
+
+    /// <summary>Stage-specific breakdown for one metric, period and product scope.</summary>
+    public class StageDrillDownDto
+    {
+        public string Metric { get; set; } = string.Empty;
+        public string MetricLabel { get; set; } = string.Empty;
+        public string GroupingLabel { get; set; } = string.Empty;
+        public string GroupingHint { get; set; } = string.Empty;
+        public string Note { get; set; } = string.Empty;
+        public string OutputUnit { get; set; } = "units";
+        public int Total { get; set; }
+        public int GroupCount => Rows.Count;
+        public List<StageDrillDownRowDto> Rows { get; set; } = new();
+    }
+
+    /// <summary>
+    /// The eight stage drill-downs for one product scope, keyed by metric name and
+    /// then by period key. Pre-computed server-side so the slide-over can switch
+    /// metric, scope and window without a round trip.
+    /// </summary>
+    public class StageDrillDownScopeDto
+    {
+        public string ScopeKey { get; set; } = string.Empty;
+        public string ScopeLabel { get; set; } = string.Empty;
+        public Dictionary<string, Dictionary<string, StageDrillDownDto>> Metrics { get; set; } = new();
     }
 
     public class ExecutiveOverviewDto
@@ -208,6 +294,7 @@ namespace Manufacture.Models.DTOs
         public List<RepDrillDownRowDto> RepToday { get; set; } = new();
         public List<RepDrillDownScopeDto> DrillDownScopes { get; set; } = new();
         public List<ProductDrillDownScopeDto> ProductDrillDownScopes { get; set; } = new();
+        public List<StageDrillDownScopeDto> StageDrillDownScopes { get; set; } = new();
         public List<ExecutiveAlertDto> Alerts { get; set; } = new();
 
         /// <summary>
@@ -284,6 +371,12 @@ namespace Manufacture.Models.DTOs
         [JsonPropertyName("damaged")]
         public int Damaged { get; set; }
 
+        [JsonPropertyName("factory_defects")]
+        public int FactoryDefects { get; set; }
+
+        [JsonPropertyName("customer_returns")]
+        public int CustomerReturns { get; set; }
+
         [JsonPropertyName("fill_rate_pct")]
         public decimal FillRatePct { get; set; }
 
@@ -340,6 +433,12 @@ namespace Manufacture.Models.DTOs
 
         [JsonPropertyName("damaged")]
         public int Damaged { get; set; }
+
+        [JsonPropertyName("factory_defects")]
+        public int FactoryDefects { get; set; }
+
+        [JsonPropertyName("customer_returns")]
+        public int CustomerReturns { get; set; }
     }
 
     public class TenderSplitApiDto
@@ -469,6 +568,8 @@ namespace Manufacture.Models.DTOs
         public int Sold { get; set; }
         public int Returned { get; set; }
         public int Damaged { get; set; }
+        public int FactoryDefects { get; set; }
+        public int CustomerReturns { get; set; }
         public decimal FillRatePercent { get; set; }
         public decimal SellThroughPercent { get; set; }
         public decimal DamagePercent { get; set; }

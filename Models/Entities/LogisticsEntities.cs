@@ -6,6 +6,7 @@ namespace Manufacture.Models.Entities
         public string RegistrationNumber { get; set; } = string.Empty; // e.g. "KJA-892-XA"
         public string MakeAndModel { get; set; } = string.Empty; // e.g. "Toyota HiAce Delivery Van"
         public string Type { get; set; } = "Van"; // Van, Truck, Sedan, Motorcycle
+        public string Function { get; set; } = "Deliveries"; // Deliveries, VIP Logistics, Commercial Haulage, Staff Transport, General Operations
         public string AssignedDriverName { get; set; } = string.Empty;
         public string DriverPhoneNumber { get; set; } = string.Empty;
         public string FuelType { get; set; } = "PMS (Petrol)"; // PMS, AGO (Diesel)

@@ -199,6 +199,87 @@ namespace Manufacture.Tests
                 // and damage is a subset of what came back.
                 Assert.True(row.Sold + row.Returned <= row.Loaded + 1, $"{row.RowKey}: sold + returned exceeds loaded.");
                 Assert.True(row.Damaged <= row.Returned, $"{row.RowKey}: damaged exceeds returned.");
+                Assert.True(row.FactoryDefects <= row.Produced + 1, $"{row.RowKey}: factory defects exceed produced.");
+                Assert.True(row.CustomerReturns >= 0, $"{row.RowKey}: customer returns cannot be negative.");
+            }
+        }
+
+        [Fact]
+        public void DashboardStageDrillDowns_GroupTheWayEachKpiRequires()
+        {
+            var overview = _analytics.GetDashboardOverview(Anchor);
+            var all = overview.StageDrillDownScopes.First(s => s.ScopeKey == "all");
+            var categories = new[] { "Bread", "Water", "Snack" };
+
+            Assert.Equal(8, all.Metrics.Count);
+
+            var orders = all.Metrics["OrdersPlaced"]["Today"];
+            Assert.All(orders.Rows, r => Assert.False(string.IsNullOrWhiteSpace(r.RepName)));
+            Assert.All(orders.Rows, r => Assert.Equal("All Categories", r.CategoryLabel));
+
+            var produced = all.Metrics["Produced"]["Today"];
+            Assert.All(produced.Rows, r => Assert.Contains(r.CategoryLabel, categories));
+
+            var loaded = all.Metrics["Loaded"]["Today"];
+            Assert.All(loaded.Rows, r => Assert.False(string.IsNullOrWhiteSpace(r.VehicleRegistration)));
+            Assert.All(loaded.Rows, r => Assert.Contains(r.CategoryLabel, categories));
+
+            var sold = all.Metrics["Sold"]["Today"];
+            Assert.All(sold.Rows, r => Assert.False(string.IsNullOrWhiteSpace(r.RepName)));
+            Assert.All(sold.Rows, r => Assert.Contains(r.CategoryLabel, categories));
+
+            var closing = all.Metrics["Returned"]["Today"];
+            Assert.All(closing.Rows, r => Assert.False(string.IsNullOrWhiteSpace(r.RepName)));
+            Assert.All(closing.Rows, r => Assert.Contains(r.CategoryLabel, categories));
+
+            foreach (var metric in new[] { "FactoryDefects", "Damaged", "CustomerReturns" })
+            {
+                Assert.All(all.Metrics[metric]["Today"].Rows,
+                    r => Assert.Contains(r.CategoryLabel, categories));
+            }
+        }
+
+        [Fact]
+        public void DashboardStageDrillDowns_SumBackToTheLifecycleTotals()
+        {
+            var overview = _analytics.GetDashboardOverview(Anchor);
+            var all = overview.StageDrillDownScopes.First(s => s.ScopeKey == "all");
+            var totals = overview.Periods.First(p => p.Key == "Today").Totals;
+
+            Assert.Equal(totals.OrdersPlaced, all.Metrics["OrdersPlaced"]["Today"].Total);
+            Assert.Equal(totals.Produced, all.Metrics["Produced"]["Today"].Total);
+            Assert.Equal(totals.Loaded, all.Metrics["Loaded"]["Today"].Total);
+            Assert.Equal(totals.FactoryDefects, all.Metrics["FactoryDefects"]["Today"].Total);
+            Assert.Equal(totals.Sold, all.Metrics["Sold"]["Today"].Total);
+            Assert.Equal(totals.Returned, all.Metrics["Returned"]["Today"].Total);
+            Assert.Equal(totals.Damaged, all.Metrics["Damaged"]["Today"].Total);
+            Assert.Equal(totals.CustomerReturns, all.Metrics["CustomerReturns"]["Today"].Total);
+        }
+
+        [Fact]
+        public void DashboardStageDrillDowns_AreComputedForEveryScopeAndPeriod()
+        {
+            var overview = _analytics.GetDashboardOverview(Anchor);
+            var metrics = new[]
+            {
+                "OrdersPlaced", "Produced", "Loaded", "FactoryDefects",
+                "Sold", "Returned", "Damaged", "CustomerReturns"
+            };
+
+            Assert.Equal(4, overview.StageDrillDownScopes.Count);
+            foreach (var scope in overview.StageDrillDownScopes)
+            {
+                foreach (var metric in metrics)
+                {
+                    Assert.True(scope.Metrics.ContainsKey(metric), $"{scope.ScopeKey} is missing {metric}.");
+                    Assert.Equal(4, scope.Metrics[metric].Count);
+                    Assert.All(scope.Metrics[metric].Values, dto =>
+                    {
+                        Assert.Equal(metric, dto.Metric);
+                        Assert.NotNull(dto.Rows);
+                        Assert.False(string.IsNullOrWhiteSpace(dto.GroupingLabel));
+                    });
+                }
             }
         }
 

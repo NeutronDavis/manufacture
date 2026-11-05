@@ -33,6 +33,40 @@ namespace Manufacture.Tests
         }
 
         [Fact]
+        public void InitialFleet_ShouldDescribeEachVehicleFunction()
+        {
+            var vehicles = _service.GetAllVehicles();
+
+            Assert.All(vehicles, v => Assert.False(string.IsNullOrWhiteSpace(v.Function)));
+            Assert.Contains(vehicles, v => v.Function == "Deliveries");
+            Assert.Contains(vehicles, v => v.Function == "VIP Logistics");
+            Assert.Contains(vehicles, v => v.Function == "Commercial Haulage");
+        }
+
+        [Fact]
+        public void CreateVehicle_ShouldPersistVehicleFunction()
+        {
+            var dto = new VehicleDto
+            {
+                RegistrationNumber = "TEST-101-FN",
+                MakeAndModel = "Toyota Coaster VIP Shuttle",
+                Type = "Van",
+                Function = "VIP Logistics",
+                AssignedDriverName = "Test Driver",
+                DriverPhoneNumber = "+2348000000000",
+                FuelType = "PMS (Petrol)",
+                TankCapacityLitres = 95,
+                CurrentOdometerKm = 1200,
+                Status = "Active"
+            };
+
+            var created = _service.CreateVehicle(dto);
+
+            Assert.Equal("VIP Logistics", created.Function);
+            Assert.Equal("VIP Logistics", _service.GetVehicleById(created.Id)?.Function);
+        }
+
+        [Fact]
         public void RouteRates_ShouldSupportNationwideStatewideCorridors()
         {
             var rates = _service.GetAllRouteRates();

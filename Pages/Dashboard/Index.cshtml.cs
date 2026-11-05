@@ -36,15 +36,17 @@ namespace Manufacture.Pages.Dashboard
             _analytics = analytics;
         }
 
-        /// <summary>The six-stage lifecycle shown on the executive quick-overview.</summary>
+        /// <summary>The eight-stage lifecycle shown on the executive quick-overview.</summary>
         public IReadOnlyList<LifecycleStage> Stages { get; } = new[]
         {
             new LifecycleStage("Orders Placed", "fa-solid fa-receipt", "info", LifecycleMetric.OrdersPlaced),
             new LifecycleStage("Produced", "fa-solid fa-bread-slice", "primary", LifecycleMetric.Produced),
             new LifecycleStage("Loaded", "fa-solid fa-truck-ramp-box", "secondary", LifecycleMetric.Loaded),
+            new LifecycleStage("Factory Defects", "fa-solid fa-ban", "warning", LifecycleMetric.FactoryDefects),
             new LifecycleStage("Sold", "fa-solid fa-basket-shopping", "success", LifecycleMetric.Sold),
-            new LifecycleStage("Returned", "fa-solid fa-rotate-left", "warning", LifecycleMetric.Returned),
-            new LifecycleStage("Damaged", "fa-solid fa-trash-can", "error", LifecycleMetric.Damaged)
+            new LifecycleStage("Closing Stock", "fa-solid fa-warehouse", "accent", LifecycleMetric.Returned),
+            new LifecycleStage("Damaged", "fa-solid fa-trash-can", "error", LifecycleMetric.Damaged),
+            new LifecycleStage("Returns", "fa-solid fa-rotate-left", "neutral", LifecycleMetric.CustomerReturns)
         };
 
         /// <summary>Cumulative Today / This Week / This Month / This Year KPI cards.</summary>

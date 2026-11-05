@@ -257,28 +257,39 @@
     </form>
 </div>
 
-<datalist id="nigerianStatesList">
-    @foreach (var state in Model.NigerianStates)
-    {
-        <option value="@state" />
-    }
-</datalist>
-
 @section Scripts {
 <script>
     // Embedded Active Route Rates Matrix
     const routeRates = @Html.Raw(Model.RouteRatesJson);
+    const matrixOrigins = [...new Set(routeRates.map(r => r.originState))].sort();
 
-    // Initial Legs State
-    let legs = [
-        {
+    // Initial legs are supplied by the page model and are already priced from the matrix.
+    let legs = @Html.Raw(Model.InitialLegsJson);
+
+    if (!Array.isArray(legs) || legs.length === 0) {
+        legs = [{
             legNumber: 1,
-            originState: "Lagos",
-            destinationState: "Rivers (Port Harcourt)",
+            originState: matrixOrigins[0] || "",
+            destinationState: "",
             fuelOption: "WithFuel",
-            legCost: 2100000
-        }
-    ];
+            legCost: 0
+        }];
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, ch => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        })[ch]);
+    }
+
+    function routesFromOrigin(origin) {
+        if (!origin) return [];
+        const destinations = routeRates
+            .filter(r => r.originState.toLowerCase().trim() === String(origin).toLowerCase().trim())
+            .map(r => r.destinationState);
+
+        return [...new Set(destinations)].sort();
+    }
 
     function onVehicleChanged() {
         const selector = document.getElementById('vehicleSelector');
@@ -292,14 +303,17 @@
 
     function addNewLeg() {
         const lastLeg = legs[legs.length - 1];
-        const newOrigin = lastLeg ? lastLeg.destinationState : "Lagos";
-        
+        const newOrigin = lastLeg ? lastLeg.destinationState : (matrixOrigins[0] || "");
+        const availableDestinations = routesFromOrigin(newOrigin);
+        const firstDestination = availableDestinations[0] || "";
+        const matrixRate = findRateMatch(newOrigin, firstDestination);
+
         legs.push({
             legNumber: legs.length + 1,
             originState: newOrigin,
-            destinationState: "",
+            destinationState: firstDestination,
             fuelOption: "WithFuel",
-            legCost: 0
+            legCost: matrixRate ? matrixRate.rateWithFuel : 0
         });
 
         renderLegs();
@@ -326,28 +340,43 @@
         );
     }
 
-    function onLegFieldChanged(index, field, value) {
-        legs[index][field] = value;
+    function syncLegCost(index) {
+        const leg = legs[index];
+        const match = findRateMatch(leg.originState, leg.destinationState);
 
-        // Auto update leg cost from matrix
-        const match = findRateMatch(legs[index].originState, legs[index].destinationState);
-        if (match) {
-            legs[index].legCost = legs[index].fuelOption === "WithFuel" ? match.rateWithFuel : match.rateWithoutFuel;
-        } else {
-            // Default estimate if not in matrix
-            legs[index].legCost = legs[index].fuelOption === "WithFuel" ? 1800000 : 1100000;
+        // Only matrix lanes are billable - never fall back to an out-of-sync estimate.
+        leg.legCost = match
+            ? (leg.fuelOption === "WithFuel" ? match.rateWithFuel : match.rateWithoutFuel)
+            : 0;
+
+        return match;
+    }
+
+    function onLegOriginChanged(index, origin) {
+        legs[index].originState = origin;
+
+        // Destination options must be valid lanes from the selected origin.
+        const destinations = routesFromOrigin(origin);
+        const currentDestination = legs[index].destinationState || "";
+        if (!destinations.some(d => d.toLowerCase() === currentDestination.toLowerCase())) {
+            legs[index].destinationState = destinations[0] || "";
         }
 
+        syncLegCost(index);
+        renderLegs();
+        recalculateTotals();
+    }
+
+    function onLegDestinationChanged(index, destination) {
+        legs[index].destinationState = destination;
+        syncLegCost(index);
         renderLegs();
         recalculateTotals();
     }
 
     function onFuelToggleChanged(index, isWithFuel) {
         legs[index].fuelOption = isWithFuel ? "WithFuel" : "WithoutFuel";
-        const match = findRateMatch(legs[index].originState, legs[index].destinationState);
-        if (match) {
-            legs[index].legCost = isWithFuel ? match.rateWithFuel : match.rateWithoutFuel;
-        }
+        syncLegCost(index);
         renderLegs();
         recalculateTotals();
     }
@@ -358,6 +387,33 @@
 
         legs.forEach((leg, index) => {
             const isWithFuel = leg.fuelOption === "WithFuel";
+            const matrixRate = findRateMatch(leg.originState, leg.destinationState);
+            const destinations = routesFromOrigin(leg.originState);
+
+            // Preserve any legacy value that is not in the matrix so it is not silently lost.
+            const originChoices = [...matrixOrigins];
+            if (leg.originState && !originChoices.some(o => o.toLowerCase() === leg.originState.toLowerCase())) {
+                originChoices.unshift(leg.originState);
+            }
+
+            const destinationChoices = [...destinations];
+            if (leg.destinationState && !destinationChoices.some(d => d.toLowerCase() === leg.destinationState.toLowerCase())) {
+                destinationChoices.unshift(leg.destinationState);
+            }
+
+            const originOptions = originChoices.map(origin => `
+                <option value="${escapeHtml(origin)}" ${leg.originState === origin ? 'selected' : ''}>${escapeHtml(origin)}</option>
+            `).join('');
+
+            const destinationOptions = destinationChoices.map(destination => `
+                <option value="${escapeHtml(destination)}" ${leg.destinationState === destination ? 'selected' : ''}>${escapeHtml(destination)}</option>
+            `).join('');
+
+            const routeMeta = matrixRate
+                ? `<span class="badge badge-success badge-xs font-bold">${escapeHtml(matrixRate.vehicleTypeRequired)}</span>
+                   <span class="text-[11px] text-base-content/60"><i class="fa-regular fa-clock text-[10px]"></i> ~${matrixRate.estimatedHours} hrs transit</span>`
+                : `<span class="badge badge-error badge-xs font-bold">No active matrix lane</span>`;
+
             const legDiv = document.createElement('div');
             legDiv.className = "card bg-base-200/50 border border-base-300 p-5 rounded-2xl space-y-4";
             
@@ -366,7 +422,7 @@
                     <div class="flex items-center gap-2">
                         <span class="badge badge-neutral badge-sm font-black text-[10px]">Leg ${leg.legNumber}</span>
                         <span class="text-xs font-bold text-base-content">
-                            ${leg.originState || 'Origin'} → ${leg.destinationState || 'Destination'}
+                            ${escapeHtml(leg.originState) || 'Origin'} → ${escapeHtml(leg.destinationState) || 'Destination'}
                         </span>
                     </div>
                     ${legs.length > 1 ? `
@@ -379,24 +435,33 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="form-control w-full">
                         <label class="label pb-1.5"><span class="label-text font-bold text-xs text-base-content">Origin State <span class="text-error">*</span></span></label>
-                        <input list="nigerianStatesList" 
-                               name="Booking.Legs[${index}].OriginState" 
-                               value="${leg.originState}" 
-                               class="input input-sm input-bordered w-full rounded-xl text-xs font-bold bg-base-100 border-base-300 focus:border-primary" 
-                               onchange="onLegFieldChanged(${index}, 'originState', this.value)" 
-                               required />
+                        <select name="Booking.Legs[${index}].OriginState"
+                                class="select select-sm select-bordered w-full rounded-xl text-xs font-bold bg-base-100 border-base-300 focus:border-primary"
+                                onchange="onLegOriginChanged(${index}, this.value)"
+                                required>
+                            <option value="">-- Select matrix origin --</option>
+                            ${originOptions}
+                        </select>
                     </div>
 
                     <div class="form-control w-full">
-                        <label class="label pb-1.5"><span class="label-text font-bold text-xs text-base-content">Destination State / Layover Drop <span class="text-error">*</span></span></label>
-                        <input list="nigerianStatesList" 
-                               name="Booking.Legs[${index}].DestinationState" 
-                               value="${leg.destinationState}" 
-                               class="input input-sm input-bordered w-full rounded-xl text-xs font-bold text-primary bg-base-100 border-base-300 focus:border-primary" 
-                               placeholder="e.g. Rivers (Port Harcourt), Kano, Abuja" 
-                               onchange="onLegFieldChanged(${index}, 'destinationState', this.value)" 
-                               required />
+                        <label class="label pb-1.5"><span class="label-text font-bold text-xs text-base-content">Destination / Layover Drop <span class="text-error">*</span></span></label>
+                        <select name="Booking.Legs[${index}].DestinationState"
+                                class="select select-sm select-bordered w-full rounded-xl text-xs font-bold text-primary bg-base-100 border-base-300 focus:border-primary"
+                                onchange="onLegDestinationChanged(${index}, this.value)"
+                                ${destinations.length === 0 ? 'disabled' : ''}
+                                required>
+                            <option value="">${destinations.length === 0 ? 'No matrix lanes from this origin' : '-- Select matrix destination --'}</option>
+                            ${destinationOptions}
+                        </select>
+                        ${destinations.length === 0 ? '<span class="text-[10px] text-error mt-1">Select another origin to continue the layover.</span>' : ''}
                     </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 text-[11px]">
+                    <i class="fa-solid fa-map-location-dot text-primary text-[10px]"></i>
+                    <span class="opacity-60 font-semibold">Matrix lane:</span>
+                    ${routeMeta}
                 </div>
 
                 <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 mt-1 border-t border-base-300/60 bg-base-100 p-3.5 rounded-xl">
@@ -419,16 +484,16 @@
                         <input type="hidden" name="Booking.Legs[${index}].LegNumber" value="${leg.legNumber}" />
                     </div>
 
-                    <!-- Calculated Leg Cost -->
+                    <!-- Calculated Leg Cost (read-only, driven by the Route Pricing Matrix) -->
                     <div class="flex items-center justify-between sm:justify-end gap-2.5">
-                        <span class="text-xs font-bold text-base-content/70">Leg Billable:</span>
+                        <span class="text-xs font-bold text-base-content/70">Matrix Leg Billable:</span>
                         <div class="relative">
                             <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold opacity-50">₦</span>
                             <input type="number" 
                                    name="Booking.Legs[${index}].LegCost" 
                                    value="${leg.legCost}" 
-                                   class="input input-sm input-bordered pl-7 w-36 rounded-xl text-xs font-black text-right font-mono ${isWithFuel ? 'text-emerald-600' : 'text-blue-600'}" 
-                                   onchange="onLegFieldChanged(${index}, 'legCost', parseFloat(this.value) || 0)" />
+                                   readonly
+                                   class="input input-sm input-bordered pl-7 w-40 rounded-xl text-xs font-black text-right font-mono bg-base-200/60 cursor-not-allowed ${isWithFuel ? 'text-emerald-600' : 'text-blue-600'}" />
                         </div>
                     </div>
                 </div>

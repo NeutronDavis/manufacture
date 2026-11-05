@@ -122,7 +122,7 @@ namespace Manufacture.Services
                         Code = r.Code,
                         Name = r.Name,
                         Line = r.ProductType,
-                        LineLabel = r.ProductType.ToString(),
+                        LineLabel = LineDisplayName(r.ProductType),
                         OutputUnit = r.OutputUnit,
                         SellingPrice = r.SellingPrice,
                         BaselineYield = r.ExpectedYield,
@@ -135,6 +135,17 @@ namespace Manufacture.Services
                 .ThenBy(s => s.Name)
                 .ToList();
         }
+
+        /// <summary>
+        /// Customer-facing category label. The enum keeps its historical
+        /// <c>Popcorn</c> name, but the dashboard groups it under the broader
+        /// "Snack" category Mr. Emeka asked for.
+        /// </summary>
+        public static string LineDisplayName(ProductType line) => line switch
+        {
+            ProductType.Popcorn => "Snack",
+            _ => line.ToString()
+        };
 
         // =============================================================
         // Date range resolution
@@ -248,6 +259,7 @@ namespace Manufacture.Services
             // so they are built first and then reused by the alert rules.
             overview.DrillDownScopes = BuildDrillDownScopes(specs, cellsByPeriod);
             overview.ProductDrillDownScopes = BuildProductDrillDownScopes(specs, cellsByPeriod);
+            overview.StageDrillDownScopes = BuildStageDrillDownScopes(specs, cellsByPeriod);
             overview.RepToday = overview.DrillDownScopes
                 .FirstOrDefault(s => s.ScopeKey == ScopeAll)?
                 .Periods.GetValueOrDefault(specs[0].Key) ?? new List<RepDrillDownRowDto>();
@@ -331,6 +343,8 @@ namespace Manufacture.Services
                     Sold = totals.Sold,
                     Returned = totals.Returned,
                     Damaged = totals.Damaged,
+                    FactoryDefects = totals.FactoryDefects,
+                    CustomerReturns = totals.CustomerReturns,
                     FillRatePct = fillRate,
                     SellThroughPct = sellThrough,
                     DamageRatePct = damageRate,
@@ -351,7 +365,9 @@ namespace Manufacture.Services
                         Loaded = l.Totals.Loaded,
                         Sold = l.Totals.Sold,
                         Returned = l.Totals.Returned,
-                        Damaged = l.Totals.Damaged
+                        Damaged = l.Totals.Damaged,
+                        FactoryDefects = l.Totals.FactoryDefects,
+                        CustomerReturns = l.Totals.CustomerReturns
                     }
                 }).ToList(),
                 TenderSplit = new TenderSplitApiDto
@@ -497,6 +513,8 @@ namespace Manufacture.Services
                     var sold = g.Sum(c => c.Sold);
                     var returned = g.Sum(c => c.Returned);
                     var damaged = g.Sum(c => c.Damaged);
+                    var factoryDefects = g.Sum(c => c.FactoryDefects);
+                    var customerReturns = g.Sum(c => c.CustomerReturns);
                     var revenue = g.Sum(c => c.ExpectedRevenue);
 
                     return new ProductDrillDownRowDto
@@ -514,12 +532,301 @@ namespace Manufacture.Services
                         Sold = sold,
                         Returned = returned,
                         Damaged = damaged,
+                        FactoryDefects = factoryDefects,
+                        CustomerReturns = customerReturns,
                         ExpectedRevenue = revenue
                     };
                 })
                 .OrderByDescending(r => r.OrdersPlaced)
                 .ThenBy(r => r.ProductName)
                 .ToList();
+
+        // =============================================================
+        // Stage-specific drill-downs (the eight KPI cards)
+        // =============================================================
+
+        private static readonly LifecycleMetric[] StageMetrics =
+        {
+            LifecycleMetric.OrdersPlaced,
+            LifecycleMetric.Produced,
+            LifecycleMetric.Loaded,
+            LifecycleMetric.FactoryDefects,
+            LifecycleMetric.Sold,
+            LifecycleMetric.Returned,
+            LifecycleMetric.Damaged,
+            LifecycleMetric.CustomerReturns
+        };
+
+        private List<StageDrillDownScopeDto> BuildStageDrillDownScopes(
+            List<PeriodSpec> specs, Dictionary<string, List<Cell>> cellsByPeriod)
+        {
+            var scopes = new List<StageDrillDownScopeDto>
+            {
+                new() { ScopeKey = ScopeAll, ScopeLabel = "All Product Lines" }
+            };
+
+            foreach (var line in GetProductLines())
+            {
+                var skus = _catalog.Where(s => s.Line == line).ToList();
+                if (skus.Count == 0) continue;
+                scopes.Add(new StageDrillDownScopeDto
+                {
+                    ScopeKey = line.ToString(),
+                    ScopeLabel = LineDisplayName(line) + " Line"
+                });
+            }
+
+            foreach (var scope in scopes)
+            {
+                var line = Enum.TryParse<ProductType>(scope.ScopeKey, ignoreCase: true, out var parsed)
+                    ? parsed
+                    : (ProductType?)null;
+
+                foreach (var metric in StageMetrics)
+                {
+                    var byPeriod = new Dictionary<string, StageDrillDownDto>();
+                    foreach (var spec in specs)
+                    {
+                        var cells = cellsByPeriod[spec.Key];
+                        if (line.HasValue) cells = cells.Where(c => c.Line == line.Value).ToList();
+                        byPeriod[spec.Key] = BuildStageDrillDown(metric, cells);
+                    }
+
+                    scope.Metrics[metric.ToString()] = byPeriod;
+                }
+            }
+
+            return scopes;
+        }
+
+        private StageDrillDownDto BuildStageDrillDown(LifecycleMetric metric, List<Cell> cells)
+        {
+            var result = new StageDrillDownDto
+            {
+                Metric = metric.ToString(),
+                MetricLabel = MetricDisplayName(metric),
+                GroupingLabel = MetricGroupingLabel(metric),
+                GroupingHint = MetricGroupingHint(metric),
+                Note = MetricNote(metric)
+            };
+
+            var rows = metric switch
+            {
+                LifecycleMetric.OrdersPlaced => BuildStageRowsByRep(cells, metric),
+                LifecycleMetric.Produced => BuildStageRowsByLine(cells, metric),
+                LifecycleMetric.Loaded => BuildStageRowsByVehicleAndLine(cells, metric),
+                LifecycleMetric.FactoryDefects => BuildStageRowsByLine(cells, metric),
+                LifecycleMetric.Sold => BuildStageRowsByRepAndLine(cells, metric),
+                LifecycleMetric.Returned => BuildStageRowsByRepAndLine(cells, metric),
+                LifecycleMetric.Damaged => BuildStageRowsByLine(cells, metric),
+                LifecycleMetric.CustomerReturns => BuildStageRowsByLine(cells, metric),
+                _ => new List<StageDrillDownRowDto>()
+            };
+
+            result.Total = rows.Sum(r => r.MetricValue);
+            foreach (var row in rows)
+            {
+                row.SharePercent = result.Total <= 0
+                    ? 0m
+                    : Math.Round(row.MetricValue / (decimal)result.Total * 100m, 1);
+            }
+
+            result.Rows = rows
+                .OrderByDescending(r => r.MetricValue)
+                .ThenBy(r => r.GroupLabel)
+                .ToList();
+
+            var units = rows.Select(r => r.OutputUnit).Distinct().ToList();
+            result.OutputUnit = units.Count == 1 ? units[0] : "units";
+            return result;
+        }
+
+        private List<StageDrillDownRowDto> BuildStageRowsByRep(List<Cell> cells, LifecycleMetric metric) =>
+            cells
+                .GroupBy(c => c.RepId)
+                .Select(g =>
+                {
+                    var first = g.First();
+                    return ToStageRow(
+                        $"rep-{g.Key}",
+                        first.RepName,
+                        $"{first.Route} · {first.VehicleRegistration}",
+                        "All Categories",
+                        g.ToList(),
+                        metric,
+                        repName: first.RepName,
+                        route: first.Route,
+                        vehicleReg: first.VehicleRegistration);
+                })
+                .ToList();
+
+        private List<StageDrillDownRowDto> BuildStageRowsByLine(List<Cell> cells, LifecycleMetric metric) =>
+            cells
+                .GroupBy(c => c.Line)
+                .Select(g =>
+                {
+                    var label = LineDisplayName(g.Key);
+                    return ToStageRow(
+                        $"line-{g.Key}",
+                        label,
+                        label + " line",
+                        label,
+                        g.ToList(),
+                        metric);
+                })
+                .ToList();
+
+        private List<StageDrillDownRowDto> BuildStageRowsByVehicleAndLine(List<Cell> cells, LifecycleMetric metric) =>
+            cells
+                .GroupBy(c => new { c.VehicleRegistration, c.Line })
+                .Select(g =>
+                {
+                    var label = LineDisplayName(g.Key.Line);
+                    var vehicleName = VehicleNameOf(g.Key.VehicleRegistration);
+                    return ToStageRow(
+                        $"veh-{g.Key.VehicleRegistration}-{g.Key.Line}",
+                        string.IsNullOrWhiteSpace(g.Key.VehicleRegistration) ? "Unassigned vehicle" : g.Key.VehicleRegistration,
+                        vehicleName,
+                        label,
+                        g.ToList(),
+                        metric,
+                        vehicleReg: g.Key.VehicleRegistration,
+                        vehicleName: vehicleName);
+                })
+                .ToList();
+
+        private List<StageDrillDownRowDto> BuildStageRowsByRepAndLine(List<Cell> cells, LifecycleMetric metric) =>
+            cells
+                .GroupBy(c => new { c.RepId, c.Line })
+                .Select(g =>
+                {
+                    var first = g.First();
+                    var label = LineDisplayName(g.Key.Line);
+                    return ToStageRow(
+                        $"rep-{g.Key.RepId}-{g.Key.Line}",
+                        first.RepName,
+                        first.Route,
+                        label,
+                        g.ToList(),
+                        metric,
+                        repName: first.RepName,
+                        route: first.Route,
+                        vehicleReg: first.VehicleRegistration);
+                })
+                .ToList();
+
+        private StageDrillDownRowDto ToStageRow(
+            string groupKey,
+            string groupLabel,
+            string groupSubLabel,
+            string categoryLabel,
+            List<Cell> cells,
+            LifecycleMetric metric,
+            string? repName = null,
+            string? route = null,
+            string? vehicleReg = null,
+            string? vehicleName = null)
+        {
+            var totals = Aggregate(cells);
+            var first = cells.FirstOrDefault();
+            var units = cells.Select(c => c.OutputUnit).Distinct().ToList();
+
+            return new StageDrillDownRowDto
+            {
+                GroupKey = groupKey,
+                GroupLabel = groupLabel,
+                GroupSubLabel = groupSubLabel,
+                CategoryLabel = categoryLabel,
+                RepName = repName ?? first?.RepName ?? string.Empty,
+                Route = route ?? first?.Route ?? string.Empty,
+                VehicleRegistration = vehicleReg ?? first?.VehicleRegistration ?? string.Empty,
+                VehicleName = vehicleName ?? VehicleNameOf(vehicleReg ?? first?.VehicleRegistration),
+                OutputUnit = units.Count == 1 ? units[0] : "units",
+                OrdersPlaced = totals.OrdersPlaced,
+                Produced = totals.Produced,
+                Loaded = totals.Loaded,
+                FactoryDefects = totals.FactoryDefects,
+                Sold = totals.Sold,
+                ClosingStock = totals.Returned,
+                Damaged = totals.Damaged,
+                CustomerReturns = totals.CustomerReturns,
+                ExpectedRevenue = totals.ExpectedRevenue,
+                MetricValue = MetricValueOf(totals, metric)
+            };
+        }
+
+        private string VehicleNameOf(string? registration)
+        {
+            if (string.IsNullOrWhiteSpace(registration)) return string.Empty;
+            return _vehicles.TryGetValue(registration, out var vehicle)
+                ? vehicle.MakeAndModel
+                : string.Empty;
+        }
+
+        private static int MetricValueOf(LifecycleTotalsDto totals, LifecycleMetric metric) => metric switch
+        {
+            LifecycleMetric.OrdersPlaced => totals.OrdersPlaced,
+            LifecycleMetric.Produced => totals.Produced,
+            LifecycleMetric.Loaded => totals.Loaded,
+            LifecycleMetric.FactoryDefects => totals.FactoryDefects,
+            LifecycleMetric.Sold => totals.Sold,
+            LifecycleMetric.Returned => totals.Returned,
+            LifecycleMetric.Damaged => totals.Damaged,
+            LifecycleMetric.CustomerReturns => totals.CustomerReturns,
+            _ => 0
+        };
+
+        private static string MetricDisplayName(LifecycleMetric metric) => metric switch
+        {
+            LifecycleMetric.OrdersPlaced => "Orders Placed",
+            LifecycleMetric.Produced => "Produced",
+            LifecycleMetric.Loaded => "Loaded",
+            LifecycleMetric.FactoryDefects => "Factory Defects",
+            LifecycleMetric.Sold => "Sold",
+            LifecycleMetric.Returned => "Closing Stock",
+            LifecycleMetric.Damaged => "Damaged",
+            LifecycleMetric.CustomerReturns => "Returns",
+            _ => metric.ToString()
+        };
+
+        private static string MetricGroupingLabel(LifecycleMetric metric) => metric switch
+        {
+            LifecycleMetric.OrdersPlaced => "By Sales Rep",
+            LifecycleMetric.Produced => "By Product Category",
+            LifecycleMetric.Loaded => "By Vehicle & Product Category",
+            LifecycleMetric.FactoryDefects => "By Product Category",
+            LifecycleMetric.Sold => "By Sales Rep & Product Category",
+            LifecycleMetric.Returned => "By Sales Rep & Product Category",
+            LifecycleMetric.Damaged => "By Product Category",
+            LifecycleMetric.CustomerReturns => "By Product Category",
+            _ => "By Product Category"
+        };
+
+        private static string MetricGroupingHint(LifecycleMetric metric) => metric switch
+        {
+            LifecycleMetric.OrdersPlaced => "Quantities requested by each sales rep before route departure.",
+            LifecycleMetric.Produced => "Physical volume manufactured by the production team today.",
+            LifecycleMetric.Loaded => "Actual stock loaded into each distribution vehicle, by category.",
+            LifecycleMetric.FactoryDefects => "Defective or damaged units identified inside the factory before loading.",
+            LifecycleMetric.Sold => "Verified volume sold by each sales rep on their route, by category.",
+            LifecycleMetric.Returned => "Unsold good stock brought back by each rep; rolls into tomorrow's opening inventory.",
+            LifecycleMetric.Damaged => "Stock damaged in transit or on route and written off.",
+            LifecycleMetric.CustomerReturns => "Expired or moldy items returned by supermarkets from prior sales and replaced.",
+            _ => string.Empty
+        };
+
+        private static string MetricNote(LifecycleMetric metric) => metric switch
+        {
+            LifecycleMetric.OrdersPlaced => "Orders are the request book; they are tracked separately from what is actually loaded.",
+            LifecycleMetric.Produced => "Production output is capped by the order book and excludes factory rejects.",
+            LifecycleMetric.Loaded => "Loading depends on available inventory, so loaded can differ from requested and produced.",
+            LifecycleMetric.FactoryDefects => "Factory defects never reach a vehicle; they are removed before loading.",
+            LifecycleMetric.Sold => "Sold is the verified route volume, not the requested or loaded quantity.",
+            LifecycleMetric.Returned => "Closing stock is good, unsold inventory and is carried over to the next day.",
+            LifecycleMetric.Damaged => "Damaged goods are written off and are not part of closing stock.",
+            LifecycleMetric.CustomerReturns => "Customer returns are prior-sale items replaced with fresh stock; they are separate from closing stock.",
+            _ => string.Empty
+        };
 
         private List<RepDrillDownRowDto> BuildRepRows(List<Cell> cells) =>
             cells
@@ -548,6 +855,8 @@ namespace Manufacture.Services
                 Sold = totals.Sold,
                 Returned = totals.Returned,
                 Damaged = totals.Damaged,
+                FactoryDefects = totals.FactoryDefects,
+                CustomerReturns = totals.CustomerReturns,
                 ExpectedRevenue = totals.ExpectedRevenue,
                 Collected = totals.Collected,
                 CashCollected = tender.Cash,
@@ -1177,9 +1486,16 @@ namespace Manufacture.Services
                 // funnel stays monotonic (requested >= produced >= loaded).
                 var produced = Math.Min(requested,
                     (int)Math.Round(requested * (0.82d + (0.18d * Unit($"prod|{sku.Id}|{day:yyyyMMdd}")))));
-                var loaded = Math.Min(produced, (int)Math.Round(requested * (0.93d + (0.11d * Unit($"load|{sku.Id}|{day:yyyyMMdd}")))));
 
-                if (!hasHappened) { produced = 0; loaded = 0; }
+                // Factory defects are identified before loading, so they are removed
+                // from the stock available to the loading bay.
+                var factoryDefects = hasHappened
+                    ? Math.Min(produced, (int)Math.Round(produced * (0.012d + (0.028d * Unit($"def|{sku.Id}|{day:yyyyMMdd}")))))
+                    : 0;
+                var loadable = Math.Max(0, produced - factoryDefects);
+                var loaded = Math.Min(loadable, (int)Math.Round(requested * (0.93d + (0.11d * Unit($"load|{sku.Id}|{day:yyyyMMdd}")))));
+
+                if (!hasHappened) { produced = 0; loaded = 0; factoryDefects = 0; }
 
                 // Production and loading are plant/loading-bay totals, allocated
                 // across reps on the same weight used to split the request, so the
@@ -1187,6 +1503,7 @@ namespace Manufacture.Services
                 var repWeights = _reps.Select(r => RepWeight(r, sku, day)).ToList();
                 var requestedSplit = Allocate(requested, repWeights);
                 var producedSplit = Allocate(produced, repWeights);
+                var defectsSplit = Allocate(factoryDefects, repWeights);
                 var loadedSplit = Allocate(loaded, repWeights);
 
                 for (var i = 0; i < _reps.Count; i++)
@@ -1199,6 +1516,12 @@ namespace Manufacture.Services
                     var sold = (int)Math.Round(repLoaded * sellThrough);
                     var returned = Math.Max(0, repLoaded - sold);
                     var damaged = Math.Min(returned, (int)Math.Round(returned * 0.075d * Unit($"dmg|{rep.Id}|{sku.Id}|{day:yyyyMMdd}")));
+
+                    // Prior-cycle customer returns: expired/spoiled supermarket stock
+                    // that the rep replaces with fresh units. Kept separate from
+                    // closing stock because it is not good sellable inventory.
+                    var customerReturns = Math.Min(sold,
+                        (int)Math.Round(sold * (0.006d + (0.024d * Unit($"cret|{rep.Id}|{sku.Id}|{day:yyyyMMdd}")))));
 
                     var expectedRevenue = sold * sku.SellingPrice;
                     var collected = Math.Round(expectedRevenue * (decimal)(0.84d + (0.15d * Unit($"coll|{rep.Id}|{day:yyyyMMdd}"))), 2);
@@ -1229,6 +1552,8 @@ namespace Manufacture.Services
                         Sold = sold,
                         Returned = returned,
                         Damaged = damaged,
+                        FactoryDefects = defectsSplit[i],
+                        CustomerReturns = customerReturns,
                         ExpectedRevenue = expectedRevenue,
                         Cash = cash,
                         Transfer = transfer,
@@ -1329,6 +1654,8 @@ namespace Manufacture.Services
                 Sold = cells.Sum(c => c.Sold),
                 Returned = cells.Sum(c => c.Returned),
                 Damaged = cells.Sum(c => c.Damaged),
+                FactoryDefects = cells.Sum(c => c.FactoryDefects),
+                CustomerReturns = cells.Sum(c => c.CustomerReturns),
                 TicketCount = cells.Sum(c => c.Tickets),
                 ExpectedRevenue = expected,
                 Collected = collected,
@@ -1474,6 +1801,8 @@ namespace Manufacture.Services
             public int Sold;
             public int Returned;
             public int Damaged;
+            public int FactoryDefects;
+            public int CustomerReturns;
             public decimal ExpectedRevenue;
             public decimal Cash;
             public decimal Transfer;
@@ -1552,6 +1881,8 @@ namespace Manufacture.Services
             row.Sold = totals.Sold;
             row.Returned = totals.Returned;
             row.Damaged = totals.Damaged;
+            row.FactoryDefects = totals.FactoryDefects;
+            row.CustomerReturns = totals.CustomerReturns;
             row.FillRatePercent = totals.FillRatePercent;
             row.SellThroughPercent = totals.SellThroughPercent;
             row.DamagePercent = totals.DamagePercent;

@@ -487,6 +487,14 @@
                     s => s.Periods.ToDictionary(p => p.Key, p => p.Value)),
                 json));
 
+            // Stage-specific grouped breakdowns (the eight lifecycle KPI cards).
+            // Shape: stageData[scope][metric][period] -> { rows, total, ... }
+            const stageData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+                overview.StageDrillDownScopes.ToDictionary(
+                    s => s.ScopeKey,
+                    s => s.Metrics),
+                json));
+
             // Period metadata drives captions and deep links.
             const periods = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
                 overview.Periods.Select(p => new
@@ -506,9 +514,75 @@
                 'OrdersPlaced': 'Orders Placed',
                 'Produced': 'Produced',
                 'Loaded': 'Loaded',
+                'FactoryDefects': 'Factory Defects',
                 'Sold': 'Sold',
-                'Returned': 'Returned',
-                'Damaged': 'Damaged'
+                'Returned': 'Closing Stock',
+                'Damaged': 'Damaged',
+                'CustomerReturns': 'Returns'
+            };
+
+            // What each KPI groups by, matching the server-side stage drill-down.
+            const metricGrouping = {
+                'OrdersPlaced': 'By Sales Rep',
+                'Produced': 'By Product Category',
+                'Loaded': 'By Vehicle & Product Category',
+                'FactoryDefects': 'By Product Category',
+                'Sold': 'By Sales Rep & Product Category',
+                'Returned': 'By Sales Rep & Product Category',
+                'Damaged': 'By Product Category',
+                'CustomerReturns': 'By Product Category'
+            };
+
+            // Column recipes for the stage table. `key` is a property on the
+            // StageDrillDownRowDto payload emitted by the analytics engine.
+            const stageColumns = {
+                'OrdersPlaced': [
+                    { key: 'groupLabel', label: 'Sales Rep', type: 'text' },
+                    { key: 'groupSubLabel', label: 'Route / Vehicle', type: 'subtext' },
+                    { key: 'metricValue', label: 'Orders Placed', type: 'qty', highlight: true },
+                    { key: 'sharePercent', label: 'Share', type: 'share' }
+                ],
+                'Produced': [
+                    { key: 'categoryLabel', label: 'Product Category', type: 'badge' },
+                    { key: 'metricValue', label: 'Produced', type: 'qty', highlight: true },
+                    { key: 'sharePercent', label: 'Share', type: 'share' }
+                ],
+                'Loaded': [
+                    { key: 'groupLabel', label: 'Vehicle', type: 'text' },
+                    { key: 'groupSubLabel', label: 'Vehicle Model', type: 'subtext' },
+                    { key: 'categoryLabel', label: 'Product Category', type: 'badge' },
+                    { key: 'metricValue', label: 'Loaded', type: 'qty', highlight: true },
+                    { key: 'sharePercent', label: 'Share', type: 'share' }
+                ],
+                'FactoryDefects': [
+                    { key: 'categoryLabel', label: 'Product Category', type: 'badge' },
+                    { key: 'metricValue', label: 'Factory Defects', type: 'qty', highlight: true },
+                    { key: 'produced', label: 'Produced', type: 'qty' },
+                    { key: 'sharePercent', label: 'Share', type: 'share' }
+                ],
+                'Sold': [
+                    { key: 'groupLabel', label: 'Sales Rep', type: 'text' },
+                    { key: 'categoryLabel', label: 'Product Category', type: 'badge' },
+                    { key: 'metricValue', label: 'Sold', type: 'qty', highlight: true },
+                    { key: 'sharePercent', label: 'Share', type: 'share' }
+                ],
+                'Returned': [
+                    { key: 'groupLabel', label: 'Sales Rep', type: 'text' },
+                    { key: 'categoryLabel', label: 'Product Category', type: 'badge' },
+                    { key: 'metricValue', label: 'Closing Stock', type: 'qty', highlight: true },
+                    { key: 'sharePercent', label: 'Share', type: 'share' }
+                ],
+                'Damaged': [
+                    { key: 'categoryLabel', label: 'Product Category', type: 'badge' },
+                    { key: 'metricValue', label: 'Damaged', type: 'qty', highlight: true },
+                    { key: 'loaded', label: 'Loaded', type: 'qty' },
+                    { key: 'sharePercent', label: 'Share', type: 'share' }
+                ],
+                'CustomerReturns': [
+                    { key: 'categoryLabel', label: 'Product Category', type: 'badge' },
+                    { key: 'metricValue', label: 'Customer Returns', type: 'qty', highlight: true },
+                    { key: 'sharePercent', label: 'Share', type: 'share' }
+                ]
             };
 
             const money = (v) => '₦' + Number(v || 0).toLocaleString('en-NG', { maximumFractionDigits: 0 });
@@ -517,7 +591,7 @@
             let scope = 'all';
             let period = periods[0].key; // Initially "Today"
             let metric = 'OrdersPlaced';
-            let viewMode = 'products'; // Initially "products"
+            let viewMode = 'stage'; // The eight KPI cards land on the stage breakdown.
 
             const periodOf = (key) => periods.find(p => p.key === key) || periods[0];
 
@@ -533,8 +607,8 @@
                         (p.lineLabel && p.lineLabel.toLowerCase().indexOf(term) !== -1)
                     );
                 }
-                const sortKey = (metric && metric.toLowerCase()) || 'ordersplaced';
-                return list.sort((a, b) => (b[sortKey] ?? b.ordersPlaced ?? 0) - (a[sortKey] ?? a.ordersPlaced ?? 0));
+                const sortKey = metric ? metric.charAt(0).toLowerCase() + metric.slice(1) : 'ordersPlaced';
+                return list.sort((a, b) => (b[sortKey] ?? 0) - (a[sortKey] ?? 0));
             }
 
             function repRows() {
@@ -550,6 +624,88 @@
                     );
                 }
                 return list.sort((a, b) => b.sold - a.sold);
+            }
+
+            function stageRows() {
+                const stage = ((stageData[scope] || {})[metric] || {})[period];
+                let list = stage && stage.rows ? stage.rows.slice() : [];
+                const searchEl = document.getElementById('drill-search-input');
+                const term = searchEl ? searchEl.value.trim().toLowerCase() : '';
+                if (term) {
+                    list = list.filter(r =>
+                        (r.groupLabel && r.groupLabel.toLowerCase().indexOf(term) !== -1) ||
+                        (r.groupSubLabel && r.groupSubLabel.toLowerCase().indexOf(term) !== -1) ||
+                        (r.categoryLabel && r.categoryLabel.toLowerCase().indexOf(term) !== -1) ||
+                        (r.repName && r.repName.toLowerCase().indexOf(term) !== -1) ||
+                        (r.vehicleRegistration && r.vehicleRegistration.toLowerCase().indexOf(term) !== -1)
+                    );
+                }
+                return list.sort((a, b) => (b.metricValue || 0) - (a.metricValue || 0));
+            }
+
+            function renderStageView() {
+                const stage = ((stageData[scope] || {})[metric] || {})[period];
+                const rows = stageRows();
+                const total = rows.reduce((sum, r) => sum + (r.metricValue || 0), 0);
+                const columns = stageColumns[metric] || stageColumns['OrdersPlaced'];
+                const grouping = metricGrouping[metric] || (stage && stage.groupingLabel) || 'By Product Category';
+                const unit = stage && stage.outputUnit ? stage.outputUnit : 'units';
+
+                const groupingBadge = document.getElementById('drill-stage-grouping-badge');
+                if (groupingBadge) groupingBadge.textContent = grouping;
+                const totalBadge = document.getElementById('drill-stage-total-badge');
+                if (totalBadge) totalBadge.textContent = num(total) + ' ' + unit;
+                const noteEl = document.getElementById('drill-stage-note');
+                if (noteEl) noteEl.textContent = (stage && stage.note) || 'Grouped operational detail for the selected stage.';
+
+                const head = document.getElementById('drill-stage-head');
+                if (head) {
+                    head.innerHTML = columns.map(c => {
+                        const align = c.type === 'qty' || c.type === 'share' ? 'text-right' : 'text-left';
+                        const highlight = c.highlight ? ' bg-primary/10 text-primary font-black' : '';
+                        return '<th class="' + align + ' py-2.5' + highlight + '">' + c.label + '</th>';
+                    }).join('');
+                }
+
+                const body = document.getElementById('drill-stage-body');
+                if (body) {
+                    body.innerHTML = rows.length
+                        ? rows.map(r => {
+                            const cells = columns.map(c => {
+                                const value = r[c.key];
+                                if (c.type === 'badge') {
+                                    return '<td class="text-left"><span class="badge badge-sm badge-ghost border border-base-300 font-bold text-[10px]">' + (value || '—') + '</span></td>';
+                                }
+                                if (c.type === 'qty') {
+                                    return '<td class="text-right font-mono ' + (c.highlight ? 'font-black text-primary text-sm' : 'font-bold') + '">' + num(value) + '</td>';
+                                }
+                                if (c.type === 'share') {
+                                    return '<td class="text-right"><div class="flex items-center gap-1.5 justify-end">'
+                                        + '<progress class="progress progress-primary w-14 h-1.5" value="' + (value || 0) + '" max="100"></progress>'
+                                        + '<span class="font-mono font-bold text-[10px] w-10">' + (value || 0) + '%</span>'
+                                        + '</div></td>';
+                                }
+                                if (c.type === 'subtext') {
+                                    return '<td class="text-left text-[10px] opacity-60 font-mono">' + (value || '—') + '</td>';
+                                }
+                                return '<td class="text-left font-bold text-base-content">' + (value || '—') + '</td>';
+                            }).join('');
+                            return '<tr class="hover:bg-base-200/50 transition-colors">' + cells + '</tr>';
+                        }).join('')
+                        : '<tr><td colspan="' + columns.length + '" class="text-center py-10 opacity-50 text-xs font-medium">No ' + (metricLabels[metric] || metric).toLowerCase() + ' activity recorded for this scope and period.</td></tr>';
+                }
+
+                const footerEl = document.getElementById('drill-footer-summary');
+                if (footerEl) {
+                    const groupName = grouping.toLowerCase().replace('by ', '');
+                    footerEl.textContent = 'Showing ' + rows.length + ' ' + groupName + ' group' + (rows.length === 1 ? '' : 's')
+                        + ' · ' + num(total) + ' total ' + (metricLabels[metric] || metric).toLowerCase();
+                }
+
+                const drillLink = document.getElementById('drill-reports-link');
+                if (drillLink) drillLink.setAttribute('href', reportsUrl());
+                const execLink = document.getElementById('exec-reports-link');
+                if (execLink) execLink.setAttribute('href', reportsUrl());
             }
 
             function reportsUrl() {
@@ -582,13 +738,25 @@
                 if (stageBadge) stageBadge.textContent = 'Stage: ' + metricDisplay;
                 const scopeBadge = document.getElementById('drill-scope-badge');
                 if (scopeBadge) scopeBadge.textContent = scopeLabelText;
+                const viewTitle = viewMode === 'stage'
+                    ? (metricGrouping[currentMetric] || 'Stage Breakdown')
+                    : (viewMode === 'reps' ? 'Sales Rep Allocations' : 'Product Orders');
                 const titleEl = document.getElementById('drill-header-title');
                 if (titleEl) {
-                    titleEl.textContent = (period === 'Today' ? "Today's " : p.label + " ") + metricDisplay + " — Product Orders";
+                    titleEl.textContent = (period === 'Today' ? "Today's " : p.label + " ") + metricDisplay + " — " + viewTitle;
                 }
+                const viewCaption = viewMode === 'stage'
+                    ? (metricGrouping[currentMetric] || 'Grouped operational detail')
+                    : (viewMode === 'reps' ? 'Rep-by-rep allocation and settlement' : 'Product SKU lifecycle breakdown');
                 const captionEl = document.getElementById('drill-caption');
                 if (captionEl) {
-                    captionEl.textContent = scopeLabelText + ' · ' + p.label + ' (' + p.dateLabel + ') · Operational control breakdown';
+                    captionEl.textContent = scopeLabelText + ' · ' + p.label + ' (' + p.dateLabel + ') · ' + viewCaption;
+                }
+
+                // The stage view has its own grouped table and summary.
+                if (viewMode === 'stage') {
+                    renderStageView();
+                    return;
                 }
 
                 // Calculate Top Summary Metrics
@@ -739,7 +907,7 @@
                 scope = scopeKey || 'all';
                 period = periodKey || 'Today'; // Initially Today!
                 metric = stageMetric || 'OrdersPlaced';
-                viewMode = targetView || 'products'; // Initially products!
+                viewMode = targetView || (stageMetric ? 'stage' : 'products');
 
                 const drillScopeInput = document.getElementById('drill-scope');
                 if (drillScopeInput) drillScopeInput.value = scope;
@@ -789,22 +957,34 @@
 
             window.switchDrillTab = function (mode) {
                 viewMode = mode;
+                const sContainer = document.getElementById('drill-stage-container');
                 const pContainer = document.getElementById('drill-product-container');
                 const rContainer = document.getElementById('drill-rep-container');
+                const sTab = document.getElementById('tab-btn-stage');
                 const pTab = document.getElementById('tab-btn-products');
                 const rTab = document.getElementById('tab-btn-reps');
 
-                if (mode === 'products') {
-                    if (pContainer) pContainer.classList.remove('hidden');
-                    if (rContainer) rContainer.classList.add('hidden');
-                    if (pTab) pTab.classList.add('tab-active');
-                    if (rTab) rTab.classList.remove('tab-active');
-                } else {
-                    if (pContainer) pContainer.classList.add('hidden');
-                    if (rContainer) rContainer.classList.remove('hidden');
-                    if (pTab) pTab.classList.remove('tab-active');
-                    if (rTab) rTab.classList.add('tab-active');
-                }
+                const show = (el, visible) => {
+                    if (!el) return;
+                    if (visible) el.classList.remove('hidden');
+                    else el.classList.add('hidden');
+                };
+                const active = (el, on) => {
+                    if (!el) return;
+                    if (on) el.classList.add('tab-active');
+                    else el.classList.remove('tab-active');
+                };
+
+                show(sContainer, mode === 'stage');
+                show(pContainer, mode === 'products');
+                show(rContainer, mode === 'reps');
+                active(sTab, mode === 'stage');
+                active(pTab, mode === 'products');
+                active(rTab, mode === 'reps');
+
+                const drillViewInput = document.getElementById('drill-view-mode');
+                if (drillViewInput) drillViewInput.value = mode;
+
                 render();
             };
 

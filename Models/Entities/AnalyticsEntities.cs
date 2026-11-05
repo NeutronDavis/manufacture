@@ -39,7 +39,9 @@ namespace Manufacture.Models.Entities
     }
 
     /// <summary>
-    /// The six stages of the daily operational lifecycle, in execution order.
+    /// The stages of the daily operational lifecycle, in execution order.
+    /// Numeric values are kept stable for existing consumers; the dashboard
+    /// orders the cards explicitly through <c>IndexModel.Stages</c>.
     /// </summary>
     public enum LifecycleMetric
     {
@@ -47,7 +49,17 @@ namespace Manufacture.Models.Entities
         Produced = 1,
         Loaded = 2,
         Sold = 3,
+
+        /// <summary>Unsold, good stock brought back by reps (closing stock).</summary>
         Returned = 4,
-        Damaged = 5
+
+        /// <summary>Stock damaged in transit or on route and written off.</summary>
+        Damaged = 5,
+
+        /// <summary>Defective units identified inside the factory before loading.</summary>
+        FactoryDefects = 6,
+
+        /// <summary>Expired/spoiled items returned by customers from prior sales.</summary>
+        CustomerReturns = 7
     }
 }

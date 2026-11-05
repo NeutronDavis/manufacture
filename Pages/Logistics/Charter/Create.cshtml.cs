@@ -28,26 +28,19 @@ namespace Manufacture.Pages.Logistics.Charter
                     OriginState = "Lagos",
                     DestinationState = "Rivers (Port Harcourt)",
                     FuelOption = FuelOption.WithFuel,
-                    LegCost = 2100000
+                    LegCost = 1850000
                 }
             },
             DriverAllowance = 75000,
             SecurityEscortFee = 150000,
             TollsAndRoadLevies = 45000,
-            GrossCharterFee = 2100000
+            GrossCharterFee = 1850000
         };
 
         public List<Vehicle> AvailableVehicles { get; set; } = new();
         public List<RouteRate> ActiveRouteRates { get; set; } = new();
         public string RouteRatesJson { get; set; } = "[]";
-
-        public List<string> NigerianStates { get; set; } = new()
-        {
-            "Lagos", "Abuja FCT", "Rivers (Port Harcourt)", "Kano", "Edo (Benin City)",
-            "Anambra (Onitsha)", "Delta (Warri)", "Oyo (Ibadan)", "Kaduna", "Ogun (Abeokuta)",
-            "Enugu", "Ondo (Akure)", "Imo (Owerri)", "Cross River (Calabar)", "Plateau (Jos)",
-            "Akwa Ibom (Uyo)", "Abia (Aba)", "Kwara (Ilorin)", "Niger (Minna)", "Benue (Makurdi)"
-        };
+        public string InitialLegsJson { get; set; } = "[]";
 
         public void OnGet()
         {
@@ -70,6 +63,50 @@ namespace Manufacture.Pages.Logistics.Charter
             });
 
             RouteRatesJson = JsonSerializer.Serialize(ratesData, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+            // Keep the route builder perfectly aligned with the Route Pricing Matrix.
+            // Every leg cost is re-derived from the active matrix using its selected fuel option.
+            Booking.Legs ??= new List<TripLegDto>();
+            if (!Booking.Legs.Any())
+            {
+                var fallbackRate = ActiveRouteRates.FirstOrDefault(r =>
+                    r.OriginState == "Lagos" && r.DestinationState.Contains("Port Harcourt"))
+                    ?? ActiveRouteRates.FirstOrDefault();
+
+                Booking.Legs.Add(new TripLegDto
+                {
+                    LegNumber = 1,
+                    OriginState = fallbackRate?.OriginState ?? "Lagos",
+                    DestinationState = fallbackRate?.DestinationState ?? string.Empty,
+                    FuelOption = FuelOption.WithFuel,
+                    LegCost = fallbackRate?.RateWithFuel ?? 0
+                });
+            }
+
+            for (var i = 0; i < Booking.Legs.Count; i++)
+            {
+                var leg = Booking.Legs[i];
+                leg.LegNumber = i + 1;
+
+                var matrixRate = _logisticsService.FindRate(leg.OriginState, leg.DestinationState);
+                if (matrixRate != null)
+                {
+                    leg.LegCost = leg.FuelOption == FuelOption.WithFuel
+                        ? matrixRate.RateWithFuel
+                        : matrixRate.RateWithoutFuel;
+                }
+            }
+            Booking.GrossCharterFee = Booking.Legs.Sum(l => l.LegCost);
+
+            var legsData = Booking.Legs.Select(l => new
+            {
+                l.LegNumber,
+                l.OriginState,
+                l.DestinationState,
+                FuelOption = l.FuelOption.ToString(),
+                l.LegCost
+            });
+            InitialLegsJson = JsonSerializer.Serialize(legsData, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
             // Set default vehicle if none selected
             if (Booking.VehicleId == 0 && AvailableVehicles.Any())

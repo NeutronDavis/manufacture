@@ -177,9 +177,9 @@
                             <th class="py-3 pl-4">Plate Number</th>
                             <th>Make & Model</th>
                             <th>Vehicle Type</th>
+                            <th>Vehicle Function</th>
                             <th>Assigned Driver</th>
                             <th>Phone Number</th>
-                            <th>Odometer</th>
                             <th>Status</th>
                             <th class="text-right pr-4">Action</th>
                         </tr>
@@ -195,9 +195,11 @@
                                 <td>
                                     <span class="badge badge-ghost border border-base-300 text-[10px] font-semibold">@v.Type</span>
                                 </td>
+                                <td>
+                                    <span class="badge badge-primary badge-xs font-bold">@v.Function</span>
+                                </td>
                                 <td class="font-semibold text-base-content py-3">@v.AssignedDriverName</td>
                                 <td class="font-mono opacity-70 py-3">@v.DriverPhoneNumber</td>
-                                <td class="font-mono text-base-content font-bold py-3">@v.CurrentOdometerKm.ToString("N0") KM</td>
                                 <td>
                                     <span class="badge badge-success badge-xs font-bold">● @v.Status</span>
                                 </td>

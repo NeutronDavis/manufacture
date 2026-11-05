@@ -10,6 +10,7 @@ namespace Manufacture.Models.DTOs
         [Required]
         public string MakeAndModel { get; set; } = string.Empty;
         public string Type { get; set; } = "Van";
+        public string Function { get; set; } = "Deliveries";
         [Required]
         public string AssignedDriverName { get; set; } = string.Empty;
         [Required, Phone]

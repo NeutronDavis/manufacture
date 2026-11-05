@@ -110,6 +110,28 @@ namespace Manufacture.Services
 
         public Employee? GetById(int id) => _employees.FirstOrDefault(e => e.Id == id);
 
+        /// <summary>
+        /// Returns staff in the Logistics &amp; Fleet department who can be assigned as vehicle drivers.
+        /// </summary>
+        public List<Employee> GetFleetDrivers(bool includeInactive = false)
+        {
+            return _employees
+                .Where(e => IsLogisticsFleetDepartment(e.Department))
+                .Where(e => includeInactive || e.IsActive)
+                .OrderBy(e => e.FullName)
+                .ToList();
+        }
+
+        private static bool IsLogisticsFleetDepartment(string? department)
+        {
+            if (string.IsNullOrWhiteSpace(department)) return false;
+
+            var normalized = department.Trim();
+            return normalized.Equals("Logistics", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("Logistic & Fleet", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("Logistics & Fleet", StringComparison.OrdinalIgnoreCase);
+        }
+
         public Employee Create(EmployeeDto dto)
         {
             var emp = new Employee
