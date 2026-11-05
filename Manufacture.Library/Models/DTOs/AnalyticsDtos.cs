@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-using Manufacture.Models.Entities;
+using Manufacture.Models.Domain;
 
 namespace Manufacture.Models.DTOs
 {

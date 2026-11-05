@@ -1,7 +1,17 @@
 using Manufacture.Api;
+using Manufacture.Library.Data;
+using Manufacture.Library.Interfaces;
 using Manufacture.Services;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Database-first data access. Entities and the DbContext were scaffolded from
+// Manufacture.Database into Manufacture.Library/Data.
+var manufactureConnectionString = builder.Configuration.GetConnectionString("ManufactureDb")
+    ?? throw new InvalidOperationException("Connection string 'ManufactureDb' is not configured.");
+builder.Services.AddDbContext<ManufactureDbContext>(options =>
+    options.UseSqlServer(manufactureConnectionString));
 
 // Add services to the container.
 builder.Services.AddRazorPages(options =>

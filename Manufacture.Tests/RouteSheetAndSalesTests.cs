@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Xunit;
-using Manufacture.Models.Entities;
+using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
 using Manufacture.Services;
 

@@ -6,8 +6,8 @@
     var totalCostSum = Model.Batches.Sum(b => b.TotalBatchCost);
     var totalActualUnits = Model.Batches.Sum(b => b.ActualQuantity);
     var totalTargetUnits = Model.Batches.Sum(b => b.TargetQuantity);
-    var completedBatches = Model.Batches.Count(b => b.Status == Manufacture.Models.Entities.BatchStatus.Completed);
-    var inProgressBatches = Model.Batches.Count(b => b.Status != Manufacture.Models.Entities.BatchStatus.Completed);
+    var completedBatches = Model.Batches.Count(b => b.Status == Manufacture.Models.Domain.BatchStatus.Completed);
+    var inProgressBatches = Model.Batches.Count(b => b.Status != Manufacture.Models.Domain.BatchStatus.Completed);
     var overallYieldCompliance = totalTargetUnits > 0 ? ((decimal)totalActualUnits / totalTargetUnits) * 100m : 100m;
 
     var recipesJson = System.Text.Json.JsonSerializer.Serialize(Model.ActiveRecipes.Select(r => new {
@@ -131,13 +131,13 @@
                     All Batches (<span id="catCountALL">@Model.Batches.Count</span>)
                 </button>
                 <button type="button" onclick="setCategoryFilter('Bread')" class="btn btn-xs rounded-xl font-bold cat-filter-btn btn-ghost border border-base-300" id="catBtnBread">
-                    <i class="fa-solid fa-bread-slice text-primary text-[10px]"></i> Bread (<span id="catCountBread">@Model.Batches.Count(b => b.ProductCategory == Manufacture.Models.Entities.ProductType.Bread)</span>)
+                    <i class="fa-solid fa-bread-slice text-primary text-[10px]"></i> Bread (<span id="catCountBread">@Model.Batches.Count(b => b.ProductCategory == Manufacture.Models.Domain.ProductType.Bread)</span>)
                 </button>
                 <button type="button" onclick="setCategoryFilter('Water')" class="btn btn-xs rounded-xl font-bold cat-filter-btn btn-ghost border border-base-300" id="catBtnWater">
-                    <i class="fa-solid fa-bottle-water text-info text-[10px]"></i> Water (<span id="catCountWater">@Model.Batches.Count(b => b.ProductCategory == Manufacture.Models.Entities.ProductType.Water)</span>)
+                    <i class="fa-solid fa-bottle-water text-info text-[10px]"></i> Water (<span id="catCountWater">@Model.Batches.Count(b => b.ProductCategory == Manufacture.Models.Domain.ProductType.Water)</span>)
                 </button>
                 <button type="button" onclick="setCategoryFilter('Popcorn')" class="btn btn-xs rounded-xl font-bold cat-filter-btn btn-ghost border border-base-300" id="catBtnPopcorn">
-                    <i class="fa-solid fa-bowl-food text-warning text-[10px]"></i> Popcorn (<span id="catCountPopcorn">@Model.Batches.Count(b => b.ProductCategory == Manufacture.Models.Entities.ProductType.Popcorn)</span>)
+                    <i class="fa-solid fa-bowl-food text-warning text-[10px]"></i> Popcorn (<span id="catCountPopcorn">@Model.Batches.Count(b => b.ProductCategory == Manufacture.Models.Domain.ProductType.Popcorn)</span>)
                 </button>
             </div>
 
@@ -195,8 +195,8 @@
                         @foreach (var batch in Model.Batches)
                         {
                             var categoryStr = batch.ProductCategory.ToString();
-                            var catBadgeClass = batch.ProductCategory == Manufacture.Models.Entities.ProductType.Water ? "badge-info badge-soft"
-                                              : batch.ProductCategory == Manufacture.Models.Entities.ProductType.Popcorn ? "badge-warning badge-soft"
+                            var catBadgeClass = batch.ProductCategory == Manufacture.Models.Domain.ProductType.Water ? "badge-info badge-soft"
+                                              : batch.ProductCategory == Manufacture.Models.Domain.ProductType.Popcorn ? "badge-warning badge-soft"
                                               : "badge-primary badge-soft";
 
                             var unitLabel = string.IsNullOrWhiteSpace(batch.OutputUnitLabel) ? "units" : batch.OutputUnitLabel;
@@ -288,7 +288,7 @@
                                         <div class="font-bold text-amber-700 text-xs">₦@batch.CalculatedUnitCost.ToString("N2") <span class="text-[9px] font-normal opacity-60">/ @unitLabel</span></div>
                                         <div class="opacity-60 text-[10px]">batch ₦@batch.TotalBatchCost.ToString("N0")</div>
                                     }
-                                    else if (batch.Status == Manufacture.Models.Entities.BatchStatus.Baking || batch.Status == Manufacture.Models.Entities.BatchStatus.InMixing)
+                                    else if (batch.Status == Manufacture.Models.Domain.BatchStatus.Baking || batch.Status == Manufacture.Models.Domain.BatchStatus.InMixing)
                                     {
                                         <span class="badge badge-warning badge-xs font-mono font-semibold">In Run</span>
                                         <div class="opacity-50 text-[9px]">batch ₦@batch.TotalBatchCost.ToString("N0")</div>
@@ -303,7 +303,7 @@
                                 </td>
                                 <td class="text-xs opacity-70 max-w-xs truncate" title="@batch.Notes">@batch.Notes</td>
                                 <td class="text-center pr-4 whitespace-nowrap">
-                                    @if (batch.ActualQuantity == 0 || batch.Status != Manufacture.Models.Entities.BatchStatus.Completed)
+                                    @if (batch.ActualQuantity == 0 || batch.Status != Manufacture.Models.Domain.BatchStatus.Completed)
                                     {
                                         <a asp-page="/Production/Batches/Details" asp-route-id="@batch.Id" class="btn btn-warning btn-xs rounded-xl font-bold gap-1 shadow-xs hover:btn-warning">
                                             <i class="fa-solid fa-pen-to-square text-[10px]"></i> Record Output

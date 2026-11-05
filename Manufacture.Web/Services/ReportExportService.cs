@@ -1,6 +1,6 @@
 using System.Text;
 using Manufacture.Models.DTOs;
-using Manufacture.Models.Entities;
+using Manufacture.Models.Domain;
 
 namespace Manufacture.Services
 {

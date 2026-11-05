@@ -42,7 +42,7 @@
             <div class="stat-figure text-base-content text-2xl"><i class="fa-solid fa-shop"></i></div>
             <div class="stat-title text-[10px] uppercase font-bold opacity-60">Supermarket Outlets</div>
             <div class="stat-value text-2xl font-black font-mono text-base-content">
-                @Model.Customers.Count(c => c.Category == Manufacture.Models.Entities.CustomerCategory.Supermarket)
+                @Model.Customers.Count(c => c.Category == Manufacture.Models.Domain.CustomerCategory.Supermarket)
             </div>
             <div class="stat-desc opacity-70">Active retail partners</div>
         </div>

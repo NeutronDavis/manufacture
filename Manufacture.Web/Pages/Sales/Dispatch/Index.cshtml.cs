@@ -4,7 +4,7 @@ using System.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Models.Entities;
+using Manufacture.Models.Domain;
 using Manufacture.Services;
 
 namespace Manufacture.Pages.Sales.Dispatch

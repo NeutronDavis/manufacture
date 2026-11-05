@@ -93,11 +93,11 @@
                                 </div>
                             </div>
                             <div class="text-right">
-                                @if (s.Status == Manufacture.Models.Entities.RouteSheetStatus.Ordered)
+                                @if (s.Status == Manufacture.Models.Domain.RouteSheetStatus.Ordered)
                                 {
                                     <span class="badge badge-warning badge-xs font-bold uppercase text-[9px] py-1">Ordered</span>
                                 }
-                                else if (s.Status == Manufacture.Models.Entities.RouteSheetStatus.LoadedOnRoute)
+                                else if (s.Status == Manufacture.Models.Domain.RouteSheetStatus.LoadedOnRoute)
                                 {
                                     <span class="badge badge-info badge-xs font-bold uppercase text-[9px] py-1">On Route</span>
                                 }
@@ -125,7 +125,7 @@
             }
             else
             {
-                var isReadOnly = sheet.Status == Manufacture.Models.Entities.RouteSheetStatus.Reconciled || sheet.Status == Manufacture.Models.Entities.RouteSheetStatus.Closed || !Model.CanEdit;
+                var isReadOnly = sheet.Status == Manufacture.Models.Domain.RouteSheetStatus.Reconciled || sheet.Status == Manufacture.Models.Domain.RouteSheetStatus.Closed || !Model.CanEdit;
                 
                 <form method="post" asp-page-handler="Reconcile" id="reconcileForm" class="space-y-6">
                     <input type="hidden" name="RouteSheetId" value="@sheet.Id" />
@@ -138,13 +138,13 @@
                             <div>
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <span class="font-mono font-black text-lg text-base-content">@sheet.RouteSheetRef</span>
-                                    @if (sheet.Status == Manufacture.Models.Entities.RouteSheetStatus.LoadedOnRoute)
+                                    @if (sheet.Status == Manufacture.Models.Domain.RouteSheetStatus.LoadedOnRoute)
                                     {
                                         <span class="badge badge-info badge-sm font-bold gap-1 text-[10px]">
                                             <i class="fa-solid fa-clock"></i> Ready For Route Closing
                                         </span>
                                     }
-                                    else if (sheet.Status == Manufacture.Models.Entities.RouteSheetStatus.Reconciled)
+                                    else if (sheet.Status == Manufacture.Models.Domain.RouteSheetStatus.Reconciled)
                                     {
                                         <span class="badge badge-success badge-sm font-bold gap-1 text-[10px]">
                                             <i class="fa-solid fa-check-double"></i> Reconciled &amp; Account Closed

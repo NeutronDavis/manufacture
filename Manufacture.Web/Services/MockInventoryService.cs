@@ -1,4 +1,4 @@
-using Manufacture.Models.Entities;
+using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
 
 namespace Manufacture.Services

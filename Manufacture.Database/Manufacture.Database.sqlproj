@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build">
+  <Sdk Name="Microsoft.Build.Sql" Version="2.2.0" />
+  <PropertyGroup>
+    <Name>Manufacture.Database</Name>
+    <TargetFramework>net10.0</TargetFramework>
+    <DSP>Microsoft.Data.Tools.Schema.Sql.Sql170DatabaseSchemaProvider</DSP>
+    <ModelCollation>1033, CI</ModelCollation>
+    <ProjectGuid>{49b6b0b2-d402-0eb7-a3ea-dd08bd8a8af5}</ProjectGuid>
+    <!-- List every table explicitly so Visual Studio shows the full project
+         tree. The SDK's **/*.sql default glob does not populate Solution
+         Explorer reliably. -->
+    <EnableDefaultSqlItems>false</EnableDefaultSqlItems>
+    <!-- Load the task assemblies that ship with Microsoft.Build.Sql rather than
+         the older DacFx assemblies bundled with the Visual Studio SQLDB
+         extension. -->
+    <BuildFromSSDT>false</BuildFromSSDT>
+    <SSDTPath>$(NETFrameworkTargetsPath)</SSDTPath>
+    <!-- Pinned deliberately for Visual Studio 2026 compatibility. SDK 2.3.0
+         passes the newer PreplanItem parameter, which the DacFx task assembly
+         bundled with the Visual Studio SQLDB extension does not expose. -->
+    <SkipCheckForNewSDKVersion>true</SkipCheckForNewSDKVersion>
+    <TargetDatabaseSet>True</TargetDatabaseSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Build Include="Tables\AuditLogs.sql" />
+    <Build Include="Tables\CharterBookings.sql" />
+    <Build Include="Tables\CustomerReturns.sql" />
+    <Build Include="Tables\Customers.sql" />
+    <Build Include="Tables\DailyRepRouteSheets.sql" />
+    <Build Include="Tables\Drivers.sql" />
+    <Build Include="Tables\Employees.sql" />
+    <Build Include="Tables\FuelLogs.sql" />
+    <Build Include="Tables\Ingredients.sql" />
+    <Build Include="Tables\InventoryItems.sql" />
+    <Build Include="Tables\MaintenanceLogs.sql" />
+    <Build Include="Tables\OrderItems.sql" />
+    <Build Include="Tables\Orders.sql" />
+    <Build Include="Tables\PayrollRecords.sql" />
+    <Build Include="Tables\PosTerminals.sql" />
+    <Build Include="Tables\ProductionBatches.sql" />
+    <Build Include="Tables\ProductionDefects.sql" />
+    <Build Include="Tables\RecipeIngredients.sql" />
+    <Build Include="Tables\Recipes.sql" />
+    <Build Include="Tables\RouteRates.sql" />
+    <Build Include="Tables\RouteSheetItems.sql" />
+    <Build Include="Tables\SalaryAdvances.sql" />
+    <Build Include="Tables\SalesReps.sql" />
+    <Build Include="Tables\StoreRequestItems.sql" />
+    <Build Include="Tables\StoreRequests.sql" />
+    <Build Include="Tables\SupermarketAccountPrices.sql" />
+    <Build Include="Tables\SupermarketAccounts.sql" />
+    <Build Include="Tables\Suppliers.sql" />
+    <Build Include="Tables\TreasuryPolicySettings.sql" />
+    <Build Include="Tables\TripLegs.sql" />
+    <Build Include="Tables\Users.sql" />
+    <Build Include="Tables\Vehicles.sql" />
+    <Build Include="Tables\WeeklyFleetExpenses.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md" />
+    <None Include="Scripts\README.md" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Tables\" />
+    <Folder Include="Scripts\" />
+  </ItemGroup>
+</Project>

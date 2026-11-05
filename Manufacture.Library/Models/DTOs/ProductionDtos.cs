@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using Manufacture.Models.Entities;
+using Manufacture.Models.Domain;
 
 namespace Manufacture.Models.DTOs
 {

@@ -1,4 +1,4 @@
-namespace Manufacture.Models.Entities
+namespace Manufacture.Models.Domain
 {
     public class Supplier
     {

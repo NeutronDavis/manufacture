@@ -1,6 +1,6 @@
 @page "{id:int}"
 @model Manufacture.Pages.Logistics.Charter.DetailsModel
-@using Manufacture.Models.Entities
+@using Manufacture.Models.Domain
 @{
     var b = Model.Booking!;
     ViewData["Title"] = $"Charter Manifest {b.BookingRef}";

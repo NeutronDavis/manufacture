@@ -4,15 +4,15 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Keep the application namespace stable after moving the project into
+         its own folder. -->
+    <RootNamespace>Manufacture</RootNamespace>
+    <AssemblyName>Manufacture.Web</AssemblyName>
   </PropertyGroup>
 
-  <!-- The xunit test project lives in a subfolder but is its own assembly;
-       keep its sources and obj/bin output out of the web project. -->
   <ItemGroup>
-    <Compile Remove="tests/**" />
-    <Content Remove="tests/**" />
-    <None Remove="tests/**" />
-    <EmbeddedResource Remove="tests/**" />
+    <ProjectReference Include="..\Manufacture.Library\Manufacture.Library.csproj" />
   </ItemGroup>
 
 </Project>

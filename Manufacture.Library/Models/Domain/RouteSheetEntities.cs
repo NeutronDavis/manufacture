@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Manufacture.Models.Entities
+namespace Manufacture.Models.Domain
 {
     public enum RouteSheetStatus
     {

@@ -1,4 +1,4 @@
-namespace Manufacture.Models.Entities
+namespace Manufacture.Models.Domain
 {
     /// <summary>
     /// Rolling windows offered by the reports engine. "Week" always follows the

@@ -6,7 +6,7 @@
     var recipe = Model.Recipe;
     var labels = Model.CategoryLabels;
     var unitLabel = string.IsNullOrWhiteSpace(batch.OutputUnitLabel) ? "units" : batch.OutputUnitLabel;
-    var isPending = batch.ActualQuantity == 0 || batch.Status != Manufacture.Models.Entities.BatchStatus.Completed;
+    var isPending = batch.ActualQuantity == 0 || batch.Status != Manufacture.Models.Domain.BatchStatus.Completed;
 }
 
 <div class="space-y-6">
@@ -29,12 +29,12 @@
                         <h1 class="text-xl font-black text-base-content tracking-tight">@batch.BatchNumber</h1>
                         @switch (batch.ProductCategory)
                         {
-                            case Manufacture.Models.Entities.ProductType.Water:
+                            case Manufacture.Models.Domain.ProductType.Water:
                                 <span class="badge badge-info badge-soft badge-xs font-bold gap-1">
                                     <i class="fa-solid fa-bottle-water text-[9px]"></i> Water
                                 </span>
                                 break;
-                            case Manufacture.Models.Entities.ProductType.Popcorn:
+                            case Manufacture.Models.Domain.ProductType.Popcorn:
                                 <span class="badge badge-warning badge-soft badge-xs font-bold gap-1">
                                     <i class="fa-solid fa-bowl-food text-[9px]"></i> Popcorn
                                 </span>
@@ -48,17 +48,17 @@
 
                         @switch (batch.Status)
                         {
-                            case Manufacture.Models.Entities.BatchStatus.Completed:
+                            case Manufacture.Models.Domain.BatchStatus.Completed:
                                 <span class="badge badge-success badge-sm font-bold gap-1">
                                     <i class="fa-solid fa-circle-check text-[9px]"></i> Completed
                                 </span>
                                 break;
-                            case Manufacture.Models.Entities.BatchStatus.Baking:
+                            case Manufacture.Models.Domain.BatchStatus.Baking:
                                 <span class="badge badge-warning badge-sm font-bold gap-1 animate-pulse">
                                     <i class="fa-solid fa-fire-burner text-[9px]"></i> In Baking / Oven
                                 </span>
                                 break;
-                            case Manufacture.Models.Entities.BatchStatus.InMixing:
+                            case Manufacture.Models.Domain.BatchStatus.InMixing:
                                 <span class="badge badge-info badge-sm font-bold gap-1 animate-pulse">
                                     <i class="fa-solid fa-blender text-[9px]"></i> In Mixing
                                 </span>

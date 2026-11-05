@@ -1,7 +1,7 @@
 using Xunit;
 using Manufacture.Services;
 using Manufacture.Models.DTOs;
-using Manufacture.Models.Entities;
+using Manufacture.Models.Domain;
 
 namespace Manufacture.Tests
 {

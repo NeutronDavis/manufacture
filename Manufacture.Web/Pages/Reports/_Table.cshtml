@@ -177,7 +177,7 @@
         var t = result.GrandTotals;
         var items = new List<(string, string)>();
 
-        if (result.Module == Manufacture.Models.Entities.AnalyticsModule.Logistics)
+        if (result.Module == Manufacture.Models.Domain.AnalyticsModule.Logistics)
         {
             var fleet = result.LogisticsSummary.Rows;
             items.Add(("Trips", fleet.Sum(f => f.Trips).ToString("N0")));
@@ -188,7 +188,7 @@
             return items;
         }
 
-        if (result.Module == Manufacture.Models.Entities.AnalyticsModule.Financial)
+        if (result.Module == Manufacture.Models.Domain.AnalyticsModule.Financial)
         {
             items.Add(("Expected", ReportColumnCatalog.FormatMoney(t.ExpectedRevenue)));
             items.Add(("Cash", ReportColumnCatalog.FormatMoney(result.Tender.Cash)));

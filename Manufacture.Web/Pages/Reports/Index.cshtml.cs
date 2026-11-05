@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Primitives;
 using Manufacture.Models.DTOs;
-using Manufacture.Models.Entities;
+using Manufacture.Models.Domain;
 using Manufacture.Services;
 
 namespace Manufacture.Pages.Reports

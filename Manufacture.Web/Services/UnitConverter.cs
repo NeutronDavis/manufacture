@@ -1,3 +1,5 @@
+using Manufacture.Library.Interfaces;
+
 namespace Manufacture.Services
 {
     /// <summary>

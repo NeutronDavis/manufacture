@@ -1,7 +1,7 @@
 @page
 @model Manufacture.Pages.Reports.IndexModel
 @using Manufacture.Models.DTOs
-@using Manufacture.Models.Entities
+@using Manufacture.Models.Domain
 @{
     ViewData["Title"] = Model.Result.ModuleLabel;
     var query = Model.Result.Query;
@@ -265,7 +265,7 @@
     {
         <!-- ============ Grand Totals ============ -->
         <div class="stats stats-vertical sm:stats-horizontal xl:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
-            @if (Model.Result.Module == Manufacture.Models.Entities.AnalyticsModule.Logistics)
+            @if (Model.Result.Module == Manufacture.Models.Domain.AnalyticsModule.Logistics)
             {
                 var fleet = Model.Result.LogisticsSummary.Rows;
                 <div class="stat p-4">

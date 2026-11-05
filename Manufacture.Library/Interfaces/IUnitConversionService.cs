@@ -1,4 +1,4 @@
-namespace Manufacture.Services
+namespace Manufacture.Library.Interfaces
 {
     /// <summary>
     /// Classification of measurement units.

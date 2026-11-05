@@ -1,4 +1,4 @@
-namespace Manufacture.Models.Entities
+namespace Manufacture.Models.Domain
 {
     /// <summary>
     /// Product families handled by the costing engine. Each family has its own

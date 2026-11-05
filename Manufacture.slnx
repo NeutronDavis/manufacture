@@ -1,4 +1,9 @@
 <Solution>
-  <Project Path="Manufacture.csproj" />
-  <Project Path="tests/Manufacture.Tests/Manufacture.Tests.csproj" />
+  <Project Path="Manufacture.Web/Manufacture.Web.csproj" />
+  <Project Path="Manufacture.Library/Manufacture.Library.csproj" />
+  <Project Path="Manufacture.Database/Manufacture.Database.sqlproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="Manufacture.Tests/Manufacture.Tests.csproj" />
 </Solution>

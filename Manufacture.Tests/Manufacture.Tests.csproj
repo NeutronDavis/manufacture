@@ -14,7 +14,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Manufacture.csproj" />
+    <ProjectReference Include="..\Manufacture.Web\Manufacture.Web.csproj" />
+    <ProjectReference Include="..\Manufacture.Library\Manufacture.Library.csproj" />
   </ItemGroup>
 
 </Project>

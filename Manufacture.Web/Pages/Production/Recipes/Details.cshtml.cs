@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Manufacture.Models.DTOs;
-using Manufacture.Models.Entities;
+using Manufacture.Models.Domain;
 using Manufacture.Services;
 
 namespace Manufacture.Pages.Production.Recipes

@@ -1,6 +1,6 @@
 using System;
 
-namespace Manufacture.Models.Entities
+namespace Manufacture.Models.Domain
 {
     /// <summary>
     /// Corporate treasury policy governing physical cash collection quotas,

@@ -31,6 +31,8 @@ bld/
 *.pidb
 *.booproj
 *.svclog
+*.dbmdl
+*.jfm
 
 ## JetBrains / Rider / Resharper
 _ReSharper*/

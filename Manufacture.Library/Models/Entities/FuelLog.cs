@@ -1,0 +1,35 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace Manufacture.Models.Entities;
+
+public partial class FuelLog
+{
+    public int Id { get; set; }
+
+    public int VehicleId { get; set; }
+
+    public int? DriverId { get; set; }
+
+    public DateTime FuelDate { get; set; }
+
+    public decimal LitresDispensed { get; set; }
+
+    public decimal PricePerLitre { get; set; }
+
+    public decimal? TotalCost { get; set; }
+
+    public decimal OdometerReadingKm { get; set; }
+
+    public string PetrolStation { get; set; } = null!;
+
+    public string ReceiptNumber { get; set; } = null!;
+
+    public string RouteDescription { get; set; } = null!;
+
+    public DateTime CreatedAt { get; set; }
+
+    public virtual Driver? Driver { get; set; }
+
+    public virtual Vehicle Vehicle { get; set; } = null!;
+}

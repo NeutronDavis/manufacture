@@ -1,5 +1,5 @@
 using System;
-using Manufacture.Models.Entities;
+using Manufacture.Models.Domain;
 
 namespace Manufacture.Services
 {
