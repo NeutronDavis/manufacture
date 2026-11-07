@@ -34,6 +34,9 @@ namespace Manufacture.Models.Domain
         public string PhoneNumber { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string Address { get; set; } = string.Empty;
+        public string BankName { get; set; } = string.Empty;
+        public string BankAccountNumber { get; set; } = string.Empty;
+        public string EmploymentStatus { get; set; } = "Active"; // Active, OnLeave, Inactive
         public decimal BaseSalary { get; set; }
 
         // Emergency Contact

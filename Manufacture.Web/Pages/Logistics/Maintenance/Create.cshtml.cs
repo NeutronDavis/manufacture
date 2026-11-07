@@ -1,18 +1,17 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Models.DTOs;
-using Manufacture.Models.Domain;
-using Manufacture.Services;
 
 namespace Manufacture.Pages.Logistics.Maintenance
 {
     public class CreateModel : PageModel
     {
-        private readonly MockLogisticsService _logisticsService;
+        private readonly IFleetService _fleetService;
 
-        public CreateModel(MockLogisticsService logisticsService)
+        public CreateModel(IFleetService fleetService)
         {
-            _logisticsService = logisticsService;
+            _fleetService = fleetService;
         }
 
         [BindProperty]
@@ -21,12 +20,12 @@ namespace Manufacture.Pages.Logistics.Maintenance
         [BindProperty(SupportsGet = true)]
         public string? ReturnUrl { get; set; }
 
-        public List<Vehicle> AllVehicles { get; set; } = new();
+        public List<VehicleDto> AllVehicles { get; set; } = new();
 
-        public void OnGet(int? vehicleId, string? returnUrl)
+        public async Task OnGetAsync(int? vehicleId, string? returnUrl)
         {
             ReturnUrl = returnUrl;
-            AllVehicles = _logisticsService.GetAllVehicles();
+            AllVehicles = await _fleetService.GetVehiclesAsync();
 
             if (vehicleId.HasValue && vehicleId.Value > 0)
             {
@@ -43,26 +42,33 @@ namespace Manufacture.Pages.Logistics.Maintenance
             MaintenanceInput.WorkshopOrVendor = "Mandilas Motors Lagos";
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync()
         {
-            if (MaintenanceInput.VehicleId <= 0 ||
-                MaintenanceInput.Cost <= 0 ||
-                string.IsNullOrWhiteSpace(MaintenanceInput.Description))
+            AllVehicles = await _fleetService.GetVehiclesAsync();
+
+            if (!ModelState.IsValid)
             {
-                ModelState.AddModelError("", "Please fill in all required maintenance fields (Vehicle, Service Description, and Valid Cost).");
-                AllVehicles = _logisticsService.GetAllVehicles();
                 return Page();
             }
 
-            var created = _logisticsService.CreateMaintenanceLog(MaintenanceInput);
-            TempData["SuccessMessage"] = $"Maintenance service cost of ₦{created.Cost:N0} recorded for {created.VehicleRegNumber}.";
-
-            if (!string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
+            try
             {
-                return Redirect(ReturnUrl);
-            }
+                var created = await _fleetService.CreateMaintenanceLogAsync(MaintenanceInput);
+                TempData["SuccessMessage"] =
+                    $"Maintenance service cost of ₦{created.Cost:N0} recorded for {created.VehicleRegNumber}.";
 
-            return RedirectToPage("/Logistics/WeeklyRunningCosts/Index", new { WeekDate = created.ServiceDate.ToString("yyyy-MM-dd") });
+                if (!string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
+                {
+                    return Redirect(ReturnUrl);
+                }
+
+                return RedirectToPage("/Logistics/WeeklyRunningCosts/Index", new { WeekDate = created.ServiceDate.ToString("yyyy-MM-dd") });
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+                return Page();
+            }
         }
     }
 }

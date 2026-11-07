@@ -93,18 +93,21 @@
                 <form method="post" asp-page-handler="PasswordLogin" class="space-y-4">
                     
                     <div class="space-y-1.5">
-                        <label class="text-xs font-bold text-base-content">Username or Email</label>
-                        <input type="text" name="Email" class="input input-sm input-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs py-2.5 px-3 focus:bg-base-100 focus:border-primary" placeholder="Enter username" value="admin@bakery.com" required />
+                        <label class="text-xs font-bold text-base-content" asp-for="LoginInput.Email">Email Address</label>
+                        <input asp-for="LoginInput.Email" type="email" autocomplete="username" maxlength="256" class="input input-sm input-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs py-2.5 px-3 focus:bg-base-100 focus:border-primary" placeholder="name@company.com" required />
+                        <span asp-validation-for="LoginInput.Email" class="text-error text-[10px]"></span>
                     </div>
 
                     <div class="space-y-1.5">
-                        <label class="text-xs font-bold text-base-content">Password</label>
+                        <label class="text-xs font-bold text-base-content" asp-for="LoginInput.Password">Password</label>
                         <div class="relative">
-                            <input type="password" id="passwordInput" name="Password" class="input input-sm input-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs py-2.5 px-3 pr-10 focus:bg-base-100 focus:border-primary" placeholder="Enter password" value="Password123!" required />
+                            <input asp-for="LoginInput.Password" type="password" id="passwordInput" autocomplete="current-password" maxlength="128" class="input input-sm input-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs py-2.5 px-3 pr-10 focus:bg-base-100 focus:border-primary" placeholder="Enter account password" required />
                             <button type="button" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center opacity-60 hover:opacity-100">
                                 <i id="passwordEyeIcon" class="fa-regular fa-eye text-xs"></i>
                             </button>
                         </div>
+                        <p class="text-[10px] opacity-60">Use your account password, not your 6-digit POS PIN.</p>
+                        <span asp-validation-for="LoginInput.Password" class="text-error text-[10px]"></span>
                         <div class="text-right">
                             <a href="javascript:void(0)" onclick="alert('Contact the Super Admin to reset your terminal passcode.');" class="text-[11px] opacity-70 hover:underline">Forgot Password?</a>
                         </div>
@@ -126,8 +129,9 @@
             <div id="pinAuthSection" class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4 hidden">
                 <form method="post" asp-page-handler="PinLogin" class="space-y-4">
                     <div class="space-y-1.5 text-center">
-                        <label class="text-xs font-bold text-base-content">Enter 6-Digit Numeric POS PIN</label>
-                        <input type="password" id="pinInput" name="PinCode" maxlength="6" class="input input-bordered w-full bg-base-200 border-base-300 rounded-xl text-center text-2xl font-mono tracking-widest font-bold py-2 focus:bg-base-100 focus:border-primary" placeholder="••••••" required />
+                        <label class="text-xs font-bold text-base-content" asp-for="LoginInput.PinCode">Enter 6-Digit Numeric POS PIN</label>
+                        <input asp-for="LoginInput.PinCode" type="password" id="pinInput" inputmode="numeric" autocomplete="one-time-code" pattern="\d{6}" maxlength="6" class="input input-bordered w-full bg-base-200 border-base-300 rounded-xl text-center text-2xl font-mono tracking-widest font-bold py-2 focus:bg-base-100 focus:border-primary" placeholder="••••••" required />
+                        <span asp-validation-for="LoginInput.PinCode" class="text-error text-[10px]"></span>
                     </div>
 
                     <!-- Touch Keypad Grid -->
@@ -168,22 +172,9 @@
             <span class="opacity-30">&bull;</span>
             <span class="cursor-pointer" title="Local cache ready">Offline Cache</span>
             <span class="opacity-30">&bull;</span>
-            
-            <!-- Switch User / Quick Role Test Dropdown -->
-            <div class="dropdown dropdown-top dropdown-end">
-                <div tabindex="0" role="button" class="text-primary font-bold flex items-center gap-1 cursor-pointer hover:underline">
-                    <i class="fa-solid fa-users text-[10px]"></i> Quick Test Roles
-                </div>
-                <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-2xl z-50 w-56 p-2 shadow-xl border border-base-300 text-xs mb-2">
-                    <li class="menu-title text-[10px] uppercase font-bold opacity-60">Quick Test Any Role:</li>
-                    <li><a asp-page-handler="SwitchRole" asp-route-role="SuperAdmin" class="rounded-xl"><i class="fa-solid fa-crown text-amber-500"></i> Super Admin</a></li>
-                    <li><a asp-page-handler="SwitchRole" asp-route-role="ProductionManager" class="rounded-xl"><i class="fa-solid fa-industry text-blue-500"></i> Production Mgr</a></li>
-                    <li><a asp-page-handler="SwitchRole" asp-route-role="StoreManager" class="rounded-xl"><i class="fa-solid fa-warehouse text-emerald-500"></i> Store Keeper</a></li>
-                    <li><a asp-page-handler="SwitchRole" asp-route-role="SalesRep" class="rounded-xl"><i class="fa-solid fa-cash-register text-purple-500"></i> Sales Rep (POS)</a></li>
-                    <li><a asp-page-handler="SwitchRole" asp-route-role="Vendor" class="rounded-xl"><i class="fa-solid fa-store text-orange-500"></i> Vendor / Client</a></li>
-                    <li><a asp-page-handler="SwitchRole" asp-route-role="HrPayrollManager" class="rounded-xl"><i class="fa-solid fa-users text-rose-500"></i> HR & Payroll</a></li>
-                </ul>
-            </div>
+            <span class="flex items-center gap-1" title="Credentials are validated against the database">
+                <i class="fa-solid fa-lock text-[10px]"></i> Secure Sign-In
+            </span>
         </div>
     </footer>
 

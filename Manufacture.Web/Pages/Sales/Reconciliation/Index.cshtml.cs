@@ -13,17 +13,17 @@ namespace Manufacture.Pages.Sales.Reconciliation
     public class IndexModel : PageModel
     {
         private readonly MockSalesService _salesService;
-        private readonly MockRbacService _rbacService;
-        private readonly MockSettingsService _settingsService;
+        private readonly RbacCache _rbacService;
+        private readonly SettingsCache _settingsCache;
 
         public IndexModel(
             MockSalesService salesService,
-            MockRbacService rbacService,
-            MockSettingsService settingsService)
+            RbacCache rbacService,
+            SettingsCache settingsCache)
         {
             _salesService = salesService;
             _rbacService = rbacService;
-            _settingsService = settingsService;
+            _settingsCache = settingsCache;
         }
 
         public List<DailyRepRouteSheet> RouteSheets { get; set; } = new();
@@ -35,7 +35,7 @@ namespace Manufacture.Pages.Sales.Reconciliation
         [BindProperty(SupportsGet = true)]
         public DateTime? FilterDate { get; set; }
 
-        public decimal PlannedCashPercent => _settingsService.PlannedCashPercent;
+        public decimal PlannedCashPercent => _settingsCache.PlannedCashPercent;
 
         public bool CanEdit { get; set; }
         public string UserRole { get; set; } = string.Empty;
@@ -50,8 +50,7 @@ namespace Manufacture.Pages.Sales.Reconciliation
             }
 
             CanEdit = UserRole == "SuperAdmin" ||
-                      _rbacService.GetPermissionLevel(UserRole, "Sales").Contains("Edit") ||
-                      _rbacService.GetPermissionLevel(UserRole, "Sales") == "Full Access";
+                      _rbacService.CanEdit(UserRole, "Sales");
 
             var date = FilterDate ?? DateTime.UtcNow.Date;
             RouteSheets = _salesService.GetAllRouteSheets(date);

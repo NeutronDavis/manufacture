@@ -28,4 +28,6 @@ public partial class SalaryAdvance
     public DateTime UpdatedAt { get; set; }
 
     public virtual Employee Employee { get; set; } = null!;
+
+    public virtual ICollection<PayrollDeductionLine> PayrollDeductionLines { get; set; } = new List<PayrollDeductionLine>();
 }

@@ -813,7 +813,7 @@ namespace Manufacture.Tests
         [Fact]
         public void TreasuryPolicySetting_DynamicallyUpdatesCashVarianceCalculation()
         {
-            var settings = new MockSettingsService();
+            var settings = new SettingsCache();
             var analytics = new MockAnalyticsService(
                 new MockProductionService(),
                 _users,
@@ -836,7 +836,14 @@ namespace Manufacture.Tests
             var repDefault = resultDefault.Charts.RepPerformance.Rows.First();
 
             // Update policy to 50% cash benchmark
-            settings.UpdateTreasuryPolicy(50m, 6m, "Updated test policy", "TestAdmin");
+            settings.SetTreasuryPolicy(new TreasuryPolicySettings
+            {
+                PlannedCashPercent = 50m,
+                AlertTolerancePercent = 6m,
+                PolicyMemo = "Updated test policy",
+                LastUpdatedUtc = DateTime.UtcNow,
+                UpdatedBy = "TestAdmin"
+            });
             var resultUpdated = analytics.QueryReports(query);
             Assert.Equal(50m, resultUpdated.Charts.RepPerformance.PlannedCashPercent);
             var repUpdated = resultUpdated.Charts.RepPerformance.Rows.First(r => r.RepId == repDefault.RepId);
@@ -846,7 +853,7 @@ namespace Manufacture.Tests
             Assert.True(repUpdated.VarianceAmount < repDefault.VarianceAmount);
 
             // Reset back to defaults
-            settings.ResetTreasuryPolicyToDefaults("TestAdmin");
+            settings.SetTreasuryPolicy(new TreasuryPolicySettings());
             var resultReset = analytics.QueryReports(query);
             Assert.Equal(32m, resultReset.Charts.RepPerformance.PlannedCashPercent);
         }

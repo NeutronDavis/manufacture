@@ -21,6 +21,12 @@ public partial class Employee
 
     public string Address { get; set; } = null!;
 
+    public string BankName { get; set; } = null!;
+
+    public string BankAccountNumber { get; set; } = null!;
+
+    public string EmploymentStatus { get; set; } = null!;
+
     public decimal BaseSalary { get; set; }
 
     public string EmergencyContactName { get; set; } = null!;
@@ -47,7 +53,11 @@ public partial class Employee
 
     public byte[] RowVersion { get; set; } = null!;
 
+    public virtual ICollection<PayrollDeductionLine> PayrollDeductionLines { get; set; } = new List<PayrollDeductionLine>();
+
     public virtual ICollection<PayrollRecord> PayrollRecords { get; set; } = new List<PayrollRecord>();
 
     public virtual ICollection<SalaryAdvance> SalaryAdvances { get; set; } = new List<SalaryAdvance>();
+
+    public virtual ICollection<Vehicle> Vehicles { get; set; } = new List<Vehicle>();
 }

@@ -4,9 +4,15 @@ namespace Manufacture.Models.DTOs
 {
     public class LoginDto
     {
+        [EmailAddress(ErrorMessage = "Enter a valid email address.")]
+        [StringLength(256, ErrorMessage = "Email address is too long.")]
         public string? Email { get; set; }
+
         public string? Password { get; set; }
+
+        [RegularExpression(@"^\d{6}$", ErrorMessage = "PIN must be exactly 6 digits.")]
         public string? PinCode { get; set; } // For 6-digit numeric login
+
         public bool UsePinMode { get; set; }
     }
 
@@ -17,14 +23,37 @@ namespace Manufacture.Models.DTOs
         public string Name { get; set; } = string.Empty;
         [Required, EmailAddress]
         public string Email { get; set; } = string.Empty;
-        [Required]
+
+        [Range(1, int.MaxValue, ErrorMessage = "Select a system role.")]
+        public int RoleId { get; set; }
+
+        /// <summary>Role machine name, e.g. SuperAdmin. Populated for display.</summary>
         public string Role { get; set; } = "SalesRep";
-        [StringLength(6, MinimumLength = 6, ErrorMessage = "PIN must be exactly 6 digits")]
-        public string PinCode { get; set; } = "123456";
-        public string Password { get; set; } = "Password123!";
+
+        /// <summary>Friendly role name, e.g. Super Admin. Populated for display.</summary>
+        public string RoleDisplayName { get; set; } = string.Empty;
+
+        /// <summary>Optional on edit; required when creating or resetting a PIN.</summary>
+        [RegularExpression(@"^(\d{6})?$", ErrorMessage = "PIN must be exactly 6 digits.")]
+        public string? PinCode { get; set; }
+
+        /// <summary>Optional on edit; required when creating an account.</summary>
+        public string? Password { get; set; }
+
         public string? PosTerminalId { get; set; }
         public string? PhoneNumber { get; set; }
         public bool IsActive { get; set; } = true;
+        public bool HasPin { get; set; }
+        public bool HasPassword { get; set; }
+        public DateTime CreatedAt { get; set; }
+    }
+
+    public class RoleDto
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
     }
 
     public class EmployeeDto
@@ -43,6 +72,10 @@ namespace Manufacture.Models.DTOs
         [EmailAddress]
         public string Email { get; set; } = string.Empty;
         public string Address { get; set; } = string.Empty;
+        public string BankName { get; set; } = string.Empty;
+        public string BankAccountNumber { get; set; } = string.Empty;
+        [Required]
+        public string EmploymentStatus { get; set; } = "Active";
         [Range(0, 100000000)]
         public decimal BaseSalary { get; set; }
 

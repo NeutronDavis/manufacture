@@ -1,19 +1,19 @@
+using System.Text.Json;
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.Domain;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Models.DTOs;
-using Manufacture.Models.Domain;
-using Manufacture.Services;
-using System.Text.Json;
 
 namespace Manufacture.Pages.Logistics.Charter
 {
     public class CreateModel : PageModel
     {
-        private readonly MockLogisticsService _logisticsService;
+        private readonly IFleetService _fleetService;
 
-        public CreateModel(MockLogisticsService logisticsService)
+        public CreateModel(IFleetService fleetService)
         {
-            _logisticsService = logisticsService;
+            _fleetService = fleetService;
         }
 
         [BindProperty]
@@ -27,45 +27,44 @@ namespace Manufacture.Pages.Logistics.Charter
                     LegNumber = 1,
                     OriginState = "Lagos",
                     DestinationState = "Rivers (Port Harcourt)",
-                    FuelOption = FuelOption.WithFuel,
-                    LegCost = 1850000
+                    FuelOption = FuelOption.WithFuel
                 }
             },
             DriverAllowance = 75000,
             SecurityEscortFee = 150000,
-            TollsAndRoadLevies = 45000,
-            GrossCharterFee = 1850000
+            TollsAndRoadLevies = 45000
         };
 
-        public List<Vehicle> AvailableVehicles { get; set; } = new();
-        public List<RouteRate> ActiveRouteRates { get; set; } = new();
+        public List<VehicleDto> AvailableVehicles { get; set; } = new();
+        public List<FleetDriverDto> AvailableDrivers { get; set; } = new();
+        public List<RouteRateDto> ActiveRouteRates { get; set; } = new();
         public string RouteRatesJson { get; set; } = "[]";
         public string InitialLegsJson { get; set; } = "[]";
 
-        public void OnGet()
+        public async Task OnGetAsync()
         {
-            LoadFormData();
+            await LoadFormDataAsync();
         }
 
-        private void LoadFormData()
+        private async Task LoadFormDataAsync()
         {
-            AvailableVehicles = _logisticsService.GetAllVehicles();
-            ActiveRouteRates = _logisticsService.GetAllRouteRates().Where(r => r.IsActive).ToList();
+            AvailableVehicles = await _fleetService.GetVehiclesAsync();
+            AvailableDrivers = await _fleetService.GetDriversAsync();
+            ActiveRouteRates = await _fleetService.GetActiveRouteRatesAsync();
 
-            var ratesData = ActiveRouteRates.Select(r => new
-            {
-                r.OriginState,
-                r.DestinationState,
-                r.VehicleTypeRequired,
-                r.RateWithFuel,
-                r.RateWithoutFuel,
-                r.EstimatedHours
-            });
+            RouteRatesJson = JsonSerializer.Serialize(
+                ActiveRouteRates.Select(r => new
+                {
+                    r.Id,
+                    r.OriginState,
+                    r.DestinationState,
+                    r.VehicleTypeRequired,
+                    r.RateWithFuel,
+                    r.RateWithoutFuel,
+                    r.EstimatedHours
+                }),
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
-            RouteRatesJson = JsonSerializer.Serialize(ratesData, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-
-            // Keep the route builder perfectly aligned with the Route Pricing Matrix.
-            // Every leg cost is re-derived from the active matrix using its selected fuel option.
             Booking.Legs ??= new List<TripLegDto>();
             if (!Booking.Legs.Any())
             {
@@ -87,42 +86,46 @@ namespace Manufacture.Pages.Logistics.Charter
             {
                 var leg = Booking.Legs[i];
                 leg.LegNumber = i + 1;
-
-                var matrixRate = _logisticsService.FindRate(leg.OriginState, leg.DestinationState);
-                if (matrixRate != null)
+                var rate = ActiveRouteRates.FirstOrDefault(r =>
+                    r.OriginState == leg.OriginState && r.DestinationState == leg.DestinationState);
+                if (rate != null)
                 {
-                    leg.LegCost = leg.FuelOption == FuelOption.WithFuel
-                        ? matrixRate.RateWithFuel
-                        : matrixRate.RateWithoutFuel;
+                    leg.LegCost = leg.FuelOption == FuelOption.WithFuel ? rate.RateWithFuel : rate.RateWithoutFuel;
                 }
             }
+
             Booking.GrossCharterFee = Booking.Legs.Sum(l => l.LegCost);
 
-            var legsData = Booking.Legs.Select(l => new
-            {
-                l.LegNumber,
-                l.OriginState,
-                l.DestinationState,
-                FuelOption = l.FuelOption.ToString(),
-                l.LegCost
-            });
-            InitialLegsJson = JsonSerializer.Serialize(legsData, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+            InitialLegsJson = JsonSerializer.Serialize(
+                Booking.Legs.Select(l => new
+                {
+                    l.LegNumber,
+                    l.OriginState,
+                    l.DestinationState,
+                    FuelOption = l.FuelOption.ToString(),
+                    l.LegCost
+                }),
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
-            // Set default vehicle if none selected
             if (Booking.VehicleId == 0 && AvailableVehicles.Any())
             {
                 var defaultVehicle = AvailableVehicles.FirstOrDefault(v => v.Type == "Truck") ?? AvailableVehicles.First();
                 Booking.VehicleId = defaultVehicle.Id;
                 Booking.VehicleRegNumber = defaultVehicle.RegistrationNumber;
-                Booking.DriverId = defaultVehicle.Id;
-                Booking.DriverName = defaultVehicle.AssignedDriverName;
+            }
+
+            if (!Booking.DriverId.HasValue && AvailableDrivers.Any())
+            {
+                Booking.DriverId = AvailableDrivers.First().Id;
+                Booking.DriverName = AvailableDrivers.First().FullName;
             }
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync()
         {
-            // Clean up any empty legs
-            Booking.Legs = Booking.Legs?.Where(l => !string.IsNullOrWhiteSpace(l.DestinationState)).ToList() ?? new List<TripLegDto>();
+            Booking.Legs = Booking.Legs
+                ?.Where(l => !string.IsNullOrWhiteSpace(l.DestinationState))
+                .ToList() ?? new List<TripLegDto>();
 
             if (!Booking.Legs.Any())
             {
@@ -131,40 +134,22 @@ namespace Manufacture.Pages.Logistics.Charter
 
             if (!ModelState.IsValid)
             {
-                LoadFormData();
+                await LoadFormDataAsync();
                 return Page();
             }
 
-            var vehicle = _logisticsService.GetVehicleById(Booking.VehicleId);
-            if (vehicle != null)
+            try
             {
-                Booking.VehicleRegNumber = vehicle.RegistrationNumber;
-                Booking.DriverName = vehicle.AssignedDriverName;
+                var created = await _fleetService.CreateCharterBookingAsync(Booking);
+                TempData["SuccessMessage"] = $"Charter booking {created.BookingRef} booked successfully.";
+                return RedirectToPage("/Logistics/Charter/Details", new { id = created.Id });
             }
-
-            // Recalculate legs costs against current route matrix
-            decimal gross = 0;
-            for (int i = 0; i < Booking.Legs.Count; i++)
+            catch (InvalidOperationException ex)
             {
-                var leg = Booking.Legs[i];
-                leg.LegNumber = i + 1;
-                var rate = _logisticsService.FindRate(leg.OriginState, leg.DestinationState);
-                if (rate != null)
-                {
-                    leg.LegCost = leg.FuelOption == FuelOption.WithFuel ? rate.RateWithFuel : rate.RateWithoutFuel;
-                }
-                gross += leg.LegCost;
+                ModelState.AddModelError(string.Empty, ex.Message);
+                await LoadFormDataAsync();
+                return Page();
             }
-
-            Booking.GrossCharterFee = gross > 0 ? gross : Booking.GrossCharterFee;
-            var (incidentals, netRev) = _logisticsService.CalculateTripProfitability(Booking);
-            Booking.TotalTripIncidentals = incidentals;
-            Booking.NetCharterRevenue = netRev;
-
-            var created = _logisticsService.CreateCharterBooking(Booking);
-
-            TempData["SuccessMessage"] = $"Commercial charter booking {created.BookingRef} booked successfully!";
-            return RedirectToPage("/Logistics/Charter/Details", new { id = created.Id });
         }
     }
 }

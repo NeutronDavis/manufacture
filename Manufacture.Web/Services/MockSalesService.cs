@@ -14,18 +14,15 @@ namespace Manufacture.Services
 
         private readonly MockProductionService? _productionService;
         private readonly MockInventoryService? _inventoryService;
-        private readonly MockSettingsService? _settingsService;
 
         public MockSalesService(
             MockUserService userService,
             MockLogisticsService logisticsService,
             MockProductionService? productionService = null,
-            MockInventoryService? inventoryService = null,
-            MockSettingsService? settingsService = null)
+            MockInventoryService? inventoryService = null)
         {
             _productionService = productionService;
             _inventoryService = inventoryService;
-            _settingsService = settingsService;
 
             SeedInitialData();
             SeedReps(userService, logisticsService);

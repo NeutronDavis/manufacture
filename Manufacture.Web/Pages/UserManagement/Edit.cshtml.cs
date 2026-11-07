@@ -1,15 +1,15 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.DTOs;
 
 namespace Manufacture.Pages.UserManagement
 {
     public class EditModel : PageModel
     {
-        private readonly MockUserService _userService;
+        private readonly IUserService _userService;
 
-        public EditModel(MockUserService userService)
+        public EditModel(IUserService userService)
         {
             _userService = userService;
         }
@@ -17,33 +17,67 @@ namespace Manufacture.Pages.UserManagement
         [BindProperty]
         public UserDto UserInput { get; set; } = new();
 
-        public IActionResult OnGet(int id)
+        public List<RoleDto> Roles { get; set; } = new();
+
+        public async Task<IActionResult> OnGetAsync(int id)
         {
-            var user = _userService.GetById(id);
-            if (user == null) return RedirectToPage("/UserManagement/Index");
-
-            UserInput = new UserDto
+            var user = await _userService.GetByIdAsync(id);
+            if (user == null)
             {
-                Id = user.Id,
-                Name = user.Name,
-                Email = user.Email,
-                Role = user.Role,
-                PinCode = user.PinCode,
-                PhoneNumber = user.PhoneNumber,
-                PosTerminalId = user.PosTerminalId,
-                IsActive = user.IsActive
-            };
+                TempData["ErrorMessage"] = "User account not found.";
+                return RedirectToPage("/UserManagement/Index");
+            }
 
+            UserInput = user;
+            // Never surface stored hashes. Blank means "keep the current value".
+            UserInput.PinCode = null;
+            UserInput.Password = null;
+
+            await LoadRolesAsync();
             return Page();
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync()
         {
-            if (!ModelState.IsValid) return Page();
+            await LoadRolesAsync();
 
-            _userService.Update(UserInput);
-            TempData["SuccessMessage"] = $"User '{UserInput.Name}' updated successfully.";
-            return RedirectToPage("/UserManagement/Index");
+            if (!ModelState.IsValid)
+            {
+                return Page();
+            }
+
+            if (!string.IsNullOrWhiteSpace(UserInput.PinCode) &&
+                (UserInput.PinCode.Length != 6 || !UserInput.PinCode.All(char.IsDigit)))
+            {
+                ModelState.AddModelError(nameof(UserInput.PinCode), "PIN must be exactly 6 digits.");
+                return Page();
+            }
+
+            if (!string.IsNullOrWhiteSpace(UserInput.Password) && UserInput.Password.Length < 8)
+            {
+                ModelState.AddModelError(nameof(UserInput.Password), "Password must be at least 8 characters.");
+                return Page();
+            }
+
+            try
+            {
+                var updated = await _userService.UpdateAsync(UserInput);
+                TempData[updated ? "SuccessMessage" : "ErrorMessage"] = updated
+                    ? $"User '{UserInput.Name}' updated successfully."
+                    : "User account not found.";
+
+                return RedirectToPage("/UserManagement/Index");
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+                return Page();
+            }
+        }
+
+        private async Task LoadRolesAsync()
+        {
+            Roles = await _userService.GetRolesAsync();
         }
     }
 }

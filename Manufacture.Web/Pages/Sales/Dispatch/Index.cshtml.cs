@@ -12,9 +12,9 @@ namespace Manufacture.Pages.Sales.Dispatch
     public class IndexModel : PageModel
     {
         private readonly MockSalesService _salesService;
-        private readonly MockRbacService _rbacService;
+        private readonly RbacCache _rbacService;
 
-        public IndexModel(MockSalesService salesService, MockRbacService rbacService)
+        public IndexModel(MockSalesService salesService, RbacCache rbacService)
         {
             _salesService = salesService;
             _rbacService = rbacService;
@@ -46,9 +46,8 @@ namespace Manufacture.Pages.Sales.Dispatch
             }
 
             CanEdit = UserRole == "SuperAdmin" ||
-                      _rbacService.GetPermissionLevel(UserRole, "Sales").Contains("Edit") ||
-                      _rbacService.GetPermissionLevel(UserRole, "Sales") == "Full Access" ||
-                      _rbacService.GetPermissionLevel(UserRole, "Dispatch").Contains("Create");
+                      _rbacService.CanEdit(UserRole, "Sales") ||
+                      _rbacService.CanCreate(UserRole, "Dispatch");
 
             Reps = _salesService.GetAllReps();
             var date = FilterDate ?? DateTime.UtcNow.Date;

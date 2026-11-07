@@ -1,7 +1,7 @@
 @page
-@model Manufacture.Pages.Settings.TreasuryModel
+@model Manufacture.Pages.Settings.FinanceModel
 @{
-    ViewData["Title"] = "Treasury Policy & Sales Rep Cash Benchmark";
+    ViewData["Title"] = "Finance & Payroll Settings";
 }
 
 <div class="space-y-6 w-full pb-12">
@@ -13,13 +13,13 @@
                 <span>&gt;</span>
                 <a asp-page="/Settings/Index" class="hover:underline">Settings</a>
                 <span>&gt;</span>
-                <span>Treasury Policy</span>
+                <span>Finance &amp; Payroll</span>
             </div>
             <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2.5">
-                <i class="fa-solid fa-scale-balanced text-primary"></i> Treasury Policy &amp; Rep Cash Benchmark
+                <i class="fa-solid fa-sliders text-primary"></i> Finance &amp; Payroll Settings
             </h1>
             <p class="text-xs opacity-70 mt-1">
-                Configure the corporate tender ratio policy for field sales reps. This benchmark dictates the expected physical cash versus digital tender (transfer &amp; POS) threshold and drives all cash variance calculations across reconciliation reports.
+                Configure treasury, loan recovery, allowance, and statutory payroll variables in one place. Changes take effect on the next payroll run.
             </p>
         </div>
         <div class="flex items-center gap-2 self-start sm:self-auto">
@@ -51,6 +51,14 @@
                 <div class="font-bold">Action Failed</div>
                 <div>@TempData["ErrorMessage"]</div>
             </div>
+        </div>
+    }
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-exclamation text-base"></i>
+            <div asp-validation-summary="All"></div>
         </div>
     }
 
@@ -143,7 +151,7 @@
                 }
             </div>
 
-            <form method="post" asp-page-handler="Save" id="treasuryForm" class="space-y-6">
+            <form method="post" asp-page-handler="SaveTreasury" id="treasuryForm" class="space-y-6">
                 
                 <!-- 1. Planned Cash Quota Slider & Number -->
                 <div class="space-y-3">
@@ -261,12 +269,12 @@
                             <button type="submit" class="btn btn-sm btn-primary rounded-xl px-5 text-xs font-bold gap-2 shadow-xs">
                                 <i class="fa-solid fa-floppy-disk text-xs"></i> Save Benchmark Policy
                             </button>
-                            <a asp-page="/Settings/Treasury" class="btn btn-sm btn-ghost rounded-xl text-xs">
+                            <a asp-page="/Settings/Finance" class="btn btn-sm btn-ghost rounded-xl text-xs">
                                 Cancel
                             </a>
                         </div>
                         <button type="submit" 
-                                asp-page-handler="Reset" 
+                                asp-page-handler="ResetTreasury" 
                                 onclick="return confirm('Restore corporate benchmark to factory default (32.0% Cash / 68.0% Digital)?');" 
                                 class="btn btn-sm btn-outline border-base-300 text-error hover:bg-error hover:text-error-content rounded-xl text-xs gap-1.5">
                             <i class="fa-solid fa-rotate-left text-xs"></i> Reset to Default (32%)
@@ -355,6 +363,92 @@
 
         </div>
 
+    </div>
+
+    <!-- Payroll & Loan Policy -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-6">
+        <div class="border-b border-base-300 pb-4 flex items-center justify-between">
+            <div>
+                <h2 class="font-bold text-base text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-hand-holding-dollar text-warning"></i> Payroll, Loan &amp; Statutory Policy
+                </h2>
+                <p class="text-[11px] opacity-60 mt-0.5">
+                    These values drive monthly payroll, salary-advance recovery, allowances, and statutory deductions.
+                </p>
+            </div>
+            @if (!Model.CanEdit)
+            {
+                <span class="badge badge-warning badge-sm font-bold text-[10px]">View Only Mode</span>
+            }
+        </div>
+
+        <form method="post" asp-page-handler="SavePayroll" class="space-y-5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-bold">Monthly Loan Recovery (%)</span></label>
+                    <input asp-for="PayrollInput.LoanMonthlyRepaymentPercent" type="number" min="0.01" max="100" step="0.5" disabled="@(!Model.CanEdit)" class="input input-sm input-bordered font-mono font-bold rounded-xl" />
+                    <span asp-validation-for="PayrollInput.LoanMonthlyRepaymentPercent" class="text-error text-[10px]"></span>
+                </div>
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-bold">Maximum Loan (% of Salary)</span></label>
+                    <input asp-for="PayrollInput.MaxLoanPercentOfSalary" type="number" min="0.01" max="100" step="0.5" disabled="@(!Model.CanEdit)" class="input input-sm input-bordered font-mono font-bold rounded-xl" />
+                    <span asp-validation-for="PayrollInput.MaxLoanPercentOfSalary" class="text-error text-[10px]"></span>
+                </div>
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-bold">Housing Allowance (%)</span></label>
+                    <input asp-for="PayrollInput.HousingAllowancePercent" type="number" min="0" max="100" step="0.25" disabled="@(!Model.CanEdit)" class="input input-sm input-bordered font-mono font-bold rounded-xl" />
+                    <span asp-validation-for="PayrollInput.HousingAllowancePercent" class="text-error text-[10px]"></span>
+                </div>
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-bold">Transport Allowance (%)</span></label>
+                    <input asp-for="PayrollInput.TransportAllowancePercent" type="number" min="0" max="100" step="0.25" disabled="@(!Model.CanEdit)" class="input input-sm input-bordered font-mono font-bold rounded-xl" />
+                    <span asp-validation-for="PayrollInput.TransportAllowancePercent" class="text-error text-[10px]"></span>
+                </div>
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-bold">PAYE Tax (%)</span></label>
+                    <input asp-for="PayrollInput.PayeTaxPercent" type="number" min="0" max="100" step="0.25" disabled="@(!Model.CanEdit)" class="input input-sm input-bordered font-mono font-bold rounded-xl" />
+                    <span asp-validation-for="PayrollInput.PayeTaxPercent" class="text-error text-[10px]"></span>
+                </div>
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-bold">Pension (%)</span></label>
+                    <input asp-for="PayrollInput.PensionPercent" type="number" min="0" max="100" step="0.25" disabled="@(!Model.CanEdit)" class="input input-sm input-bordered font-mono font-bold rounded-xl" />
+                    <span asp-validation-for="PayrollInput.PensionPercent" class="text-error text-[10px]"></span>
+                </div>
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-bold">Health Insurance (%)</span></label>
+                    <input asp-for="PayrollInput.HealthInsurancePercent" type="number" min="0" max="100" step="0.25" disabled="@(!Model.CanEdit)" class="input input-sm input-bordered font-mono font-bold rounded-xl" />
+                    <span asp-validation-for="PayrollInput.HealthInsurancePercent" class="text-error text-[10px]"></span>
+                </div>
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-bold">Policy Audit</span></label>
+                    <div class="text-xs font-mono opacity-70 py-2">
+                        @(Model.Payroll.UpdatedBy ?? "Seed")
+                        <div class="text-[10px]">@(Model.Payroll.UpdatedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "—")</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-[11px] opacity-70 rounded-xl bg-base-200/60 border border-base-300 p-3">
+                <strong>Monthly loan recovery</strong> is applied to each active loan's <em>remaining balance</em> during payroll.
+                Example: a ₦20,000 remaining balance at @Model.Payroll.LoanMonthlyRepaymentPercent.ToString("0.#")% recovers
+                ₦@((20000m * Model.Payroll.LoanMonthlyRepaymentPercent / 100m).ToString("N2")) that month.
+            </div>
+
+            @if (Model.CanEdit)
+            {
+                <div class="border-t border-base-300 pt-4 flex items-center justify-between gap-3 flex-wrap">
+                    <button type="submit" class="btn btn-sm btn-primary rounded-xl px-5 text-xs font-bold gap-2 shadow-xs">
+                        <i class="fa-solid fa-floppy-disk text-xs"></i> Save Payroll &amp; Loan Policy
+                    </button>
+                    <button type="submit"
+                            asp-page-handler="ResetPayroll"
+                            onclick="return confirm('Restore payroll and loan policy to factory defaults?');"
+                            class="btn btn-sm btn-outline border-base-300 text-error hover:bg-error hover:text-error-content rounded-xl text-xs gap-1.5">
+                        <i class="fa-solid fa-rotate-left text-xs"></i> Reset Payroll Defaults
+                    </button>
+                </div>
+            }
+        </form>
     </div>
 </div>
 

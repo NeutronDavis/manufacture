@@ -29,6 +29,14 @@
         </div>
     </div>
 
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-exclamation text-base"></i>
+            <div asp-validation-summary="All"></div>
+        </div>
+    }
+
     <!-- Standard 2-Column Full-Width Form Layout -->
     <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
         
@@ -76,14 +84,19 @@
                             <input type="number" step="1000" min="1000" asp-for="AdvanceInput.PrincipalAmount" id="principalInput" class="input input-bordered input-sm w-full font-mono font-bold bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. 50000" required oninput="calculateLoanSchedule()" />
                         </div>
 
-                        <!-- Monthly Installment -->
+                        <!-- Monthly Recovery Policy -->
                         <div class="form-control w-full">
                             <label class="label pb-1.5">
                                 <span class="label-text font-bold text-xs text-base-content">
-                                    Monthly Deduction Amount (₦) <span class="text-error">*</span>
+                                    Monthly Recovery (Policy: @Model.Settings.LoanMonthlyRepaymentPercent.ToString("0.#")% of remaining)
                                 </span>
                             </label>
-                            <input type="number" step="1000" min="1000" asp-for="AdvanceInput.MonthlyDeductionAmount" id="installmentInput" class="input input-bordered input-sm w-full font-mono font-bold bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary text-warning" placeholder="e.g. 15000" required oninput="calculateLoanSchedule()" />
+                            <div class="input input-bordered input-sm w-full flex items-center bg-base-200 border-base-300 rounded-xl text-xs font-mono font-bold text-warning">
+                                ₦<span id="monthlyRecoveryPreview">0</span>
+                            </div>
+                            <div class="text-[10px] opacity-60 mt-1">
+                                Configured in Finance &amp; Payroll Settings. Maximum principal: @Model.Settings.MaxLoanPercentOfSalary.ToString("0.#")% of base salary.
+                            </div>
                         </div>
 
                         <!-- Reason -->
@@ -148,28 +161,34 @@
 
 @section Scripts {
 <script>
+    const repaymentPercent = @Model.Settings.LoanMonthlyRepaymentPercent.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
     function calculateLoanSchedule() {
         const principal = parseFloat(document.getElementById('principalInput').value) || 0;
-        const installment = parseFloat(document.getElementById('installmentInput').value) || 0;
         const empSelect = document.getElementById('empSelect');
         const selectedOpt = empSelect.options[empSelect.selectedIndex];
         const salary = parseFloat(selectedOpt?.getAttribute('data-salary')) || 0;
 
-        if (principal > 0 && installment > 0) {
-            const months = Math.ceil(principal / installment);
+        const monthlyRecovery = principal * repaymentPercent / 100;
+        document.getElementById('monthlyRecoveryPreview').innerText =
+            monthlyRecovery.toLocaleString('en-NG', { maximumFractionDigits: 2 });
+
+        if (principal > 0 && monthlyRecovery > 0) {
+            const months = Math.ceil(principal / monthlyRecovery);
             document.getElementById('displayDuration').innerText = `${months} Month${months > 1 ? 's' : ''}`;
         } else {
             document.getElementById('displayDuration').innerText = '— Months';
         }
 
-        if (salary > 0 && installment > 0) {
-            const percent = ((installment / salary) * 100).toFixed(1);
-            document.getElementById('displayBurdenPercent').innerText = `${percent}% of Base`;
+        if (salary > 0 && monthlyRecovery > 0) {
+            const burden = ((monthlyRecovery / salary) * 100).toFixed(1);
+            document.getElementById('displayBurdenPercent').innerText = `${burden}% of Base`;
         } else {
             document.getElementById('displayBurdenPercent').innerText = '—% of Base';
         }
     }
 
     document.addEventListener('DOMContentLoaded', calculateLoanSchedule);
+    document.getElementById('empSelect')?.addEventListener('change', calculateLoanSchedule);
 </script>
 }

@@ -19,7 +19,7 @@
                 <i class="fa-solid fa-gas-pump text-warning"></i> Daily Fuel & Vehicle Operating Expenses
             </h1>
             <p class="text-xs opacity-70 mt-0.5">
-                Log petrol/diesel purchases, receipt tracking, and delivery route mileage.
+                Log petrol, diesel, and EV charging expenses for every registered vehicle.
             </p>
         </div>
         <div>
@@ -50,11 +50,11 @@
                             <th class="py-3 pl-4">Date</th>
                             <th>Vehicle Plate</th>
                             <th>Driver</th>
-                            <th>Litres</th>
-                            <th>Price / Litre</th>
+                            <th>Fuel Type</th>
+                            <th>Litres / kWh</th>
+                            <th>Price / Unit</th>
                             <th>Total Cost (₦)</th>
-                            <th>Odometer (KM)</th>
-                            <th>Petrol Station & Receipt</th>
+                            <th>Petrol Station</th>
                             <th class="text-right pr-4">Delivery Route</th>
                         </tr>
                     </thead>
@@ -67,14 +67,11 @@
                                     <span class="badge badge-neutral badge-xs font-mono font-bold">@log.VehicleRegNumber</span>
                                 </td>
                                 <td class="font-bold text-base-content py-3">@log.DriverName</td>
-                                <td class="font-mono text-base-content font-bold py-3">@log.LitresDispensed.ToString("N1") L</td>
+                                <td><span class="badge badge-soft badge-xs font-bold">@log.FuelType</span></td>
+                                <td class="font-mono text-base-content font-bold py-3">@log.LitresDispensed.ToString("N1")</td>
                                 <td class="font-mono opacity-70 py-3">₦@log.PricePerLitre.ToString("N0")</td>
                                 <td class="font-mono font-black text-success py-3">₦@log.TotalCost.ToString("N0")</td>
-                                <td class="font-mono text-base-content py-3">@log.OdometerReadingKm.ToString("N0") km</td>
-                                <td class="py-3">
-                                    <div class="font-bold text-base-content">@log.PetrolStation</div>
-                                    <span class="font-mono text-[10px] opacity-60">Receipt: @log.ReceiptNumber</span>
-                                </td>
+                                <td class="py-3 font-bold text-base-content">@log.PetrolStation</td>
                                 <td class="text-right pr-4 text-[11px] opacity-70 py-3 truncate max-w-xs">
                                     @log.RouteDescription
                                 </td>

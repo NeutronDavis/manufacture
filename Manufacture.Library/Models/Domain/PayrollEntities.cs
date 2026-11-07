@@ -27,11 +27,16 @@ namespace Manufacture.Models.Domain
         public int Year { get; set; } = DateTime.UtcNow.Year;
         public decimal BaseSalary { get; set; }
         public decimal PerformanceBonus { get; set; } // Incentives / extra shifts
+        public decimal HousingAllowance { get; set; }
+        public decimal TransportAllowance { get; set; }
+        public decimal OtherAllowances { get; set; }
         public decimal DisciplinaryDeductions { get; set; } // Loss or penalties
         public decimal AdvanceDeduction { get; set; } // Auto-deducted salary loan
         public decimal TaxAndLevies { get; set; }
-        public decimal GrossSalary => BaseSalary + PerformanceBonus;
-        public decimal TotalDeductions => DisciplinaryDeductions + AdvanceDeduction + TaxAndLevies;
+        public decimal PensionDeduction { get; set; }
+        public decimal HealthInsuranceDeduction { get; set; }
+        public decimal GrossSalary => BaseSalary + PerformanceBonus + HousingAllowance + TransportAllowance + OtherAllowances;
+        public decimal TotalDeductions => DisciplinaryDeductions + AdvanceDeduction + TaxAndLevies + PensionDeduction + HealthInsuranceDeduction;
         public decimal NetSalary => GrossSalary - TotalDeductions;
         public string PaymentStatus { get; set; } = "Pending"; // Pending, Paid, OnHold
         public DateTime? PaymentDate { get; set; }

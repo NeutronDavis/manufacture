@@ -28,6 +28,14 @@ namespace Manufacture.Models.DTOs
         public bool IsActive { get; set; } = true;
     }
 
+    public class FleetDriverDto
+    {
+        public int Id { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string LicenseNumber { get; set; } = string.Empty;
+    }
+
     public class TripLegDto
     {
         public int LegNumber { get; set; } = 1;
@@ -53,8 +61,7 @@ namespace Manufacture.Models.DTOs
         public int VehicleId { get; set; }
         public string VehicleRegNumber { get; set; } = string.Empty;
 
-        [Range(1, int.MaxValue, ErrorMessage = "Please select a driver.")]
-        public int DriverId { get; set; }
+        public int? DriverId { get; set; }
         public string DriverName { get; set; } = string.Empty;
 
         public bool IsMultiLeg { get; set; }
@@ -79,6 +86,7 @@ namespace Manufacture.Models.DTOs
         public DateTime DepartureDate { get; set; } = DateTime.UtcNow.Date;
         public DateTime? ReturnDate { get; set; }
         public string Notes { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
     }
 
     public class MaintenanceLogDto

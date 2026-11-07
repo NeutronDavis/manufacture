@@ -29,12 +29,20 @@
         </div>
     </div>
 
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-exclamation text-base"></i>
+            <div asp-validation-summary="All"></div>
+        </div>
+    }
+
     <!-- Top KPI Summary Bar using daisyUI stats component -->
     <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
         <div class="stat p-5">
             <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-users"></i></div>
             <div class="stat-title text-[10px] uppercase font-bold opacity-60">Active Personnel</div>
-            <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.Employees.Count</div>
+            <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.RunEmployees.Count</div>
             <div class="stat-desc opacity-70">Eligible staff for payroll</div>
         </div>
 
@@ -42,31 +50,20 @@
             <div class="stat-figure text-base-content text-2xl"><i class="fa-solid fa-wallet"></i></div>
             <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Base Salary</div>
             <div class="stat-value text-2xl font-black font-mono text-base-content" id="statBaseSalary">
-                ₦@Model.Employees.Sum(e => e.BaseSalary).ToString("N0")
+                ₦@Model.TotalBaseSalary.ToString("N0")
             </div>
             <div class="stat-desc opacity-70">Contractual fixed wages</div>
-        </div>
-
-        <div class="stat p-5">
-            <div class="stat-figure text-warning text-2xl"><i class="fa-solid fa-hand-holding-dollar"></i></div>
-            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Active Loan Recoveries</div>
-            <div class="stat-value text-2xl font-black font-mono text-warning">
-                ₦@Model.ActiveAdvances.Sum(a => a.MonthlyDeductionAmount).ToString("N0")
-            </div>
-            <div class="stat-desc">
-                <span class="badge badge-warning badge-xs font-bold uppercase">
-                    @Model.ActiveAdvances.Count ACTIVE ADVANCES
-                </span>
-            </div>
         </div>
 
         <div class="stat p-5">
             <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-money-bill-transfer"></i></div>
             <div class="stat-title text-[10px] uppercase font-bold opacity-60">Estimated Net Payout</div>
             <div class="stat-value text-2xl font-black font-mono text-success" id="statNetPayout">
-                ₦0
+                ₦@Model.EstimatedNetPayout.ToString("N0")
             </div>
-            <div class="stat-desc text-success font-semibold">Live calculated estimate</div>
+            <div class="stat-desc text-success font-semibold">
+                Base salary less active loan recoveries · @Model.Settings.LoanMonthlyRepaymentPercent.ToString("0.#")% policy
+            </div>
         </div>
     </div>
 
@@ -117,18 +114,16 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-base-200">
-                                @for (int i = 0; i < Model.Employees.Count; i++)
+                                @for (int i = 0; i < Model.RunEmployees.Count; i++)
                                 {
-                                    var emp = Model.Employees[i];
-                                    var activeAdvance = Model.ActiveAdvances.FirstOrDefault(a => a.EmployeeId == emp.Id);
-                                    var advanceDeduction = activeAdvance?.MonthlyDeductionAmount ?? 0;
+                                    var emp = Model.RunEmployees[i];
                                     var initials = !string.IsNullOrEmpty(emp.FullName) 
                                         ? string.Concat(emp.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(s => s[0])) 
                                         : "EM";
 
-                                    <tr class="hover:bg-base-200/60 transition-colors payroll-row" data-base="@emp.BaseSalary" data-advance="@advanceDeduction">
+                                    <tr class="hover:bg-base-200/60 transition-colors payroll-row" data-base="@emp.BaseSalary" data-advance="@emp.MonthlyLoanRecovery">
                                         <td class="py-3 pl-3">
-                                            <input type="hidden" name="ProcessInput.Adjustments[@i].EmployeeId" value="@emp.Id" />
+                                            <input type="hidden" name="ProcessInput.Adjustments[@i].EmployeeId" value="@emp.EmployeeId" />
                                             <div class="flex items-center gap-2.5">
                                                 <div class="avatar placeholder">
                                                     <div class="bg-base-200 text-base-content border border-base-300 rounded-full w-8 shadow-xs">
@@ -148,13 +143,18 @@
                                             ₦@emp.BaseSalary.ToString("N0")
                                         </td>
                                         <td>
-                                            @if (activeAdvance != null)
+                                            @if (emp.ActiveLoanCount > 0 || emp.RemainingLoanBalance > 0)
                                             {
-                                                <div>
-                                                    <span class="badge badge-warning badge-xs font-mono font-bold gap-1">
-                                                        -₦@advanceDeduction.ToString("N0")
-                                                    </span>
-                                                    <div class="text-[9px] opacity-60 font-mono mt-0.5">Bal: ₦@activeAdvance.RemainingBalance.ToString("N0")</div>
+                                                <div class="space-y-1">
+                                                    <div class="flex items-center gap-1">
+                                                        <span class="text-[10px] font-bold opacity-60">₦</span>
+                                                        <input type="number" step="100" min="0" max="@emp.RemainingLoanBalance"
+                                                               name="ProcessInput.Adjustments[@i].LoanRecoveryAmount"
+                                                               value="@emp.MonthlyLoanRecovery.ToString("0.##")"
+                                                               class="input input-bordered input-xs w-24 text-right font-mono text-warning font-bold bg-base-200 border-base-300 focus:bg-base-100 focus:border-primary rounded-lg loan-input"
+                                                               oninput="recalculatePayrollTotals()" />
+                                                    </div>
+                                                    <div class="text-[9px] opacity-60 font-mono">Bal: ₦@emp.RemainingLoanBalance.ToString("N0")</div>
                                                 </div>
                                             }
                                             else
@@ -165,7 +165,7 @@
                                         <td class="text-center">
                                             <input type="number" step="500" min="0" 
                                                    name="ProcessInput.Adjustments[@i].PerformanceBonus" 
-                                                   value="5000" 
+                                                   value="0" 
                                                    class="input input-bordered input-xs w-24 text-center font-mono text-success font-bold bg-base-200 border-base-300 focus:bg-base-100 focus:border-primary rounded-lg bonus-input" 
                                                    oninput="recalculatePayrollTotals()" />
                                         </td>
@@ -179,7 +179,7 @@
                                         <td class="pr-3">
                                             <input type="text" 
                                                    name="ProcessInput.Adjustments[@i].Notes" 
-                                                   value="Shift performance" 
+                                                   value="" 
                                                    placeholder="Remarks..." 
                                                    class="input input-bordered input-xs w-full bg-base-200 border-base-300 focus:bg-base-100 focus:border-primary rounded-lg text-xs" />
                                         </td>
@@ -223,7 +223,7 @@
                     </div>
 
                     <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
-                        <span class="font-sans opacity-70">Penalties / Deductions:</span>
+                        <span class="font-sans opacity-70">Tax, Pension &amp; Penalties:</span>
                         <span class="font-bold text-error" id="cardTotalPenalties">-₦0</span>
                     </div>
 
@@ -264,37 +264,60 @@
 
 @section Scripts {
 <script>
+    const housingPercent = @Model.Settings.HousingAllowancePercent.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    const transportPercent = @Model.Settings.TransportAllowancePercent.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    const payePercent = @Model.Settings.PayeTaxPercent.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    const pensionPercent = @Model.Settings.PensionPercent.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    const healthPercent = @Model.Settings.HealthInsurancePercent.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
     function recalculatePayrollTotals() {
         const rows = document.querySelectorAll('.payroll-row');
         let totalBase = 0;
         let totalBonuses = 0;
         let totalAdvances = 0;
         let totalPenalties = 0;
+        let totalHousing = 0;
+        let totalTransport = 0;
+        let totalTax = 0;
+        let totalPension = 0;
+        let totalHealth = 0;
 
         rows.forEach(row => {
             const base = parseFloat(row.getAttribute('data-base')) || 0;
-            const advance = parseFloat(row.getAttribute('data-advance')) || 0;
+            const advance = parseFloat(row.querySelector('.loan-input')?.value) || 0;
             const bonus = parseFloat(row.querySelector('.bonus-input')?.value) || 0;
             const penalty = parseFloat(row.querySelector('.penalty-input')?.value) || 0;
+            const housing = base * housingPercent / 100;
+            const transport = base * transportPercent / 100;
+            const taxableGross = base + bonus + housing + transport;
+            const tax = taxableGross * payePercent / 100;
+            const pension = base * pensionPercent / 100;
+            const health = base * healthPercent / 100;
 
             totalBase += base;
             totalAdvances += advance;
             totalBonuses += bonus;
             totalPenalties += penalty;
+            totalHousing += housing;
+            totalTransport += transport;
+            totalTax += tax;
+            totalPension += pension;
+            totalHealth += health;
         });
 
-        const gross = totalBase + totalBonuses;
-        const totalDeductions = totalAdvances + totalPenalties;
+        const gross = totalBase + totalBonuses + totalHousing + totalTransport;
+        const totalDeductions = totalTax + totalPension + totalHealth + totalAdvances + totalPenalties;
         const net = gross - totalDeductions;
 
-        document.getElementById('statBaseSalary').innerText = '₦' + totalBase.toLocaleString('en-US');
-        document.getElementById('statNetPayout').innerText = '₦' + net.toLocaleString('en-US');
+        document.getElementById('statBaseSalary').innerText = '₦' + totalBase.toLocaleString('en-NG', { maximumFractionDigits: 0 });
+        // KPI definition: base salary less active loan recovery.
+        document.getElementById('statNetPayout').innerText = '₦' + (totalBase - totalAdvances).toLocaleString('en-NG', { maximumFractionDigits: 0 });
 
-        document.getElementById('cardBaseSalary').innerText = '₦' + totalBase.toLocaleString('en-US');
-        document.getElementById('cardTotalBonuses').innerText = '+₦' + totalBonuses.toLocaleString('en-US');
-        document.getElementById('cardTotalAdvances').innerText = '-₦' + totalAdvances.toLocaleString('en-US');
-        document.getElementById('cardTotalPenalties').innerText = '-₦' + totalPenalties.toLocaleString('en-US');
-        document.getElementById('cardNetTotal').innerText = '₦' + net.toLocaleString('en-US');
+        document.getElementById('cardBaseSalary').innerText = '₦' + totalBase.toLocaleString('en-NG', { maximumFractionDigits: 0 });
+        document.getElementById('cardTotalBonuses').innerText = '+₦' + totalBonuses.toLocaleString('en-NG', { maximumFractionDigits: 0 });
+        document.getElementById('cardTotalAdvances').innerText = '-₦' + totalAdvances.toLocaleString('en-NG', { maximumFractionDigits: 0 });
+        document.getElementById('cardTotalPenalties').innerText = '-₦' + (totalPenalties + totalTax + totalPension + totalHealth).toLocaleString('en-NG', { maximumFractionDigits: 0 });
+        document.getElementById('cardNetTotal').innerText = '₦' + net.toLocaleString('en-NG', { maximumFractionDigits: 0 });
     }
 
     document.addEventListener('DOMContentLoaded', recalculatePayrollTotals);

@@ -70,10 +70,12 @@
                                 <span class="label-text font-bold text-xs text-base-content">Vehicle Type</span>
                             </label>
                             <select asp-for="VehicleInput.Type" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
-                                <option value="Van">Delivery Van</option>
-                                <option value="Truck">Heavy Supply Truck</option>
-                                <option value="Motorcycle">Dispatch Motorcycle</option>
-                                <option value="Sedan">Admin Car</option>
+                                <option value="Sedan">Sedan</option>
+                                <option value="Truck">Truck</option>
+                                <option value="Bus">Bus</option>
+                                <option value="SUV">SUV</option>
+                                <option value="EV">EV</option>
+                                <option value="Van">Van</option>
                             </select>
                         </div>
 
@@ -96,37 +98,38 @@
                                 <span class="label-text font-bold text-xs text-base-content">Fuel Type</span>
                             </label>
                             <select asp-for="VehicleInput.FuelType" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
-                                <option value="PMS (Petrol)">PMS (Petrol)</option>
-                                <option value="AGO (Diesel)">AGO (Diesel)</option>
+                                <option value="Petrol">Petrol</option>
+                                <option value="Diesel">Diesel</option>
+                                <option value="EV Charging">EV Charging</option>
                             </select>
                         </div>
 
                         <div class="form-control w-full">
                             <label class="label pb-1.5">
                                 <span class="label-text font-bold text-xs text-base-content">
-                                    Assigned Driver Name <span class="text-error">*</span>
+                                    Assigned Driver Name
                                 </span>
                             </label>
-                            <select asp-for="VehicleInput.AssignedDriverName" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary" required>
-                                <option value="">-- Select Logistics &amp; Fleet driver --</option>
+                            <select asp-for="VehicleInput.AssignedEmployeeId" id="driverSelect" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary" onchange="syncDriverPhone()">
+                                <option value="">-- No driver assigned (optional) --</option>
                                 @foreach (var driver in Model.FleetDrivers)
                                 {
-                                    <option value="@driver.FullName">@driver.FullName &mdash; @driver.Designation</option>
+                                    <option value="@driver.Id" data-phone="@driver.PhoneNumber">@driver.FullName — @driver.Designation</option>
                                 }
                             </select>
                             <span class="text-[10px] text-base-content/50 mt-1">
                                 Drivers are sourced from the HR staff directory (Logistics &amp; Fleet department).
                             </span>
-                            <span asp-validation-for="VehicleInput.AssignedDriverName" class="text-error text-[10px]"></span>
+                            <span asp-validation-for="VehicleInput.AssignedEmployeeId" class="text-error text-[10px]"></span>
                         </div>
 
                         <div class="form-control w-full">
                             <label class="label pb-1.5">
                                 <span class="label-text font-bold text-xs text-base-content">
-                                    Driver Phone Number <span class="text-error">*</span>
+                                    Driver Phone Number
                                 </span>
                             </label>
-                            <input type="tel" asp-for="VehicleInput.DriverPhoneNumber" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-mono" placeholder="+234 80..." required />
+                            <input type="tel" asp-for="VehicleInput.DriverPhoneNumber" id="driverPhone" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-mono" placeholder="+234 80..." />
                         </div>
 
                         <div class="form-control w-full">
@@ -188,3 +191,15 @@
         </div>
     </form>
 </div>
+
+@section Scripts {
+<script>
+    function syncDriverPhone() {
+        const select = document.getElementById('driverSelect');
+        const phone = document.getElementById('driverPhone');
+        if (!select || !phone) return;
+        const option = select.options[select.selectedIndex];
+        phone.value = option?.getAttribute('data-phone') || '';
+    }
+</script>
+}

@@ -80,7 +80,7 @@ namespace Manufacture.Services
             user.Name = dto.Name;
             user.Email = dto.Email;
             user.Role = dto.Role;
-            user.PinCode = dto.PinCode;
+            user.PinCode = dto.PinCode ?? user.PinCode;
             if (!string.IsNullOrWhiteSpace(dto.Password)) user.Password = dto.Password;
             user.PosTerminalId = dto.PosTerminalId;
             user.PhoneNumber = dto.PhoneNumber;

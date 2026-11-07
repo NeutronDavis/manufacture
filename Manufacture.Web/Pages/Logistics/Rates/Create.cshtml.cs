@@ -1,17 +1,17 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Models.DTOs;
-using Manufacture.Services;
 
 namespace Manufacture.Pages.Logistics.Rates
 {
     public class CreateModel : PageModel
     {
-        private readonly MockLogisticsService _logisticsService;
+        private readonly IFleetService _fleetService;
 
-        public CreateModel(MockLogisticsService logisticsService)
+        public CreateModel(IFleetService fleetService)
         {
-            _logisticsService = logisticsService;
+            _fleetService = fleetService;
         }
 
         [BindProperty]
@@ -43,21 +43,24 @@ namespace Manufacture.Pages.Logistics.Rates
             RateInput.IsActive = true;
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync()
         {
-            if (string.IsNullOrWhiteSpace(RateInput.OriginState) ||
-                string.IsNullOrWhiteSpace(RateInput.DestinationState) ||
-                string.IsNullOrWhiteSpace(RateInput.VehicleTypeRequired) ||
-                RateInput.RateWithFuel <= 0 ||
-                RateInput.RateWithoutFuel <= 0)
+            if (!ModelState.IsValid)
             {
-                ModelState.AddModelError("", "Please fill in all required route rate fields with valid amounts.");
                 return Page();
             }
 
-            var created = _logisticsService.CreateRouteRate(RateInput);
-            TempData["SuccessMessage"] = $"New route rate for {created.OriginState} → {created.DestinationState} added successfully.";
-            return RedirectToPage("/Logistics/Rates/Index");
+            try
+            {
+                var created = await _fleetService.CreateRouteRateAsync(RateInput);
+                TempData["SuccessMessage"] = $"New route rate for {created.OriginState} → {created.DestinationState} added successfully.";
+                return RedirectToPage("/Logistics/Rates/Index");
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+                return Page();
+            }
         }
     }
 }

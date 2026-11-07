@@ -2,7 +2,7 @@
 @model Manufacture.Pages.Logistics.Charter.IndexModel
 @using Manufacture.Models.Domain
 @{
-    ViewData["Title"] = "Commercial Haulage & Charter Bookings";
+    ViewData["Title"] = "Charter Bookings & Vehicle Hire";
 }
 
 <div class="space-y-6">
@@ -21,8 +21,8 @@
                     <i class="fa-solid fa-truck-moving"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-black text-base-content tracking-tight">Commercial Haulage & Charter Bookings</h1>
-                    <p class="text-xs text-base-content/60">Interstate freight transport, VIP vehicle charter dispatch, and trip profitability tracking</p>
+                    <h1 class="text-xl font-black text-base-content tracking-tight">Charter Bookings & Vehicle Hire</h1>
+                    <p class="text-xs text-base-content/60">Interstate vehicle charter dispatch, customer bookings, and trip profitability tracking</p>
                 </div>
             </div>
         </div>
@@ -47,7 +47,7 @@
                 </div>
             </div>
             <div class="mt-2 text-2xl font-black text-base-content">@Model.TotalBookingsCount</div>
-            <div class="text-[11px] text-base-content/50 mt-1">Interstate haulage runs logged</div>
+            <div class="text-[11px] text-base-content/50 mt-1">Interstate charter trips logged</div>
         </div>
 
         <div class="card bg-base-100 border border-base-300 shadow-xs p-4 rounded-2xl">
@@ -63,13 +63,13 @@
 
         <div class="card bg-base-100 border border-base-300 shadow-xs p-4 rounded-2xl">
             <div class="flex items-center justify-between">
-                <div class="text-xs font-semibold text-base-content/60">Gross Freight Billable</div>
+                <div class="text-xs font-semibold text-base-content/60">Total Booking Value</div>
                 <div class="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center text-xs font-bold">
                     <i class="fa-solid fa-money-bill-wave"></i>
                 </div>
             </div>
             <div class="mt-2 text-2xl font-black text-blue-600">₦@Model.TotalGrossRevenue.ToString("N0")</div>
-            <div class="text-[11px] text-base-content/50 mt-1">Total commercial freight invoiced</div>
+            <div class="text-[11px] text-base-content/50 mt-1">Total value of confirmed bookings</div>
         </div>
 
         <div class="card bg-base-100 border border-base-300 shadow-xs p-4 rounded-2xl">
@@ -136,7 +136,7 @@
                         <th class="py-3 px-4">Client / Contact</th>
                         <th class="py-3 px-4">Route Corridors & Layovers</th>
                         <th class="py-3 px-4">Vehicle & Driver</th>
-                        <th class="py-3 px-4 text-right">Gross Freight (₦)</th>
+                        <th class="py-3 px-4 text-right">Booking Value (₦)</th>
                         <th class="py-3 px-4 text-right">Net Profit (₦)</th>
                         <th class="py-3 px-4 text-center">Status</th>
                         <th class="py-3 px-4 text-right">Manifest</th>
@@ -190,7 +190,7 @@
                                                 }
                                             </div>
                                             <div class="text-[10px] text-base-content/50">
-                                                @b.Legs.Count(l => l.FuelOption == FuelOption.WithFuel) with fuel, @b.Legs.Count(l => l.FuelOption == FuelOption.WithoutFuel) freight only
+                                                @b.Legs.Count(l => l.FuelOption == FuelOption.WithFuel) with fuel, @b.Legs.Count(l => l.FuelOption == FuelOption.WithoutFuel) customer-fueled
                                             </div>
                                         </div>
                                     }

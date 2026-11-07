@@ -29,8 +29,17 @@
         </div>
     </div>
 
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-exclamation text-base"></i>
+            <div asp-validation-summary="All"></div>
+        </div>
+    }
+
     <!-- Standard 2-Column Full-Width Form Layout -->
     <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        <input type="hidden" asp-for="UserInput.IsActive" value="true" />
         
         <!-- Left Section (~70% width, 8 Cols) -->
         <div class="lg:col-span-8 space-y-6">
@@ -96,14 +105,14 @@
                                     Assigned System Role & Permissions <span class="text-error">*</span>
                                 </span>
                             </label>
-                            <select asp-for="UserInput.Role" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary" required>
-                                <option value="SuperAdmin">Super Admin (Full Enterprise Control & Settings)</option>
-                                <option value="ProductionManager">Production Manager (Recipes, Batches, Oven Output)</option>
-                                <option value="StoreManager">Store Manager (Inventory, Requisitions, Material Issues)</option>
-                                <option value="SalesRep">Sales Representative (POS Registers, Counter Sales, Pre-Orders)</option>
-                                <option value="Vendor">External Vendor / Supermarket Client (Pre-Orders Portal)</option>
-                                <option value="HrPayrollManager">HR & Payroll Manager (Staff Records, Advances, Payroll Run)</option>
+                            <select asp-for="UserInput.RoleId" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary" required>
+                                <option value="">— Select a system role —</option>
+                                @foreach (var role in Model.Roles)
+                                {
+                                    <option value="@role.Id">@role.DisplayName (@role.Name)</option>
+                                }
                             </select>
+                            <span asp-validation-for="UserInput.RoleId" class="text-error text-[10px] mt-1"></span>
                         </div>
                     </div>
 

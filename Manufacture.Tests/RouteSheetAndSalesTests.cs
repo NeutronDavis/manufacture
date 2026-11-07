@@ -14,7 +14,7 @@ namespace Manufacture.Tests
         private readonly MockLogisticsService _logisticsService;
         private readonly MockProductionService _productionService;
         private readonly MockInventoryService _inventoryService;
-        private readonly MockSettingsService _settingsService;
+        private readonly SettingsCache _settingsCache;
         private readonly MockSalesService _salesService;
 
         public RouteSheetAndSalesTests()
@@ -23,14 +23,13 @@ namespace Manufacture.Tests
             _logisticsService = new MockLogisticsService();
             _productionService = new MockProductionService();
             _inventoryService = new MockInventoryService();
-            _settingsService = new MockSettingsService();
+            _settingsCache = new SettingsCache();
 
             _salesService = new MockSalesService(
                 _userService,
                 _logisticsService,
                 _productionService,
-                _inventoryService,
-                _settingsService);
+                _inventoryService);
         }
 
         [Fact]
@@ -352,17 +351,24 @@ namespace Manufacture.Tests
         public void TreasuryPolicySettings_ConfiguresAllowableVariance()
         {
             // Arrange
-            var policy = _settingsService.GetTreasuryPolicy();
+            var policy = _settingsCache.TreasuryPolicy;
             Assert.NotNull(policy);
 
             // Act
-            _settingsService.UpdateTreasuryPolicy(35.0m, 8.0m, "Custom treasury benchmark policy", "Tester");
+            _settingsCache.SetTreasuryPolicy(new TreasuryPolicySettings
+            {
+                PlannedCashPercent = 35.0m,
+                AlertTolerancePercent = 8.0m,
+                PolicyMemo = "Custom treasury benchmark policy",
+                LastUpdatedUtc = DateTime.UtcNow,
+                UpdatedBy = "Tester"
+            });
 
             // Assert
-            var updated = _settingsService.GetTreasuryPolicy();
+            var updated = _settingsCache.TreasuryPolicy;
             Assert.Equal(35.0m, updated.PlannedCashPercent);
             Assert.Equal(8.0m, updated.AlertTolerancePercent);
-            Assert.Equal(0.35m, _settingsService.PlannedCashShare);
+            Assert.Equal(0.35m, _settingsCache.PlannedCashShare);
         }
 
         [Fact]

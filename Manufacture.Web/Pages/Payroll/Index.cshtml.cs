@@ -1,39 +1,32 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.Domain;
 
 namespace Manufacture.Pages.Payroll
 {
     public class IndexModel : PageModel
     {
-        private readonly MockPayrollService _payrollService;
+        private readonly IPayrollService _payrollService;
 
-        public IndexModel(MockPayrollService payrollService)
+        public IndexModel(IPayrollService payrollService)
         {
             _payrollService = payrollService;
         }
 
-        public List<PayrollRecord> PayrollRecords { get; set; } = new();
-        public int SelectedMonth { get; set; } = DateTime.UtcNow.Month;
-        public int SelectedYear { get; set; } = DateTime.UtcNow.Year;
+        public List<PayrollRunDto> PayrollRuns { get; set; } = new();
 
-        public void OnGet(int? month, int? year)
-        {
-            SelectedMonth = month ?? DateTime.UtcNow.Month;
-            SelectedYear = year ?? DateTime.UtcNow.Year;
-            PayrollRecords = _payrollService.GetPayrollForMonth(SelectedMonth, SelectedYear);
-            if (!PayrollRecords.Any())
-            {
-                PayrollRecords = _payrollService.GetAllPayrollRecords();
-            }
-        }
+        [BindProperty(SupportsGet = true)]
+        public DateOnly? GeneratedDate { get; set; }
 
-        public IActionResult OnPostMarkPaid(int id)
+        public string FilterLabel => GeneratedDate.HasValue
+            ? $"Generated on {GeneratedDate.Value:dd MMM yyyy}"
+            : "All payroll runs";
+
+        public async Task OnGetAsync(DateOnly? date)
         {
-            _payrollService.MarkPaid(id);
-            TempData["SuccessMessage"] = "Payment status marked as Paid.";
-            return RedirectToPage();
+            GeneratedDate = date ?? GeneratedDate;
+            PayrollRuns = await _payrollService.GetPayrollRunsAsync(GeneratedDate);
         }
     }
 }

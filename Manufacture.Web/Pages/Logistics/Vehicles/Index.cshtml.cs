@@ -1,23 +1,23 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.Domain;
 
 namespace Manufacture.Pages.Logistics.Vehicles
 {
     public class IndexModel : PageModel
     {
-        private readonly MockLogisticsService _logisticsService;
+        private readonly IFleetService _fleetService;
 
-        public IndexModel(MockLogisticsService logisticsService)
+        public IndexModel(IFleetService fleetService)
         {
-            _logisticsService = logisticsService;
+            _fleetService = fleetService;
         }
 
-        public List<Vehicle> Vehicles { get; set; } = new();
+        public List<VehicleDto> Vehicles { get; set; } = new();
 
-        public void OnGet()
+        public async Task OnGetAsync()
         {
-            Vehicles = _logisticsService.GetAllVehicles();
+            Vehicles = await _fleetService.GetVehiclesAsync();
         }
     }
 }

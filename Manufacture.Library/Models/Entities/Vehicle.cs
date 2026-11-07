@@ -15,6 +15,8 @@ public partial class Vehicle
 
     public string VehicleFunction { get; set; } = null!;
 
+    public int? AssignedEmployeeId { get; set; }
+
     public int? AssignedDriverId { get; set; }
 
     public string FuelType { get; set; } = null!;
@@ -36,6 +38,8 @@ public partial class Vehicle
     public byte[] RowVersion { get; set; } = null!;
 
     public virtual Driver? AssignedDriver { get; set; }
+
+    public virtual Employee? AssignedEmployee { get; set; }
 
     public virtual ICollection<CharterBooking> CharterBookings { get; set; } = new List<CharterBooking>();
 

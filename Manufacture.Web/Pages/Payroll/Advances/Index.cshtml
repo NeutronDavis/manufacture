@@ -15,17 +15,69 @@
                 </ul>
             </div>
             <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
-                <i class="fa-solid fa-hand-holding-dollar text-warning"></i> Staff Salary Advances & Loan Ledger
+                <i class="fa-solid fa-hand-holding-dollar text-warning"></i> Staff Salary Advances &amp; Loan Ledger
             </h1>
-            <p class="text-sm text-base-content/60">Track cash advances, repayment schedules, and remaining balances auto-deducted on monthly payroll</p>
+            <p class="text-sm text-base-content/60">
+                Track cash advances, repayment schedules, and remaining balances auto-deducted on monthly payroll.
+                Current policy: <strong>@Model.Settings.LoanMonthlyRepaymentPercent.ToString("0.#")%</strong> of the remaining balance per month.
+            </p>
         </div>
         <a asp-page="/Payroll/Advances/Create" class="btn btn-primary gap-2">
             <i class="fa-solid fa-plus"></i> Grant Salary Advance
         </a>
     </div>
 
-    <!-- Advances Table -->
-    <div class="card bg-base-100 border border-base-300 shadow-xs">
+    @if (TempData["SuccessMessage"] is string successMessage)
+    {
+        <div class="alert alert-success shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-check text-base"></i>
+            <span>@successMessage</span>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] is string errorMessage)
+    {
+        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-exclamation text-base"></i>
+            <span>@errorMessage</span>
+        </div>
+    }
+
+    <!-- Filters -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+        <form method="get" class="card-body p-4">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                <div class="md:col-span-3 form-control">
+                    <label class="label pb-1.5"><span class="label-text text-xs font-bold">Status</span></label>
+                    <select name="status" class="select select-sm select-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold">
+                        <option value="">All statuses</option>
+                        <option value="Active" selected="@(string.Equals(Model.Status, "Active", StringComparison.OrdinalIgnoreCase))">Active Loan</option>
+                        <option value="FullyRepaid" selected="@(string.Equals(Model.Status, "FullyRepaid", StringComparison.OrdinalIgnoreCase))">Fully Repaid</option>
+                        <option value="Cancelled" selected="@(string.Equals(Model.Status, "Cancelled", StringComparison.OrdinalIgnoreCase))">Cancelled</option>
+                    </select>
+                </div>
+                <div class="md:col-span-3 form-control">
+                    <label class="label pb-1.5"><span class="label-text text-xs font-bold">Request Date</span></label>
+                    <input type="date" name="date" value="@(Model.Date?.ToString("yyyy-MM-dd"))"
+                           class="input input-sm input-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs font-mono" />
+                </div>
+                <div class="md:col-span-4 form-control">
+                    <label class="label pb-1.5"><span class="label-text text-xs font-bold">Staff Code or Employee Name</span></label>
+                    <input type="text" name="search" value="@Model.Search" placeholder="Search staff code or name..."
+                           class="input input-sm input-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs" />
+                </div>
+                <div class="md:col-span-2 flex items-center gap-2">
+                    <button type="submit" class="btn btn-sm btn-neutral rounded-xl text-xs font-bold gap-1.5 flex-1">
+                        <i class="fa-solid fa-filter text-xs"></i> Apply
+                    </button>
+                    <a asp-page="/Payroll/Advances/Index" class="btn btn-sm btn-ghost rounded-xl text-xs">Clear</a>
+                </div>
+            </div>
+            <div class="text-[11px] opacity-60 text-right mt-1">@Model.Advances.Count matching record(s)</div>
+        </form>
+    </div>
+
+    <!-- Advances table -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
         <div class="card-body p-5">
             <div class="overflow-x-auto">
                 <table class="table table-sm table-zebra">
@@ -36,35 +88,60 @@
                             <th>Employee Name</th>
                             <th>Purpose / Reason</th>
                             <th>Principal Loan (₦)</th>
-                            <th>Monthly Deduction (₦)</th>
+                            <th>Monthly Recovery (₦)</th>
                             <th>Total Repaid (₦)</th>
                             <th>Remaining Loan (₦)</th>
                             <th>Status</th>
+                            <th class="text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
+                        @if (!Model.Advances.Any())
+                        {
+                            <tr>
+                                <td colspan="10" class="text-center py-10 text-xs opacity-60">
+                                    No salary advances have been issued yet.
+                                </td>
+                            </tr>
+                        }
                         @foreach (var adv in Model.Advances)
                         {
                             <tr>
-                                <td class="text-xs">@adv.RequestDate.ToString("yyyy-MM-dd")</td>
+                                <td class="text-xs font-mono">@adv.RequestDate.ToString("yyyy-MM-dd")</td>
                                 <td class="font-mono text-xs font-bold text-primary">@adv.StaffCode</td>
                                 <td class="font-bold text-xs">@adv.EmployeeName</td>
                                 <td class="text-xs text-base-content/70 max-w-xs truncate">@adv.Reason</td>
-                                <td class="font-mono text-xs font-bold">₦@adv.PrincipalAmount.ToString("N0")</td>
-                                <td class="font-mono text-xs font-semibold">₦@adv.MonthlyDeductionAmount.ToString("N0")/mo</td>
-                                <td class="font-mono text-xs text-emerald-600 font-bold">₦@adv.TotalRepaid.ToString("N0")</td>
+                                <td class="font-mono text-xs font-bold">₦@adv.PrincipalAmount.ToString("N2")</td>
+                                <td class="font-mono text-xs font-semibold">₦@adv.MonthlyDeductionAmount.ToString("N2")/mo</td>
+                                <td class="font-mono text-xs text-emerald-600 font-bold">₦@adv.TotalRepaid.ToString("N2")</td>
                                 <td class="font-mono text-xs font-black @(adv.RemainingBalance > 0 ? "text-error" : "text-success")">
-                                    ₦@adv.RemainingBalance.ToString("N0")
+                                    ₦@adv.RemainingBalance.ToString("N2")
                                 </td>
                                 <td>
-                                    @if (adv.IsFullyRepaid)
+                                    @if (adv.Status == "FullyRepaid")
                                     {
                                         <span class="badge badge-success badge-xs font-bold gap-1"><i class="fa-solid fa-check"></i> Settled</span>
+                                    }
+                                    else if (adv.Status == "Cancelled")
+                                    {
+                                        <span class="badge badge-neutral badge-xs font-bold">Cancelled</span>
                                     }
                                     else
                                     {
                                         <span class="badge badge-warning badge-xs font-bold">Active Loan</span>
                                     }
+                                </td>
+                                <td class="text-right">
+                                    <div class="flex items-center justify-end gap-1">
+                                        <a asp-page="/Payroll/Advances/Details" asp-route-id="@adv.Id" class="btn btn-xs btn-ghost text-primary font-bold">View</a>
+                                        <a asp-page="/Payroll/Advances/Edit" asp-route-id="@adv.Id" class="btn btn-xs btn-ghost text-base-content font-bold">Edit</a>
+                                        <button type="button"
+                                                data-employee="@adv.EmployeeName"
+                                                onclick="openDeleteModal(@adv.Id, this)"
+                                                class="btn btn-xs btn-ghost text-error font-bold">
+                                            Delete
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         }
@@ -74,3 +151,39 @@
         </div>
     </div>
 </div>
+
+<!-- Delete confirmation modal -->
+<dialog id="deleteAdvanceModal" class="modal">
+    <div class="modal-box rounded-2xl border border-base-300 p-6 space-y-4 max-w-sm">
+        <h3 class="font-black text-base text-base-content flex items-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation text-error"></i> Delete Salary Advance?
+        </h3>
+        <p class="text-xs opacity-70 leading-relaxed">
+            Are you sure you want to delete the salary advance for
+            <strong id="deleteAdvanceEmployee">this employee</strong>?
+            This action cannot be undone.
+        </p>
+        <form method="post" asp-page-handler="Delete" class="flex justify-end gap-2 pt-2">
+            <input type="hidden" name="id" id="deleteAdvanceId" value="" />
+            <input type="hidden" name="status" value="@Model.Status" />
+            <input type="hidden" name="date" value="@(Model.Date?.ToString("yyyy-MM-dd"))" />
+            <input type="hidden" name="search" value="@Model.Search" />
+            <button type="button" onclick="document.getElementById('deleteAdvanceModal').close()" class="btn btn-sm btn-ghost rounded-xl text-xs font-semibold">
+                Cancel
+            </button>
+            <button type="submit" class="btn btn-sm btn-error rounded-xl text-xs font-bold gap-1 shadow-xs">
+                <i class="fa-solid fa-trash-can text-xs"></i> Delete
+            </button>
+        </form>
+    </div>
+</dialog>
+
+@section Scripts {
+<script>
+    function openDeleteModal(id, button) {
+        document.getElementById('deleteAdvanceId').value = id;
+        document.getElementById('deleteAdvanceEmployee').textContent = button.dataset.employee || 'this employee';
+        document.getElementById('deleteAdvanceModal').showModal();
+    }
+</script>
+}

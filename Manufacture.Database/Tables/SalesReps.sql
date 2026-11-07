@@ -16,7 +16,7 @@ CREATE TABLE [dbo].[SalesReps]
 
     CONSTRAINT [PK_SalesReps] PRIMARY KEY CLUSTERED ([Id] ASC),
     CONSTRAINT [UQ_SalesReps_RepCode] UNIQUE ([RepCode]),
-    CONSTRAINT [FK_SalesReps_Users] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Users] ([Id]),
+    CONSTRAINT [FK_SalesReps_Users] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Users] ([Id]) ON DELETE SET NULL,
     CONSTRAINT [FK_SalesReps_PosTerminals] FOREIGN KEY ([PosTerminalId]) REFERENCES [dbo].[PosTerminals] ([Id]),
     CONSTRAINT [FK_SalesReps_Vehicles] FOREIGN KEY ([VehicleId]) REFERENCES [dbo].[Vehicles] ([Id])
 );

@@ -11,14 +11,15 @@ namespace Manufacture.Models.DTOs
         public string MakeAndModel { get; set; } = string.Empty;
         public string Type { get; set; } = "Van";
         public string Function { get; set; } = "Deliveries";
-        [Required]
-        public string AssignedDriverName { get; set; } = string.Empty;
-        [Required, Phone]
-        public string DriverPhoneNumber { get; set; } = string.Empty;
-        public string FuelType { get; set; } = "PMS (Petrol)";
+        public int? AssignedEmployeeId { get; set; }
+        public string? AssignedDriverName { get; set; }
+        [Phone]
+        public string? DriverPhoneNumber { get; set; }
+        public string FuelType { get; set; } = "Petrol";
         public decimal TankCapacityLitres { get; set; } = 70;
         public decimal CurrentOdometerKm { get; set; }
         public string Status { get; set; } = "Active";
+        public DateTime? LastServiceDate { get; set; }
     }
 
     public class FuelLogDto
@@ -26,16 +27,18 @@ namespace Manufacture.Models.DTOs
         public int Id { get; set; }
         [Required]
         public int VehicleId { get; set; }
+        public string VehicleRegNumber { get; set; } = string.Empty;
+        public string DriverName { get; set; } = string.Empty;
         public DateTime Date { get; set; } = DateTime.UtcNow;
+        [Required]
+        public string FuelType { get; set; } = "Petrol";
         [Required, Range(0.1, 10000)]
         public decimal LitresDispensed { get; set; }
         [Required, Range(1, 100000)]
         public decimal PricePerLitre { get; set; }
-        [Range(0, 10000000)]
-        public decimal OdometerReadingKm { get; set; }
+        public decimal TotalCost { get; set; }
         [Required]
         public string PetrolStation { get; set; } = string.Empty;
-        public string ReceiptNumber { get; set; } = string.Empty;
         public string RouteDescription { get; set; } = string.Empty;
     }
 

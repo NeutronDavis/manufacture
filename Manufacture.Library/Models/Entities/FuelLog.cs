@@ -13,17 +13,15 @@ public partial class FuelLog
 
     public DateTime FuelDate { get; set; }
 
+    public string FuelType { get; set; } = null!;
+
     public decimal LitresDispensed { get; set; }
 
     public decimal PricePerLitre { get; set; }
 
     public decimal? TotalCost { get; set; }
 
-    public decimal OdometerReadingKm { get; set; }
-
     public string PetrolStation { get; set; } = null!;
-
-    public string ReceiptNumber { get; set; } = null!;
 
     public string RouteDescription { get; set; } = null!;
 

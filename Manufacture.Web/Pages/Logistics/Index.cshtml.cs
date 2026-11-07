@@ -1,31 +1,39 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.Domain;
 
 namespace Manufacture.Pages.Logistics
 {
     public class IndexModel : PageModel
     {
-        private readonly MockLogisticsService _logisticsService;
+        private readonly IFleetService _fleetService;
 
-        public IndexModel(MockLogisticsService logisticsService)
+        public IndexModel(IFleetService fleetService)
         {
-            _logisticsService = logisticsService;
+            _fleetService = fleetService;
         }
 
-        public List<Vehicle> Vehicles { get; set; } = new();
-        public List<FuelLog> FuelLogs { get; set; } = new();
-        public List<CharterBooking> CharterBookings { get; set; } = new();
-        public List<RouteRate> RouteRates { get; set; } = new();
-        public List<WeeklyFleetExpense> CurrentWeekExpenses { get; set; } = new();
+        public List<VehicleDto> Vehicles { get; set; } = new();
+        public List<FuelLogDto> FuelLogs { get; set; } = new();
+        public List<CharterBookingDto> CharterBookings { get; set; } = new();
+        public List<RouteRateDto> RouteRates { get; set; } = new();
+        public List<WeeklyFleetExpenseDto> CurrentWeekExpenses { get; set; } = new();
 
-        public void OnGet()
+        public async Task OnGetAsync()
         {
-            Vehicles = _logisticsService.GetAllVehicles();
-            FuelLogs = _logisticsService.GetAllFuelLogs();
-            CharterBookings = _logisticsService.GetAllCharterBookings();
-            RouteRates = _logisticsService.GetAllRouteRates();
-            CurrentWeekExpenses = _logisticsService.GetWeeklyFleetExpenses(DateTime.UtcNow);
+            Vehicles = await _fleetService.GetVehiclesAsync();
+            FuelLogs = await _fleetService.GetFuelLogsAsync();
+            CharterBookings = await _fleetService.GetCharterBookingsAsync();
+            RouteRates = await _fleetService.GetRouteRatesAsync();
+            CurrentWeekExpenses = await _fleetService.GetWeeklyFleetExpensesAsync(
+                GetOperatingWeekStart(DateTime.UtcNow),
+                GetOperatingWeekStart(DateTime.UtcNow).AddDays(6));
+        }
+
+        private static DateTime GetOperatingWeekStart(DateTime date)
+        {
+            var diff = (7 + (date.DayOfWeek - DayOfWeek.Sunday)) % 7;
+            return date.Date.AddDays(-diff);
         }
     }
 }

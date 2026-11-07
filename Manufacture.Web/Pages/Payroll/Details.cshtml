@@ -1,0 +1,153 @@
+@page "{id:int}"
+@model Manufacture.Pages.Payroll.DetailsModel
+@{
+    ViewData["Title"] = "Payroll Details";
+    var p = Model.Payroll;
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Payroll/Index" class="hover:underline">Payroll Runs</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Payroll #@p.Id</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-file-invoice-dollar text-primary"></i> Payroll Details
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Generated @p.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm") ·
+                Period @(new DateTime(p.Year, p.Month, 1).ToString("MMMM yyyy"))
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="window.print()" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5">
+                <i class="fa-solid fa-print text-xs"></i> Print
+            </button>
+            <a asp-page="/Payroll/Index" class="btn btn-sm btn-ghost rounded-xl text-xs gap-1.5">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Payroll
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] is string successMessage)
+    {
+        <div class="alert alert-success shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-check text-base"></i>
+            <span>@successMessage</span>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] is string errorMessage)
+    {
+        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-exclamation text-base"></i>
+            <span>@errorMessage</span>
+        </div>
+    }
+
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+        <div class="card-body p-6 space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-base-200 pb-4">
+                <div>
+                    <h2 class="text-lg font-black text-base-content">@p.EmployeeName</h2>
+                    <p class="text-xs opacity-70 mt-0.5">@p.StaffCode · @p.Department</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="badge badge-neutral badge-sm font-mono">@(new DateTime(p.Year, p.Month, 1).ToString("MMM yyyy"))</span>
+                    @if (p.PaymentStatus == "Paid")
+                    {
+                        <span class="badge badge-success badge-sm font-bold">Paid</span>
+                    }
+                    else
+                    {
+                        <span class="badge badge-warning badge-sm font-bold">Pending</span>
+                    }
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs font-mono">
+                <div class="space-y-5">
+                    <div class="text-[10px] uppercase font-bold opacity-60 font-sans tracking-wider">EARNINGS</div>
+                    <div class="space-y-2.5">
+                        <div class="flex justify-between"><span class="font-sans">Base Salary</span><span class="font-bold">₦@p.BaseSalary.ToString("N2")</span></div>
+                        <div class="flex justify-between"><span class="font-sans">Housing Allowance</span><span class="font-bold">₦@p.HousingAllowance.ToString("N2")</span></div>
+                        <div class="flex justify-between"><span class="font-sans">Transport Allowance</span><span class="font-bold">₦@p.TransportAllowance.ToString("N2")</span></div>
+                        <div class="flex justify-between"><span class="font-sans">Other Allowances</span><span class="font-bold">₦@p.OtherAllowances.ToString("N2")</span></div>
+                        <div class="flex justify-between"><span class="font-sans">Performance Bonus</span><span class="font-bold text-success">+₦@p.PerformanceBonus.ToString("N2")</span></div>
+                    </div>
+                    <div class="flex justify-between items-center pt-3 border-t border-base-200 font-sans font-bold text-sm">
+                        <span>Gross Earnings</span>
+                        <span class="font-mono font-black">₦@p.GrossSalary.ToString("N2")</span>
+                    </div>
+                </div>
+
+                <div class="space-y-5">
+                    <div class="text-[10px] uppercase font-bold opacity-60 font-sans tracking-wider">DEDUCTIONS</div>
+                    <div class="space-y-2.5">
+                        <div class="flex justify-between"><span class="font-sans">PAYE Tax &amp; Levies</span><span class="font-bold text-error">-₦@p.TaxAndLevies.ToString("N2")</span></div>
+                        <div class="flex justify-between"><span class="font-sans">Pension</span><span class="font-bold text-error">-₦@p.PensionDeduction.ToString("N2")</span></div>
+                        <div class="flex justify-between"><span class="font-sans">Health Insurance</span><span class="font-bold text-error">-₦@p.HealthInsuranceDeduction.ToString("N2")</span></div>
+                        <div class="flex justify-between"><span class="font-sans">Salary Advance Recovery</span><span class="font-bold text-error">-₦@p.AdvanceDeduction.ToString("N2")</span></div>
+                        @if (p.DisciplinaryDeductions > 0)
+                        {
+                            <div class="flex justify-between"><span class="font-sans">Disciplinary Deduction</span><span class="font-bold text-error">-₦@p.DisciplinaryDeductions.ToString("N2")</span></div>
+                        }
+                    </div>
+                    <div class="flex justify-between items-center pt-3 border-t border-base-200 font-sans font-bold text-sm">
+                        <span>Total Deductions</span>
+                        <span class="font-mono font-black">₦@p.TotalDeductions.ToString("N2")</span>
+                    </div>
+                </div>
+            </div>
+
+            @if (p.DeductionLines.Count > 0)
+            {
+                <div class="pt-5 border-t border-base-200">
+                    <div class="text-[10px] uppercase font-bold opacity-60 font-sans tracking-wider mb-2">Deduction Ledger</div>
+                    <div class="overflow-x-auto">
+                        <table class="table table-xs">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th>Recorded</th>
+                                    <th class="text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var line in p.DeductionLines)
+                                {
+                                    <tr>
+                                        <td><span class="badge badge-ghost badge-xs font-bold">@line.DeductionType</span></td>
+                                        <td class="text-xs opacity-80">@line.Description</td>
+                                        <td class="font-mono text-[10px] opacity-60">@line.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")</td>
+                                        <td class="text-right font-mono text-error font-bold">-₦@line.Amount.ToString("N2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            <div class="pt-6 border-t border-base-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <div class="text-[10px] uppercase font-bold opacity-60 tracking-wider">NET PAY</div>
+                    <div class="text-3xl font-black text-base-content font-mono">₦@p.NetSalary.ToString("N2")</div>
+                    <div class="text-[10px] opacity-60 mt-1">Notes: @p.Notes</div>
+                </div>
+                <div class="flex items-center gap-3">
+                    @if (p.PaymentStatus == "Paid")
+                    {
+                        <span class="badge badge-success badge-sm font-bold">Payment completed @(p.PaymentDate?.ToLocalTime().ToString("dd MMM yyyy") ?? "")</span>
+                    }
+                    else
+                    {
+                        <span class="badge badge-warning badge-sm font-bold">Awaiting payroll run approval</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

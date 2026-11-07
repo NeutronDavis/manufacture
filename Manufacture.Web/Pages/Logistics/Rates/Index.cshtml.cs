@@ -1,21 +1,20 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Models.DTOs;
-using Manufacture.Models.Domain;
-using Manufacture.Services;
 
 namespace Manufacture.Pages.Logistics.Rates
 {
     public class IndexModel : PageModel
     {
-        private readonly MockLogisticsService _logisticsService;
+        private readonly IFleetService _fleetService;
 
-        public IndexModel(MockLogisticsService logisticsService)
+        public IndexModel(IFleetService fleetService)
         {
-            _logisticsService = logisticsService;
+            _fleetService = fleetService;
         }
 
-        public List<RouteRate> Rates { get; set; } = new();
+        public List<RouteRateDto> Rates { get; set; } = new();
 
         [BindProperty(SupportsGet = true)]
         public string? Search { get; set; }
@@ -36,64 +35,29 @@ namespace Manufacture.Pages.Logistics.Rates
             "VIP Escort Patrol"
         };
 
-        public List<string> NigerianStates { get; set; } = new()
+        public async Task OnGetAsync()
         {
-            "Lagos", "Abuja FCT", "Rivers (Port Harcourt)", "Kano", "Edo (Benin City)",
-            "Anambra (Onitsha)", "Delta (Warri)", "Oyo (Ibadan)", "Kaduna", "Ogun (Abeokuta)",
-            "Enugu", "Ondo (Akure)", "Imo (Owerri)", "Cross River (Calabar)", "Plateau (Jos)",
-            "Akwa Ibom (Uyo)", "Abia (Aba)", "Kwara (Ilorin)", "Niger (Minna)", "Benue (Makurdi)"
-        };
-
-        public void OnGet()
-        {
-            LoadRates();
+            Rates = await _fleetService.GetRouteRatesAsync(Search, VehicleFilter);
         }
 
-        private void LoadRates()
+        public async Task<IActionResult> OnPostDeleteRateAsync(int id)
         {
-            var allRates = _logisticsService.GetAllRouteRates();
-
-            if (!string.IsNullOrWhiteSpace(Search))
-            {
-                var term = Search.Trim().ToLowerInvariant();
-                allRates = allRates.Where(r =>
-                    r.OriginState.ToLowerInvariant().Contains(term) ||
-                    r.DestinationState.ToLowerInvariant().Contains(term) ||
-                    r.VehicleTypeRequired.ToLowerInvariant().Contains(term)).ToList();
-            }
-
-            if (!string.IsNullOrWhiteSpace(VehicleFilter))
-            {
-                allRates = allRates.Where(r => r.VehicleTypeRequired.Equals(VehicleFilter, StringComparison.OrdinalIgnoreCase)).ToList();
-            }
-
-            Rates = allRates;
+            var success = await _fleetService.DeleteRouteRateAsync(id);
+            TempData[success ? "SuccessMessage" : "ErrorMessage"] = success
+                ? "Route rate deleted successfully."
+                : "Route rate could not be found.";
+            return RedirectToPage(new { Search, VehicleFilter });
         }
 
-
-        public IActionResult OnPostDeleteRate(int id)
+        public async Task<IActionResult> OnPostToggleStatusAsync(int id)
         {
-            var success = _logisticsService.DeleteRouteRate(id);
-            if (success)
-            {
-                TempData["SuccessMessage"] = "Route rate deleted successfully.";
-            }
-            else
-            {
-                TempData["ErrorMessage"] = "Route rate could not be found.";
-            }
-            return RedirectToPage();
-        }
-
-        public IActionResult OnPostToggleStatus(int id)
-        {
-            var rate = _logisticsService.GetRouteRateById(id);
+            var rate = await _fleetService.GetRouteRateAsync(id);
             if (rate != null)
             {
-                rate.IsActive = !rate.IsActive;
-                TempData["SuccessMessage"] = $"Route {rate.OriginState} → {rate.DestinationState} status set to {(rate.IsActive ? "Active" : "Inactive")}.";
+                await _fleetService.SetRouteRateActiveAsync(id, !rate.IsActive);
+                TempData["SuccessMessage"] = $"Route {rate.OriginState} → {rate.DestinationState} status set to {(!rate.IsActive ? "Active" : "Inactive")}.";
             }
-            return RedirectToPage();
+            return RedirectToPage(new { Search, VehicleFilter });
         }
     }
 }

@@ -1,0 +1,103 @@
+@page "{id:int}"
+@model Manufacture.Pages.Payroll.Advances.DetailsModel
+@{
+    ViewData["Title"] = "Salary Advance Details";
+    var a = Model.Advance;
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs breadcrumbs mb-1">
+                <ul>
+                    <li><a asp-page="/Payroll/Index">Payroll</a></li>
+                    <li><a asp-page="/Payroll/Advances/Index">Salary Advances</a></li>
+                    <li class="font-semibold text-primary">Advance #@a.Id</li>
+                </ul>
+            </div>
+            <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
+                <i class="fa-solid fa-hand-holding-dollar text-warning"></i> Salary Advance Details
+            </h1>
+            <p class="text-xs opacity-60 mt-0.5">@a.EmployeeName · @a.StaffCode · @a.Department</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a asp-page="/Payroll/Advances/Edit" asp-route-id="@a.Id" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5">
+                <i class="fa-solid fa-pen-to-square text-xs"></i> Edit
+            </a>
+            <a asp-page="/Payroll/Advances/Index" class="btn btn-sm btn-ghost rounded-xl text-xs gap-1.5">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-4">
+            <div class="text-[10px] uppercase font-bold opacity-60">Principal</div>
+            <div class="text-xl font-black font-mono mt-1">₦@a.PrincipalAmount.ToString("N2")</div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-4">
+            <div class="text-[10px] uppercase font-bold opacity-60">Total Repaid</div>
+            <div class="text-xl font-black font-mono mt-1 text-success">₦@a.TotalRepaid.ToString("N2")</div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-4">
+            <div class="text-[10px] uppercase font-bold opacity-60">Remaining</div>
+            <div class="text-xl font-black font-mono mt-1 @(a.RemainingBalance > 0 ? "text-error" : "text-success")">₦@a.RemainingBalance.ToString("N2")</div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-4">
+            <div class="text-[10px] uppercase font-bold opacity-60">Monthly Recovery</div>
+            <div class="text-xl font-black font-mono mt-1 text-warning">₦@a.MonthlyDeductionAmount.ToString("N2")</div>
+            <div class="text-[10px] opacity-60">@a.MonthlyRepaymentPercent.ToString("0.#")% policy</div>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+        <div class="card-body p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <h2 class="font-bold text-sm">Loan Information</h2>
+                <span class="badge @(a.Status == "FullyRepaid" ? "badge-success" : a.Status == "Cancelled" ? "badge-neutral" : "badge-warning") badge-sm font-bold">@a.Status</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div><div class="text-[10px] uppercase font-bold opacity-60">Request Date</div><div class="mt-0.5 font-mono">@a.RequestDate.ToString("dd MMM yyyy")</div></div>
+                <div><div class="text-[10px] uppercase font-bold opacity-60">Employee</div><div class="mt-0.5 font-bold">@a.EmployeeName (@a.StaffCode)</div></div>
+                <div class="sm:col-span-2"><div class="text-[10px] uppercase font-bold opacity-60">Reason</div><div class="mt-0.5">@a.Reason</div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+        <div class="card-body p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <h2 class="font-bold text-sm">Repayment History</h2>
+                <span class="badge badge-neutral badge-xs font-mono">@Model.Repayments.Count entr(ies)</span>
+            </div>
+            @if (Model.Repayments.Count == 0)
+            {
+                <div class="text-xs opacity-60">No payroll deductions have been recorded against this loan yet.</div>
+            }
+            else
+            {
+                <div class="overflow-x-auto">
+                    <table class="table table-xs">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th class="text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var line in Model.Repayments)
+                            {
+                                <tr>
+                                    <td class="font-mono text-[10px]">@line.CreatedAt.ToLocalTime().ToString("dd MMM yyyy")</td>
+                                    <td class="text-xs opacity-80">@line.Description</td>
+                                    <td class="text-right font-mono font-bold text-error">-₦@line.Amount.ToString("N2")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>

@@ -7,15 +7,12 @@ namespace Manufacture.Pages
     {
         public IActionResult OnGet()
         {
-            var userRole = HttpContext.Session.GetString("UserRole");
-            if (string.IsNullOrEmpty(userRole))
+            // Never create an implicit session. A user must authenticate first.
+            if (!HttpContext.Session.GetInt32("UserId").HasValue)
             {
-                // Default to SuperAdmin session for frictionless preview experience or redirect to login
-                HttpContext.Session.SetInt32("UserId", 1);
-                HttpContext.Session.SetString("UserName", "Adekunle Johnson");
-                HttpContext.Session.SetString("UserEmail", "admin@bakery.com");
-                HttpContext.Session.SetString("UserRole", "SuperAdmin");
+                return RedirectToPage("/Login");
             }
+
             return RedirectToPage("/Dashboard/Index");
         }
     }

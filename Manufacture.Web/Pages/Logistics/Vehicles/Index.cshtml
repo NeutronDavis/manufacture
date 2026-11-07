@@ -54,11 +54,11 @@
                         </div>
                         <div class="flex justify-between">
                             <span class="opacity-60">Assigned Driver:</span>
-                            <span class="font-bold text-base-content">@v.AssignedDriverName</span>
+                            <span class="font-bold text-base-content">@(string.IsNullOrWhiteSpace(v.AssignedDriverName) ? "Unassigned" : v.AssignedDriverName)</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="opacity-60">Driver Phone:</span>
-                            <span class="font-mono font-bold text-primary">@v.DriverPhoneNumber</span>
+                            <span class="font-mono font-bold text-primary">@(string.IsNullOrWhiteSpace(v.DriverPhoneNumber) ? "—" : v.DriverPhoneNumber)</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="opacity-60">Fuel Type / Tank:</span>
@@ -79,7 +79,7 @@
                                 <i class="fa-solid fa-wrench text-[10px]"></i> Service
                             </a>
                         </div>
-                        <span class="text-[11px] opacity-60">Serviced: @v.LastServiceDate.ToString("yyyy-MM-dd")</span>
+                        <span class="text-[11px] opacity-60">Serviced: @(v.LastServiceDate?.ToString("yyyy-MM-dd") ?? "—")</span>
                     </div>
                 </div>
             </div>

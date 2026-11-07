@@ -7,6 +7,8 @@ public partial class PayrollRecord
 {
     public int Id { get; set; }
 
+    public int? PayrollRunId { get; set; }
+
     public int EmployeeId { get; set; }
 
     public byte PayrollMonth { get; set; }
@@ -17,11 +19,21 @@ public partial class PayrollRecord
 
     public decimal PerformanceBonus { get; set; }
 
+    public decimal HousingAllowance { get; set; }
+
+    public decimal TransportAllowance { get; set; }
+
+    public decimal OtherAllowances { get; set; }
+
     public decimal DisciplinaryDeductions { get; set; }
 
     public decimal AdvanceDeduction { get; set; }
 
     public decimal TaxAndLevies { get; set; }
+
+    public decimal PensionDeduction { get; set; }
+
+    public decimal HealthInsuranceDeduction { get; set; }
 
     public decimal? GrossSalary { get; set; }
 
@@ -40,4 +52,8 @@ public partial class PayrollRecord
     public DateTime UpdatedAt { get; set; }
 
     public virtual Employee Employee { get; set; } = null!;
+
+    public virtual ICollection<PayrollDeductionLine> PayrollDeductionLines { get; set; } = new List<PayrollDeductionLine>();
+
+    public virtual PayrollRun? PayrollRun { get; set; }
 }

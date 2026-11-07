@@ -1,24 +1,25 @@
-using System;
-using Microsoft.AspNetCore.Http;
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.Domain;
+using Manufacture.Models.DTOs;
+using Manufacture.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Models.Domain;
-using Manufacture.Services;
 
 namespace Manufacture.Pages.Settings
 {
-    public class TreasuryModel : PageModel
+    public class FinanceModel : PageModel
     {
-        private readonly MockSettingsService _settingsService;
-        private readonly MockRbacService _rbacService;
+        private readonly ISettingsService _settingsService;
+        private readonly RbacCache _rbacService;
 
-        public TreasuryModel(MockSettingsService settingsService, MockRbacService rbacService)
+        public FinanceModel(ISettingsService settingsService, RbacCache rbacService)
         {
             _settingsService = settingsService;
             _rbacService = rbacService;
         }
 
         public TreasuryPolicySettings Policy { get; set; } = new();
+        public PayrollSettingsDto Payroll { get; set; } = new();
 
         public bool CanEdit { get; set; }
         public string UserRole { get; set; } = string.Empty;
@@ -32,85 +33,162 @@ namespace Manufacture.Pages.Settings
         [BindProperty]
         public string PolicyMemo { get; set; } = string.Empty;
 
-        public IActionResult OnGet()
+        [BindProperty]
+        public PayrollSettingsDto PayrollInput { get; set; } = new();
+
+        public async Task<IActionResult> OnGetAsync()
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
-            if (!_rbacService.HasAccess(UserRole, "Settings"))
+            if (!await AuthorizeAsync())
             {
-                TempData["ErrorMessage"] = "Access Denied: You do not have permission to view Treasury Settings.";
                 return RedirectToPage("/Dashboard/Index");
             }
 
-            CanEdit = UserRole == "SuperAdmin" ||
-                      _rbacService.GetPermissionLevel(UserRole, "Settings").Contains("Edit") ||
-                      _rbacService.GetPermissionLevel(UserRole, "Settings") == "Full Access";
-
-            Policy = _settingsService.GetTreasuryPolicy();
-            PlannedCashPercent = Policy.PlannedCashPercent;
-            AlertTolerancePercent = Policy.AlertTolerancePercent;
-            PolicyMemo = Policy.PolicyMemo;
-
+            await LoadAsync();
+            PayrollInput = Payroll;
             return Page();
         }
 
-        public IActionResult OnPostSave()
+        public async Task<IActionResult> OnPostSaveTreasuryAsync()
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
-            var userName = HttpContext.Session.GetString("UserName") ?? "Administrator";
-
-            if (!_rbacService.HasAccess(UserRole, "Settings"))
-            {
-                return Forbid();
-            }
-
-            CanEdit = UserRole == "SuperAdmin" ||
-                      _rbacService.GetPermissionLevel(UserRole, "Settings").Contains("Edit") ||
-                      _rbacService.GetPermissionLevel(UserRole, "Settings") == "Full Access";
-
-            if (!CanEdit)
-            {
-                TempData["ErrorMessage"] = "You have View Only access to Settings. Only SuperAdmins or managers with Edit access can update the Treasury Benchmark.";
-                return RedirectToPage();
-            }
+            if (!await AuthorizeAsync()) return RedirectToPage("/Dashboard/Index");
+            if (!CanEdit) return Forbid();
 
             if (PlannedCashPercent < 0m || PlannedCashPercent > 100m)
             {
                 ModelState.AddModelError(nameof(PlannedCashPercent), "Planned cash benchmark must be between 0% and 100%.");
-                Policy = _settingsService.GetTreasuryPolicy();
+                await LoadAsync();
                 return Page();
             }
 
             if (AlertTolerancePercent < 0m || AlertTolerancePercent > 50m)
             {
                 ModelState.AddModelError(nameof(AlertTolerancePercent), "Alert tolerance threshold must be between 0% and 50%.");
-                Policy = _settingsService.GetTreasuryPolicy();
+                await LoadAsync();
                 return Page();
             }
 
-            _settingsService.UpdateTreasuryPolicy(
+            var userName = UserName();
+            await _settingsService.UpdateTreasuryPolicyAsync(
                 PlannedCashPercent,
                 AlertTolerancePercent,
                 PolicyMemo,
-                $"{userName} ({UserRole})");
+                userName);
 
-            TempData["SuccessMessage"] = $"Treasury benchmark successfully updated to {PlannedCashPercent:0.#}% cash / {100m - PlannedCashPercent:0.#}% digital. Live cash variance calculations for sales reps have been refreshed.";
+            TempData["SuccessMessage"] =
+                $"Treasury benchmark updated to {PlannedCashPercent:0.#}% cash / {100m - PlannedCashPercent:0.#}% digital.";
             return RedirectToPage();
         }
 
-        public IActionResult OnPostReset()
+        public async Task<IActionResult> OnPostResetTreasuryAsync()
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
-            var userName = HttpContext.Session.GetString("UserName") ?? "Administrator";
-
+            if (!await AuthorizeAsync()) return RedirectToPage("/Dashboard/Index");
             if (UserRole != "SuperAdmin")
             {
-                TempData["ErrorMessage"] = "Only a SuperAdmin can reset the treasury policy to system factory defaults.";
+                TempData["ErrorMessage"] = "Only a SuperAdmin can reset the treasury policy.";
                 return RedirectToPage();
             }
 
-            _settingsService.ResetTreasuryPolicyToDefaults($"{userName} ({UserRole})");
-            TempData["SuccessMessage"] = "Treasury policy restored to system default (32.0% Cash / 68.0% Digital, 6.0% tolerance).";
+            await _settingsService.ResetTreasuryPolicyAsync(UserName());
+            TempData["SuccessMessage"] = "Treasury policy restored to default (32% cash / 68% digital, 6% tolerance).";
             return RedirectToPage();
         }
+
+        public async Task<IActionResult> OnPostSavePayrollAsync()
+        {
+            if (!await AuthorizeAsync()) return RedirectToPage("/Dashboard/Index");
+            if (!CanEdit) return Forbid();
+
+            // This form only posts payroll fields.
+            ModelState.Remove(nameof(PolicyMemo));
+
+            if (!ValidatePayrollSettings(PayrollInput))
+            {
+                await LoadAsync();
+                return Page();
+            }
+
+            await _settingsService.UpdatePayrollSettingsAsync(PayrollInput, UserName());
+            TempData["SuccessMessage"] =
+                $"Payroll & loan policy updated. Monthly loan recovery is now {PayrollInput.LoanMonthlyRepaymentPercent:0.#}%.";
+            return RedirectToPage();
+        }
+
+        public async Task<IActionResult> OnPostResetPayrollAsync()
+        {
+            if (!await AuthorizeAsync()) return RedirectToPage("/Dashboard/Index");
+            if (UserRole != "SuperAdmin")
+            {
+                TempData["ErrorMessage"] = "Only a SuperAdmin can reset the payroll policy.";
+                return RedirectToPage();
+            }
+
+            await _settingsService.ResetPayrollSettingsAsync(UserName());
+            TempData["SuccessMessage"] = "Payroll & loan policy restored to default.";
+            return RedirectToPage();
+        }
+
+        private async Task<bool> AuthorizeAsync()
+        {
+            UserRole = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
+            if (!_rbacService.HasAccess(UserRole, "Settings"))
+            {
+                TempData["ErrorMessage"] = "Access Denied: You do not have permission to view Finance & Payroll Settings.";
+                return false;
+            }
+
+            CanEdit = UserRole == "SuperAdmin" || _rbacService.CanEdit(UserRole, "Settings");
+            return true;
+        }
+
+        private async Task LoadAsync()
+        {
+            Policy = await _settingsService.GetTreasuryPolicyAsync();
+            Payroll = await _settingsService.GetPayrollSettingsAsync();
+
+            PlannedCashPercent = Policy.PlannedCashPercent;
+            AlertTolerancePercent = Policy.AlertTolerancePercent;
+            PolicyMemo = Policy.PolicyMemo;
+        }
+
+        private bool ValidatePayrollSettings(PayrollSettingsDto settings)
+        {
+            var values = new (string Name, decimal Value)[]
+            {
+                (nameof(settings.LoanMonthlyRepaymentPercent), settings.LoanMonthlyRepaymentPercent),
+                (nameof(settings.MaxLoanPercentOfSalary), settings.MaxLoanPercentOfSalary),
+                (nameof(settings.HousingAllowancePercent), settings.HousingAllowancePercent),
+                (nameof(settings.TransportAllowancePercent), settings.TransportAllowancePercent),
+                (nameof(settings.PayeTaxPercent), settings.PayeTaxPercent),
+                (nameof(settings.PensionPercent), settings.PensionPercent),
+                (nameof(settings.HealthInsurancePercent), settings.HealthInsurancePercent)
+            };
+
+            foreach (var (name, value) in values)
+            {
+                if (value < 0m || value > 100m)
+                {
+                    ModelState.AddModelError($"PayrollInput.{name}", "Percentage must be between 0 and 100.");
+                }
+            }
+
+            if (settings.LoanMonthlyRepaymentPercent <= 0m)
+            {
+                ModelState.AddModelError(
+                    "PayrollInput.LoanMonthlyRepaymentPercent",
+                    "Monthly loan repayment percentage must be greater than zero.");
+            }
+
+            if (settings.MaxLoanPercentOfSalary <= 0m)
+            {
+                ModelState.AddModelError(
+                    "PayrollInput.MaxLoanPercentOfSalary",
+                    "Maximum loan percentage must be greater than zero.");
+            }
+
+            return ModelState.IsValid;
+        }
+
+        private string UserName() =>
+            $"{HttpContext.Session.GetString("UserName") ?? "Administrator"} ({UserRole})";
     }
 }

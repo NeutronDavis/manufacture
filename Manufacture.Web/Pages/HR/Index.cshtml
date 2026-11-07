@@ -1,18 +1,21 @@
 @page
 @model Manufacture.Pages.HR.IndexModel
 @{
-    ViewData["Title"] = "Staff Records & Payroll";
+    ViewData["Title"] = "Staff Directory";
+    var previousMonths = new[]
+    {
+        new DateTime(Model.SelectedYear, Model.SelectedMonth, 1),
+        new DateTime(Model.SelectedYear, Model.SelectedMonth, 1).AddMonths(-1),
+        new DateTime(Model.SelectedYear, Model.SelectedMonth, 1).AddMonths(-2)
+    };
 }
 
 <div class="space-y-6 w-full">
-    <!-- Header Title -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-black text-base-content tracking-tight">
-                Staff Records & Payroll
-            </h1>
+            <h1 class="text-2xl font-black text-base-content tracking-tight">Staff Directory</h1>
             <p class="text-xs opacity-70 mt-0.5">
-                Personnel database, guarantor files, wage breakdown and monthly salary disbursements
+                Select a staff member to view their full profile, payroll history, and salary advances.
             </p>
         </div>
         <div class="flex gap-2">
@@ -22,305 +25,349 @@
         </div>
     </div>
 
-    <!-- Top 3 KPI Summary Stats using daisyUI stats component -->
-    <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
-        <!-- 1. Total Employees -->
-        <div class="stat p-5">
-            <div class="stat-figure text-primary text-2xl">
-                <i class="fa-solid fa-users"></i>
-            </div>
-            <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Total Employees</div>
-            <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.Employees.Count</div>
-            <div class="stat-desc text-success font-semibold flex items-center gap-1">
-                <i class="fa-solid fa-arrow-up text-[10px]"></i> +3 this month
-            </div>
+    @if (TempData["SuccessMessage"] is string successMessage)
+    {
+        <div class="alert alert-success shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-check text-base"></i>
+            <span>@successMessage</span>
         </div>
-
-        <!-- 2. Current Payroll -->
-        <div class="stat p-5">
-            <div class="stat-figure text-success text-2xl">
-                <i class="fa-solid fa-money-bill-wave"></i>
-            </div>
-            <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Current Payroll (@DateTime.UtcNow.ToString("MMM"))</div>
-            <div class="stat-value text-2xl font-black font-mono text-success">₦@Model.TotalPayrollAmount.ToString("N0")</div>
-            <div class="stat-desc text-success font-semibold flex items-center gap-1">
-                <i class="fa-solid fa-arrow-up text-[10px]"></i> +2.4% vs last month
-            </div>
+    }
+    @if (TempData["ErrorMessage"] is string errorMessage)
+    {
+        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-exclamation text-base"></i>
+            <span>@errorMessage</span>
         </div>
+    }
 
-        <!-- 3. Pending Advances -->
-        <div class="stat p-5">
-            <div class="stat-figure text-warning text-2xl">
-                <i class="fa-solid fa-wallet"></i>
-            </div>
-            <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Pending Advances</div>
-            <div class="stat-value text-2xl font-black font-mono text-warning">₦@Model.PendingAdvancesTotal.ToString("N0")</div>
-            <div class="stat-desc">
-                <span class="badge badge-warning badge-xs font-bold uppercase tracking-wider">
-                    @Model.ActiveAdvances.Count ACTIVE LOANS
-                </span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Main 2-Column Layout: Left Directory & Right Staff Profile/Payroll Sheet -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
-        <!-- Left Column: Staff Directory with Search & Filters (4 Cols) -->
+        <!-- Staff list -->
         <div class="lg:col-span-4 space-y-4">
-            
-            <!-- Search & Filter Card -->
             <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4 space-y-3">
-                
-                <!-- Search Box -->
                 <div class="relative">
                     <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 opacity-50 text-xs"></i>
-                    <input type="text" id="staffSearchInput" oninput="filterStaffList()" placeholder="Search staff..." 
+                    <input type="text" id="staffSearchInput" oninput="filterStaffList()" placeholder="Search staff..."
                            class="input input-sm input-bordered w-full pl-9 bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" />
                 </div>
-
-                <!-- Filter Chips -->
+                <select id="statusFilterSelect" onchange="filterStaffList()" class="select select-sm select-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium">
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="leave">On Leave</option>
+                    <option value="inactive">Inactive</option>
+                </select>
                 <div class="flex flex-wrap gap-1.5 text-xs">
                     <button type="button" onclick="setDepartmentFilter('All')" class="dept-filter-btn btn btn-xs btn-neutral rounded-lg font-semibold" data-dept="All">All Staff</button>
-                    <button type="button" onclick="setDepartmentFilter('Production')" class="dept-filter-btn btn btn-xs btn-ghost bg-base-200 rounded-lg font-semibold" data-dept="Production">Production</button>
-                    <button type="button" onclick="setDepartmentFilter('Logistics')" class="dept-filter-btn btn btn-xs btn-ghost bg-base-200 rounded-lg font-semibold" data-dept="Logistics">Logistics</button>
-                    <button type="button" onclick="setDepartmentFilter('Sales')" class="dept-filter-btn btn btn-xs btn-ghost bg-base-200 rounded-lg font-semibold" data-dept="Sales">Sales</button>
-                    <button type="button" onclick="setDepartmentFilter('Store')" class="dept-filter-btn btn btn-xs btn-ghost bg-base-200 rounded-lg font-semibold" data-dept="Store">Store</button>
+                    @foreach (var dept in Model.Employees.Select(e => e.Department).Distinct().OrderBy(d => d))
+                    {
+                        <button type="button" onclick="setDepartmentFilter('@dept')" class="dept-filter-btn btn btn-xs btn-ghost bg-base-200 rounded-lg font-semibold" data-dept="@dept">@dept</button>
+                    }
                 </div>
             </div>
 
-            <!-- Directory Section Header -->
-            <div class="text-xs font-bold uppercase tracking-wider opacity-60 px-1">
-                Directory
-            </div>
+            <div class="text-xs font-bold uppercase tracking-wider opacity-60 px-1">Directory</div>
 
-            <!-- Directory List Cards -->
-            <div class="space-y-2" id="staffListContainer">
-                @for (int i = 0; i < Model.Employees.Count; i++)
-                {
-                    var emp = Model.Employees[i];
-                    var isFirst = i == 0;
-                    <div onclick="selectEmployee(@emp.Id)" id="emp-card-@emp.Id" 
-                         class="staff-card card bg-base-100 border @(isFirst ? "border-primary shadow-xs" : "border-base-300") p-3 rounded-2xl cursor-pointer hover:border-primary transition-all flex flex-row items-center justify-between gap-3"
-                         data-id="@emp.Id"
-                         data-name="@emp.FullName"
-                         data-code="@emp.StaffCode"
-                         data-role="@emp.Designation"
-                         data-dept="@emp.Department"
-                         data-salary="@emp.BaseSalary"
-                         data-phone="@emp.PhoneNumber"
-                         data-guarantor="@emp.GuarantorName"
-                         data-guarantorphone="@emp.GuarantorPhone"
-                         data-guarantorocc="@emp.GuarantorOccupation"
-                         data-active="@emp.IsActive.ToString().ToLower()">
-                        
-                        <div class="flex items-center gap-3">
-                            <div class="avatar placeholder">
-                                <div class="bg-base-200 text-base-content border border-base-300 rounded-full w-10 shadow-xs">
-                                    <span class="text-xs font-bold font-mono">@emp.FullName.Substring(0, Math.Min(2, emp.FullName.Length)).ToUpper()</span>
+            @if (Model.Employees.Count == 0)
+            {
+                <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 text-center text-xs opacity-60">
+                    No employees have been added yet.
+                </div>
+            }
+            else
+            {
+                <div class="space-y-2" id="staffListContainer">
+                    @foreach (var emp in Model.Employees)
+                    {
+                        var selected = Model.SelectedEmployee?.Id == emp.Id;
+                        var status = !emp.IsActive || emp.EmploymentStatus == "Inactive"
+                            ? "inactive"
+                            : emp.EmploymentStatus == "OnLeave" ? "leave" : "active";
+                        <a asp-page="/HR/Index"
+                           asp-route-employeeId="@emp.Id"
+                           asp-route-month="@Model.SelectedMonth"
+                           asp-route-year="@Model.SelectedYear"
+                           class="staff-card card bg-base-100 border @(selected ? "border-primary ring-2 ring-primary/20 bg-primary/5 shadow-xs" : "border-base-300") p-3 rounded-2xl cursor-pointer hover:border-primary transition-all flex flex-row items-center justify-between gap-3"
+                           data-name="@emp.FullName"
+                           data-code="@emp.StaffCode"
+                           data-dept="@emp.Department"
+                           data-status="@status">
+                            <div class="flex items-center gap-3">
+                                <div class="avatar placeholder">
+                                    <div class="bg-base-200 text-base-content border border-base-300 rounded-full w-10 shadow-xs">
+                                        <span class="text-xs font-bold font-mono">@emp.FullName.Substring(0, Math.Min(2, emp.FullName.Length)).ToUpper()</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="font-bold text-xs text-base-content">@emp.FullName</div>
+                                    <div class="text-[11px] opacity-70">@emp.Designation · @emp.Department</div>
                                 </div>
                             </div>
                             <div>
-                                <div class="font-bold text-xs text-base-content">@emp.FullName</div>
-                                <div class="text-[11px] opacity-70">@emp.Designation • @emp.Department</div>
+                                @if (!emp.IsActive || emp.EmploymentStatus == "Inactive")
+                                {
+                                    <span class="badge badge-error badge-xs font-bold">● INACTIVE</span>
+                                }
+                                else if (emp.EmploymentStatus == "OnLeave")
+                                {
+                                    <span class="badge badge-warning badge-xs font-bold">● LEAVE</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-success badge-xs font-bold">● ACTIVE</span>
+                                }
                             </div>
-                        </div>
-
-                        <div>
-                            @if (emp.IsActive)
-                            {
-                                <span class="badge badge-success badge-xs font-bold">
-                                    ● ACTIVE
-                                </span>
-                            }
-                            else
-                            {
-                                <span class="badge badge-warning badge-xs font-bold">
-                                    ● LEAVE
-                                </span>
-                            }
-                        </div>
-                    </div>
-                }
-            </div>
+                        </a>
+                    }
+                </div>
+            }
         </div>
 
-        <!-- Right Column: Selected Staff Profile & Dynamic Payroll Sheet (8 Cols) -->
+        <!-- Selected employee -->
         <div class="lg:col-span-8 space-y-6">
-            
-            <!-- 1. Staff Profile Header Card -->
-            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
-                <div class="card-body p-6 space-y-5">
-                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div class="flex items-center gap-4">
-                            <div class="w-16 h-16 rounded-2xl bg-primary text-primary-content flex items-center justify-center text-2xl font-black shrink-0 shadow-xs" id="profileAvatar">
-                                MT
-                            </div>
-                            <div>
-                                <h2 class="text-xl font-black text-base-content tracking-tight" id="profileName">Marcus Thorne</h2>
-                                <p class="text-xs opacity-70 mt-0.5" id="profileDesignation">
-                                    Master Baker • Employee ID: EMP-2041
-                                </p>
-                            </div>
-                        </div>
+            @if (Model.SelectedEmployee is null)
+            {
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-8 text-center text-sm opacity-60">
+                    Select a staff member to view their payroll record.
+                </div>
+            }
+            else
+            {
+                var emp = Model.SelectedEmployee;
+                var bankLast4 = string.IsNullOrWhiteSpace(emp.BankAccountNumber)
+                    ? "—"
+                    : emp.BankAccountNumber.Length <= 4 ? emp.BankAccountNumber : emp.BankAccountNumber[^4..];
 
-                        <div>
-                            <a id="editProfileBtn" href="/HR/Employees/Edit/1" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs font-semibold px-4">
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                    <div class="card-body p-6 space-y-5">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="flex items-center gap-4">
+                                <div class="w-16 h-16 rounded-2xl bg-primary text-primary-content flex items-center justify-center text-2xl font-black shrink-0 shadow-xs">
+                                    @emp.FullName.Substring(0, Math.Min(2, emp.FullName.Length)).ToUpper()
+                                </div>
+                                <div>
+                                    <h2 class="text-xl font-black text-base-content tracking-tight">@emp.FullName</h2>
+                                    <p class="text-xs opacity-70 mt-0.5">@emp.Designation · @emp.Department · @emp.StaffCode</p>
+                                </div>
+                            </div>
+                            <a asp-page="/HR/Employees/Edit" asp-route-id="@emp.Id" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs font-semibold px-4">
                                 Edit Profile
                             </a>
                         </div>
-                    </div>
 
-                    <!-- Profile Bottom Metadata Row -->
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-base-200 text-xs">
-                        <div>
-                            <div class="text-[10px] uppercase font-bold opacity-60">JOIN DATE</div>
-                            <div class="font-bold text-base-content mt-0.5" id="profileJoinDate">12 Oct, 2019</div>
-                        </div>
-                        <div>
-                            <div class="text-[10px] uppercase font-bold opacity-60">BANK DETAILS</div>
-                            <div class="font-bold text-base-content mt-0.5" id="profileBank">Access Bank •••• 4892</div>
-                        </div>
-                        <div>
-                            <div class="text-[10px] uppercase font-bold opacity-60">GUARANTOR</div>
-                            <div class="font-bold text-success mt-0.5 flex items-center gap-1" id="profileGuarantor">
-                                Sarah Thorne <i class="fa-solid fa-circle-check text-xs"></i>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-base-200 text-xs">
+                            <div>
+                                <div class="text-[10px] uppercase font-bold opacity-60">JOIN DATE</div>
+                                <div class="font-bold text-base-content mt-0.5">@emp.EmploymentDate.ToString("dd MMM, yyyy")</div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] uppercase font-bold opacity-60">BANK DETAILS</div>
+                                <div class="font-bold text-base-content mt-0.5">@(string.IsNullOrWhiteSpace(emp.BankName) ? "—" : emp.BankName) •••• @bankLast4</div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] uppercase font-bold opacity-60">GUARANTOR</div>
+                                <div class="font-bold text-success mt-0.5 flex items-center gap-1">
+                                    @(string.IsNullOrWhiteSpace(emp.GuarantorName) ? "Not provided" : emp.GuarantorName)
+                                    @if (!string.IsNullOrWhiteSpace(emp.GuarantorName))
+                                    {
+                                        <i class="fa-solid fa-circle-check text-xs"></i>
+                                    }
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- 2. Dynamic Payroll Sheet Card -->
-            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
-                <div class="card-body p-6 space-y-6">
-                    
-                    <!-- Card Top Title & Month Dropdown -->
-                    <div class="flex items-center justify-between border-b border-base-200 pb-4">
-                        <h3 class="font-black text-base text-base-content" id="payrollSheetTitle">
-                            Payroll Sheet: @DateTime.UtcNow.ToString("MMMM yyyy")
-                        </h3>
-                        
-                        <div class="dropdown dropdown-end">
-                            <div tabindex="0" role="button" class="btn btn-xs btn-outline border-base-300 rounded-lg font-semibold gap-1">
-                                <span>@DateTime.UtcNow.ToString("MMM yyyy")</span>
-                                <i class="fa-solid fa-chevron-down text-[8px]"></i>
-                            </div>
-                            <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-xl z-50 w-36 p-1.5 shadow-xl border border-base-300 text-xs">
-                                <li><a class="active bg-neutral text-neutral-content">@DateTime.UtcNow.ToString("MMM yyyy")</a></li>
-                                <li><a>@DateTime.UtcNow.AddMonths(-1).ToString("MMM yyyy")</a></li>
-                                <li><a>@DateTime.UtcNow.AddMonths(-2).ToString("MMM yyyy")</a></li>
-                            </ul>
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                    <div class="card-body p-6 space-y-4">
+                        <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                            <h3 class="font-black text-base text-base-content flex items-center gap-2">
+                                <i class="fa-solid fa-address-card text-primary"></i> Employee Information
+                            </h3>
+                            <span class="badge badge-soft badge-xs font-semibold">@emp.EmploymentStatus</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                            <div><div class="text-[10px] uppercase font-bold opacity-60">Staff Code</div><div class="font-mono font-bold mt-0.5">@emp.StaffCode</div></div>
+                            <div><div class="text-[10px] uppercase font-bold opacity-60">Department</div><div class="mt-0.5 font-semibold">@emp.Department</div></div>
+                            <div><div class="text-[10px] uppercase font-bold opacity-60">Designation</div><div class="mt-0.5 font-semibold">@emp.Designation</div></div>
+                            <div><div class="text-[10px] uppercase font-bold opacity-60">Employment Status</div><div class="mt-0.5 font-bold">@emp.EmploymentStatus</div></div>
+                            <div><div class="text-[10px] uppercase font-bold opacity-60">Employment Date</div><div class="mt-0.5">@emp.EmploymentDate.ToString("dd MMM yyyy")</div></div>
+                            <div><div class="text-[10px] uppercase font-bold opacity-60">Phone</div><div class="font-mono mt-0.5">@emp.PhoneNumber</div></div>
+                            <div><div class="text-[10px] uppercase font-bold opacity-60">Email</div><div class="font-mono mt-0.5 break-all">@emp.Email</div></div>
+                            <div><div class="text-[10px] uppercase font-bold opacity-60">Base Salary</div><div class="font-mono font-bold mt-0.5">₦@emp.BaseSalary.ToString("N2")</div></div>
+                            <div><div class="text-[10px] uppercase font-bold opacity-60">Bank</div><div class="mt-0.5 font-semibold">@(string.IsNullOrWhiteSpace(emp.BankName) ? "—" : emp.BankName)</div><div class="font-mono text-[10px] opacity-70">@emp.BankAccountNumber</div></div>
+                            <div class="sm:col-span-2 lg:col-span-3"><div class="text-[10px] uppercase font-bold opacity-60">Residential Address</div><div class="mt-0.5">@emp.Address</div></div>
+                            <div><div class="text-[10px] uppercase font-bold opacity-60">Emergency Contact</div><div class="mt-0.5 font-bold">@emp.EmergencyContactName (@emp.EmergencyRelationship)</div><div class="font-mono text-[10px] opacity-70">@emp.EmergencyContactPhone</div></div>
+                            <div><div class="text-[10px] uppercase font-bold opacity-60">Guarantor</div><div class="mt-0.5 font-bold">@emp.GuarantorName</div><div class="text-[10px] opacity-70">@emp.GuarantorOccupation · @emp.GuarantorPhone</div></div>
+                            <div><div class="text-[10px] uppercase font-bold opacity-60">Guarantor Address</div><div class="mt-0.5">@emp.GuarantorAddress</div></div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- 2-Column Earnings & Deductions Breakdown -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs font-mono">
-                        
-                        <!-- Left Side: EARNINGS & VARIABLE -->
-                        <div class="space-y-6">
-                            <!-- EARNINGS -->
-                            <div class="space-y-2.5">
-                                <div class="text-[10px] uppercase font-bold opacity-60 font-sans tracking-wider">EARNINGS</div>
-                                <div class="flex justify-between text-base-content">
-                                    <span class="font-sans">Base Salary</span>
-                                    <span class="font-bold text-base-content" id="valBaseSalary">₦3,200.00</span>
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                    <div class="card-body p-6 space-y-6">
+                        <div class="flex items-center justify-between border-b border-base-200 pb-4">
+                            <h3 class="font-black text-base text-base-content">
+                                Payroll Sheet: @Model.SelectedMonthLabel
+                            </h3>
+                            <div class="dropdown dropdown-end">
+                                <div tabindex="0" role="button" class="btn btn-xs btn-outline border-base-300 rounded-lg font-semibold gap-1">
+                                    <span>@Model.SelectedMonthLabel</span>
+                                    <i class="fa-solid fa-chevron-down text-[8px]"></i>
                                 </div>
-                                <div class="flex justify-between text-base-content">
-                                    <span class="font-sans">Housing Allowance</span>
-                                    <span class="font-bold text-base-content" id="valHousing">₦400.00</span>
-                                </div>
-                                <div class="flex justify-between text-base-content">
-                                    <span class="font-sans">Transport Allowance</span>
-                                    <span class="font-bold text-base-content" id="valTransport">₦200.00</span>
-                                </div>
-                            </div>
-
-                            <!-- VARIABLE -->
-                            <div class="space-y-2.5 pt-4 border-t border-base-200">
-                                <div class="text-[10px] uppercase font-bold opacity-60 font-sans tracking-wider">VARIABLE</div>
-                                <div class="flex justify-between text-base-content">
-                                    <span class="font-sans">Performance Bonus (Tier A)</span>
-                                    <span class="font-bold text-success" id="valBonus">+₦350.00</span>
-                                </div>
-                                <div class="flex justify-between text-base-content">
-                                    <span class="font-sans">Overtime (12 hrs)</span>
-                                    <span class="font-bold text-success" id="valOvertime">+₦288.00</span>
-                                </div>
-                                <div class="flex justify-between items-center pt-3 border-t border-base-200 font-sans font-bold text-base-content text-sm">
-                                    <span>Gross Earnings</span>
-                                    <span class="font-mono text-base-content font-black" id="valGrossEarnings">₦4,438.00</span>
-                                </div>
+                                <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-xl z-50 w-40 p-1.5 shadow-xl border border-base-300 text-xs">
+                                    @foreach (var m in previousMonths)
+                                    {
+                                        <li>
+                                            <a asp-page="/HR/Index"
+                                               asp-route-employeeId="@emp.Id"
+                                               asp-route-month="@m.Month"
+                                               asp-route-year="@m.Year"
+                                               class="@(m.Month == Model.SelectedMonth && m.Year == Model.SelectedYear ? "active bg-neutral text-neutral-content" : "")">
+                                                @m.ToString("MMM yyyy")
+                                            </a>
+                                        </li>
+                                    }
+                                </ul>
                             </div>
                         </div>
 
-                        <!-- Right Side: DEDUCTIONS & ADVANCES -->
-                        <div class="space-y-6">
-                            <!-- DEDUCTIONS -->
-                            <div class="space-y-2.5">
-                                <div class="text-[10px] uppercase font-bold opacity-60 font-sans tracking-wider">DEDUCTIONS</div>
-                                <div class="flex justify-between text-base-content">
-                                    <span class="font-sans">Income Tax (PAYE)</span>
-                                    <span class="font-bold text-error" id="valTax">-₦640.00</span>
-                                </div>
-                                <div class="flex justify-between text-base-content">
-                                    <span class="font-sans">Pension Fund (5%)</span>
-                                    <span class="font-bold text-error" id="valPension">-₦160.00</span>
-                                </div>
-                                <div class="flex justify-between text-base-content">
-                                    <span class="font-sans">Health Insurance</span>
-                                    <span class="font-bold text-error" id="valHealth">-₦85.00</span>
-                                </div>
+                        @if (Model.SelectedPayroll is null)
+                        {
+                            <div class="alert alert-info text-xs py-3 rounded-xl">
+                                <i class="fa-solid fa-circle-info"></i>
+                                <span>No payroll record exists for @emp.FullName in @Model.SelectedMonthLabel. Run payroll to generate the payroll sheet.</span>
+                                <a asp-page="/Payroll/Run" class="btn btn-xs btn-neutral rounded-lg ml-auto">Go to Payroll Run</a>
                             </div>
-
-                            <!-- ADVANCES & PENALTIES -->
-                            <div class="space-y-2.5 pt-4 border-t border-base-200">
-                                <div class="text-[10px] uppercase font-bold opacity-60 font-sans tracking-wider">ADVANCES & PENALTIES</div>
-                                <div class="flex justify-between text-base-content items-center">
-                                    <div class="flex items-center gap-1.5 font-sans">
-                                        <span>Salary Advance Repayment</span>
-                                        <span class="badge badge-success badge-xs font-bold px-1.5 py-0.5">2 OF 3</span>
+                        }
+                        else
+                        {
+                            var p = Model.SelectedPayroll;
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 text-xs font-mono">
+                                <div class="space-y-5">
+                                    <div class="text-[10px] uppercase font-bold opacity-60 font-sans tracking-wider">EARNINGS</div>
+                                    <div class="space-y-2.5">
+                                        <div class="flex justify-between"><span class="font-sans">Base Salary</span><span class="font-bold">₦@p.BaseSalary.ToString("N2")</span></div>
+                                        <div class="flex justify-between"><span class="font-sans">Housing Allowance</span><span class="font-bold">₦@p.HousingAllowance.ToString("N2")</span></div>
+                                        <div class="flex justify-between"><span class="font-sans">Transport Allowance</span><span class="font-bold">₦@p.TransportAllowance.ToString("N2")</span></div>
+                                        <div class="flex justify-between"><span class="font-sans">Other Allowances</span><span class="font-bold">₦@p.OtherAllowances.ToString("N2")</span></div>
+                                        <div class="flex justify-between"><span class="font-sans">Performance Bonus</span><span class="font-bold text-success">+₦@p.PerformanceBonus.ToString("N2")</span></div>
                                     </div>
-                                    <span class="font-bold text-error" id="valAdvance">-₦200.00</span>
+                                    <div class="flex justify-between items-center pt-3 border-t border-base-200 font-sans font-bold text-sm">
+                                        <span>Gross Earnings</span>
+                                        <span class="font-mono font-black">₦@p.GrossSalary.ToString("N2")</span>
+                                    </div>
                                 </div>
-                                <div class="flex justify-between text-base-content">
-                                    <span class="font-sans">Late Attendance (1 instance)</span>
-                                    <span class="font-bold text-error" id="valPenalty">-₦15.00</span>
-                                </div>
-                                <div class="flex justify-between items-center pt-3 border-t border-base-200 font-sans font-bold text-base-content text-sm">
-                                    <span>Total Deductions</span>
-                                    <span class="font-mono text-base-content font-black" id="valTotalDeductions">₦1,100.00</span>
+
+                                <div class="space-y-5">
+                                    <div class="text-[10px] uppercase font-bold opacity-60 font-sans tracking-wider">DEDUCTIONS</div>
+                                    <div class="space-y-2.5">
+                                        <div class="flex justify-between"><span class="font-sans">PAYE Tax &amp; Levies</span><span class="font-bold text-error">-₦@p.TaxAndLevies.ToString("N2")</span></div>
+                                        <div class="flex justify-between"><span class="font-sans">Pension</span><span class="font-bold text-error">-₦@p.PensionDeduction.ToString("N2")</span></div>
+                                        <div class="flex justify-between"><span class="font-sans">Health Insurance</span><span class="font-bold text-error">-₦@p.HealthInsuranceDeduction.ToString("N2")</span></div>
+                                        <div class="flex justify-between"><span class="font-sans">Salary Advance Recovery</span><span class="font-bold text-error">-₦@p.AdvanceDeduction.ToString("N2")</span></div>
+                                        @if (p.DisciplinaryDeductions > 0)
+                                        {
+                                            <div class="flex justify-between"><span class="font-sans">Disciplinary Deduction</span><span class="font-bold text-error">-₦@p.DisciplinaryDeductions.ToString("N2")</span></div>
+                                        }
+                                    </div>
+                                    <div class="flex justify-between items-center pt-3 border-t border-base-200 font-sans font-bold text-sm">
+                                        <span>Total Deductions</span>
+                                        <span class="font-mono font-black">₦@p.TotalDeductions.ToString("N2")</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- Bottom Action & Net Pay Settlement Bar -->
-                    <div class="pt-6 border-t border-base-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
-                            <div class="text-[10px] uppercase font-bold opacity-60 tracking-wider">NET PAY</div>
-                            <div class="text-3xl font-black text-base-content font-mono" id="valNetPay">
-                                ₦3,338.00
+                            @if (p.DeductionLines.Count > 0)
+                            {
+                                <div class="pt-5 border-t border-base-200">
+                                    <div class="text-[10px] uppercase font-bold opacity-60 font-sans tracking-wider mb-2">Deduction Ledger</div>
+                                    <div class="overflow-x-auto">
+                                        <table class="table table-xs">
+                                            <thead>
+                                                <tr>
+                                                    <th>Type</th>
+                                                    <th>Description</th>
+                                                    <th class="text-right">Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                @foreach (var line in p.DeductionLines)
+                                                {
+                                                    <tr>
+                                                        <td><span class="badge badge-ghost badge-xs font-bold">@line.DeductionType</span></td>
+                                                        <td class="text-xs opacity-80">@line.Description</td>
+                                                        <td class="text-right font-mono text-error font-bold">-₦@line.Amount.ToString("N2")</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            }
+
+                            <div class="pt-6 border-t border-base-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div>
+                                    <div class="text-[10px] uppercase font-bold opacity-60 tracking-wider">NET PAY</div>
+                                    <div class="text-3xl font-black text-base-content font-mono">₦@p.NetSalary.ToString("N2")</div>
+                                    <div class="text-[10px] opacity-60 mt-1">Status: @p.PaymentStatus @(p.PaymentDate.HasValue ? $"· paid {p.PaymentDate.Value:dd MMM yyyy}" : "")</div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <button type="button" onclick="window.print()" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-4 text-xs">
+                                        <i class="fa-solid fa-print text-xs"></i> Print
+                                    </button>
+                                    @if (p.PaymentStatus == "Paid")
+                                    {
+                                        <span class="badge badge-success badge-sm font-bold">Payment completed @(p.PaymentDate?.ToLocalTime().ToString("dd MMM yyyy") ?? "")</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-warning badge-sm font-bold">Awaiting payroll run approval</span>
+                                    }
+                                </div>
                             </div>
-                        </div>
+                        }
 
-                        <div class="flex items-center gap-3">
-                            <button type="button" onclick="window.print()" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-4 text-xs">
-                                <i class="fa-solid fa-download text-xs"></i> PDF
-                            </button>
-                            
-                            <form method="post" asp-page-handler="ApprovePayment" class="inline">
-                                <input type="hidden" name="id" id="approveEmployeeId" value="1" />
-                                <button type="submit" class="btn btn-sm btn-neutral rounded-xl font-bold px-5 gap-2 shadow-xs text-xs">
-                                    <i class="fa-solid fa-circle-check text-success text-xs"></i> Approve & Release Payment
-                                </button>
-                            </form>
-                        </div>
+                        @if (Model.SelectedEmployeeAdvances.Count > 0)
+                        {
+                            <div class="pt-5 border-t border-base-200">
+                                <div class="text-[10px] uppercase font-bold opacity-60 font-sans tracking-wider mb-2">Salary Advances</div>
+                                <div class="overflow-x-auto">
+                                    <table class="table table-xs">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Reason</th>
+                                                <th class="text-right">Principal</th>
+                                                <th class="text-right">Repaid</th>
+                                                <th class="text-right">Remaining</th>
+                                                <th class="text-right">Monthly</th>
+                                                <th>Status</th>
+                                                <th class="text-right">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var advance in Model.SelectedEmployeeAdvances)
+                                            {
+                                                <tr>
+                                                    <td class="font-mono text-[10px]">@advance.RequestDate.ToString("dd MMM yyyy")</td>
+                                                    <td class="text-xs font-semibold max-w-[160px] truncate">@advance.Reason</td>
+                                                    <td class="text-right font-mono">₦@advance.PrincipalAmount.ToString("N2")</td>
+                                                    <td class="text-right font-mono text-success">₦@advance.TotalRepaid.ToString("N2")</td>
+                                                    <td class="text-right font-mono font-bold @(advance.RemainingBalance > 0 ? "text-error" : "text-success")">₦@advance.RemainingBalance.ToString("N2")</td>
+                                                    <td class="text-right font-mono">₦@advance.MonthlyDeductionAmount.ToString("N2")</td>
+                                                    <td><span class="badge @(advance.Status == "FullyRepaid" ? "badge-success" : "badge-warning") badge-xs font-bold">@advance.Status</span></td>
+                                                    <td class="text-right">
+                                                        <a asp-page="/Payroll/Advances/Details" asp-route-id="@advance.Id" class="btn btn-xs btn-ghost text-primary font-bold">View</a>
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        }
                     </div>
-
                 </div>
-            </div>
-
+            }
         </div>
     </div>
 </div>
@@ -332,93 +379,26 @@
     function setDepartmentFilter(dept) {
         currentFilter = dept;
         document.querySelectorAll('.dept-filter-btn').forEach(btn => {
-            if (btn.getAttribute('data-dept') === dept) {
-                btn.className = 'dept-filter-btn btn btn-xs btn-neutral rounded-lg font-semibold';
-            } else {
-                btn.className = 'dept-filter-btn btn btn-xs btn-ghost bg-base-200 rounded-lg font-semibold';
-            }
+            btn.className = btn.getAttribute('data-dept') === dept
+                ? 'dept-filter-btn btn btn-xs btn-neutral rounded-lg font-semibold'
+                : 'dept-filter-btn btn btn-xs btn-ghost bg-base-200 rounded-lg font-semibold';
         });
         filterStaffList();
     }
 
     function filterStaffList() {
-        const query = document.getElementById('staffSearchInput').value.toLowerCase();
-        const cards = document.querySelectorAll('.staff-card');
-
-        cards.forEach(card => {
-            const name = card.getAttribute('data-name').toLowerCase();
-            const dept = card.getAttribute('data-dept');
-            const matchesQuery = name.includes(query);
-            const matchesDept = (currentFilter === 'All' || dept === currentFilter);
-
-            if (matchesQuery && matchesDept) {
-                card.classList.remove('hidden');
-            } else {
-                card.classList.add('hidden');
-            }
-        });
-    }
-
-    function selectEmployee(id) {
+        const query = (document.getElementById('staffSearchInput')?.value || '').toLowerCase();
+        const status = document.getElementById('statusFilterSelect')?.value || '';
         document.querySelectorAll('.staff-card').forEach(card => {
-            if (parseInt(card.getAttribute('data-id')) === id) {
-                card.className = 'staff-card card bg-base-100 border-2 border-primary shadow-xs p-3 rounded-2xl cursor-pointer transition-all flex flex-row items-center justify-between gap-3';
-                
-                const name = card.getAttribute('data-name');
-                const code = card.getAttribute('data-code');
-                const role = card.getAttribute('data-role');
-                const dept = card.getAttribute('data-dept');
-                const baseSalary = parseFloat(card.getAttribute('data-salary')) || 120000;
-                const guarantor = card.getAttribute('data-guarantor');
-
-                document.getElementById('profileName').innerText = name;
-                document.getElementById('profileDesignation').innerText = `${role} • Employee ID: ${code}`;
-                document.getElementById('profileAvatar').innerText = name.substring(0, Math.Min(2, name.length)).toUpperCase();
-                document.getElementById('profileGuarantor').innerHTML = `${guarantor} <i class="fa-solid fa-circle-check text-xs text-success"></i>`;
-                document.getElementById('editProfileBtn').href = `/HR/Employees/Edit/${id}`;
-                document.getElementById('approveEmployeeId').value = id;
-
-                const housing = Math.round(baseSalary * 0.125);
-                const transport = Math.round(baseSalary * 0.0625);
-                const bonus = Math.round(baseSalary * 0.109);
-                const overtime = Math.round(baseSalary * 0.09);
-                const gross = baseSalary + housing + transport + bonus + overtime;
-
-                const tax = Math.round(baseSalary * 0.20);
-                const pension = Math.round(baseSalary * 0.05);
-                const health = Math.round(baseSalary * 0.0265);
-                const advance = Math.round(baseSalary * 0.0625);
-                const penalty = Math.round(baseSalary * 0.005);
-                const totalDeductions = tax + pension + health + advance + penalty;
-                const netPay = gross - totalDeductions;
-
-                document.getElementById('valBaseSalary').innerText = '₦' + baseSalary.toLocaleString('en-US', { minimumFractionDigits: 2 });
-                document.getElementById('valHousing').innerText = '₦' + housing.toLocaleString('en-US', { minimumFractionDigits: 2 });
-                document.getElementById('valTransport').innerText = '₦' + transport.toLocaleString('en-US', { minimumFractionDigits: 2 });
-                document.getElementById('valBonus').innerText = '+₦' + bonus.toLocaleString('en-US', { minimumFractionDigits: 2 });
-                document.getElementById('valOvertime').innerText = '+₦' + overtime.toLocaleString('en-US', { minimumFractionDigits: 2 });
-                document.getElementById('valGrossEarnings').innerText = '₦' + gross.toLocaleString('en-US', { minimumFractionDigits: 2 });
-
-                document.getElementById('valTax').innerText = '-₦' + tax.toLocaleString('en-US', { minimumFractionDigits: 2 });
-                document.getElementById('valPension').innerText = '-₦' + pension.toLocaleString('en-US', { minimumFractionDigits: 2 });
-                document.getElementById('valHealth').innerText = '-₦' + health.toLocaleString('en-US', { minimumFractionDigits: 2 });
-                document.getElementById('valAdvance').innerText = '-₦' + advance.toLocaleString('en-US', { minimumFractionDigits: 2 });
-                document.getElementById('valPenalty').innerText = '-₦' + penalty.toLocaleString('en-US', { minimumFractionDigits: 2 });
-                document.getElementById('valTotalDeductions').innerText = '₦' + totalDeductions.toLocaleString('en-US', { minimumFractionDigits: 2 });
-
-                document.getElementById('valNetPay').innerText = '₦' + netPay.toLocaleString('en-US', { minimumFractionDigits: 2 });
-            } else {
-                card.className = 'staff-card card bg-base-100 border border-base-300 p-3 rounded-2xl cursor-pointer hover:border-primary transition-all flex flex-row items-center justify-between gap-3';
-            }
+            const name = (card.getAttribute('data-name') || '').toLowerCase();
+            const code = (card.getAttribute('data-code') || '').toLowerCase();
+            const dept = card.getAttribute('data-dept') || '';
+            const rowStatus = card.getAttribute('data-status') || '';
+            const matches = (!query || name.includes(query) || code.includes(query))
+                && (currentFilter === 'All' || dept === currentFilter)
+                && (!status || rowStatus === status);
+            card.classList.toggle('hidden', !matches);
         });
     }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const firstCard = document.querySelector('.staff-card');
-        if (firstCard) {
-            const firstId = parseInt(firstCard.getAttribute('data-id'));
-            selectEmployee(firstId);
-        }
-    });
 </script>
 }

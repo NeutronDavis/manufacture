@@ -1,7 +1,9 @@
 using Manufacture.Api;
 using Manufacture.Library.Data;
 using Manufacture.Library.Interfaces;
+using Manufacture.Models.Entities;
 using Manufacture.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,9 +15,16 @@ var manufactureConnectionString = builder.Configuration.GetConnectionString("Man
 builder.Services.AddDbContext<ManufactureDbContext>(options =>
     options.UseSqlServer(manufactureConnectionString));
 
+// Database-backed user management and credential hashing.
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
+
 // Add services to the container.
 builder.Services.AddRazorPages(options =>
 {
+    // Every Razor Page except Login/Logout/Error requires an authenticated session.
+    options.Conventions.ConfigureFilter(new RequireSessionPageFilter());
+
     options.Conventions.AddPageRoute("/Production/Recipes/Create", "Recipes/Create");
     options.Conventions.AddPageRoute("/Production/Recipes/Index", "Recipes");
     options.Conventions.AddPageRoute("/Production/Recipes/Details", "Recipes/Details/{id:int}");
@@ -61,11 +70,20 @@ builder.Services.AddSingleton<MockEmployeeService>();
 builder.Services.AddSingleton<MockInventoryService>();
 builder.Services.AddSingleton<MockProductionService>();
 builder.Services.AddSingleton<MockLogisticsService>();
-builder.Services.AddSingleton<MockSettingsService>();
 builder.Services.AddSingleton<MockSalesService>();
 builder.Services.AddSingleton<MockPayrollService>();
 builder.Services.AddSingleton<MockDashboardService>();
-builder.Services.AddSingleton<MockRbacService>();
+
+// Database-backed RBAC with a read cache for synchronous layout checks.
+builder.Services.AddSingleton<RbacCache>();
+builder.Services.AddScoped<IRbacService, RbacService>();
+
+// Database-backed HR, payroll, and configuration services.
+builder.Services.AddSingleton<SettingsCache>();
+builder.Services.AddScoped<ISettingsService, SettingsService>();
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
+builder.Services.AddScoped<IPayrollService, PayrollService>();
+builder.Services.AddScoped<IFleetService, FleetService>();
 
 // Production Recipe Builder & Cost Engine (doc/recipe-costing.md).
 // Resolves live ingredient prices, so it must be registered AFTER the
@@ -78,6 +96,32 @@ builder.Services.AddSingleton<RecipeCostingEngine>();
 builder.Services.AddSingleton<MockAnalyticsService>();
 
 var app = builder.Build();
+
+// Warm the RBAC cache so the first layout render has the database matrix.
+using (var startupScope = app.Services.CreateScope())
+{
+    try
+    {
+        var rbacService = startupScope.ServiceProvider.GetRequiredService<IRbacService>();
+        await rbacService.RefreshCacheAsync();
+    }
+    catch (Exception ex)
+    {
+        var startupLogger = startupScope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        startupLogger.LogError(ex, "RBAC cache warm-up failed. Falling back to Super Admin-only access.");
+    }
+
+    try
+    {
+        var settingsService = startupScope.ServiceProvider.GetRequiredService<ISettingsService>();
+        await settingsService.RefreshCacheAsync();
+    }
+    catch (Exception ex)
+    {
+        var startupLogger = startupScope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        startupLogger.LogError(ex, "Settings cache warm-up failed. Default settings will be used.");
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

@@ -13,7 +13,7 @@ CREATE TABLE [dbo].[PosTerminals]
 
     CONSTRAINT [PK_PosTerminals] PRIMARY KEY CLUSTERED ([Id] ASC),
     CONSTRAINT [UQ_PosTerminals_TerminalCode] UNIQUE ([TerminalCode]),
-    CONSTRAINT [FK_PosTerminals_Users] FOREIGN KEY ([AssignedUserId]) REFERENCES [dbo].[Users] ([Id])
+    CONSTRAINT [FK_PosTerminals_Users] FOREIGN KEY ([AssignedUserId]) REFERENCES [dbo].[Users] ([Id]) ON DELETE SET NULL
 );
 GO
 

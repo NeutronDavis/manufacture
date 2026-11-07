@@ -17,7 +17,7 @@
                 <i class="fa-solid fa-truck-moving text-primary"></i> Fleet & Delivery Logistics
             </h1>
             <p class="text-xs opacity-70 mt-0.5">
-                Delivery vans, truck haulage, daily fuel consumption logs, and maintenance tracking.
+                Delivery vehicles, charter bookings, fuel consumption logs, and maintenance tracking.
             </p>
         </div>
         <div class="flex items-center gap-2 flex-wrap justify-end">
@@ -35,7 +35,7 @@
 
     <!-- Dual-Role Fleet Division Showcase Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Division 1: Commercial Haulage & VIP Charter -->
+        <!-- Division 1: Charter & Vehicle Hire -->
         <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 relative overflow-hidden">
             <div class="flex items-start justify-between">
                 <div class="flex items-center gap-3">
@@ -44,10 +44,10 @@
                     </div>
                     <div>
                         <div class="flex items-center gap-2">
-                            <h2 class="text-sm font-black text-base-content">Commercial Haulage & VIP Charter</h2>
+                            <h2 class="text-sm font-black text-base-content">Charter & Vehicle Hire</h2>
                             <span class="badge badge-xs badge-primary font-bold text-[9px]">Revenue Unit</span>
                         </div>
-                        <p class="text-[11px] text-base-content/60">Interstate 360° freight charters across Nigerian corridors</p>
+                        <p class="text-[11px] text-base-content/60">Interstate vehicle charters across Nigerian routes</p>
                     </div>
                 </div>
             </div>
@@ -89,7 +89,7 @@
                             <h2 class="text-sm font-black text-base-content">Weekly Running Costs Ledger</h2>
                             <span class="badge badge-xs badge-neutral font-bold text-[9px]">Sunday - Saturday</span>
                         </div>
-                        <p class="text-[11px] text-base-content/60">Aggregated diesel fueling, servicing and incidentals</p>
+                        <p class="text-[11px] text-base-content/60">Aggregated fuel, EV charging, servicing and incidentals</p>
                     </div>
                 </div>
             </div>
@@ -244,7 +244,7 @@
                             <th>Litres Dispensed</th>
                             <th>Rate / L</th>
                             <th>Total Cost</th>
-                            <th>Petrol Station & Receipt</th>
+                            <th>Petrol Station</th>
                             <th class="text-right pr-4">Delivery Route</th>
                         </tr>
                     </thead>
@@ -262,7 +262,6 @@
                                 <td class="font-mono font-black text-success py-3">₦@log.TotalCost.ToString("N0")</td>
                                 <td class="py-3">
                                     <div class="font-bold text-base-content">@log.PetrolStation</div>
-                                    <span class="font-mono text-[10px] opacity-60">Receipt: @log.ReceiptNumber</span>
                                 </td>
                                 <td class="text-right pr-4 text-[11px] opacity-70 py-3 truncate max-w-xs">
                                     @log.RouteDescription

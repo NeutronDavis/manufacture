@@ -38,7 +38,13 @@ public partial class ManufactureDbContext : DbContext
 
     public virtual DbSet<OrderItem> OrderItems { get; set; }
 
+    public virtual DbSet<PayrollDeductionLine> PayrollDeductionLines { get; set; }
+
     public virtual DbSet<PayrollRecord> PayrollRecords { get; set; }
+
+    public virtual DbSet<PayrollRun> PayrollRuns { get; set; }
+
+    public virtual DbSet<PayrollSetting> PayrollSettings { get; set; }
 
     public virtual DbSet<PosTerminal> PosTerminals { get; set; }
 
@@ -46,9 +52,19 @@ public partial class ManufactureDbContext : DbContext
 
     public virtual DbSet<ProductionDefect> ProductionDefects { get; set; }
 
+    public virtual DbSet<RbacModule> RbacModules { get; set; }
+
+    public virtual DbSet<RbacPermissionAudit> RbacPermissionAudits { get; set; }
+
+    public virtual DbSet<RbacPermissionLevel> RbacPermissionLevels { get; set; }
+
+    public virtual DbSet<RbacRolePermission> RbacRolePermissions { get; set; }
+
     public virtual DbSet<Recipe> Recipes { get; set; }
 
     public virtual DbSet<RecipeIngredient> RecipeIngredients { get; set; }
+
+    public virtual DbSet<Role> Roles { get; set; }
 
     public virtual DbSet<RouteRate> RouteRates { get; set; }
 
@@ -96,6 +112,7 @@ public partial class ManufactureDbContext : DbContext
 
             entity.HasOne(d => d.User).WithMany(p => p.AuditLogs)
                 .HasForeignKey(d => d.UserId)
+                .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("FK_AuditLogs_Users");
         });
 
@@ -313,6 +330,12 @@ public partial class ManufactureDbContext : DbContext
             entity.Property(e => e.Address)
                 .HasMaxLength(300)
                 .HasDefaultValue("", "DF_Employees_Address");
+            entity.Property(e => e.BankAccountNumber)
+                .HasMaxLength(30)
+                .HasDefaultValue("", "DF_Employees_BankAccountNumber");
+            entity.Property(e => e.BankName)
+                .HasMaxLength(100)
+                .HasDefaultValue("", "DF_Employees_BankName");
             entity.Property(e => e.BaseSalary).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(3)
@@ -332,6 +355,9 @@ public partial class ManufactureDbContext : DbContext
                 .HasMaxLength(80)
                 .HasDefaultValue("", "DF_Employees_EmergencyRelationship");
             entity.Property(e => e.EmploymentDate).HasDefaultValueSql("(CONVERT([date],sysutcdatetime()))", "DF_Employees_EmploymentDate");
+            entity.Property(e => e.EmploymentStatus)
+                .HasMaxLength(20)
+                .HasDefaultValue("Active", "DF_Employees_EmploymentStatus");
             entity.Property(e => e.FullName).HasMaxLength(150);
             entity.Property(e => e.GuarantorAddress)
                 .HasMaxLength(300)
@@ -368,15 +394,14 @@ public partial class ManufactureDbContext : DbContext
             entity.Property(e => e.FuelDate)
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())", "DF_FuelLogs_FuelDate");
+            entity.Property(e => e.FuelType)
+                .HasMaxLength(40)
+                .HasDefaultValue("Petrol", "DF_FuelLogs_FuelType");
             entity.Property(e => e.LitresDispensed).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.OdometerReadingKm).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.PetrolStation)
                 .HasMaxLength(120)
                 .HasDefaultValue("", "DF_FuelLogs_PetrolStation");
             entity.Property(e => e.PricePerLitre).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.ReceiptNumber)
-                .HasMaxLength(60)
-                .HasDefaultValue("", "DF_FuelLogs_ReceiptNumber");
             entity.Property(e => e.RouteDescription)
                 .HasMaxLength(200)
                 .HasDefaultValue("", "DF_FuelLogs_RouteDescription");
@@ -579,8 +604,40 @@ public partial class ManufactureDbContext : DbContext
                 .HasConstraintName("FK_OrderItems_Recipes");
         });
 
+        modelBuilder.Entity<PayrollDeductionLine>(entity =>
+        {
+            entity.HasIndex(e => new { e.EmployeeId, e.CreatedAt }, "IX_PayrollDeductionLines_EmployeeId_CreatedAt").IsDescending(false, true);
+
+            entity.HasIndex(e => e.PayrollRecordId, "IX_PayrollDeductionLines_PayrollRecordId");
+
+            entity.HasIndex(e => e.SalaryAdvanceId, "IX_PayrollDeductionLines_SalaryAdvanceId").HasFilter("([SalaryAdvanceId] IS NOT NULL)");
+
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_PayrollDeductionLines_CreatedAt");
+            entity.Property(e => e.DeductionType).HasMaxLength(40);
+            entity.Property(e => e.Description).HasMaxLength(300);
+
+            entity.HasOne(d => d.Employee).WithMany(p => p.PayrollDeductionLines)
+                .HasForeignKey(d => d.EmployeeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_PayrollDeductionLines_Employees");
+
+            entity.HasOne(d => d.PayrollRecord).WithMany(p => p.PayrollDeductionLines)
+                .HasForeignKey(d => d.PayrollRecordId)
+                .HasConstraintName("FK_PayrollDeductionLines_PayrollRecords");
+
+            entity.HasOne(d => d.SalaryAdvance).WithMany(p => p.PayrollDeductionLines)
+                .HasForeignKey(d => d.SalaryAdvanceId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("FK_PayrollDeductionLines_SalaryAdvances");
+        });
+
         modelBuilder.Entity<PayrollRecord>(entity =>
         {
+            entity.HasIndex(e => e.PayrollRunId, "IX_PayrollRecords_PayrollRunId").HasFilter("([PayrollRunId] IS NOT NULL)");
+
             entity.HasIndex(e => new { e.PayrollYear, e.PayrollMonth, e.PaymentStatus }, "IX_PayrollRecords_Period_Status").IsDescending(true, true, false);
 
             entity.HasIndex(e => new { e.EmployeeId, e.PayrollYear, e.PayrollMonth }, "UQ_PayrollRecords_Employee_Period").IsUnique();
@@ -592,23 +649,28 @@ public partial class ManufactureDbContext : DbContext
                 .HasDefaultValueSql("(sysutcdatetime())", "DF_PayrollRecords_CreatedAt");
             entity.Property(e => e.DisciplinaryDeductions).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.GrossSalary)
-                .HasComputedColumnSql("([BaseSalary]+[PerformanceBonus])", true)
-                .HasColumnType("decimal(19, 2)");
+                .HasComputedColumnSql("(((([BaseSalary]+[PerformanceBonus])+[HousingAllowance])+[TransportAllowance])+[OtherAllowances])", true)
+                .HasColumnType("decimal(22, 2)");
+            entity.Property(e => e.HealthInsuranceDeduction).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.HousingAllowance).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.NetSalary)
-                .HasComputedColumnSql("(([BaseSalary]+[PerformanceBonus])-(([DisciplinaryDeductions]+[AdvanceDeduction])+[TaxAndLevies]))", true)
-                .HasColumnType("decimal(21, 2)");
+                .HasComputedColumnSql("((((([BaseSalary]+[PerformanceBonus])+[HousingAllowance])+[TransportAllowance])+[OtherAllowances])-(((([DisciplinaryDeductions]+[AdvanceDeduction])+[TaxAndLevies])+[PensionDeduction])+[HealthInsuranceDeduction]))", true)
+                .HasColumnType("decimal(23, 2)");
             entity.Property(e => e.Notes)
                 .HasMaxLength(400)
                 .HasDefaultValue("", "DF_PayrollRecords_Notes");
+            entity.Property(e => e.OtherAllowances).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.PaymentDate).HasPrecision(3);
             entity.Property(e => e.PaymentStatus)
                 .HasMaxLength(20)
                 .HasDefaultValue("Pending", "DF_PayrollRecords_PaymentStatus");
+            entity.Property(e => e.PensionDeduction).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.PerformanceBonus).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.TaxAndLevies).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.TotalDeductions)
-                .HasComputedColumnSql("(([DisciplinaryDeductions]+[AdvanceDeduction])+[TaxAndLevies])", true)
-                .HasColumnType("decimal(20, 2)");
+                .HasComputedColumnSql("(((([DisciplinaryDeductions]+[AdvanceDeduction])+[TaxAndLevies])+[PensionDeduction])+[HealthInsuranceDeduction])", true)
+                .HasColumnType("decimal(22, 2)");
+            entity.Property(e => e.TransportAllowance).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.UpdatedAt)
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())", "DF_PayrollRecords_UpdatedAt");
@@ -617,6 +679,74 @@ public partial class ManufactureDbContext : DbContext
                 .HasForeignKey(d => d.EmployeeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_PayrollRecords_Employees");
+
+            entity.HasOne(d => d.PayrollRun).WithMany(p => p.PayrollRecords)
+                .HasForeignKey(d => d.PayrollRunId)
+                .OnDelete(DeleteBehavior.Cascade)
+                .HasConstraintName("FK_PayrollRecords_PayrollRuns");
+        });
+
+        modelBuilder.Entity<PayrollRun>(entity =>
+        {
+            entity.HasIndex(e => e.GeneratedAt, "IX_PayrollRuns_GeneratedAt").IsDescending();
+
+            entity.HasIndex(e => new { e.PayrollYear, e.PayrollMonth }, "UQ_PayrollRuns_Period").IsUnique();
+
+            entity.HasIndex(e => e.RunNumber, "UQ_PayrollRuns_RunNumber").IsUnique();
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_PayrollRuns_CreatedAt");
+            entity.Property(e => e.DeductionsTotal).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.GeneratedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_PayrollRuns_GeneratedAt");
+            entity.Property(e => e.GeneratedBy)
+                .HasMaxLength(150)
+                .HasDefaultValue("System", "DF_PayrollRuns_GeneratedBy");
+            entity.Property(e => e.GrossTotal).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.NetTotal).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Notes)
+                .HasMaxLength(400)
+                .HasDefaultValue("", "DF_PayrollRuns_Notes");
+            entity.Property(e => e.RunNumber).HasMaxLength(40);
+            entity.Property(e => e.Status)
+                .HasMaxLength(20)
+                .HasDefaultValue("Pending", "DF_PayrollRuns_Status");
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_PayrollRuns_UpdatedAt");
+        });
+
+        modelBuilder.Entity<PayrollSetting>(entity =>
+        {
+            entity.Property(e => e.HealthInsurancePercent)
+                .HasDefaultValue(2.65m, "DF_PayrollSettings_HealthInsurancePercent")
+                .HasColumnType("decimal(5, 2)");
+            entity.Property(e => e.HousingAllowancePercent)
+                .HasDefaultValue(12.50m, "DF_PayrollSettings_HousingAllowancePercent")
+                .HasColumnType("decimal(5, 2)");
+            entity.Property(e => e.LoanMonthlyRepaymentPercent)
+                .HasDefaultValue(20.00m, "DF_PayrollSettings_LoanMonthlyRepaymentPercent")
+                .HasColumnType("decimal(5, 2)");
+            entity.Property(e => e.MaxLoanPercentOfSalary)
+                .HasDefaultValue(50.00m, "DF_PayrollSettings_MaxLoanPercentOfSalary")
+                .HasColumnType("decimal(5, 2)");
+            entity.Property(e => e.PayeTaxPercent)
+                .HasDefaultValue(3.50m, "DF_PayrollSettings_PayeTaxPercent")
+                .HasColumnType("decimal(5, 2)");
+            entity.Property(e => e.PensionPercent)
+                .HasDefaultValue(5.00m, "DF_PayrollSettings_PensionPercent")
+                .HasColumnType("decimal(5, 2)");
+            entity.Property(e => e.TransportAllowancePercent)
+                .HasDefaultValue(6.25m, "DF_PayrollSettings_TransportAllowancePercent")
+                .HasColumnType("decimal(5, 2)");
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_PayrollSettings_UpdatedAt");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(150)
+                .HasDefaultValue("SuperAdmin", "DF_PayrollSettings_UpdatedBy");
         });
 
         modelBuilder.Entity<PosTerminal>(entity =>
@@ -646,6 +776,7 @@ public partial class ManufactureDbContext : DbContext
 
             entity.HasOne(d => d.AssignedUser).WithMany(p => p.PosTerminals)
                 .HasForeignKey(d => d.AssignedUserId)
+                .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("FK_PosTerminals_Users");
         });
 
@@ -741,6 +872,89 @@ public partial class ManufactureDbContext : DbContext
                 .HasConstraintName("FK_ProductionDefects_Recipes");
         });
 
+        modelBuilder.Entity<RbacModule>(entity =>
+        {
+            entity.HasIndex(e => new { e.SortOrder, e.IsActive }, "IX_RbacModules_SortOrder_IsActive");
+
+            entity.HasIndex(e => e.ModuleKey, "UQ_RbacModules_ModuleKey").IsUnique();
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_RbacModules_CreatedAt");
+            entity.Property(e => e.Description)
+                .HasMaxLength(300)
+                .HasDefaultValue("", "DF_RbacModules_Description");
+            entity.Property(e => e.IsActive).HasDefaultValue(true, "DF_RbacModules_IsActive");
+            entity.Property(e => e.ModuleKey).HasMaxLength(60);
+            entity.Property(e => e.ModuleName).HasMaxLength(150);
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_RbacModules_UpdatedAt");
+        });
+
+        modelBuilder.Entity<RbacPermissionAudit>(entity =>
+        {
+            entity.HasIndex(e => e.ChangedAt, "IX_RbacPermissionAudits_ChangedAt").IsDescending();
+
+            entity.HasIndex(e => new { e.RoleId, e.ModuleId, e.ChangedAt }, "IX_RbacPermissionAudits_Role_Module").IsDescending(false, false, true);
+
+            entity.Property(e => e.ChangedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_RbacPermissionAudits_ChangedAt");
+            entity.Property(e => e.ChangedBy)
+                .HasMaxLength(150)
+                .HasDefaultValue("System", "DF_RbacPermissionAudits_ChangedBy");
+            entity.Property(e => e.ModuleKey).HasMaxLength(60);
+            entity.Property(e => e.NewPermissionLevelName).HasMaxLength(80);
+            entity.Property(e => e.OldPermissionLevelName).HasMaxLength(80);
+            entity.Property(e => e.RoleName).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<RbacPermissionLevel>(entity =>
+        {
+            entity.HasIndex(e => new { e.SortOrder, e.IsActive }, "IX_RbacPermissionLevels_SortOrder_IsActive");
+
+            entity.HasIndex(e => e.Name, "UQ_RbacPermissionLevels_Name").IsUnique();
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_RbacPermissionLevels_CreatedAt");
+            entity.Property(e => e.IsActive).HasDefaultValue(true, "DF_RbacPermissionLevels_IsActive");
+            entity.Property(e => e.Name).HasMaxLength(80);
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_RbacPermissionLevels_UpdatedAt");
+        });
+
+        modelBuilder.Entity<RbacRolePermission>(entity =>
+        {
+            entity.HasIndex(e => e.ModuleId, "IX_RbacRolePermissions_ModuleId");
+
+            entity.HasIndex(e => e.PermissionLevelId, "IX_RbacRolePermissions_PermissionLevelId");
+
+            entity.HasIndex(e => new { e.RoleId, e.ModuleId }, "UQ_RbacRolePermissions_Role_Module").IsUnique();
+
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_RbacRolePermissions_UpdatedAt");
+            entity.Property(e => e.UpdatedBy)
+                .HasMaxLength(150)
+                .HasDefaultValue("System", "DF_RbacRolePermissions_UpdatedBy");
+
+            entity.HasOne(d => d.Module).WithMany(p => p.RbacRolePermissions)
+                .HasForeignKey(d => d.ModuleId)
+                .HasConstraintName("FK_RbacRolePermissions_RbacModules");
+
+            entity.HasOne(d => d.PermissionLevel).WithMany(p => p.RbacRolePermissions)
+                .HasForeignKey(d => d.PermissionLevelId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_RbacRolePermissions_RbacPermissionLevels");
+
+            entity.HasOne(d => d.Role).WithMany(p => p.RbacRolePermissions)
+                .HasForeignKey(d => d.RoleId)
+                .HasConstraintName("FK_RbacRolePermissions_Roles");
+        });
+
         modelBuilder.Entity<Recipe>(entity =>
         {
             entity.HasIndex(e => new { e.ProductType, e.IsActive }, "IX_Recipes_ProductType_IsActive");
@@ -805,6 +1019,24 @@ public partial class ManufactureDbContext : DbContext
             entity.HasOne(d => d.Recipe).WithMany(p => p.RecipeIngredients)
                 .HasForeignKey(d => d.RecipeId)
                 .HasConstraintName("FK_RecipeIngredients_Recipes");
+        });
+
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.HasIndex(e => e.Name, "UQ_Roles_Name").IsUnique();
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_Roles_CreatedAt");
+            entity.Property(e => e.Description)
+                .HasMaxLength(300)
+                .HasDefaultValue("", "DF_Roles_Description");
+            entity.Property(e => e.DisplayName).HasMaxLength(100);
+            entity.Property(e => e.IsSystemRole).HasDefaultValue(true, "DF_Roles_IsSystemRole");
+            entity.Property(e => e.Name).HasMaxLength(50);
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_Roles_UpdatedAt");
         });
 
         modelBuilder.Entity<RouteRate>(entity =>
@@ -925,6 +1157,7 @@ public partial class ManufactureDbContext : DbContext
 
             entity.HasOne(d => d.User).WithOne(p => p.SalesRep)
                 .HasForeignKey<SalesRep>(d => d.UserId)
+                .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("FK_SalesReps_Users");
 
             entity.HasOne(d => d.Vehicle).WithMany(p => p.SalesReps)
@@ -1120,7 +1353,7 @@ public partial class ManufactureDbContext : DbContext
         {
             entity.HasIndex(e => e.PosTerminalCode, "IX_Users_PosTerminalCode").HasFilter("([PosTerminalCode] IS NOT NULL)");
 
-            entity.HasIndex(e => new { e.Role, e.IsActive }, "IX_Users_Role_IsActive");
+            entity.HasIndex(e => new { e.RoleId, e.IsActive }, "IX_Users_RoleId_IsActive");
 
             entity.HasIndex(e => e.Email, "UQ_Users_Email").IsUnique();
 
@@ -1136,9 +1369,6 @@ public partial class ManufactureDbContext : DbContext
             entity.Property(e => e.PhoneNumber).HasMaxLength(30);
             entity.Property(e => e.PinCodeHash).HasMaxLength(256);
             entity.Property(e => e.PosTerminalCode).HasMaxLength(20);
-            entity.Property(e => e.Role)
-                .HasMaxLength(40)
-                .HasDefaultValue("SalesRep", "DF_Users_Role");
             entity.Property(e => e.RowVersion)
                 .IsRowVersion()
                 .IsConcurrencyToken();
@@ -1146,11 +1376,18 @@ public partial class ManufactureDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())", "DF_Users_UpdatedAt");
+
+            entity.HasOne(d => d.Role).WithMany(p => p.Users)
+                .HasForeignKey(d => d.RoleId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Users_Roles");
         });
 
         modelBuilder.Entity<Vehicle>(entity =>
         {
             entity.HasIndex(e => e.AssignedDriverId, "IX_Vehicles_AssignedDriverId").HasFilter("([AssignedDriverId] IS NOT NULL)");
+
+            entity.HasIndex(e => e.AssignedEmployeeId, "IX_Vehicles_AssignedEmployeeId").HasFilter("([AssignedEmployeeId] IS NOT NULL)");
 
             entity.HasIndex(e => new { e.Status, e.IsActive }, "IX_Vehicles_Status_IsActive");
 
@@ -1188,6 +1425,10 @@ public partial class ManufactureDbContext : DbContext
             entity.HasOne(d => d.AssignedDriver).WithMany(p => p.Vehicles)
                 .HasForeignKey(d => d.AssignedDriverId)
                 .HasConstraintName("FK_Vehicles_Drivers");
+
+            entity.HasOne(d => d.AssignedEmployee).WithMany(p => p.Vehicles)
+                .HasForeignKey(d => d.AssignedEmployeeId)
+                .HasConstraintName("FK_Vehicles_Employees");
         });
 
         modelBuilder.Entity<WeeklyFleetExpense>(entity =>

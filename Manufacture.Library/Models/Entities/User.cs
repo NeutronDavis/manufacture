@@ -11,7 +11,7 @@ public partial class User
 
     public string Email { get; set; } = null!;
 
-    public string Role { get; set; } = null!;
+    public int RoleId { get; set; }
 
     public string PinCodeHash { get; set; } = null!;
 
@@ -38,6 +38,8 @@ public partial class User
     public virtual ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
 
     public virtual ICollection<PosTerminal> PosTerminals { get; set; } = new List<PosTerminal>();
+
+    public virtual Role Role { get; set; } = null!;
 
     public virtual SalesRep? SalesRep { get; set; }
 }

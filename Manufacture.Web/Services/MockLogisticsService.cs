@@ -332,8 +332,8 @@ namespace Manufacture.Services
                 MakeAndModel = dto.MakeAndModel,
                 Type = dto.Type,
                 Function = string.IsNullOrWhiteSpace(dto.Function) ? "Deliveries" : dto.Function,
-                AssignedDriverName = dto.AssignedDriverName,
-                DriverPhoneNumber = dto.DriverPhoneNumber,
+                AssignedDriverName = dto.AssignedDriverName ?? string.Empty,
+                DriverPhoneNumber = dto.DriverPhoneNumber ?? string.Empty,
                 FuelType = dto.FuelType,
                 TankCapacityLitres = dto.TankCapacityLitres,
                 CurrentOdometerKm = dto.CurrentOdometerKm,
@@ -498,7 +498,7 @@ namespace Manufacture.Services
                 CustomerPhone = dto.CustomerPhone,
                 VehicleId = dto.VehicleId,
                 VehicleRegNumber = vehicle?.RegistrationNumber ?? dto.VehicleRegNumber,
-                DriverId = dto.DriverId,
+                DriverId = dto.DriverId ?? 0,
                 DriverName = vehicle?.AssignedDriverName ?? dto.DriverName,
                 DriverAllowance = dto.DriverAllowance,
                 SecurityEscortFee = dto.SecurityEscortFee,
@@ -641,17 +641,10 @@ namespace Manufacture.Services
                 Date = dto.Date,
                 LitresDispensed = dto.LitresDispensed,
                 PricePerLitre = dto.PricePerLitre,
-                OdometerReadingKm = dto.OdometerReadingKm,
                 PetrolStation = dto.PetrolStation,
-                ReceiptNumber = dto.ReceiptNumber,
                 RouteDescription = dto.RouteDescription
             };
             _fuelLogs.Add(log);
-
-            if (vehicle != null && dto.OdometerReadingKm > vehicle.CurrentOdometerKm)
-            {
-                vehicle.CurrentOdometerKm = dto.OdometerReadingKm;
-            }
 
             return log;
         }

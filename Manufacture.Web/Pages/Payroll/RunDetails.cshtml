@@ -1,0 +1,168 @@
+@page "{id:int}"
+@model Manufacture.Pages.Payroll.RunDetailsModel
+@{
+    ViewData["Title"] = "Payroll Run Details";
+    var run = Model.Details.Run;
+    var records = Model.Details.Records;
+    var paidCount = records.Count(r => r.PaymentStatus == "Paid");
+    var pendingCount = records.Count(r => r.PaymentStatus != "Paid");
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Payroll/Index" class="hover:underline">Payroll Runs</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">@run.RunNumber</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-file-invoice-dollar text-primary"></i> Payroll Run @run.RunNumber
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                @(new DateTime(run.Year, run.Month, 1).ToString("MMMM yyyy")) ·
+                Generated @run.GeneratedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm") by @run.GeneratedBy
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            @if (run.Status != "Paid")
+            {
+                <form method="post" asp-page-handler="ApproveRun" asp-route-id="@run.Id">
+                    <button type="submit" class="btn btn-sm btn-neutral rounded-xl text-xs font-bold gap-1.5 px-4"
+                            onclick="return confirm('Approve and release this entire payroll run? All employee payments will be marked as Paid.');">
+                        <i class="fa-solid fa-circle-check text-success text-xs"></i> Approve &amp; Release Payroll
+                    </button>
+                </form>
+            }
+            else
+            {
+                <span class="badge badge-success badge-sm font-bold">Payroll Paid</span>
+            }
+            <a asp-page="/Payroll/Index" class="btn btn-sm btn-ghost rounded-xl text-xs gap-1.5">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Payroll Runs
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] is string successMessage)
+    {
+        <div class="alert alert-success shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-check text-base"></i>
+            <span>@successMessage</span>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] is string errorMessage)
+    {
+        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-exclamation text-base"></i>
+            <span>@errorMessage</span>
+        </div>
+    }
+
+    <!-- KPI cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-4">
+            <div class="text-[10px] uppercase font-bold opacity-60">Employees</div>
+            <div class="text-2xl font-black font-mono mt-1">@run.EmployeeCount</div>
+            <div class="text-[10px] opacity-60">@paidCount paid · @pendingCount pending</div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-4">
+            <div class="text-[10px] uppercase font-bold opacity-60">Gross Payroll</div>
+            <div class="text-2xl font-black font-mono mt-1">₦@run.GrossTotal.ToString("N0")</div>
+            <div class="text-[10px] opacity-60">Base + allowances + bonuses</div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-4">
+            <div class="text-[10px] uppercase font-bold opacity-60">Total Deductions</div>
+            <div class="text-2xl font-black font-mono mt-1 text-error">₦@run.DeductionsTotal.ToString("N0")</div>
+            <div class="text-[10px] opacity-60">Tax, pension, health, loans</div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-4">
+            <div class="text-[10px] uppercase font-bold opacity-60">Net Payroll</div>
+            <div class="text-2xl font-black font-mono mt-1 text-success">₦@run.NetTotal.ToString("N0")</div>
+            <div class="text-[10px] opacity-60">Bank disbursement</div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-4">
+            <div class="text-[10px] uppercase font-bold opacity-60">Run Status</div>
+            <div class="mt-2">
+                @if (run.Status == "Paid")
+                {
+                    <span class="badge badge-success badge-sm font-bold">Paid</span>
+                }
+                else if (run.Status == "PartiallyPaid")
+                {
+                    <span class="badge badge-info badge-sm font-bold">Partially Paid</span>
+                }
+                else
+                {
+                    <span class="badge badge-warning badge-sm font-bold">Pending</span>
+                }
+            </div>
+            <div class="text-[10px] opacity-60 mt-1">@records.Count payroll record(s)</div>
+        </div>
+    </div>
+
+    <!-- Employee payroll table -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+        <div class="card-body p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-users text-primary"></i> Employee Payroll Columns
+                </h2>
+                <span class="badge badge-neutral badge-xs font-mono">@run.RunNumber</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="table table-sm w-full text-xs">
+                    <thead>
+                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                            <th>Staff Member</th>
+                            <th>Department</th>
+                            <th class="text-right">Base (₦)</th>
+                            <th class="text-right">Allowances (₦)</th>
+                            <th class="text-right">Bonus (₦)</th>
+                            <th class="text-right">Loan Recovery (₦)</th>
+                            <th class="text-right">Other Deductions (₦)</th>
+                            <th class="text-right">Gross (₦)</th>
+                            <th class="text-right">Net Pay (₦)</th>
+                            <th>Status</th>
+                            <th class="text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-base-200">
+                        @if (records.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="11" class="text-center py-10 text-xs opacity-60">No employee records in this payroll run.</td>
+                            </tr>
+                        }
+                        @foreach (var rec in records)
+                        {
+                            var allowances = rec.HousingAllowance + rec.TransportAllowance + rec.OtherAllowances;
+                            var otherDeductions = rec.TaxAndLevies + rec.PensionDeduction + rec.HealthInsuranceDeduction + rec.DisciplinaryDeductions;
+                            <tr class="hover:bg-base-200/60 transition-colors">
+                                <td>
+                                    <div class="font-bold text-base-content">@rec.EmployeeName</div>
+                                    <div class="text-[10px] opacity-60 font-mono">@rec.StaffCode</div>
+                                </td>
+                                <td><span class="badge badge-soft badge-xs font-semibold">@rec.Department</span></td>
+                                <td class="text-right font-mono">₦@rec.BaseSalary.ToString("N2")</td>
+                                <td class="text-right font-mono">₦@allowances.ToString("N2")</td>
+                                <td class="text-right font-mono text-success">+₦@rec.PerformanceBonus.ToString("N2")</td>
+                                <td class="text-right font-mono text-warning">-₦@rec.AdvanceDeduction.ToString("N2")</td>
+                                <td class="text-right font-mono text-error">-₦@otherDeductions.ToString("N2")</td>
+                                <td class="text-right font-mono font-bold">₦@rec.GrossSalary.ToString("N2")</td>
+                                <td class="text-right font-mono font-black text-success">₦@rec.NetSalary.ToString("N2")</td>
+                                <td>
+                                    <span class="badge @(rec.PaymentStatus == "Paid" ? "badge-success" : "badge-warning") badge-xs font-bold">@rec.PaymentStatus</span>
+                                </td>
+                                <td class="text-right">
+                                    <a asp-page="/Payroll/Details" asp-route-id="@rec.Id" class="btn btn-xs btn-ghost text-primary font-bold">View</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

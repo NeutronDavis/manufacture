@@ -1,15 +1,15 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.DTOs;
 
 namespace Manufacture.Pages.HR.Employees
 {
     public class EditModel : PageModel
     {
-        private readonly MockEmployeeService _employeeService;
+        private readonly IEmployeeService _employeeService;
 
-        public EditModel(MockEmployeeService employeeService)
+        public EditModel(IEmployeeService employeeService)
         {
             _employeeService = employeeService;
         }
@@ -17,43 +17,40 @@ namespace Manufacture.Pages.HR.Employees
         [BindProperty]
         public EmployeeDto EmployeeInput { get; set; } = new();
 
-        public IActionResult OnGet(int id)
+        public async Task<IActionResult> OnGetAsync(int id)
         {
-            var emp = _employeeService.GetById(id);
-            if (emp == null) return RedirectToPage("/HR/Index");
-
-            EmployeeInput = new EmployeeDto
+            var employee = await _employeeService.GetByIdAsync(id);
+            if (employee == null)
             {
-                Id = emp.Id,
-                FullName = emp.FullName,
-                StaffCode = emp.StaffCode,
-                Department = emp.Department,
-                Designation = emp.Designation,
-                PhoneNumber = emp.PhoneNumber,
-                Email = emp.Email,
-                Address = emp.Address,
-                BaseSalary = emp.BaseSalary,
-                EmergencyContactName = emp.EmergencyContactName,
-                EmergencyContactPhone = emp.EmergencyContactPhone,
-                EmergencyRelationship = emp.EmergencyRelationship,
-                GuarantorName = emp.GuarantorName,
-                GuarantorPhone = emp.GuarantorPhone,
-                GuarantorAddress = emp.GuarantorAddress,
-                GuarantorOccupation = emp.GuarantorOccupation,
-                EmploymentDate = emp.EmploymentDate,
-                IsActive = emp.IsActive
-            };
+                TempData["ErrorMessage"] = "Employee record not found.";
+                return RedirectToPage("/HR/Index");
+            }
 
+            EmployeeInput = employee;
             return Page();
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync()
         {
-            if (!ModelState.IsValid) return Page();
+            if (!ModelState.IsValid)
+            {
+                return Page();
+            }
 
-            _employeeService.Update(EmployeeInput);
-            TempData["SuccessMessage"] = $"Profile for '{EmployeeInput.FullName}' updated.";
-            return RedirectToPage("/HR/Employees/Details", new { id = EmployeeInput.Id });
+            try
+            {
+                var updated = await _employeeService.UpdateAsync(EmployeeInput);
+                TempData[updated ? "SuccessMessage" : "ErrorMessage"] = updated
+                    ? $"Profile for '{EmployeeInput.FullName}' updated."
+                    : "Employee record not found.";
+
+                return RedirectToPage("/HR/Index", new { employeeId = EmployeeInput.Id });
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+                return Page();
+            }
         }
     }
 }

@@ -1,46 +1,42 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.Domain;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Models.Domain;
-using Manufacture.Services;
 
 namespace Manufacture.Pages.Logistics.Charter
 {
     public class DetailsModel : PageModel
     {
-        private readonly MockLogisticsService _logisticsService;
+        private readonly IFleetService _fleetService;
 
-        public DetailsModel(MockLogisticsService logisticsService)
+        public DetailsModel(IFleetService fleetService)
         {
-            _logisticsService = logisticsService;
+            _fleetService = fleetService;
         }
 
-        public CharterBooking? Booking { get; set; }
-        public Vehicle? Vehicle { get; set; }
+        public CharterBookingDto? Booking { get; set; }
+        public VehicleDto? Vehicle { get; set; }
 
-        public IActionResult OnGet(int id)
+        public async Task<IActionResult> OnGetAsync(int id)
         {
-            Booking = _logisticsService.GetCharterBookingById(id);
+            Booking = await _fleetService.GetCharterBookingAsync(id);
             if (Booking == null)
             {
                 TempData["ErrorMessage"] = "Charter booking not found.";
                 return RedirectToPage("/Logistics/Charter/Index");
             }
 
-            Vehicle = _logisticsService.GetVehicleById(Booking.VehicleId);
+            Vehicle = await _fleetService.GetVehicleAsync(Booking.VehicleId);
             return Page();
         }
 
-        public IActionResult OnPostUpdateStatus(int id, CharterTripStatus newStatus)
+        public async Task<IActionResult> OnPostUpdateStatusAsync(int id, CharterTripStatus newStatus)
         {
-            var success = _logisticsService.UpdateBookingStatus(id, newStatus);
-            if (success)
-            {
-                TempData["SuccessMessage"] = $"Trip status updated to {newStatus}.";
-            }
-            else
-            {
-                TempData["ErrorMessage"] = "Could not update trip status.";
-            }
+            var success = await _fleetService.UpdateCharterStatusAsync(id, newStatus);
+            TempData[success ? "SuccessMessage" : "ErrorMessage"] = success
+                ? $"Trip status updated to {newStatus}."
+                : "Could not update trip status.";
 
             return RedirectToPage(new { id });
         }

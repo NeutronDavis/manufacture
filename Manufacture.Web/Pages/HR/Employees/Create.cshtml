@@ -11,7 +11,7 @@
             <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
                 <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
                 <span>&gt;</span>
-                <a asp-page="/HR/StaffDirectory" class="hover:underline">Staff Directory</a>
+                <a asp-page="/HR/Index" class="hover:underline">Staff Directory</a>
                 <span>&gt;</span>
                 <span class="text-primary font-bold">Add New Employee</span>
             </div>
@@ -23,7 +23,7 @@
             </p>
         </div>
         <div>
-            <a asp-page="/HR/StaffDirectory" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+            <a asp-page="/HR/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
                 <i class="fa-solid fa-arrow-left text-xs"></i> Back to Directory
             </a>
         </div>
@@ -31,6 +31,8 @@
 
     <!-- Standard 2-Column Full-Width Form Layout -->
     <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        <input type="hidden" asp-for="EmployeeInput.EmploymentDate" />
+        <input type="hidden" asp-for="EmployeeInput.IsActive" />
         
         <!-- Left Section (~70% width, 8 Cols) -->
         <div class="lg:col-span-8 space-y-6">
@@ -74,9 +76,9 @@
                             <select asp-for="EmployeeInput.Department" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
                                 <option value="Production">Production (Bakery Floor)</option>
                                 <option value="Sales">Front of House / Sales</option>
-                                <option value="Logistics">Logistics & Fleet</option>
-                                <option value="Store">Store & Inventory</option>
-                                <option value="Administration">Administration & HR</option>
+                                <option value="Logistics">Logistics &amp; Fleet</option>
+                                <option value="Store">Store &amp; Inventory</option>
+                                <option value="Admin">Administration &amp; HR</option>
                             </select>
                         </div>
 
@@ -123,6 +125,25 @@
                                 </span>
                             </label>
                             <input type="text" asp-for="EmployeeInput.Address" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="Residential Street Address, City" required />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5"><span class="label-text font-bold text-xs text-base-content">Bank Name</span></label>
+                            <input asp-for="EmployeeInput.BankName" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs" placeholder="e.g. Access Bank" />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5"><span class="label-text font-bold text-xs text-base-content">Bank Account Number</span></label>
+                            <input asp-for="EmployeeInput.BankAccountNumber" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs" placeholder="e.g. 0123456789" />
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5"><span class="label-text font-bold text-xs text-base-content">Employment Status</span></label>
+                            <select asp-for="EmployeeInput.EmploymentStatus" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium">
+                                <option value="Active">Active</option>
+                                <option value="OnLeave">On Leave</option>
+                                <option value="Inactive">Inactive</option>
+                            </select>
                         </div>
                     </div>
                 </div>
@@ -268,7 +289,7 @@
                         <i class="fa-solid fa-circle-check text-success text-xs"></i> Save Employee Profile
                     </button>
                     
-                    <a asp-page="/HR/StaffDirectory" class="btn btn-ghost w-full rounded-xl text-xs font-semibold">
+                    <a asp-page="/HR/Index" class="btn btn-ghost w-full rounded-xl text-xs font-semibold">
                         Cancel
                     </a>
                 </div>

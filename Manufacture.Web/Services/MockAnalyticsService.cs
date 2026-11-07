@@ -21,11 +21,11 @@ namespace Manufacture.Services
     /// </summary>
     public class MockAnalyticsService
     {
-        private readonly MockSettingsService _settingsService;
+        private readonly SettingsCache _settingsCache;
 
         /// <summary>Planned cash share of revenue; the benchmark for cash variance.</summary>
-        public decimal PlannedCashShare => _settingsService.PlannedCashShare;
-        public decimal PlannedCashPercent => _settingsService.PlannedCashPercent;
+        public decimal PlannedCashShare => _settingsCache.PlannedCashShare;
+        public decimal PlannedCashPercent => _settingsCache.PlannedCashPercent;
 
         private const string ScopeAll = "all";
 
@@ -51,13 +51,13 @@ namespace Manufacture.Services
             MockUserService userService,
             MockLogisticsService logisticsService,
             MockSalesService salesService,
-            MockSettingsService? settingsService = null)
+            SettingsCache? settingsCache = null)
         {
             _productionService = productionService;
             _userService = userService;
             _logisticsService = logisticsService;
             _salesService = salesService;
-            _settingsService = settingsService ?? new MockSettingsService();
+            _settingsCache = settingsCache ?? new SettingsCache();
 
             foreach (var vehicle in _logisticsService.GetAllVehicles())
             {
@@ -1145,7 +1145,7 @@ namespace Manufacture.Services
                         ? 0m
                         : Math.Round(row.CashVarianceAmount / totals.ExpectedRevenue * 100m, 1);
 
-                    return row.FlagCollection(_settingsService.AlertTolerancePercent);
+                    return row.FlagCollection(_settingsCache.AlertTolerancePercent);
                 })
                 .ToList();
 

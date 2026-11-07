@@ -1,48 +1,54 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.DTOs;
-using Manufacture.Models.Domain;
 
 namespace Manufacture.Pages.Logistics.Vehicles
 {
     public class CreateModel : PageModel
     {
-        private readonly MockLogisticsService _logisticsService;
-        private readonly MockEmployeeService _employeeService;
+        private readonly IFleetService _fleetService;
 
-        public CreateModel(MockLogisticsService logisticsService, MockEmployeeService employeeService)
+        public CreateModel(IFleetService fleetService)
         {
-            _logisticsService = logisticsService;
-            _employeeService = employeeService;
+            _fleetService = fleetService;
         }
 
         [BindProperty]
         public VehicleDto VehicleInput { get; set; } = new();
 
-        public List<Employee> FleetDrivers { get; set; } = new();
+        public List<EmployeeDto> FleetDrivers { get; set; } = new();
 
-        public void OnGet()
+        public async Task OnGetAsync()
         {
-            LoadFleetDrivers();
+            await LoadFleetDriversAsync();
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync()
         {
+            await LoadFleetDriversAsync();
+
             if (!ModelState.IsValid)
             {
-                LoadFleetDrivers();
                 return Page();
             }
 
-            var v = _logisticsService.CreateVehicle(VehicleInput);
-            TempData["SuccessMessage"] = $"Vehicle '{v.RegistrationNumber}' added to fleet.";
-            return RedirectToPage("/Logistics/Vehicles/Index");
+            try
+            {
+                var vehicle = await _fleetService.CreateVehicleAsync(VehicleInput);
+                TempData["SuccessMessage"] = $"Vehicle '{vehicle.RegistrationNumber}' added to fleet.";
+                return RedirectToPage("/Logistics/Vehicles/Index");
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+                return Page();
+            }
         }
 
-        private void LoadFleetDrivers()
+        private async Task LoadFleetDriversAsync()
         {
-            FleetDrivers = _employeeService.GetFleetDrivers();
+            FleetDrivers = await _fleetService.GetLogisticsDriversAsync();
         }
     }
 }

@@ -1,10 +1,10 @@
 @using Microsoft.AspNetCore.Http
-@inject Manufacture.Services.MockRbacService Rbac
+@inject Manufacture.Services.RbacCache Rbac
 @{
     var session = Context.Session;
-    var userRole = session?.GetString("UserRole") ?? "SuperAdmin";
-    var userName = session?.GetString("UserName") ?? "Adekunle Johnson";
-    var userEmail = session?.GetString("UserEmail") ?? "admin@bakery.com";
+    var userRole = session?.GetString("UserRole") ?? "Guest";
+    var userName = session?.GetString("UserName") ?? "Not signed in";
+    var userEmail = session?.GetString("UserEmail") ?? string.Empty;
     var currentPath = Context.Request.Path.Value ?? "";
 
     // Determine current active module
@@ -72,23 +72,12 @@
 
             <!-- Right Controls: Role Switcher, Notification, Avatar -->
             <div class="flex items-center gap-3">
-                <!-- Role Switcher -->
-                <div class="dropdown dropdown-end">
-                    <div tabindex="0" role="button" class="btn btn-xs btn-outline border-base-300 text-base-content hover:bg-base-300 rounded-xl gap-1.5 font-bold text-xs py-1 px-2.5">
-                        <i class="fa-solid fa-user-shield text-xs"></i>
-                        <span class="hidden sm:inline">Role:</span> 
-                        <span class="font-black">@userRole</span>
-                        <i class="fa-solid fa-chevron-down text-[9px] opacity-60"></i>
-                    </div>
-                    <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-2xl z-50 w-56 p-2 shadow-xl border border-base-300 text-xs">
-                        <li class="menu-title text-[10px] uppercase font-bold opacity-60">Switch Active Role (Mock):</li>
-                        <li><a asp-page="/Login" asp-page-handler="SwitchRole" asp-route-role="SuperAdmin" class="@(userRole == "SuperAdmin" ? "active bg-neutral text-neutral-content rounded-xl" : "rounded-xl")"><i class="fa-solid fa-crown text-amber-500"></i> Super Admin</a></li>
-                        <li><a asp-page="/Login" asp-page-handler="SwitchRole" asp-route-role="ProductionManager" class="@(userRole == "ProductionManager" ? "active bg-neutral text-neutral-content rounded-xl" : "rounded-xl")"><i class="fa-solid fa-industry text-blue-500"></i> Production Mgr</a></li>
-                        <li><a asp-page="/Login" asp-page-handler="SwitchRole" asp-route-role="StoreManager" class="@(userRole == "StoreManager" ? "active bg-neutral text-neutral-content rounded-xl" : "rounded-xl")"><i class="fa-solid fa-warehouse text-emerald-500"></i> Store Keeper</a></li>
-                        <li><a asp-page="/Login" asp-page-handler="SwitchRole" asp-route-role="SalesRep" class="@(userRole == "SalesRep" ? "active bg-neutral text-neutral-content rounded-xl" : "rounded-xl")"><i class="fa-solid fa-cash-register text-purple-500"></i> Sales Rep (POS)</a></li>
-                        <li><a asp-page="/Login" asp-page-handler="SwitchRole" asp-route-role="Vendor" class="@(userRole == "Vendor" ? "active bg-neutral text-neutral-content rounded-xl" : "rounded-xl")"><i class="fa-solid fa-store text-orange-500"></i> Vendor / Client</a></li>
-                        <li><a asp-page="/Login" asp-page-handler="SwitchRole" asp-route-role="HrPayrollManager" class="@(userRole == "HrPayrollManager" ? "active bg-neutral text-neutral-content rounded-xl" : "rounded-xl")"><i class="fa-solid fa-users text-rose-500"></i> HR & Payroll</a></li>
-                    </ul>
+                <!-- Signed-in role (read-only; roles can only change by signing in) -->
+                <div class="btn btn-xs btn-outline border-base-300 text-base-content rounded-xl gap-1.5 font-bold text-xs py-1 px-2.5 cursor-default no-animation"
+                     title="Role assigned to the signed-in account">
+                    <i class="fa-solid fa-user-shield text-xs"></i>
+                    <span class="hidden sm:inline">Role:</span>
+                    <span class="font-black">@userRole</span>
                 </div>
 
                 <!-- Notifications Bell -->
@@ -226,7 +215,7 @@
                                         <span>Recipes &amp; Costing</span>
                                     </a>
                                 }
-                                @if (Rbac.GetPermissionLevel(userRole, "Recipes").Contains("Edit") || userRole == "SuperAdmin")
+                                @if (Rbac.CanEdit(userRole, "Recipes") || userRole == "SuperAdmin")
                                 {
                                     <a asp-page="/Production/Pricing/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Production/Pricing") ? "erp-nav-active" : "")">
                                         <i class="fa-solid fa-tags text-[11px] w-3.5 text-center"></i>
@@ -240,14 +229,14 @@
                                         <span>Mixing Batches</span>
                                     </a>
                                 }
-                                @if (Rbac.GetPermissionLevel(userRole, "Recipes").Contains("Edit") || userRole == "SuperAdmin")
+                                @if (Rbac.CanEdit(userRole, "Recipes") || userRole == "SuperAdmin")
                                 {
                                     <a asp-page="/Production/Recipes/Create" class="erp-nav-sub-item @(currentPath == "/Production/Recipes/Create" ? "erp-nav-active" : "")">
                                         <i class="fa-solid fa-flask text-[11px] w-3.5 text-center"></i>
                                         <span>Build Recipe</span>
                                     </a>
                                 }
-                                @if (Rbac.GetPermissionLevel(userRole, "Production").Contains("Edit") || userRole == "SuperAdmin")
+                                @if (Rbac.CanEdit(userRole, "Production") || userRole == "SuperAdmin")
                                 {
                                     <a asp-page="/Production/Batches/Create" class="erp-nav-sub-item @(currentPath == "/Production/Batches/Create" ? "erp-nav-active" : "")">
                                         <i class="fa-solid fa-clipboard-list text-[11px] w-3.5 text-center"></i>
@@ -274,7 +263,7 @@
                                     <i class="fa-solid fa-list-check text-[11px] w-3.5 text-center"></i>
                                     <span>Stock Overview</span>
                                 </a>
-                                @if (Rbac.GetPermissionLevel(userRole, "Inventory").Contains("Edit") || userRole == "SuperAdmin")
+                                @if (Rbac.CanEdit(userRole, "Inventory") || userRole == "SuperAdmin")
                                 {
                                     <a asp-page="/Inventory/Items/Create" class="erp-nav-sub-item @(currentPath == "/Inventory/Items/Create" ? "erp-nav-active" : "")">
                                         <i class="fa-solid fa-plus text-[11px] w-3.5 text-center"></i>
@@ -289,7 +278,7 @@
                                     <i class="fa-solid fa-clipboard-question text-[11px] w-3.5 text-center"></i>
                                     <span>New Store Request</span>
                                 </a>
-                                @if (Rbac.GetPermissionLevel(userRole, "Inventory").Contains("Edit") || userRole == "SuperAdmin")
+                                @if (Rbac.CanEdit(userRole, "Inventory") || userRole == "SuperAdmin")
                                 {
                                     <a asp-page="/Inventory/Suppliers/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Inventory/Suppliers") ? "erp-nav-active" : "")">
                                         <i class="fa-solid fa-truck-field text-[11px] w-3.5 text-center"></i>
@@ -417,18 +406,11 @@
                                 <i class="fa-solid fa-chevron-right erp-nav-arrow"></i>
                             </summary>
                             <div class="erp-nav-sub-menu">
-                                <a asp-page="/HR/StaffDirectory" class="erp-nav-sub-item @(currentPath == "/HR/StaffDirectory" ? "erp-nav-active" : "")">
+                                <a asp-page="/HR/Index" class="erp-nav-sub-item @(currentPath == "/HR" || currentPath == "/HR/Index" ? "erp-nav-active" : "")">
                                     <i class="fa-solid fa-users text-[11px] w-3.5 text-center"></i>
                                     <span>Staff Directory</span>
                                 </a>
-                                <a asp-page="/HR/Index" class="erp-nav-sub-item @(currentPath == "/HR" || currentPath == "/HR/Index" ? "erp-nav-active" : "")">
-                                    <i class="fa-solid fa-id-card text-[11px] w-3.5 text-center"></i>
-                                    <span>Staff Records & Payroll</span>
-                                </a>
-                                <a asp-page="/HR/Employees/Create" class="erp-nav-sub-item @(currentPath == "/HR/Employees/Create" ? "erp-nav-active" : "")">
-                                    <i class="fa-solid fa-user-plus text-[11px] w-3.5 text-center"></i>
-                                    <span>Add Employee</span>
-                                </a>
+                             
                                 <a asp-page="/Payroll/Index" class="erp-nav-sub-item @(currentPath == "/Payroll" || currentPath == "/Payroll/Index" ? "erp-nav-active" : "")">
                                     <i class="fa-solid fa-money-check-dollar text-[11px] w-3.5 text-center"></i>
                                     <span>Monthly Payroll</span>
@@ -437,10 +419,7 @@
                                     <i class="fa-solid fa-hand-holding-dollar text-[11px] w-3.5 text-center"></i>
                                     <span>Salary Advances</span>
                                 </a>
-                                <a asp-page="/Payroll/Run" class="erp-nav-sub-item @(currentPath == "/Payroll/Run" ? "erp-nav-active" : "")">
-                                    <i class="fa-solid fa-gears text-[11px] w-3.5 text-center"></i>
-                                    <span>Process Payroll</span>
-                                </a>
+                             
                             </div>
                         </details>
                     }
@@ -448,7 +427,11 @@
                     <!-- 7. Reports & Analytics -->
                     @if (Rbac.HasAccess(userRole, "Reports"))
                     {
-                        <details class="erp-nav-dropdown" @(inReports ? "open" : "")>
+                        <a asp-page="/Reports/Index" class="erp-nav-item @(currentPath.StartsWith("/Reports")? "erp-nav-active" : "")">
+                            <i class="fa-solid fa-chart-column text-sm w-4 text-center"></i>
+                            <span>Reports</span>
+                        </a>
+                        @* <details class="erp-nav-dropdown" @(inReports ? "open" : "")>
                             <summary class="@(inReports ? "font-bold text-base-content" : "")">
                                 <div class="flex items-center gap-3">
                                     <i class="fa-solid fa-chart-column text-sm w-4 text-center"></i>
@@ -478,7 +461,7 @@
                                     <span>Logistics &amp; Fleet</span>
                                 </a>
                             </div>
-                        </details>
+                        </details> *@
                     }
 
                     <!-- 8. Settings & RBAC -->
@@ -493,9 +476,9 @@
                                 <i class="fa-solid fa-chevron-right erp-nav-arrow"></i>
                             </summary>
                             <div class="erp-nav-sub-menu">
-                                <a asp-page="/Settings/Treasury" class="erp-nav-sub-item @(currentPath.StartsWith("/Settings/Treasury") ? "erp-nav-active" : "")">
+                                <a asp-page="/Settings/Finance" class="erp-nav-sub-item @(currentPath.StartsWith("/Settings/Finance") ? "erp-nav-active" : "")">
                                     <i class="fa-solid fa-scale-balanced text-[11px] w-3.5 text-center"></i>
-                                    <span>Treasury &amp; Policy</span>
+                                    <span>Finance &amp; Payroll</span>
                                 </a>
                                 <a asp-page="/Settings/Theme" class="erp-nav-sub-item @(currentPath == "/Settings/Theme" ? "erp-nav-active" : "")">
                                     <i class="fa-solid fa-palette text-[11px] w-3.5 text-center"></i>
@@ -505,10 +488,10 @@
                                     <i class="fa-solid fa-users-gear text-[11px] w-3.5 text-center"></i>
                                     <span>User Accounts & PINs</span>
                                 </a>
-                                <a asp-page="/UserManagement/Create" class="erp-nav-sub-item @(currentPath == "/UserManagement/Create" ? "erp-nav-active" : "")">
+                                @* <a asp-page="/UserManagement/Create" class="erp-nav-sub-item @(currentPath == "/UserManagement/Create" ? "erp-nav-active" : "")">
                                     <i class="fa-solid fa-user-plus text-[11px] w-3.5 text-center"></i>
                                     <span>Create User</span>
-                                </a>
+                                </a> *@
                                 <a asp-page="/UserManagement/Permissions" class="erp-nav-sub-item @(currentPath == "/UserManagement/Permissions" ? "erp-nav-active" : "")">
                                     <i class="fa-solid fa-shield-halved text-[11px] w-3.5 text-center"></i>
                                     <span>RBAC Matrix</span>

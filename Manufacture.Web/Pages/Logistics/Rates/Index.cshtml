@@ -21,7 +21,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-black text-base-content tracking-tight">360° Statewide Route Pricing Matrix</h1>
-                    <p class="text-xs text-base-content/60">Standardized interstate haulage and VIP escort rates across Nigeria (With Fuel vs. Without Fuel)</p>
+                    <p class="text-xs text-base-content/60">Standard route prices for interstate trips and VIP escort assignments, with fuel and without fuel.</p>
                 </div>
             </div>
         </div>
@@ -40,46 +40,46 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="card bg-base-100 border border-base-300 shadow-xs p-4 rounded-2xl">
             <div class="flex items-center justify-between">
-                <div class="text-xs font-semibold text-base-content/60">Configured Lanes</div>
+                <div class="text-xs font-semibold text-base-content/60">Total Routes Priced</div>
                 <div class="w-8 h-8 rounded-xl bg-base-200 flex items-center justify-center text-xs font-bold text-base-content">
                     <i class="fa-solid fa-route"></i>
                 </div>
             </div>
             <div class="mt-2 text-2xl font-black text-base-content">@Model.TotalRoutesCount</div>
-            <div class="text-[11px] text-base-content/50 mt-1">@Model.ActiveLanesCount active operational corridors</div>
+            <div class="text-[11px] text-base-content/50 mt-1">@Model.ActiveLanesCount active routes</div>
         </div>
 
         <div class="card bg-base-100 border border-base-300 shadow-xs p-4 rounded-2xl">
             <div class="flex items-center justify-between">
-                <div class="text-xs font-semibold text-base-content/60">Avg. Rate (With Fuel)</div>
+                <div class="text-xs font-semibold text-base-content/60">Average Price Including Fuel</div>
                 <div class="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xs font-bold">
                     <i class="fa-solid fa-gas-pump"></i>
                 </div>
             </div>
             <div class="mt-2 text-2xl font-black text-emerald-600">₦@Model.AvgRateWithFuel.ToString("N0")</div>
-            <div class="text-[11px] text-base-content/50 mt-1">Full-service company fueled trips</div>
+            <div class="text-[11px] text-base-content/50 mt-1">Company supplies the fuel</div>
         </div>
 
         <div class="card bg-base-100 border border-base-300 shadow-xs p-4 rounded-2xl">
             <div class="flex items-center justify-between">
-                <div class="text-xs font-semibold text-base-content/60">Avg. Rate (Freight Only)</div>
+                <div class="text-xs font-semibold text-base-content/60">Average Price Without Fuel</div>
                 <div class="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center text-xs font-bold">
                     <i class="fa-solid fa-truck-ramp-box"></i>
                 </div>
             </div>
             <div class="mt-2 text-2xl font-black text-blue-600">₦@Model.AvgRateWithoutFuel.ToString("N0")</div>
-            <div class="text-[11px] text-base-content/50 mt-1">Client supplies diesel for run</div>
+            <div class="text-[11px] text-base-content/50 mt-1">Customer supplies the fuel</div>
         </div>
 
         <div class="card bg-base-100 border border-base-300 shadow-xs p-4 rounded-2xl">
             <div class="flex items-center justify-between">
-                <div class="text-xs font-semibold text-base-content/60">Fuel Surcharge Spread</div>
+                <div class="text-xs font-semibold text-base-content/60">Average Fuel Price Difference</div>
                 <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center text-xs font-bold">
                     <i class="fa-solid fa-arrow-trend-up"></i>
                 </div>
             </div>
             <div class="mt-2 text-2xl font-black text-amber-600">₦@((Model.AvgRateWithFuel - Model.AvgRateWithoutFuel).ToString("N0"))</div>
-            <div class="text-[11px] text-base-content/50 mt-1">Average diesel budget allowance</div>
+            <div class="text-[11px] text-base-content/50 mt-1">Difference between with-fuel and without-fuel prices</div>
         </div>
     </div>
 
@@ -156,7 +156,7 @@
                                         <i class="fa-solid fa-arrow-right text-[10px] text-base-content/40"></i>
                                         <span class="text-primary font-black">@rate.DestinationState</span>
                                     </div>
-                                    <div class="text-[10px] text-base-content/50">Interstate Commercial Freight Lane</div>
+                                    <div class="text-[10px] text-base-content/50">Interstate route pricing lane</div>
                                 </td>
                                 <td class="py-3 px-4">
                                     <span class="badge badge-sm badge-neutral border-0 font-medium whitespace-nowrap">

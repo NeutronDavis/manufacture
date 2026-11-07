@@ -54,6 +54,23 @@ dotnet build Manufacture.slnx
 dotnet test Manufacture.Tests/Manufacture.Tests.csproj
 ```
 
+## Security notes
+
+- Credentials are validated against `dbo.Users`; passwords and PINs are stored
+  as ASP.NET Core `PasswordHasher` hashes.
+- Login input is trimmed, length-limited, format-validated, and rejected if it
+  contains control characters.
+- Data access uses EF Core LINQ, which sends parameterized SQL. User input is
+  never concatenated into a query or passed to raw SQL.
+- Razor Pages require an authenticated session; direct navigation to protected
+  pages redirects to `/Login`.
+- Role-based access control is database-backed (`RbacModules`,
+  `RbacPermissionLevels`, `RbacRolePermissions`) and changes take effect
+  immediately through a refreshed in-memory cache.
+- Login errors are deliberately generic so the page does not reveal whether an
+  email or PIN exists.
+- All POST forms use Razor Pages antiforgery tokens.
+
 ## Local database
 
 The development connection string points at SQL Server LocalDB:

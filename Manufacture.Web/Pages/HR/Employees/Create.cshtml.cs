@@ -1,15 +1,15 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.DTOs;
 
 namespace Manufacture.Pages.HR.Employees
 {
     public class CreateModel : PageModel
     {
-        private readonly MockEmployeeService _employeeService;
+        private readonly IEmployeeService _employeeService;
 
-        public CreateModel(MockEmployeeService employeeService)
+        public CreateModel(IEmployeeService employeeService)
         {
             _employeeService = employeeService;
         }
@@ -20,15 +20,29 @@ namespace Manufacture.Pages.HR.Employees
         public void OnGet()
         {
             EmployeeInput.BaseSalary = 90000;
+            EmployeeInput.EmploymentStatus = "Active";
+            EmployeeInput.IsActive = true;
+            EmployeeInput.EmploymentDate = DateTime.UtcNow.Date;
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync()
         {
-            if (!ModelState.IsValid) return Page();
+            if (!ModelState.IsValid)
+            {
+                return Page();
+            }
 
-            var emp = _employeeService.Create(EmployeeInput);
-            TempData["SuccessMessage"] = $"Employee '{emp.FullName}' ({emp.StaffCode}) registered successfully.";
-            return RedirectToPage("/HR/Employees/Details", new { id = emp.Id });
+            try
+            {
+                var employee = await _employeeService.CreateAsync(EmployeeInput);
+                TempData["SuccessMessage"] = $"Employee '{employee.FullName}' ({employee.StaffCode}) registered successfully.";
+                return RedirectToPage("/HR/Index", new { employeeId = employee.Id });
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+                return Page();
+            }
         }
     }
 }

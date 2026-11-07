@@ -8,6 +8,9 @@ CREATE TABLE [dbo].[Employees]
     [PhoneNumber]             NVARCHAR (30)  NOT NULL,
     [Email]                   NVARCHAR (256) NOT NULL CONSTRAINT [DF_Employees_Email] DEFAULT (N''),
     [Address]                 NVARCHAR (300) NOT NULL CONSTRAINT [DF_Employees_Address] DEFAULT (N''),
+    [BankName]                NVARCHAR (100) NOT NULL CONSTRAINT [DF_Employees_BankName] DEFAULT (N''),
+    [BankAccountNumber]       NVARCHAR (30)  NOT NULL CONSTRAINT [DF_Employees_BankAccountNumber] DEFAULT (N''),
+    [EmploymentStatus]        NVARCHAR (20)  NOT NULL CONSTRAINT [DF_Employees_EmploymentStatus] DEFAULT (N'Active'),
     [BaseSalary]              DECIMAL (18, 2) NOT NULL CONSTRAINT [DF_Employees_BaseSalary] DEFAULT (0),
     [EmergencyContactName]    NVARCHAR (150) NOT NULL CONSTRAINT [DF_Employees_EmergencyContactName] DEFAULT (N''),
     [EmergencyContactPhone]   NVARCHAR (30)  NOT NULL CONSTRAINT [DF_Employees_EmergencyContactPhone] DEFAULT (N''),
@@ -24,7 +27,8 @@ CREATE TABLE [dbo].[Employees]
 
     CONSTRAINT [PK_Employees] PRIMARY KEY CLUSTERED ([Id] ASC),
     CONSTRAINT [UQ_Employees_StaffCode] UNIQUE ([StaffCode]),
-    CONSTRAINT [CK_Employees_BaseSalary] CHECK ([BaseSalary] >= 0)
+    CONSTRAINT [CK_Employees_BaseSalary] CHECK ([BaseSalary] >= 0),
+    CONSTRAINT [CK_Employees_EmploymentStatus] CHECK ([EmploymentStatus] IN (N'Active', N'OnLeave', N'Inactive'))
 );
 GO
 

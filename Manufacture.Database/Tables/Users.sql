@@ -3,7 +3,7 @@ CREATE TABLE [dbo].[Users]
     [Id]                 INT              IDENTITY (1, 1) NOT NULL,
     [Name]               NVARCHAR (150)   NOT NULL,
     [Email]              NVARCHAR (256)   NOT NULL,
-    [Role]               NVARCHAR (40)    NOT NULL CONSTRAINT [DF_Users_Role] DEFAULT (N'SalesRep'),
+    [RoleId]             INT              NOT NULL,
     [PinCodeHash]        NVARCHAR (256)   NOT NULL,
     [PasswordHash]       NVARCHAR (256)   NOT NULL,
     [SecurityStamp]      UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_Users_SecurityStamp] DEFAULT (NEWID()),
@@ -18,12 +18,12 @@ CREATE TABLE [dbo].[Users]
 
     CONSTRAINT [PK_Users] PRIMARY KEY CLUSTERED ([Id] ASC),
     CONSTRAINT [UQ_Users_Email] UNIQUE ([Email]),
-    CONSTRAINT [CK_Users_Role] CHECK ([Role] IN (N'SuperAdmin', N'ProductionManager', N'StoreManager', N'SalesRep', N'Vendor', N'HrPayrollManager'))
+    CONSTRAINT [FK_Users_Roles] FOREIGN KEY ([RoleId]) REFERENCES [dbo].[Roles] ([Id])
 );
 GO
 
-CREATE NONCLUSTERED INDEX [IX_Users_Role_IsActive]
-    ON [dbo].[Users] ([Role] ASC, [IsActive] ASC);
+CREATE NONCLUSTERED INDEX [IX_Users_RoleId_IsActive]
+    ON [dbo].[Users] ([RoleId] ASC, [IsActive] ASC);
 GO
 
 CREATE NONCLUSTERED INDEX [IX_Users_PosTerminalCode]

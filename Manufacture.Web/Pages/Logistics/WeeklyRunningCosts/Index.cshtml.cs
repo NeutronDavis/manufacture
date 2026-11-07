@@ -1,18 +1,17 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Models.DTOs;
-using Manufacture.Models.Domain;
-using Manufacture.Services;
 
 namespace Manufacture.Pages.Logistics.WeeklyRunningCosts
 {
     public class IndexModel : PageModel
     {
-        private readonly MockLogisticsService _logisticsService;
+        private readonly IFleetService _fleetService;
 
-        public IndexModel(MockLogisticsService logisticsService)
+        public IndexModel(IFleetService fleetService)
         {
-            _logisticsService = logisticsService;
+            _fleetService = fleetService;
         }
 
         [BindProperty(SupportsGet = true)]
@@ -22,15 +21,15 @@ namespace Manufacture.Pages.Logistics.WeeklyRunningCosts
         public DateTime OperatingWeekStart { get; set; }
         public DateTime OperatingWeekEnd { get; set; }
 
-        public List<WeeklyFleetExpense> FleetExpenses { get; set; } = new();
-        public List<Vehicle> AllVehicles { get; set; } = new();
+        public List<WeeklyFleetExpenseDto> FleetExpenses { get; set; } = new();
+        public List<VehicleDto> AllVehicles { get; set; } = new();
 
         public decimal TotalWeeklyFuel => FleetExpenses.Sum(e => e.FuelExpenseTotal);
         public decimal TotalWeeklyMaintenance => FleetExpenses.Sum(e => e.MaintenanceExpenseTotal);
         public decimal TotalWeeklyIncidentals => FleetExpenses.Sum(e => e.IncidentalsTotal);
         public decimal GrandTotalWeeklyCost => FleetExpenses.Sum(e => e.TotalWeeklyRunningCost);
 
-        public void OnGet()
+        public async Task OnGetAsync()
         {
             if (!string.IsNullOrWhiteSpace(WeekDate) && DateTime.TryParse(WeekDate, out var parsed))
             {
@@ -42,16 +41,17 @@ namespace Manufacture.Pages.Logistics.WeeklyRunningCosts
                 WeekDate = SelectedDate.ToString("yyyy-MM-dd");
             }
 
-            LoadWeekData();
-        }
-
-        private void LoadWeekData()
-        {
-            OperatingWeekStart = MockLogisticsService.GetOperatingWeekStart(SelectedDate);
+            OperatingWeekStart = GetOperatingWeekStart(SelectedDate);
             OperatingWeekEnd = OperatingWeekStart.AddDays(6);
 
-            FleetExpenses = _logisticsService.GetWeeklyFleetExpenses(SelectedDate);
-            AllVehicles = _logisticsService.GetAllVehicles();
+            FleetExpenses = await _fleetService.GetWeeklyFleetExpensesAsync(OperatingWeekStart, OperatingWeekEnd);
+            AllVehicles = await _fleetService.GetVehiclesAsync();
+        }
+
+        private static DateTime GetOperatingWeekStart(DateTime date)
+        {
+            var diff = (7 + (date.DayOfWeek - DayOfWeek.Sunday)) % 7;
+            return date.Date.AddDays(-diff);
         }
     }
 }

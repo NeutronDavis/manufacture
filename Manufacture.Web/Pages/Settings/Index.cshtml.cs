@@ -8,12 +8,12 @@ namespace Manufacture.Pages.Settings
 {
     public class IndexModel : PageModel
     {
-        private readonly MockSettingsService _settingsService;
-        private readonly MockRbacService _rbacService;
+        private readonly SettingsCache _settingsCache;
+        private readonly RbacCache _rbacService;
 
-        public IndexModel(MockSettingsService settingsService, MockRbacService rbacService)
+        public IndexModel(SettingsCache settingsCache, RbacCache rbacService)
         {
-            _settingsService = settingsService;
+            _settingsCache = settingsCache;
             _rbacService = rbacService;
         }
 
@@ -32,7 +32,7 @@ namespace Manufacture.Pages.Settings
                 return RedirectToPage("/Dashboard/Index");
             }
 
-            TreasuryPolicy = _settingsService.GetTreasuryPolicy();
+            TreasuryPolicy = _settingsCache.TreasuryPolicy;
             return Page();
         }
     }

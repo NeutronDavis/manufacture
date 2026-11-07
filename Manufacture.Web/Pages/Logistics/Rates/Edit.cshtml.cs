@@ -1,17 +1,17 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Models.DTOs;
-using Manufacture.Services;
 
 namespace Manufacture.Pages.Logistics.Rates
 {
     public class EditModel : PageModel
     {
-        private readonly MockLogisticsService _logisticsService;
+        private readonly IFleetService _fleetService;
 
-        public EditModel(MockLogisticsService logisticsService)
+        public EditModel(IFleetService fleetService)
         {
-            _logisticsService = logisticsService;
+            _fleetService = fleetService;
         }
 
         [BindProperty]
@@ -36,9 +36,9 @@ namespace Manufacture.Pages.Logistics.Rates
             "Akwa Ibom (Uyo)", "Abia (Aba)", "Kwara (Ilorin)", "Niger (Minna)", "Benue (Makurdi)"
         };
 
-        public IActionResult OnGet(int id)
+        public async Task<IActionResult> OnGetAsync(int id)
         {
-            var rate = _logisticsService.GetRouteRateById(id);
+            var rate = await _fleetService.GetRouteRateAsync(id);
             if (rate == null)
             {
                 TempData["ErrorMessage"] = $"Route rate #{id} was not found.";
@@ -46,41 +46,24 @@ namespace Manufacture.Pages.Logistics.Rates
             }
 
             Id = rate.Id;
-            RateInput = new RouteRateDto
-            {
-                Id = rate.Id,
-                OriginState = rate.OriginState,
-                DestinationState = rate.DestinationState,
-                VehicleTypeRequired = rate.VehicleTypeRequired,
-                RateWithFuel = rate.RateWithFuel,
-                RateWithoutFuel = rate.RateWithoutFuel,
-                EstimatedHours = rate.EstimatedHours,
-                IsActive = rate.IsActive
-            };
-
+            RateInput = rate;
             return Page();
         }
 
-        public IActionResult OnPost(int id)
+        public async Task<IActionResult> OnPostAsync(int id)
         {
-            if (string.IsNullOrWhiteSpace(RateInput.OriginState) ||
-                string.IsNullOrWhiteSpace(RateInput.DestinationState) ||
-                string.IsNullOrWhiteSpace(RateInput.VehicleTypeRequired) ||
-                RateInput.RateWithFuel <= 0 ||
-                RateInput.RateWithoutFuel <= 0)
+            RateInput.Id = id;
+
+            if (!ModelState.IsValid)
             {
-                ModelState.AddModelError("", "Please fill in all required route rate fields with valid amounts.");
                 return Page();
             }
 
-            var updated = _logisticsService.UpdateRouteRate(id, RateInput);
-            if (updated == null)
-            {
-                TempData["ErrorMessage"] = "Failed to update route rate: record not found.";
-                return RedirectToPage("/Logistics/Rates/Index");
-            }
+            var updated = await _fleetService.UpdateRouteRateAsync(RateInput);
+            TempData[updated ? "SuccessMessage" : "ErrorMessage"] = updated
+                ? $"Route rate for {RateInput.OriginState} → {RateInput.DestinationState} updated successfully."
+                : "Failed to update route rate: record not found.";
 
-            TempData["SuccessMessage"] = $"Route rate for {updated.OriginState} → {updated.DestinationState} updated successfully.";
             return RedirectToPage("/Logistics/Rates/Index");
         }
     }

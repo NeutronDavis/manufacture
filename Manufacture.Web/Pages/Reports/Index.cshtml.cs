@@ -11,9 +11,9 @@ namespace Manufacture.Pages.Reports
     public class IndexModel : PageModel
     {
         private readonly MockAnalyticsService _analytics;
-        private readonly MockRbacService _rbac;
+        private readonly RbacCache _rbac;
 
-        public IndexModel(MockAnalyticsService analytics, MockRbacService rbac)
+        public IndexModel(MockAnalyticsService analytics, RbacCache rbac)
         {
             _analytics = analytics;
             _rbac = rbac;

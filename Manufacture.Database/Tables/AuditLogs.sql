@@ -11,7 +11,7 @@ CREATE TABLE [dbo].[AuditLogs]
     [OccurredAt] DATETIME2 (3)  NOT NULL CONSTRAINT [DF_AuditLogs_OccurredAt] DEFAULT (SYSUTCDATETIME()),
 
     CONSTRAINT [PK_AuditLogs] PRIMARY KEY CLUSTERED ([Id] ASC),
-    CONSTRAINT [FK_AuditLogs_Users] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Users] ([Id])
+    CONSTRAINT [FK_AuditLogs_Users] FOREIGN KEY ([UserId]) REFERENCES [dbo].[Users] ([Id]) ON DELETE SET NULL
 );
 GO
 

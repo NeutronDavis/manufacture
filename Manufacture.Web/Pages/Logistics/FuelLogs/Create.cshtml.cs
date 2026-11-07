@@ -1,18 +1,17 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.DTOs;
-using Manufacture.Models.Domain;
 
 namespace Manufacture.Pages.Logistics.FuelLogs
 {
     public class CreateModel : PageModel
     {
-        private readonly MockLogisticsService _logisticsService;
+        private readonly IFleetService _fleetService;
 
-        public CreateModel(MockLogisticsService logisticsService)
+        public CreateModel(IFleetService fleetService)
         {
-            _logisticsService = logisticsService;
+            _fleetService = fleetService;
         }
 
         [BindProperty]
@@ -21,35 +20,55 @@ namespace Manufacture.Pages.Logistics.FuelLogs
         [BindProperty(SupportsGet = true)]
         public string? ReturnUrl { get; set; }
 
-        public List<Vehicle> Vehicles { get; set; } = new();
+        public List<VehicleDto> Vehicles { get; set; } = new();
 
-        public void OnGet(int? vehicleId, string? returnUrl)
+        public async Task OnGetAsync(int? vehicleId, string? returnUrl)
         {
             ReturnUrl = returnUrl;
-            Vehicles = _logisticsService.GetAllVehicles();
-            if (vehicleId.HasValue) LogInput.VehicleId = vehicleId.Value;
+            Vehicles = await _fleetService.GetVehiclesAsync();
+
+            if (vehicleId.HasValue)
+            {
+                LogInput.VehicleId = vehicleId.Value;
+                var vehicle = Vehicles.FirstOrDefault(v => v.Id == vehicleId.Value);
+                if (vehicle != null)
+                {
+                    LogInput.FuelType = vehicle.FuelType;
+                }
+            }
+
             LogInput.LitresDispensed = 45;
             LogInput.PricePerLitre = 980;
             LogInput.PetrolStation = "NNPC Mega Station";
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync()
         {
+            Vehicles = await _fleetService.GetVehiclesAsync();
+
             if (!ModelState.IsValid)
             {
-                Vehicles = _logisticsService.GetAllVehicles();
                 return Page();
             }
 
-            var log = _logisticsService.CreateFuelLog(LogInput);
-            TempData["SuccessMessage"] = $"Fuel expense of ₦{log.TotalCost:N0} ({log.LitresDispensed}L) logged for vehicle {log.VehicleRegNumber}.";
-
-            if (!string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
+            try
             {
-                return Redirect(ReturnUrl);
-            }
+                var log = await _fleetService.CreateFuelLogAsync(LogInput);
+                TempData["SuccessMessage"] =
+                    $"Fuel expense of ₦{log.TotalCost:N0} ({log.LitresDispensed} units) logged for vehicle {log.VehicleRegNumber}.";
 
-            return RedirectToPage("/Logistics/FuelLogs/Index");
+                if (!string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
+                {
+                    return Redirect(ReturnUrl);
+                }
+
+                return RedirectToPage("/Logistics/FuelLogs/Index");
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+                return Page();
+            }
         }
     }
 }

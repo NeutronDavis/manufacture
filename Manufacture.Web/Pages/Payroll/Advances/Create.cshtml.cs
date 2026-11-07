@@ -1,46 +1,72 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.DTOs;
-using Manufacture.Models.Domain;
 
 namespace Manufacture.Pages.Payroll.Advances
 {
     public class CreateModel : PageModel
     {
-        private readonly MockPayrollService _payrollService;
-        private readonly MockEmployeeService _employeeService;
+        private readonly IPayrollService _payrollService;
+        private readonly IEmployeeService _employeeService;
+        private readonly ISettingsService _settingsService;
 
-        public CreateModel(MockPayrollService payrollService, MockEmployeeService employeeService)
+        public CreateModel(
+            IPayrollService payrollService,
+            IEmployeeService employeeService,
+            ISettingsService settingsService)
         {
             _payrollService = payrollService;
             _employeeService = employeeService;
+            _settingsService = settingsService;
         }
 
         [BindProperty]
         public SalaryAdvanceDto AdvanceInput { get; set; } = new();
 
-        public List<Employee> Employees { get; set; } = new();
+        public List<EmployeeDto> Employees { get; set; } = new();
+        public PayrollSettingsDto Settings { get; set; } = new();
 
-        public void OnGet(int? employeeId)
+        public async Task OnGetAsync(int? employeeId)
         {
-            Employees = _employeeService.GetAll(includeInactive: false);
-            if (employeeId.HasValue) AdvanceInput.EmployeeId = employeeId.Value;
+            await LoadAsync();
+            if (employeeId.HasValue)
+            {
+                AdvanceInput.EmployeeId = employeeId.Value;
+            }
+
             AdvanceInput.PrincipalAmount = 40000;
-            AdvanceInput.MonthlyDeductionAmount = 15000;
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync()
         {
+            await LoadAsync();
+
             if (!ModelState.IsValid)
             {
-                Employees = _employeeService.GetAll(includeInactive: false);
                 return Page();
             }
 
-            var adv = _payrollService.CreateAdvance(AdvanceInput);
-            TempData["SuccessMessage"] = $"Salary advance of ₦{adv.PrincipalAmount:N0} granted to {adv.EmployeeName}.";
-            return RedirectToPage("/Payroll/Advances/Index");
+            try
+            {
+                var userName = HttpContext.Session.GetString("UserName") ?? "System";
+                var advance = await _payrollService.CreateAdvanceAsync(AdvanceInput, userName);
+                TempData["SuccessMessage"] =
+                    $"Salary advance of ₦{advance.PrincipalAmount:N0} granted to {advance.EmployeeName}. " +
+                    $"Monthly recovery: ₦{advance.MonthlyDeductionAmount:N0} ({advance.MonthlyRepaymentPercent:0.#}%).";
+                return RedirectToPage("/Payroll/Advances/Index");
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+                return Page();
+            }
+        }
+
+        private async Task LoadAsync()
+        {
+            Employees = await _employeeService.GetAllAsync(includeInactive: false);
+            Settings = await _settingsService.GetPayrollSettingsAsync();
         }
     }
 }

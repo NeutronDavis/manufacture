@@ -1,45 +1,96 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
+using Manufacture.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using System.Collections.Generic;
 
 namespace Manufacture.Pages.UserManagement
 {
     public class PermissionsModel : PageModel
     {
-        private readonly MockRbacService _rbacService;
+        private readonly IRbacService _rbacService;
+        private readonly RbacCache _rbacCache;
 
-        public PermissionsModel(MockRbacService rbacService)
+        public PermissionsModel(IRbacService rbacService, RbacCache rbacCache)
         {
             _rbacService = rbacService;
+            _rbacCache = rbacCache;
         }
 
-        public List<ModulePermission> Matrix { get; set; } = new();
-        public bool IsEditMode { get; set; } = false;
-        public string[] AllRoles => MockRbacService.AllRoles;
-        public string[] PermissionLevels => MockRbacService.PermissionLevels;
+        public RbacMatrixDto Matrix { get; set; } = new();
+        public bool IsEditMode { get; set; }
 
-        public void OnGet(bool? edit)
-        {
-            IsEditMode = edit ?? false;
-            Matrix = _rbacService.GetMatrix();
-        }
+        [BindProperty]
+        public RbacSaveInputDto Input { get; set; } = new();
 
-        public IActionResult OnPostSave(Dictionary<string, Dictionary<string, string>> matrixInput)
+        public string UserRole => HttpContext.Session.GetString("UserRole") ?? string.Empty;
+        public string UserName => HttpContext.Session.GetString("UserName") ?? "System";
+
+        public async Task<IActionResult> OnGetAsync(bool? edit)
         {
-            if (matrixInput != null && matrixInput.Count > 0)
+            if (!CanManageRbac())
             {
-                _rbacService.UpdateMatrix(matrixInput);
-                TempData["SuccessMessage"] = "RBAC Matrix permissions updated successfully. Live access privileges are now active across all roles.";
+                TempData["ErrorMessage"] = "Only an administrator with Settings access can manage RBAC permissions.";
+                return RedirectToPage("/UserManagement/Index");
             }
+
+            Matrix = await _rbacService.GetMatrixAsync();
+            IsEditMode = edit ?? false;
+            return Page();
+        }
+
+        public async Task<IActionResult> OnPostSaveAsync()
+        {
+            if (!CanManageRbac())
+            {
+                TempData["ErrorMessage"] = "Only an administrator with Settings access can manage RBAC permissions.";
+                return RedirectToPage("/UserManagement/Index");
+            }
+
+            if (Input.Cells.Count == 0)
+            {
+                TempData["ErrorMessage"] = "No permission cells were submitted.";
+                return RedirectToPage("/UserManagement/Permissions");
+            }
+
+            try
+            {
+                await _rbacService.SaveMatrixAsync(Input.Cells, UserName);
+                TempData["SuccessMessage"] = "RBAC matrix updated. The new permissions are active immediately.";
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["ErrorMessage"] = ex.Message;
+            }
+
             return RedirectToPage("/UserManagement/Permissions");
         }
 
-        public IActionResult OnPostReset()
+        public async Task<IActionResult> OnPostResetAsync()
         {
-            _rbacService.ResetToDefaults();
-            TempData["SuccessMessage"] = "RBAC Matrix restored to factory default access specifications.";
+            if (!CanManageRbac())
+            {
+                TempData["ErrorMessage"] = "Only an administrator with Settings access can manage RBAC permissions.";
+                return RedirectToPage("/UserManagement/Index");
+            }
+
+            try
+            {
+                await _rbacService.ResetToDefaultsAsync(UserName);
+                TempData["SuccessMessage"] = "RBAC matrix restored to the default access specification.";
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["ErrorMessage"] = ex.Message;
+            }
+
             return RedirectToPage("/UserManagement/Permissions");
+        }
+
+        private bool CanManageRbac()
+        {
+            return string.Equals(UserRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase)
+                || _rbacCache.CanManage(UserRole, "Settings");
         }
     }
 }
