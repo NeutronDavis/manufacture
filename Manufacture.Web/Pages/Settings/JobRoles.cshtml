@@ -1,0 +1,95 @@
+@page
+@model Manufacture.Pages.Settings.JobRolesModel
+@{
+    ViewData["Title"] = "Job Roles";
+}
+
+<div class="space-y-6 w-full">
+    <div>
+        <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+            <a asp-page="/Settings/Index" class="hover:underline">Settings</a>
+            <span>&gt;</span>
+            <span class="text-primary font-bold">Job Roles</span>
+        </div>
+        <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+            <i class="fa-solid fa-id-badge text-primary"></i> Job Roles / Designations
+        </h1>
+        <p class="text-xs opacity-70 mt-0.5">Job roles populate the Designation dropdown on employee creation. Link a role to a department or leave it shared.</p>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success text-xs rounded-xl"><span>@TempData["SuccessMessage"]</span></div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-error text-xs rounded-xl"><span>@TempData["ErrorMessage"]</span></div>
+    }
+
+    <div class="card bg-base-100 border border-base-300 rounded-2xl p-5">
+        <form method="post" asp-page-handler="Save" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+            <input type="hidden" asp-for="Input.Id" />
+            <div class="md:col-span-3 form-control">
+                <label class="label pb-1"><span class="label-text text-xs font-bold">Department</span></label>
+                <select asp-for="Input.DepartmentId" class="select select-sm select-bordered text-xs">
+                    <option value="">Shared / Company-wide</option>
+                    @foreach (var department in Model.Departments)
+                    {
+                        <option value="@department.Id">@department.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="md:col-span-3 form-control">
+                <label class="label pb-1"><span class="label-text text-xs font-bold">Role Name</span></label>
+                <input asp-for="Input.Name" class="input input-sm input-bordered text-xs" required />
+            </div>
+            <div class="md:col-span-4 form-control">
+                <label class="label pb-1"><span class="label-text text-xs font-bold">Description</span></label>
+                <input asp-for="Input.Description" class="input input-sm input-bordered text-xs" />
+            </div>
+            <div class="md:col-span-1 form-control">
+                <label class="label cursor-pointer gap-1">
+                    <span class="label-text text-[10px] font-bold">Active</span>
+                    <input asp-for="Input.IsActive" type="checkbox" class="checkbox checkbox-sm checkbox-success" />
+                </label>
+            </div>
+            <div class="md:col-span-1">
+                <button type="submit" class="btn btn-sm btn-neutral w-full rounded-xl text-xs font-bold">@(Model.Input.Id > 0 ? "Update" : "Save")</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden">
+        <table class="table table-sm text-xs">
+            <thead>
+                <tr class="uppercase text-[10px] opacity-60">
+                    <th>Role</th>
+                    <th>Department</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th class="text-right">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var role in Model.JobRoles)
+                {
+                    <tr>
+                        <td class="font-bold">@role.Name</td>
+                        <td>@role.DepartmentName</td>
+                        <td class="opacity-70">@role.Description</td>
+                        <td><span class="badge @(role.IsActive ? "badge-success" : "badge-ghost") badge-sm">@(role.IsActive ? "Active" : "Inactive")</span></td>
+                        <td class="text-right">
+                            <div class="flex items-center justify-end gap-1">
+                                <a asp-page="/Settings/JobRoles" asp-route-editId="@role.Id" class="btn btn-xs btn-ghost rounded-lg">Edit</a>
+                                <form method="post" asp-page-handler="Toggle" class="inline">
+                                    <input type="hidden" name="id" value="@role.Id" />
+                                    <button class="btn btn-xs btn-outline rounded-lg">@(role.IsActive ? "Deactivate" : "Activate")</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>

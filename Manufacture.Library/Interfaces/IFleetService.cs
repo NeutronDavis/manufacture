@@ -21,6 +21,10 @@ namespace Manufacture.Library.Interfaces
 
         Task<MaintenanceLogDto> CreateMaintenanceLogAsync(MaintenanceLogDto dto, CancellationToken cancellationToken = default);
 
+        Task<List<MaintenanceLogDto>> GetMaintenanceLogsAsync(CancellationToken cancellationToken = default);
+
+        Task<MaintenanceLogDto?> GetMaintenanceLogAsync(int id, CancellationToken cancellationToken = default);
+
         Task<List<RouteRateDto>> GetRouteRatesAsync(string? search = null, string? vehicleType = null, CancellationToken cancellationToken = default);
 
         Task<RouteRateDto?> GetRouteRateAsync(int id, CancellationToken cancellationToken = default);

@@ -295,7 +295,7 @@
         const selector = document.getElementById('vehicleSelector');
         const selected = selector.options[selector.selectedIndex];
         if (selected) {
-            const driver = selected.getAttribute('data-driver') || 'Assigned Driver';
+            const driver = selected.getAttribute('data-driver') || 'Unassigned';
             document.getElementById('driverNameInput').value = driver;
         }
         recalculateTotals();

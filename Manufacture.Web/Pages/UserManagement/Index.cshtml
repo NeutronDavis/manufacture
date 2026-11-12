@@ -18,6 +18,9 @@
             <a asp-page="/Settings/Finance" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-3.5 text-xs">
                 <i class="fa-solid fa-scale-balanced text-xs"></i> Finance & Payroll Policy
             </a>
+            <a asp-page="/UserManagement/Roles" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-3.5 text-xs">
+                <i class="fa-solid fa-user-shield text-xs"></i> Platform Roles
+            </a>
             <a asp-page="/UserManagement/Permissions" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-3.5 text-xs">
                 <i class="fa-solid fa-shield-halved text-xs"></i> RBAC Matrix
             </a>
@@ -69,6 +72,14 @@
                             <tr class="hover:bg-base-200/60 transition-colors">
                                 <td class="py-3.5 pl-4">
                                     <div class="font-bold text-xs text-base-content">@user.Name</div>
+                                    @if (!string.IsNullOrWhiteSpace(user.EmployeeName))
+                                    {
+                                        <div class="text-[10px] text-primary font-semibold mt-0.5">Employee: @user.EmployeeName (@user.EmployeeDepartment - @user.EmployeeDesignation)</div>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-[10px] text-warning font-semibold mt-0.5">No employee record linked</div>
+                                    }
                                     <div class="text-[10px] opacity-60">Created: @user.CreatedAt.ToString("yyyy-MM-dd")</div>
                                 </td>
                                 <td>
@@ -77,6 +88,10 @@
                                 <td>
                                     <span class="badge badge-neutral badge-xs font-bold px-2 py-0.5">@user.RoleDisplayName</span>
                                     <div class="text-[10px] opacity-50 font-mono mt-0.5">@user.Role</div>
+                                    @if (!string.IsNullOrWhiteSpace(user.CustomerName))
+                                    {
+                                        <div class="text-[10px] text-primary font-semibold mt-0.5">Customer: @user.CustomerName</div>
+                                    }
                                 </td>
                                 <td>
                                     @if (user.HasPin)

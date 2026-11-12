@@ -1,15 +1,15 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.Domain;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Models.Domain;
-using Manufacture.Services;
 
 namespace Manufacture.Pages.Sales.PosAccounts
 {
     public class CreateModel : PageModel
     {
-        private readonly MockSalesService _salesService;
+        private readonly ISalesService _salesService;
 
-        public CreateModel(MockSalesService salesService)
+        public CreateModel(ISalesService salesService)
         {
             _salesService = salesService;
         }
@@ -31,42 +31,45 @@ namespace Manufacture.Pages.Sales.PosAccounts
         [TempData]
         public string? ErrorMessage { get; set; }
 
-        public void OnGet()
+        public async Task OnGetAsync(CancellationToken cancellationToken = default)
         {
-            SalesReps = _salesService.GetAllReps();
-            CatalogSkus = _salesService.GetCatalogSkus();
+            await LoadDataAsync(cancellationToken);
             if (SalesReps.Any())
             {
                 Account.AssignedRepId = SalesReps.First().Id;
             }
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(Account.AccountName))
             {
                 ModelState.AddModelError("Account.AccountName", "Account or Supermarket Name is required.");
-                SalesReps = _salesService.GetAllReps();
-                CatalogSkus = _salesService.GetCatalogSkus();
+                await LoadDataAsync(cancellationToken);
                 return Page();
             }
 
-            var ok = _salesService.SaveSupermarketAccount(Account);
+            var ok = await _salesService.SaveSupermarketAccountAsync(Account, cancellationToken);
             if (!ok)
             {
                 ErrorMessage = "Failed to register supermarket account.";
-                SalesReps = _salesService.GetAllReps();
-                CatalogSkus = _salesService.GetCatalogSkus();
+                await LoadDataAsync(cancellationToken);
                 return Page();
             }
 
             if (InitialPrices != null && InitialPrices.Any(kv => kv.Value > 0))
             {
-                _salesService.SetBatchCustomAgreedPrices(Account.Id, InitialPrices);
+                await _salesService.SetBatchCustomAgreedPricesAsync(Account.Id, InitialPrices, cancellationToken);
             }
 
             TempData["SuccessMessage"] = $"Supermarket account '{Account.AccountName}' registered successfully with ₦{Account.CreditLimit:N0} approved credit limit.";
             return RedirectToPage("/Sales/PosAccounts/Index", new { accountId = Account.Id });
+        }
+
+        private async Task LoadDataAsync(CancellationToken cancellationToken)
+        {
+            SalesReps = await _salesService.GetSalesRepsAsync(cancellationToken: cancellationToken);
+            CatalogSkus = await _salesService.GetCatalogSkusAsync(cancellationToken);
         }
     }
 }

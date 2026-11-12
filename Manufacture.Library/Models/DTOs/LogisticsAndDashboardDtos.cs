@@ -18,6 +18,7 @@ namespace Manufacture.Models.DTOs
         public string FuelType { get; set; } = "Petrol";
         public decimal TankCapacityLitres { get; set; } = 70;
         public decimal CurrentOdometerKm { get; set; }
+        public string? ImageUrl { get; set; }
         public string Status { get; set; } = "Active";
         public DateTime? LastServiceDate { get; set; }
     }
@@ -28,6 +29,7 @@ namespace Manufacture.Models.DTOs
         [Required]
         public int VehicleId { get; set; }
         public string VehicleRegNumber { get; set; } = string.Empty;
+        public int? EmployeeId { get; set; }
         public string DriverName { get; set; } = string.Empty;
         public DateTime Date { get; set; } = DateTime.UtcNow;
         [Required]

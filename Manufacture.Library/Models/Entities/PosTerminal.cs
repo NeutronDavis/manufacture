@@ -11,6 +11,8 @@ public partial class PosTerminal
 
     public string TerminalName { get; set; } = null!;
 
+    public int? AssignedEmployeeId { get; set; }
+
     public int? AssignedUserId { get; set; }
 
     public string CashAccountName { get; set; } = null!;
@@ -24,6 +26,8 @@ public partial class PosTerminal
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
+
+    public virtual Employee? AssignedEmployee { get; set; }
 
     public virtual User? AssignedUser { get; set; }
 

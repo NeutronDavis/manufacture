@@ -1,3 +1,4 @@
+using Manufacture.Library.Interfaces;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Manufacture.Services;
 using Manufacture.Models.DTOs;
@@ -15,6 +16,7 @@ namespace Manufacture.Pages.Dashboard
         private readonly MockPayrollService _payrollService;
         private readonly MockLogisticsService _logisticsService;
         private readonly MockAnalyticsService _analytics;
+        private readonly ISalesService _dbSalesService;
 
         public IndexModel(
             MockDashboardService dashboardService,
@@ -24,7 +26,8 @@ namespace Manufacture.Pages.Dashboard
             MockEmployeeService employeeService,
             MockPayrollService payrollService,
             MockLogisticsService logisticsService,
-            MockAnalyticsService analytics)
+            MockAnalyticsService analytics,
+            ISalesService dbSalesService)
         {
             _dashboardService = dashboardService;
             _salesService = salesService;
@@ -34,6 +37,7 @@ namespace Manufacture.Pages.Dashboard
             _payrollService = payrollService;
             _logisticsService = logisticsService;
             _analytics = analytics;
+            _dbSalesService = dbSalesService;
         }
 
         /// <summary>The eight-stage lifecycle shown on the executive quick-overview.</summary>
@@ -72,10 +76,14 @@ namespace Manufacture.Pages.Dashboard
         public PosTerminal? AssignedTerminal { get; set; }
         public List<Order> UnprintedOrders { get; set; } = new();
         public List<Order> RepTodayOrders { get; set; } = new();
+        public int RepCompletedTickets => RepTodayOrders.Count(o => o.Status == OrderStatus.Dispatched);
 
         // Vendor / Supermarket Client
         public Customer? VendorAccount { get; set; }
         public List<Order> VendorOrders { get; set; } = new();
+        public List<Order> DailyStandingPreOrders { get; set; } = new();
+        public int DailyPreOrderUnits => DailyStandingPreOrders.Sum(o => o.Items.Sum(i => i.Quantity));
+        public decimal DailyPreOrderValue => DailyStandingPreOrders.Sum(o => o.TotalAmount);
 
         // HR & Payroll
         public List<Employee> Employees { get; set; } = new();
@@ -105,7 +113,7 @@ namespace Manufacture.Pages.Dashboard
             return "/Reports?" + string.Join("&", values);
         }
 
-        public void OnGet()
+        public async Task OnGetAsync(CancellationToken cancellationToken = default)
         {
             ActiveRole = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
             ActiveUserName = HttpContext.Session.GetString("UserName") ?? "Manager";
@@ -120,18 +128,72 @@ namespace Manufacture.Pages.Dashboard
             PendingStoreRequests = _inventoryService.GetAllRequests().Where(r => r.Status == StoreRequestStatus.Pending).ToList();
             Suppliers = _inventoryService.GetAllSuppliers();
 
-            // Load Sales Rep Data
-            var terminals = _salesService.GetAllTerminals();
-            AssignedTerminal = terminals.FirstOrDefault(t => t.TerminalCode == "POS-01") ?? terminals.FirstOrDefault();
-            UnprintedOrders = _salesService.GetAllOrders().Where(o => !o.IsPrintedForLoading).ToList();
-            RepTodayOrders = _salesService.GetAllOrders().Where(o => o.OrderDate.Date == DateTime.UtcNow.Date).ToList();
+            // Load Sales Rep Data. Sales reps must see their own database orders and their
+            // assigned HR employee terminal, not the shared mock dashboard data.
+            var currentUserId = HttpContext.Session.GetInt32("UserId");
+            if (ActiveRole == "SalesRep" && currentUserId.HasValue)
+            {
+                var currentSalesRep = await _dbSalesService.GetSalesRepByUserIdAsync(currentUserId.Value, cancellationToken);
+                var terminals = await _dbSalesService.GetTerminalsAsync(cancellationToken: cancellationToken);
+                var orders = await _dbSalesService.GetOrdersAsync(cancellationToken);
 
-            // Load Vendor Data
-            var customers = _salesService.GetAllCustomers();
-            VendorAccount = customers.FirstOrDefault(c => c.Category == CustomerCategory.Supermarket) ?? customers.FirstOrDefault();
+                if (currentSalesRep != null)
+                {
+                    AssignedTerminal = terminals.FirstOrDefault(t => t.AssignedEmployeeId == currentSalesRep.EmployeeId)
+                        ?? terminals.FirstOrDefault(t => t.TerminalCode == currentSalesRep.PosTerminalCode);
+                    RepTodayOrders = orders
+                        .Where(o => o.SalesRepId == currentSalesRep.Id
+                            && o.OrderDate.Date == DateTime.UtcNow.Date
+                            && o.Status != OrderStatus.Cancelled)
+                        .ToList();
+                    UnprintedOrders = orders
+                        .Where(o => o.SalesRepId == currentSalesRep.Id && !o.IsPrintedForLoading)
+                        .ToList();
+                }
+            }
+            else
+            {
+                var terminals = _salesService.GetAllTerminals();
+                AssignedTerminal = terminals.FirstOrDefault(t => t.TerminalCode == "POS-01") ?? terminals.FirstOrDefault();
+                UnprintedOrders = _salesService.GetAllOrders().Where(o => !o.IsPrintedForLoading).ToList();
+                RepTodayOrders = _salesService.GetAllOrders().Where(o => o.OrderDate.Date == DateTime.UtcNow.Date).ToList();
+            }
+
+            // Load Vendor Data from the database and filter pre-orders to the signed-in customer.
+            if (ActiveRole == "Customer" && currentUserId.HasValue)
+            {
+                VendorAccount = await _dbSalesService.GetCustomerByUserIdAsync(currentUserId.Value, cancellationToken);
+            }
+            else
+            {
+                var customers = _salesService.GetAllCustomers();
+                VendorAccount = customers.FirstOrDefault(c => c.Category == CustomerCategory.Supermarket) ?? customers.FirstOrDefault();
+            }
+
             if (VendorAccount != null)
             {
-                VendorOrders = _salesService.GetAllOrders().Where(o => o.CustomerId == VendorAccount.Id).ToList();
+                var dbOrders = await _dbSalesService.GetOrdersAsync(cancellationToken);
+                VendorOrders = dbOrders.Where(o => o.CustomerId == VendorAccount.Id).ToList();
+            }
+
+            if (ActiveRole == "Customer")
+            {
+                // A customer must only ever see their own pre-orders. If the login is not
+                // linked to a customer account, show nothing rather than every order.
+                if (VendorAccount != null)
+                {
+                    DailyStandingPreOrders = (await _dbSalesService.GetPreOrdersAsync(VendorAccount.Id, cancellationToken))
+                        .Where(o => o.Status != OrderStatus.Cancelled)
+                        .Take(5)
+                        .ToList();
+                }
+            }
+            else
+            {
+                DailyStandingPreOrders = (await _dbSalesService.GetPreOrdersAsync(null, cancellationToken))
+                    .Where(o => o.Status != OrderStatus.Cancelled)
+                    .Take(5)
+                    .ToList();
             }
 
             // Load HR & Payroll Data

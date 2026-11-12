@@ -1,16 +1,16 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
+using Manufacture.Library.Interfaces;
 using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
-using Manufacture.Services;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Manufacture.Pages.Sales.PosAccounts
 {
     public class SupplyModel : PageModel
     {
-        private readonly MockSalesService _salesService;
+        private readonly ISalesService _salesService;
 
-        public SupplyModel(MockSalesService salesService)
+        public SupplyModel(ISalesService salesService)
         {
             _salesService = salesService;
         }
@@ -29,32 +29,38 @@ namespace Manufacture.Pages.Sales.PosAccounts
         [TempData]
         public string? ErrorMessage { get; set; }
 
-        public void OnGet(int? id)
+        public async Task OnGetAsync(int? id, CancellationToken cancellationToken = default)
         {
-            LoadData(id ?? Id);
+            await LoadDataAsync(id ?? Id, cancellationToken);
         }
 
-        public IActionResult OnPost(int accountId, int repId, int recipeId, int quantity, string? notes)
+        public async Task<IActionResult> OnPostAsync(
+            int accountId,
+            int repId,
+            int recipeId,
+            int quantity,
+            string? notes,
+            CancellationToken cancellationToken = default)
         {
             if (accountId <= 0 || recipeId <= 0 || quantity <= 0)
             {
                 ErrorMessage = "Please select a supermarket account, product SKU, and enter a valid quantity.";
-                LoadData(accountId);
+                await LoadDataAsync(accountId, cancellationToken);
                 return Page();
             }
 
-            var skus = _salesService.GetCatalogSkus();
+            var skus = await _salesService.GetCatalogSkusAsync(cancellationToken);
             var sku = skus.FirstOrDefault(s => s.Id == recipeId);
             if (sku == default)
             {
                 ErrorMessage = "Selected product SKU was not found in catalog.";
-                LoadData(accountId);
+                await LoadDataAsync(accountId, cancellationToken);
                 return Page();
             }
 
             var items = new List<OrderItemDto>
             {
-                new OrderItemDto
+                new()
                 {
                     RecipeId = sku.Id,
                     ProductName = sku.Name,
@@ -63,28 +69,36 @@ namespace Manufacture.Pages.Sales.PosAccounts
                 }
             };
 
-            var ok = _salesService.FulfillSupermarketOrder(accountId, repId, items, notes ?? $"Direct store replenishment ({quantity}x {sku.Name})");
+            var ok = await _salesService.FulfillSupermarketOrderAsync(
+                accountId,
+                repId,
+                items,
+                notes ?? $"Direct store replenishment ({quantity}x {sku.Name})",
+                cancellationToken);
+
             if (ok)
             {
-                var account = _salesService.GetSupermarketAccountById(accountId);
+                var account = await _salesService.GetSupermarketAccountAsync(accountId, cancellationToken);
                 SuccessMessage = $"Supermarket supply recorded successfully! {quantity}x {sku.Name} charged to {account?.AccountName ?? "account"}.";
                 return RedirectToPage("/Sales/PosAccounts/Edit", new { id = accountId });
             }
 
             ErrorMessage = "Could not fulfill direct supply order. Please verify account details.";
-            LoadData(accountId);
+            await LoadDataAsync(accountId, cancellationToken);
             return Page();
         }
 
-        private void LoadData(int? accountId)
+        private async Task LoadDataAsync(int? accountId, CancellationToken cancellationToken)
         {
-            Accounts = _salesService.GetAllSupermarketAccounts().Where(a => a.IsActive).ToList();
-            CatalogSkus = _salesService.GetCatalogSkus();
-            SalesReps = _salesService.GetAllReps();
+            Accounts = (await _salesService.GetSupermarketAccountsAsync(cancellationToken: cancellationToken))
+                .Where(a => a.IsActive)
+                .ToList();
+            CatalogSkus = await _salesService.GetCatalogSkusAsync(cancellationToken);
+            SalesReps = await _salesService.GetSalesRepsAsync(cancellationToken: cancellationToken);
 
             if (accountId.HasValue && accountId.Value > 0)
             {
-                SelectedAccount = _salesService.GetSupermarketAccountById(accountId.Value);
+                SelectedAccount = await _salesService.GetSupermarketAccountAsync(accountId.Value, cancellationToken);
             }
             else if (Accounts.Any())
             {

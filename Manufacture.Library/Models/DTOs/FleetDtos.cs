@@ -61,7 +61,7 @@ namespace Manufacture.Models.DTOs
         public int VehicleId { get; set; }
         public string VehicleRegNumber { get; set; } = string.Empty;
 
-        public int? DriverId { get; set; }
+        public int? DriverEmployeeId { get; set; }
         public string DriverName { get; set; } = string.Empty;
 
         public bool IsMultiLeg { get; set; }
@@ -102,6 +102,8 @@ namespace Manufacture.Models.DTOs
         public decimal Cost { get; set; }
         public string WorkshopOrVendor { get; set; } = string.Empty;
         public string InvoiceNumber { get; set; } = string.Empty;
+        public string? BeforeImageUrl { get; set; }
+        public string? AfterImageUrl { get; set; }
     }
 
     public class WeeklyFleetExpenseDto

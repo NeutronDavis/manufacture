@@ -1,40 +1,59 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.Domain;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.Domain;
 
 namespace Manufacture.Pages.Sales.Terminals
 {
     public class AssignModel : PageModel
     {
-        private readonly MockSalesService _salesService;
-        private readonly MockUserService _userService;
+        private readonly ISalesService _salesService;
+        private readonly IEmployeeService _employeeService;
 
-        public AssignModel(MockSalesService salesService, MockUserService userService)
+        public AssignModel(ISalesService salesService, IEmployeeService employeeService)
         {
             _salesService = salesService;
-            _userService = userService;
+            _employeeService = employeeService;
         }
 
         public PosTerminal Terminal { get; set; } = new();
-        public List<User> EligibleUsers { get; set; } = new();
+        public List<EmployeeDto> EligibleEmployees { get; set; } = new();
 
-        public IActionResult OnGet(int id)
+        public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancellationToken = default)
         {
-            var term = _salesService.GetTerminalById(id);
-            if (term == null) return RedirectToPage("/Sales/Terminals/Index");
+            var term = await _salesService.GetTerminalAsync(id, cancellationToken);
+            if (term == null)
+            {
+                return RedirectToPage("/Sales/Terminals/Index");
+            }
 
             Terminal = term;
-            EligibleUsers = _userService.GetAll();
+            await LoadEmployeesAsync(cancellationToken);
             return Page();
         }
 
-        public IActionResult OnPost(int id, int selectedUserId)
+        public async Task<IActionResult> OnPostAsync(int id, int? selectedEmployeeId, CancellationToken cancellationToken = default)
         {
-            var user = _userService.GetById(selectedUserId);
-            _salesService.AssignTerminalUser(id, selectedUserId, user?.Name);
-            TempData["SuccessMessage"] = $"Terminal assigned to {user?.Name ?? "User"}.";
+            var employee = selectedEmployeeId.HasValue
+                ? (await _employeeService.GetByIdAsync(selectedEmployeeId.Value, cancellationToken))
+                : null;
+
+            var success = await _salesService.AssignTerminalEmployeeAsync(id, selectedEmployeeId, cancellationToken);
+            TempData[success ? "SuccessMessage" : "ErrorMessage"] = success
+                ? $"Terminal assigned to {employee?.FullName ?? "Unassigned"}."
+                : "Terminal assignment failed.";
+
             return RedirectToPage("/Sales/Terminals/Index");
+        }
+
+        private async Task LoadEmployeesAsync(CancellationToken cancellationToken)
+        {
+            var employees = await _employeeService.GetAllAsync(includeInactive: false, includeDeleted: false, cancellationToken);
+            EligibleEmployees = employees
+                .Where(e => e.Department.Contains("Sales", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(e => e.FullName)
+                .ToList();
         }
     }
 }

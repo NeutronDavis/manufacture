@@ -6,7 +6,7 @@ namespace Manufacture.Models.Domain
         ProductionManager,
         StoreManager,
         SalesRep,
-        Vendor,
+        Customer,
         HrPayrollManager
     }
 

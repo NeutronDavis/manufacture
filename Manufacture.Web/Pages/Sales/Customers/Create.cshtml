@@ -1,7 +1,7 @@
 @page
 @model Manufacture.Pages.Sales.Customers.CreateModel
 @{
-    ViewData["Title"] = "Register Client or Vendor";
+    ViewData["Title"] = "Register Client Account";
 }
 
 <div class="space-y-6 w-full">
@@ -11,20 +11,20 @@
             <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
                 <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
                 <span>&gt;</span>
-                <a asp-page="/Sales/Customers/Index" class="hover:underline">Clients & Vendors</a>
+                <a asp-page="/Sales/Customers/Index" class="hover:underline">Customers</a>
                 <span>&gt;</span>
                 <span class="text-primary font-bold">Register Account</span>
             </div>
             <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
-                <i class="fa-solid fa-store text-primary"></i> Register Client / Vendor Account
+                <i class="fa-solid fa-store text-primary"></i> Register Client Account
             </h1>
             <p class="text-xs opacity-70 mt-0.5">
-                Register supermarkets, external bread depots, or corporate standing pre-order vendor accounts.
+                Register supermarkets, wholesale depots, or corporate standing pre-order customer accounts.
             </p>
         </div>
         <div>
             <a asp-page="/Sales/Customers/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
-                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Clients
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Customers
             </a>
         </div>
     </div>
@@ -60,10 +60,14 @@
                         <div class="form-control w-full">
                             <label class="label pb-1.5">
                                 <span class="label-text font-bold text-xs text-base-content">
-                                    Member / Account Code <span class="text-error">*</span>
+                                    Member / Account Code
                                 </span>
                             </label>
-                            <input type="text" asp-for="CustomerInput.MemberCode" class="input input-bordered input-sm w-full font-mono uppercase bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" placeholder="e.g. SUP-501" required />
+                            <div class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs flex items-center gap-2 opacity-80">
+                                <i class="fa-solid fa-wand-magic-sparkles text-primary text-[11px]"></i>
+                                <span class="font-mono font-bold uppercase">Auto-generated on save</span>
+                            </div>
+                            <span class="text-[10px] opacity-60 mt-1">The system assigns a unique random customer code.</span>
                         </div>
 
                         <div class="form-control w-full">
@@ -72,7 +76,7 @@
                             </label>
                             <select asp-for="CustomerInput.Category" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary">
                                 <option value="Supermarket">Supermarket Chain (Standing Pre-Orders)</option>
-                                <option value="ExternalVendor">External Vendor (Wholesale Depot)</option>
+                                <option value="ExternalVendor">Wholesale Depot</option>
                                 <option value="WalkIn">Walk-in Retail Customer</option>
                                 <option value="SalesRep">Internal Sales Rep Account</option>
                             </select>
@@ -112,11 +116,11 @@
                     <h2 class="font-black text-sm text-base-content flex items-center gap-2">
                         <i class="fa-solid fa-address-book text-primary"></i> Account Setup
                     </h2>
-                    <span class="badge badge-success badge-xs font-bold">New Client</span>
+                    <span class="badge badge-success badge-xs font-bold">New Customer</span>
                 </div>
 
                 <p class="text-[11px] opacity-70 leading-relaxed">
-                    Client account will immediately be available for POS orders, scheduled pre-order deliveries, and customer credit ledger tracking.
+                    Customer account will immediately be available for POS orders, scheduled pre-order deliveries, and customer credit ledger tracking.
                 </p>
 
                 <div class="space-y-2 pt-2 border-t border-base-200">

@@ -13,6 +13,10 @@ public partial class User
 
     public int RoleId { get; set; }
 
+    public int? EmployeeId { get; set; }
+
+    public int? CustomerId { get; set; }
+
     public string PinCodeHash { get; set; } = null!;
 
     public string PasswordHash { get; set; } = null!;
@@ -36,6 +40,10 @@ public partial class User
     public byte[] RowVersion { get; set; } = null!;
 
     public virtual ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
+
+    public virtual Customer? Customer { get; set; }
+
+    public virtual Employee? Employee { get; set; }
 
     public virtual ICollection<PosTerminal> PosTerminals { get; set; } = new List<PosTerminal>();
 

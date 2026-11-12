@@ -5,7 +5,6 @@ using Manufacture.Models.DTOs;
 using Manufacture.Models.Entities;
 using Microsoft.EntityFrameworkCore;
 using CharterBooking = Manufacture.Models.Entities.CharterBooking;
-using Driver = Manufacture.Models.Entities.Driver;
 using Employee = Manufacture.Models.Entities.Employee;
 using FuelLog = Manufacture.Models.Entities.FuelLog;
 using MaintenanceLog = Manufacture.Models.Entities.MaintenanceLog;
@@ -59,7 +58,7 @@ namespace Manufacture.Services
             if (dto.AssignedEmployeeId.HasValue)
             {
                 assignedEmployee = await _db.Employees
-                    .FirstOrDefaultAsync(e => e.Id == dto.AssignedEmployeeId.Value, cancellationToken);
+                    .FirstOrDefaultAsync(e => e.Id == dto.AssignedEmployeeId.Value && !e.IsDeleted, cancellationToken);
 
                 if (assignedEmployee == null || !IsLogisticsDepartment(assignedEmployee.Department))
                 {
@@ -76,6 +75,7 @@ namespace Manufacture.Services
                 VehicleFunction = string.IsNullOrWhiteSpace(dto.Function) ? "Deliveries" : dto.Function.Trim(),
                 AssignedEmployeeId = assignedEmployee?.Id,
                 FuelType = fuelType,
+                ImageUrl = dto.ImageUrl,
                 TankCapacityLitres = dto.TankCapacityLitres <= 0 ? 60m : dto.TankCapacityLitres,
                 CurrentOdometerKm = Math.Max(0m, dto.CurrentOdometerKm),
                 Status = string.IsNullOrWhiteSpace(dto.Status) ? "Active" : dto.Status.Trim(),
@@ -96,7 +96,7 @@ namespace Manufacture.Services
         {
             var employees = await _db.Employees
                 .AsNoTracking()
-                .Where(e => e.IsActive && e.Department.Contains("Logistic"))
+                .Where(e => !e.IsDeleted && e.IsActive && e.Department.Contains("Logistic"))
                 .OrderBy(e => e.FullName)
                 .ToListAsync(cancellationToken);
 
@@ -105,16 +105,16 @@ namespace Manufacture.Services
 
         public async Task<List<FleetDriverDto>> GetDriversAsync(CancellationToken cancellationToken = default)
         {
-            return await _db.Drivers
+            return await _db.Employees
                 .AsNoTracking()
-                .Where(d => d.IsActive)
-                .OrderBy(d => d.FullName)
-                .Select(d => new FleetDriverDto
+                .Where(e => !e.IsDeleted && e.IsActive && e.Department.Contains("Logistic"))
+                .OrderBy(e => e.FullName)
+                .Select(e => new FleetDriverDto
                 {
-                    Id = d.Id,
-                    FullName = d.FullName,
-                    PhoneNumber = d.PhoneNumber,
-                    LicenseNumber = d.LicenseNumber ?? string.Empty
+                    Id = e.Id,
+                    FullName = e.FullName,
+                    PhoneNumber = e.PhoneNumber,
+                    LicenseNumber = string.Empty
                 })
                 .ToListAsync(cancellationToken);
         }
@@ -124,7 +124,7 @@ namespace Manufacture.Services
             var logs = await _db.FuelLogs
                 .AsNoTracking()
                 .Include(l => l.Vehicle)
-                .Include(l => l.Driver)
+                .Include(l => l.Employee)
                 .OrderByDescending(l => l.FuelDate)
                 .ThenByDescending(l => l.Id)
                 .ToListAsync(cancellationToken);
@@ -143,7 +143,7 @@ namespace Manufacture.Services
             var log = new FuelLog
             {
                 VehicleId = vehicle.Id,
-                DriverId = vehicle.AssignedDriverId,
+                EmployeeId = dto.EmployeeId ?? vehicle.AssignedEmployeeId,
                 FuelDate = dto.Date == default ? DateTime.UtcNow : dto.Date,
                 FuelType = fuelType,
                 LitresDispensed = dto.LitresDispensed,
@@ -176,6 +176,8 @@ namespace Manufacture.Services
                 Cost = dto.Cost,
                 WorkshopOrVendor = dto.WorkshopOrVendor.Trim(),
                 InvoiceNumber = dto.InvoiceNumber.Trim(),
+                BeforeImageUrl = dto.BeforeImageUrl,
+                AfterImageUrl = dto.AfterImageUrl,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -192,8 +194,32 @@ namespace Manufacture.Services
                 Description = log.Description,
                 Cost = log.Cost,
                 WorkshopOrVendor = log.WorkshopOrVendor,
-                InvoiceNumber = log.InvoiceNumber
+                InvoiceNumber = log.InvoiceNumber,
+                BeforeImageUrl = log.BeforeImageUrl,
+                AfterImageUrl = log.AfterImageUrl
             };
+        }
+
+        public async Task<List<MaintenanceLogDto>> GetMaintenanceLogsAsync(CancellationToken cancellationToken = default)
+        {
+            var logs = await _db.MaintenanceLogs
+                .AsNoTracking()
+                .Include(m => m.Vehicle)
+                .OrderByDescending(m => m.ServiceDate)
+                .ThenByDescending(m => m.Id)
+                .ToListAsync(cancellationToken);
+
+            return logs.Select(log => MapMaintenance(log, log.Vehicle?.RegistrationNumber ?? string.Empty)).ToList();
+        }
+
+        public async Task<MaintenanceLogDto?> GetMaintenanceLogAsync(int id, CancellationToken cancellationToken = default)
+        {
+            var log = await _db.MaintenanceLogs
+                .AsNoTracking()
+                .Include(m => m.Vehicle)
+                .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
+
+            return log == null ? null : MapMaintenance(log, log.Vehicle?.RegistrationNumber ?? string.Empty);
         }
 
         public async Task<List<RouteRateDto>> GetRouteRatesAsync(
@@ -319,7 +345,6 @@ namespace Manufacture.Services
             var query = _db.CharterBookings
                 .AsNoTracking()
                 .Include(b => b.Vehicle)
-                .Include(b => b.Driver)
                 .Include(b => b.TripLegs)
                 .AsQueryable();
 
@@ -353,7 +378,6 @@ namespace Manufacture.Services
             var booking = await _db.CharterBookings
                 .AsNoTracking()
                 .Include(b => b.Vehicle)
-                .Include(b => b.Driver)
                 .Include(b => b.TripLegs)
                 .FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
 
@@ -369,11 +393,13 @@ namespace Manufacture.Services
                 .FirstOrDefaultAsync(v => v.Id == dto.VehicleId, cancellationToken)
                 ?? throw new InvalidOperationException("Select a valid vehicle.");
 
-            Driver? driver = null;
-            if (dto.DriverId.HasValue)
+            Employee? driverEmployee = null;
+            if (dto.DriverEmployeeId.HasValue)
             {
-                driver = await _db.Drivers.FirstOrDefaultAsync(d => d.Id == dto.DriverId.Value, cancellationToken);
+                driverEmployee = await _db.Employees.FirstOrDefaultAsync(e => e.Id == dto.DriverEmployeeId.Value && !e.IsDeleted, cancellationToken);
             }
+
+            var assignedDriver = driverEmployee ?? vehicle.AssignedEmployee;
 
             if (dto.Legs.Count == 0)
             {
@@ -430,8 +456,8 @@ namespace Manufacture.Services
                 CustomerName = dto.CustomerName.Trim(),
                 CustomerPhone = dto.CustomerPhone.Trim(),
                 VehicleId = vehicle.Id,
-                DriverId = driver?.Id,
-                DriverName = driver?.FullName ?? vehicle.AssignedEmployee?.FullName ?? string.Empty,
+                DriverEmployeeId = assignedDriver?.Id,
+                DriverName = assignedDriver?.FullName ?? string.Empty,
                 DriverAllowance = dto.DriverAllowance,
                 SecurityEscortFee = dto.SecurityEscortFee,
                 TollsAndRoadLevies = dto.TollsAndRoadLevies,
@@ -449,7 +475,6 @@ namespace Manufacture.Services
             await _db.SaveChangesAsync(cancellationToken);
 
             booking.Vehicle = vehicle;
-            booking.Driver = driver;
             return MapCharterBooking(booking);
         }
 
@@ -548,6 +573,7 @@ namespace Manufacture.Services
                 FuelType = vehicle.FuelType,
                 TankCapacityLitres = vehicle.TankCapacityLitres,
                 CurrentOdometerKm = vehicle.CurrentOdometerKm,
+                ImageUrl = vehicle.ImageUrl,
                 Status = vehicle.Status,
                 LastServiceDate = vehicle.LastServiceDate?.ToDateTime(TimeOnly.MinValue)
             };
@@ -565,6 +591,7 @@ namespace Manufacture.Services
                 PhoneNumber = employee.PhoneNumber,
                 Email = employee.Email,
                 Address = employee.Address,
+                PassportUrl = employee.PassportUrl ?? string.Empty,
                 BankName = employee.BankName,
                 BankAccountNumber = employee.BankAccountNumber,
                 EmploymentStatus = employee.EmploymentStatus,
@@ -588,7 +615,8 @@ namespace Manufacture.Services
                 Id = log.Id,
                 VehicleId = log.VehicleId,
                 VehicleRegNumber = log.Vehicle?.RegistrationNumber ?? string.Empty,
-                DriverName = log.Driver?.FullName ?? string.Empty,
+                EmployeeId = log.EmployeeId,
+                DriverName = log.Employee?.FullName ?? string.Empty,
                 Date = log.FuelDate,
                 FuelType = log.FuelType,
                 LitresDispensed = log.LitresDispensed,
@@ -596,6 +624,23 @@ namespace Manufacture.Services
                 TotalCost = log.TotalCost ?? log.LitresDispensed * log.PricePerLitre,
                 PetrolStation = log.PetrolStation,
                 RouteDescription = log.RouteDescription
+            };
+        }
+
+        private static MaintenanceLogDto MapMaintenance(MaintenanceLog log, string vehicleRegNumber)
+        {
+            return new MaintenanceLogDto
+            {
+                Id = log.Id,
+                VehicleId = log.VehicleId,
+                VehicleRegNumber = vehicleRegNumber,
+                ServiceDate = log.ServiceDate.ToDateTime(TimeOnly.MinValue),
+                Description = log.Description,
+                Cost = log.Cost,
+                WorkshopOrVendor = log.WorkshopOrVendor,
+                InvoiceNumber = log.InvoiceNumber,
+                BeforeImageUrl = log.BeforeImageUrl,
+                AfterImageUrl = log.AfterImageUrl
             };
         }
 
@@ -624,7 +669,7 @@ namespace Manufacture.Services
                 CustomerPhone = booking.CustomerPhone,
                 VehicleId = booking.VehicleId,
                 VehicleRegNumber = booking.Vehicle?.RegistrationNumber ?? string.Empty,
-                DriverId = booking.DriverId,
+                DriverEmployeeId = booking.DriverEmployeeId,
                 DriverName = booking.DriverName,
                 IsMultiLeg = booking.TripLegs.Count > 1,
                 Legs = booking.TripLegs

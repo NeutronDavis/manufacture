@@ -34,6 +34,8 @@ namespace Manufacture.Services
             var query = _db.Users
                 .AsNoTracking()
                 .Include(u => u.Role)
+                .Include(u => u.Employee)
+                .Include(u => u.Customer)
                 .AsQueryable();
 
             if (!includeInactive)
@@ -53,6 +55,8 @@ namespace Manufacture.Services
             var user = await _db.Users
                 .AsNoTracking()
                 .Include(u => u.Role)
+                .Include(u => u.Employee)
+                .Include(u => u.Customer)
                 .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 
             return user == null ? null : Map(user);
@@ -68,9 +72,92 @@ namespace Manufacture.Services
                     Id = r.Id,
                     Name = r.Name,
                     DisplayName = r.DisplayName,
-                    Description = r.Description
+                    Description = r.Description,
+                    IsSystemRole = r.IsSystemRole
                 })
                 .ToListAsync(cancellationToken);
+        }
+
+        public async Task<RoleDto> SaveRoleAsync(RoleDto dto, CancellationToken cancellationToken = default)
+        {
+            var name = dto.Name?.Trim() ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new InvalidOperationException("Role name is required.");
+            }
+
+            if (await _db.Roles.AnyAsync(r => r.Name == name && r.Id != dto.Id, cancellationToken))
+            {
+                throw new InvalidOperationException("A role with that name already exists.");
+            }
+
+            Role role;
+            if (dto.Id > 0)
+            {
+                role = await _db.Roles.FirstOrDefaultAsync(r => r.Id == dto.Id, cancellationToken)
+                    ?? throw new InvalidOperationException("The role was not found.");
+
+                if (role.IsSystemRole && !string.Equals(role.Name, name, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException("System role names cannot be changed.");
+                }
+            }
+            else
+            {
+                role = new Role
+                {
+                    IsSystemRole = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _db.Roles.Add(role);
+            }
+
+            role.Name = name;
+            role.DisplayName = string.IsNullOrWhiteSpace(dto.DisplayName) ? name : dto.DisplayName.Trim();
+            role.Description = dto.Description?.Trim() ?? string.Empty;
+            role.UpdatedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync(cancellationToken);
+            return new RoleDto
+            {
+                Id = role.Id,
+                Name = role.Name,
+                DisplayName = role.DisplayName,
+                Description = role.Description,
+                IsSystemRole = role.IsSystemRole
+            };
+        }
+
+        public async Task<bool> DeleteRoleAsync(int id, CancellationToken cancellationToken = default)
+        {
+            var role = await _db.Roles
+                .Include(r => r.Users)
+                .Include(r => r.RbacRolePermissions)
+                .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+
+            if (role == null)
+            {
+                return false;
+            }
+
+            if (role.IsSystemRole)
+            {
+                throw new InvalidOperationException("System roles cannot be deleted. Edit the display name or description instead.");
+            }
+
+            if (role.Users.Any())
+            {
+                throw new InvalidOperationException("This role cannot be deleted while user accounts are assigned to it.");
+            }
+
+            if (role.RbacRolePermissions.Any())
+            {
+                _db.RbacRolePermissions.RemoveRange(role.RbacRolePermissions);
+            }
+
+            _db.Roles.Remove(role);
+            await _db.SaveChangesAsync(cancellationToken);
+            return true;
         }
 
         public async Task<UserDto> CreateAsync(UserDto dto, CancellationToken cancellationToken = default)
@@ -84,6 +171,8 @@ namespace Manufacture.Services
             var role = await _db.Roles.FirstOrDefaultAsync(r => r.Id == dto.RoleId, cancellationToken)
                 ?? throw new InvalidOperationException("Select a valid system role.");
 
+            var customerId = await ValidateCustomerLinkAsync(dto.CustomerId, role.Name, cancellationToken);
+            var employee = await ValidateEmployeeLinkAsync(dto.EmployeeId, null, cancellationToken);
             var pin = RequirePin(dto.PinCode);
             var password = RequirePassword(dto.Password);
 
@@ -92,6 +181,8 @@ namespace Manufacture.Services
                 Name = dto.Name.Trim(),
                 Email = email,
                 RoleId = role.Id,
+                EmployeeId = employee.Id,
+                CustomerId = customerId,
                 MustChangePassword = true,
                 PosTerminalCode = string.IsNullOrWhiteSpace(dto.PosTerminalId) ? null : dto.PosTerminalId.Trim(),
                 PhoneNumber = string.IsNullOrWhiteSpace(dto.PhoneNumber) ? null : dto.PhoneNumber.Trim(),
@@ -107,6 +198,7 @@ namespace Manufacture.Services
             await _db.SaveChangesAsync(cancellationToken);
 
             user.Role = role;
+            user.Employee = employee;
             return Map(user);
         }
 
@@ -124,15 +216,21 @@ namespace Manufacture.Services
                 throw new InvalidOperationException("A user with that email address already exists.");
             }
 
-            var roleExists = await _db.Roles.AnyAsync(r => r.Id == dto.RoleId, cancellationToken);
-            if (!roleExists)
+            var role = await _db.Roles.FirstOrDefaultAsync(r => r.Id == dto.RoleId, cancellationToken);
+            if (role == null)
             {
                 throw new InvalidOperationException("Select a valid system role.");
             }
 
+            var customerId = await ValidateCustomerLinkAsync(dto.CustomerId, role.Name, cancellationToken);
+            var employee = await ValidateEmployeeLinkAsync(dto.EmployeeId, dto.Id, cancellationToken);
+
             user.Name = dto.Name.Trim();
             user.Email = email;
             user.RoleId = dto.RoleId;
+            user.EmployeeId = employee.Id;
+            user.Employee = employee;
+            user.CustomerId = customerId;
             user.PosTerminalCode = string.IsNullOrWhiteSpace(dto.PosTerminalId) ? null : dto.PosTerminalId.Trim();
             user.PhoneNumber = string.IsNullOrWhiteSpace(dto.PhoneNumber) ? null : dto.PhoneNumber.Trim();
             user.IsActive = dto.IsActive;
@@ -214,6 +312,8 @@ namespace Manufacture.Services
             var normalizedEmail = NormalizeEmail(email);
             var user = await _db.Users
                 .Include(u => u.Role)
+                .Include(u => u.Employee)
+                .Include(u => u.Customer)
                 .FirstOrDefaultAsync(u => u.IsActive && u.Email == normalizedEmail, cancellationToken);
 
             if (user == null || string.IsNullOrWhiteSpace(user.PasswordHash))
@@ -245,6 +345,8 @@ namespace Manufacture.Services
         {
             var users = await _db.Users
                 .Include(u => u.Role)
+                .Include(u => u.Employee)
+                .Include(u => u.Customer)
                 .Where(u => u.IsActive)
                 .ToListAsync(cancellationToken);
 
@@ -284,6 +386,56 @@ namespace Manufacture.Services
                 cancellationToken);
         }
 
+        private async Task<Employee> ValidateEmployeeLinkAsync(
+            int? employeeId,
+            int? excludeUserId,
+            CancellationToken cancellationToken)
+        {
+            if (!employeeId.HasValue || employeeId.Value <= 0)
+            {
+                throw new InvalidOperationException("Select the employee record for this user.");
+            }
+
+            var employee = await _db.Employees
+                .FirstOrDefaultAsync(e => e.Id == employeeId.Value && !e.IsDeleted && e.IsActive, cancellationToken)
+                ?? throw new InvalidOperationException("Select an active employee record.");
+
+            var alreadyLinked = await _db.Users.AnyAsync(
+                u => u.EmployeeId == employeeId.Value && (!excludeUserId.HasValue || u.Id != excludeUserId.Value),
+                cancellationToken);
+
+            if (alreadyLinked)
+            {
+                throw new InvalidOperationException("That employee already has a platform user account.");
+            }
+
+            return employee;
+        }
+
+        private async Task<int?> ValidateCustomerLinkAsync(
+            int? customerId,
+            string roleName,
+            CancellationToken cancellationToken)
+        {
+            if (!customerId.HasValue || customerId.Value <= 0)
+            {
+                if (string.Equals(roleName, "Customer", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException("Select the customer account for a Customer portal user.");
+                }
+
+                return null;
+            }
+
+            var customerExists = await _db.Customers.AnyAsync(c => c.Id == customerId.Value && c.IsActive, cancellationToken);
+            if (!customerExists)
+            {
+                throw new InvalidOperationException("Select a valid active customer account.");
+            }
+
+            return customerId.Value;
+        }
+
         private static UserDto Map(User user)
         {
             return new UserDto
@@ -292,6 +444,12 @@ namespace Manufacture.Services
                 Name = user.Name,
                 Email = user.Email,
                 RoleId = user.RoleId,
+                EmployeeId = user.EmployeeId,
+                EmployeeName = user.Employee?.FullName,
+                EmployeeDepartment = user.Employee?.Department,
+                EmployeeDesignation = user.Employee?.Designation,
+                CustomerId = user.CustomerId,
+                CustomerName = user.Customer?.Name,
                 Role = user.Role?.Name ?? user.RoleId.ToString(),
                 RoleDisplayName = user.Role?.DisplayName ?? user.Role?.Name ?? string.Empty,
                 PosTerminalId = user.PosTerminalCode,

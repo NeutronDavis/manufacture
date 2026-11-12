@@ -1,16 +1,15 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.DTOs;
-using Manufacture.Models.Domain;
 
 namespace Manufacture.Pages.Inventory.Items
 {
     public class CreateModel : PageModel
     {
-        private readonly MockInventoryService _inventoryService;
+        private readonly IInventoryService _inventoryService;
 
-        public CreateModel(MockInventoryService inventoryService)
+        public CreateModel(IInventoryService inventoryService)
         {
             _inventoryService = inventoryService;
         }
@@ -18,24 +17,39 @@ namespace Manufacture.Pages.Inventory.Items
         [BindProperty]
         public InventoryItemDto ItemInput { get; set; } = new();
 
-        public List<Supplier> Suppliers { get; set; } = new();
+        public List<SupplierDto> Suppliers { get; set; } = new();
 
-        public void OnGet()
+        public async Task OnGetAsync(CancellationToken cancellationToken = default)
         {
-            Suppliers = _inventoryService.GetAllSuppliers();
+            await LoadSuppliersAsync(cancellationToken);
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken = default)
         {
             if (!ModelState.IsValid)
             {
-                Suppliers = _inventoryService.GetAllSuppliers();
+                await LoadSuppliersAsync(cancellationToken);
                 return Page();
             }
 
-            var item = _inventoryService.CreateItem(ItemInput);
-            TempData["SuccessMessage"] = $"Stock item '{item.Name}' added to warehouse inventory.";
-            return RedirectToPage("/Inventory/Index");
+            try
+            {
+                var userName = HttpContext.Session.GetString("UserName") ?? "Store Manager";
+                var item = await _inventoryService.CreateItemAsync(ItemInput, userName, cancellationToken);
+                TempData["SuccessMessage"] = $"Stock item '{item.Name}' added to warehouse inventory with code {item.ItemCode}.";
+                return RedirectToPage("/Inventory/Index");
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+                await LoadSuppliersAsync(cancellationToken);
+                return Page();
+            }
+        }
+
+        private async Task LoadSuppliersAsync(CancellationToken cancellationToken)
+        {
+            Suppliers = await _inventoryService.GetSuppliersAsync(cancellationToken: cancellationToken);
         }
     }
 }

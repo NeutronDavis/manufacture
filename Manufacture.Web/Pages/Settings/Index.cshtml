@@ -20,7 +20,16 @@
                 Configure global enterprise parameters, corporate treasury benchmarks for sales reps, role permissions, and user credentials.
             </p>
         </div>
-        <div>
+        <div class="flex items-center gap-2 flex-wrap">
+            <a asp-page="/Settings/Departments" class="btn btn-sm btn-outline rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-building text-xs"></i> Departments
+            </a>
+            <a asp-page="/Settings/JobRoles" class="btn btn-sm btn-outline rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-id-badge text-xs"></i> Job Roles
+            </a>
+            <a asp-page="/Settings/SalesRules" class="btn btn-sm btn-outline rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-gift text-xs"></i> Sales Rules
+            </a>
             <a asp-page="/Settings/Finance" class="btn btn-sm btn-primary rounded-xl text-xs gap-2 font-bold shadow-xs">
                 <i class="fa-solid fa-scale-balanced text-xs"></i> Configure Finance & Payroll
             </a>

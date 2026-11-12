@@ -1,23 +1,23 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.Domain;
 
 namespace Manufacture.Pages.Inventory.Suppliers
 {
     public class IndexModel : PageModel
     {
-        private readonly MockInventoryService _inventoryService;
+        private readonly IInventoryService _inventoryService;
 
-        public IndexModel(MockInventoryService inventoryService)
+        public IndexModel(IInventoryService inventoryService)
         {
             _inventoryService = inventoryService;
         }
 
-        public List<Supplier> Suppliers { get; set; } = new();
+        public List<SupplierDto> Suppliers { get; set; } = new();
 
-        public void OnGet()
+        public async Task OnGetAsync(CancellationToken cancellationToken = default)
         {
-            Suppliers = _inventoryService.GetAllSuppliers();
+            Suppliers = await _inventoryService.GetSuppliersAsync(cancellationToken: cancellationToken);
         }
     }
 }

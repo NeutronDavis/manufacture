@@ -3,6 +3,7 @@ CREATE TABLE [dbo].[PosTerminals]
     [Id]                     INT            IDENTITY (1, 1) NOT NULL,
     [TerminalCode]           NVARCHAR (20)  NOT NULL,
     [TerminalName]           NVARCHAR (100) NOT NULL,
+    [AssignedEmployeeId]     INT            NULL,
     [AssignedUserId]         INT            NULL,
     [CashAccountName]        NVARCHAR (100) NOT NULL CONSTRAINT [DF_PosTerminals_CashAccountName] DEFAULT (N'Bakery Cash Drawer'),
     [TransferAccountName]    NVARCHAR (120) NOT NULL CONSTRAINT [DF_PosTerminals_TransferAccountName] DEFAULT (N'FirstBank - 3021948291'),
@@ -13,6 +14,7 @@ CREATE TABLE [dbo].[PosTerminals]
 
     CONSTRAINT [PK_PosTerminals] PRIMARY KEY CLUSTERED ([Id] ASC),
     CONSTRAINT [UQ_PosTerminals_TerminalCode] UNIQUE ([TerminalCode]),
+    CONSTRAINT [FK_PosTerminals_Employees] FOREIGN KEY ([AssignedEmployeeId]) REFERENCES [dbo].[Employees] ([Id]),
     CONSTRAINT [FK_PosTerminals_Users] FOREIGN KEY ([AssignedUserId]) REFERENCES [dbo].[Users] ([Id]) ON DELETE SET NULL
 );
 GO
@@ -20,4 +22,9 @@ GO
 CREATE NONCLUSTERED INDEX [IX_PosTerminals_AssignedUserId]
     ON [dbo].[PosTerminals] ([AssignedUserId] ASC)
     WHERE [AssignedUserId] IS NOT NULL;
+GO
+
+CREATE NONCLUSTERED INDEX [IX_PosTerminals_AssignedEmployeeId]
+    ON [dbo].[PosTerminals] ([AssignedEmployeeId] ASC)
+    WHERE [AssignedEmployeeId] IS NOT NULL;
 GO

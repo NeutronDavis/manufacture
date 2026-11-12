@@ -36,7 +36,6 @@ namespace Manufacture.Pages.Logistics.Charter
         };
 
         public List<VehicleDto> AvailableVehicles { get; set; } = new();
-        public List<FleetDriverDto> AvailableDrivers { get; set; } = new();
         public List<RouteRateDto> ActiveRouteRates { get; set; } = new();
         public string RouteRatesJson { get; set; } = "[]";
         public string InitialLegsJson { get; set; } = "[]";
@@ -49,7 +48,6 @@ namespace Manufacture.Pages.Logistics.Charter
         private async Task LoadFormDataAsync()
         {
             AvailableVehicles = await _fleetService.GetVehiclesAsync();
-            AvailableDrivers = await _fleetService.GetDriversAsync();
             ActiveRouteRates = await _fleetService.GetActiveRouteRatesAsync();
 
             RouteRatesJson = JsonSerializer.Serialize(
@@ -114,10 +112,11 @@ namespace Manufacture.Pages.Logistics.Charter
                 Booking.VehicleRegNumber = defaultVehicle.RegistrationNumber;
             }
 
-            if (!Booking.DriverId.HasValue && AvailableDrivers.Any())
+            var selectedVehicle = AvailableVehicles.FirstOrDefault(v => v.Id == Booking.VehicleId);
+            if (selectedVehicle != null)
             {
-                Booking.DriverId = AvailableDrivers.First().Id;
-                Booking.DriverName = AvailableDrivers.First().FullName;
+                Booking.DriverEmployeeId = selectedVehicle.AssignedEmployeeId;
+                Booking.DriverName = selectedVehicle.AssignedDriverName ?? string.Empty;
             }
         }
 

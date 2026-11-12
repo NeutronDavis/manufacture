@@ -8,14 +8,19 @@ namespace Manufacture.Pages.Logistics.Vehicles
     public class CreateModel : PageModel
     {
         private readonly IFleetService _fleetService;
+        private readonly IImageUploadService _imageUploadService;
 
-        public CreateModel(IFleetService fleetService)
+        public CreateModel(IFleetService fleetService, IImageUploadService imageUploadService)
         {
             _fleetService = fleetService;
+            _imageUploadService = imageUploadService;
         }
 
         [BindProperty]
         public VehicleDto VehicleInput { get; set; } = new();
+
+        [BindProperty]
+        public IFormFile? ImageFile { get; set; }
 
         public List<EmployeeDto> FleetDrivers { get; set; } = new();
 
@@ -35,6 +40,15 @@ namespace Manufacture.Pages.Logistics.Vehicles
 
             try
             {
+                if (ImageFile is { Length: > 0 })
+                {
+                    await using var stream = ImageFile.OpenReadStream();
+                    VehicleInput.ImageUrl = await _imageUploadService.UploadAsync(
+                        stream,
+                        ImageFile.FileName,
+                        "uploads/vehicles");
+                }
+
                 var vehicle = await _fleetService.CreateVehicleAsync(VehicleInput);
                 TempData["SuccessMessage"] = $"Vehicle '{vehicle.RegistrationNumber}' added to fleet.";
                 return RedirectToPage("/Logistics/Vehicles/Index");

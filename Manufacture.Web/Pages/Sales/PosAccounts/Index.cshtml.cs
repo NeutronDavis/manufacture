@@ -1,16 +1,16 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
+using Manufacture.Library.Interfaces;
 using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
-using Manufacture.Services;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Manufacture.Pages.Sales.PosAccounts
 {
     public class IndexModel : PageModel
     {
-        private readonly MockSalesService _salesService;
+        private readonly ISalesService _salesService;
 
-        public IndexModel(MockSalesService salesService)
+        public IndexModel(ISalesService salesService)
         {
             _salesService = salesService;
         }
@@ -31,12 +31,15 @@ namespace Manufacture.Pages.Sales.PosAccounts
         [TempData]
         public string? ErrorMessage { get; set; }
 
-        public void OnGet(int? accountId)
+        public async Task OnGetAsync(int? accountId, CancellationToken cancellationToken = default)
         {
-            LoadData(accountId);
+            await LoadDataAsync(accountId, cancellationToken);
         }
 
-        public IActionResult OnPostSavePrices(int accountId, Dictionary<int, decimal> prices)
+        public async Task<IActionResult> OnPostSavePricesAsync(
+            int accountId,
+            Dictionary<int, decimal> prices,
+            CancellationToken cancellationToken = default)
         {
             if (accountId <= 0)
             {
@@ -44,20 +47,21 @@ namespace Manufacture.Pages.Sales.PosAccounts
                 return RedirectToPage(new { accountId });
             }
 
-            var ok = _salesService.SetBatchCustomAgreedPrices(accountId, prices ?? new());
-            if (ok)
-            {
-                SuccessMessage = "Custom agreed prices successfully updated for this supermarket account.";
-            }
-            else
-            {
-                ErrorMessage = "Failed to update custom agreed prices.";
-            }
+            var ok = await _salesService.SetBatchCustomAgreedPricesAsync(accountId, prices ?? new(), cancellationToken);
+            TempData[ok ? "SuccessMessage" : "ErrorMessage"] = ok
+                ? "Custom agreed prices successfully updated for this supermarket account."
+                : "Failed to update custom agreed prices.";
 
             return RedirectToPage(new { accountId });
         }
 
-        public IActionResult OnPostFulfillOrder(int accountId, int repId, int recipeId, int quantity, string? notes)
+        public async Task<IActionResult> OnPostFulfillOrderAsync(
+            int accountId,
+            int repId,
+            int recipeId,
+            int quantity,
+            string? notes,
+            CancellationToken cancellationToken = default)
         {
             if (accountId <= 0 || recipeId <= 0 || quantity <= 0)
             {
@@ -65,7 +69,7 @@ namespace Manufacture.Pages.Sales.PosAccounts
                 return RedirectToPage(new { accountId });
             }
 
-            var skus = _salesService.GetCatalogSkus();
+            var skus = await _salesService.GetCatalogSkusAsync(cancellationToken);
             var sku = skus.FirstOrDefault(s => s.Id == recipeId);
             if (sku == default)
             {
@@ -75,7 +79,7 @@ namespace Manufacture.Pages.Sales.PosAccounts
 
             var items = new List<OrderItemDto>
             {
-                new OrderItemDto
+                new()
                 {
                     RecipeId = sku.Id,
                     ProductName = sku.Name,
@@ -84,20 +88,26 @@ namespace Manufacture.Pages.Sales.PosAccounts
                 }
             };
 
-            var ok = _salesService.FulfillSupermarketOrder(accountId, repId, items, notes ?? $"Direct store replenishment ({quantity}x {sku.Name})");
-            if (ok)
-            {
-                SuccessMessage = $"Supermarket order fulfilled successfully! {quantity}x {sku.Name} charged to account credit.";
-            }
-            else
-            {
-                ErrorMessage = "Could not fulfill order. Please check account details.";
-            }
+            var ok = await _salesService.FulfillSupermarketOrderAsync(
+                accountId,
+                repId,
+                items,
+                notes ?? $"Direct store replenishment ({quantity}x {sku.Name})",
+                cancellationToken);
+
+            TempData[ok ? "SuccessMessage" : "ErrorMessage"] = ok
+                ? $"Supermarket order fulfilled successfully! {quantity}x {sku.Name} charged to account credit."
+                : "Could not fulfill order. Please check account details.";
 
             return RedirectToPage(new { accountId });
         }
 
-        public IActionResult OnPostRecordPayment(int accountId, decimal amountPaid, string? paymentMethod, string? reference)
+        public async Task<IActionResult> OnPostRecordPaymentAsync(
+            int accountId,
+            decimal amountPaid,
+            string? paymentMethod,
+            string? reference,
+            CancellationToken cancellationToken = default)
         {
             if (accountId <= 0 || amountPaid <= 0)
             {
@@ -105,20 +115,23 @@ namespace Manufacture.Pages.Sales.PosAccounts
                 return RedirectToPage(new { accountId });
             }
 
-            var ok = _salesService.RecordSupermarketPayment(accountId, amountPaid, paymentMethod ?? "BankTransfer", reference ?? "PAY-REC");
-            if (ok)
-            {
-                SuccessMessage = $"Payment of ₦{amountPaid:N2} credited to account. Outstanding balance updated.";
-            }
-            else
-            {
-                ErrorMessage = "Failed to process payment credit.";
-            }
+            var ok = await _salesService.RecordSupermarketPaymentAsync(
+                accountId,
+                amountPaid,
+                paymentMethod ?? "BankTransfer",
+                reference ?? "PAY-REC",
+                cancellationToken);
+
+            TempData[ok ? "SuccessMessage" : "ErrorMessage"] = ok
+                ? $"Payment of ₦{amountPaid:N2} credited to account and applied to the oldest open orders."
+                : "Failed to process payment credit.";
 
             return RedirectToPage(new { accountId });
         }
 
-        public IActionResult OnPostSaveAccount([FromForm] SupermarketAccount account)
+        public async Task<IActionResult> OnPostSaveAccountAsync(
+            [FromForm] SupermarketAccount account,
+            CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(account.AccountName))
             {
@@ -126,22 +139,19 @@ namespace Manufacture.Pages.Sales.PosAccounts
                 return RedirectToPage();
             }
 
-            var ok = _salesService.SaveSupermarketAccount(account);
-            if (ok)
-            {
-                SuccessMessage = $"Supermarket account '{account.AccountName}' saved successfully.";
-                return RedirectToPage(new { accountId = account.Id });
-            }
+            var ok = await _salesService.SaveSupermarketAccountAsync(account, cancellationToken);
+            TempData[ok ? "SuccessMessage" : "ErrorMessage"] = ok
+                ? $"Supermarket account '{account.AccountName}' saved successfully."
+                : "Could not save account details.";
 
-            ErrorMessage = "Could not save account details.";
-            return RedirectToPage();
+            return RedirectToPage(new { accountId = account.Id });
         }
 
-        private void LoadData(int? accountId)
+        private async Task LoadDataAsync(int? accountId, CancellationToken cancellationToken)
         {
-            Accounts = _salesService.GetAllSupermarketAccounts();
-            CatalogSkus = _salesService.GetCatalogSkus();
-            SalesReps = _salesService.GetAllReps();
+            Accounts = await _salesService.GetSupermarketAccountsAsync(cancellationToken: cancellationToken);
+            CatalogSkus = await _salesService.GetCatalogSkusAsync(cancellationToken);
+            SalesReps = await _salesService.GetSalesRepsAsync(cancellationToken: cancellationToken);
 
             if (accountId.HasValue && accountId.Value > 0)
             {

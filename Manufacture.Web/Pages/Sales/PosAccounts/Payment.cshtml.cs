@@ -1,15 +1,15 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.Domain;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Models.Domain;
-using Manufacture.Services;
 
 namespace Manufacture.Pages.Sales.PosAccounts
 {
     public class PaymentModel : PageModel
     {
-        private readonly MockSalesService _salesService;
+        private readonly ISalesService _salesService;
 
-        public PaymentModel(MockSalesService salesService)
+        public PaymentModel(ISalesService salesService)
         {
             _salesService = salesService;
         }
@@ -26,40 +26,53 @@ namespace Manufacture.Pages.Sales.PosAccounts
         [TempData]
         public string? ErrorMessage { get; set; }
 
-        public void OnGet(int? id)
+        public async Task OnGetAsync(int? id, CancellationToken cancellationToken = default)
         {
-            LoadData(id ?? Id);
+            await LoadDataAsync(id ?? Id, cancellationToken);
         }
 
-        public IActionResult OnPost(int accountId, decimal amountPaid, string? paymentMethod, string? reference)
+        public async Task<IActionResult> OnPostAsync(
+            int accountId,
+            decimal amountPaid,
+            string? paymentMethod,
+            string? reference,
+            CancellationToken cancellationToken = default)
         {
             if (accountId <= 0 || amountPaid <= 0)
             {
                 ErrorMessage = "Please specify a valid supermarket account and payment amount.";
-                LoadData(accountId);
+                await LoadDataAsync(accountId, cancellationToken);
                 return Page();
             }
 
-            var ok = _salesService.RecordSupermarketPayment(accountId, amountPaid, paymentMethod ?? "BankTransfer", reference ?? "PAY-REC");
+            var ok = await _salesService.RecordSupermarketPaymentAsync(
+                accountId,
+                amountPaid,
+                paymentMethod ?? "BankTransfer",
+                reference ?? "PAY-REC",
+                cancellationToken);
+
             if (ok)
             {
-                var account = _salesService.GetSupermarketAccountById(accountId);
+                var account = await _salesService.GetSupermarketAccountAsync(accountId, cancellationToken);
                 SuccessMessage = $"Payment of ₦{amountPaid:N2} credited to {account?.AccountName ?? "account"}. Balance updated successfully.";
                 return RedirectToPage("/Sales/PosAccounts/Edit", new { id = accountId });
             }
 
             ErrorMessage = "Failed to record payment credit. Please check account details.";
-            LoadData(accountId);
+            await LoadDataAsync(accountId, cancellationToken);
             return Page();
         }
 
-        private void LoadData(int? accountId)
+        private async Task LoadDataAsync(int? accountId, CancellationToken cancellationToken)
         {
-            Accounts = _salesService.GetAllSupermarketAccounts().Where(a => a.IsActive).ToList();
+            Accounts = (await _salesService.GetSupermarketAccountsAsync(cancellationToken: cancellationToken))
+                .Where(a => a.IsActive)
+                .ToList();
 
             if (accountId.HasValue && accountId.Value > 0)
             {
-                SelectedAccount = _salesService.GetSupermarketAccountById(accountId.Value);
+                SelectedAccount = await _salesService.GetSupermarketAccountAsync(accountId.Value, cancellationToken);
             }
             else if (Accounts.Any())
             {

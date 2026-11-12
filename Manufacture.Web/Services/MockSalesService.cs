@@ -38,7 +38,7 @@ namespace Manufacture.Services
                 new Customer { Id = 1, Name = "General Walk-in Counter", MemberCode = "WLK-001", Category = CustomerCategory.WalkIn, PhoneNumber = "N/A", Address = "Bakery Front Desk", OutstandingBalance = 0 },
                 new Customer { Id = 2, Name = "Goodness Supermarket Ikeja", MemberCode = "SUP-101", Category = CustomerCategory.Supermarket, PhoneNumber = "+2348033221100", Address = "12 Oba Akran Way, Ikeja", OutstandingBalance = 45000 },
                 new Customer { Id = 3, Name = "Grand Square Supermarket VI", MemberCode = "SUP-102", Category = CustomerCategory.Supermarket, PhoneNumber = "+2348055443322", Address = "Victoria Island, Lagos", OutstandingBalance = 0 },
-                new Customer { Id = 4, Name = "Alhaja Basirat Bread Depot (Vendor)", MemberCode = "VND-201", Category = CustomerCategory.ExternalVendor, PhoneNumber = "+2348099887766", Address = "Oshodi Market Shop 44", OutstandingBalance = 120000 },
+                new Customer { Id = 4, Name = "Alhaja Basirat Bread Depot (Wholesale Depot)", MemberCode = "VND-201", Category = CustomerCategory.ExternalVendor, PhoneNumber = "+2348099887766", Address = "Oshodi Market Shop 44", OutstandingBalance = 120000 },
                 new Customer { Id = 5, Name = "Madam Ngozi Wholesalers", MemberCode = "VND-202", Category = CustomerCategory.ExternalVendor, PhoneNumber = "+2348077665544", Address = "Agege Main Depot", OutstandingBalance = 15000 }
             });
 
@@ -118,7 +118,7 @@ namespace Manufacture.Services
                     OrderNumber = "ORD-20260819-002",
                     Type = OrderType.ImmediateSale,
                     CustomerId = 4,
-                    CustomerName = "Alhaja Basirat Bread Depot (Vendor)",
+                    CustomerName = "Alhaja Basirat Bread Depot (Wholesale Depot)",
                     CustomerCategory = CustomerCategory.ExternalVendor,
                     SalesRepUserId = 4,
                     SalesRepName = "Babatunde Alabi",
@@ -429,7 +429,7 @@ namespace Manufacture.Services
                 TargetDeliveryDate = dto.TargetDeliveryDate,
                 Discount = dto.Discount,
                 AmountPaid = dto.AmountPaid,
-                Notes = dto.Notes,
+                Notes = dto.Notes ?? string.Empty,
                 Items = dto.Items.Select((item, idx) => new OrderItem
                 {
                     Id = idx + 1,
@@ -569,7 +569,7 @@ namespace Manufacture.Services
                 {
                     Id = 3,
                     CustomerId = 4,
-                    AccountName = "Alhaja Basirat Bread Depot (Vendor)",
+                    AccountName = "Alhaja Basirat Bread Depot (Wholesale Depot)",
                     ContactPerson = "Alhaja Basirat",
                     PhoneNumber = "+2348099887766",
                     Address = "Oshodi Market Shop 44",

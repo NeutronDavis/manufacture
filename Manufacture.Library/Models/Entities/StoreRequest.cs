@@ -29,5 +29,7 @@ public partial class StoreRequest
 
     public DateTime UpdatedAt { get; set; }
 
+    public virtual ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
+
     public virtual ICollection<StoreRequestItem> StoreRequestItems { get; set; } = new List<StoreRequestItem>();
 }

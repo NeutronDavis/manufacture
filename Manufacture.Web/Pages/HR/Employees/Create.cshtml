@@ -30,7 +30,7 @@
     </div>
 
     <!-- Standard 2-Column Full-Width Form Layout -->
-    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+    <form method="post" enctype="multipart/form-data" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
         <input type="hidden" asp-for="EmployeeInput.EmploymentDate" />
         <input type="hidden" asp-for="EmployeeInput.IsActive" />
         
@@ -73,12 +73,12 @@
                             <label class="label pb-1.5">
                                 <span class="label-text font-bold text-xs text-base-content">Department <span class="text-error">*</span></span>
                             </label>
-                            <select asp-for="EmployeeInput.Department" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
-                                <option value="Production">Production (Bakery Floor)</option>
-                                <option value="Sales">Front of House / Sales</option>
-                                <option value="Logistics">Logistics &amp; Fleet</option>
-                                <option value="Store">Store &amp; Inventory</option>
-                                <option value="Admin">Administration &amp; HR</option>
+                            <select asp-for="EmployeeInput.DepartmentId" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
+                                <option value="">-- Select Department --</option>
+                                @foreach (var department in Model.Departments)
+                                {
+                                    <option value="@department.Id">@department.Name</option>
+                                }
                             </select>
                         </div>
 
@@ -88,7 +88,13 @@
                                     Designation / Role <span class="text-error">*</span>
                                 </span>
                             </label>
-                            <input type="text" asp-for="EmployeeInput.Designation" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. Head Baker" required />
+                            <select asp-for="EmployeeInput.JobRoleId" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
+                                <option value="">-- Select Job Role --</option>
+                                @foreach (var role in Model.JobRoles)
+                                {
+                                    <option value="@role.Id">@role.Name (@role.DepartmentName)</option>
+                                }
+                            </select>
                         </div>
 
                         <div class="form-control w-full">
@@ -125,6 +131,14 @@
                                 </span>
                             </label>
                             <input type="text" asp-for="EmployeeInput.Address" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="Residential Street Address, City" required />
+                        </div>
+
+                        <div class="sm:col-span-3 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Passport Photograph</span>
+                            </label>
+                            <input type="file" asp-for="PassportFile" accept="image/*" capture="user" class="file-input file-input-bordered file-input-sm w-full rounded-xl" />
+                            <span class="text-[10px] opacity-60 mt-1">JPG, PNG, WEBP or GIF up to 5 MB. Choose a file or open the camera.</span>
                         </div>
 
                         <div class="form-control w-full">

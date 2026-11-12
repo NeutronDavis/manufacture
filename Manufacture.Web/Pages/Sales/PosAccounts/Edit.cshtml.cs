@@ -1,15 +1,15 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.Domain;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Models.Domain;
-using Manufacture.Services;
 
 namespace Manufacture.Pages.Sales.PosAccounts
 {
     public class EditModel : PageModel
     {
-        private readonly MockSalesService _salesService;
+        private readonly ISalesService _salesService;
 
-        public EditModel(MockSalesService salesService)
+        public EditModel(ISalesService salesService)
         {
             _salesService = salesService;
         }
@@ -27,7 +27,7 @@ namespace Manufacture.Pages.Sales.PosAccounts
         [TempData]
         public string? ErrorMessage { get; set; }
 
-        public IActionResult OnGet(int? id)
+        public async Task<IActionResult> OnGetAsync(int? id, CancellationToken cancellationToken = default)
         {
             if (!id.HasValue || id.Value <= 0)
             {
@@ -35,7 +35,7 @@ namespace Manufacture.Pages.Sales.PosAccounts
                 return RedirectToPage("/Sales/PosAccounts/Index");
             }
 
-            var account = _salesService.GetSupermarketAccountById(id.Value);
+            var account = await _salesService.GetSupermarketAccountAsync(id.Value, cancellationToken);
             if (account == null)
             {
                 ErrorMessage = $"Supermarket account #{id.Value} was not found.";
@@ -43,33 +43,33 @@ namespace Manufacture.Pages.Sales.PosAccounts
             }
 
             Account = account;
-            LoadContext();
-
+            await LoadContextAsync(cancellationToken);
             return Page();
         }
 
-        public IActionResult OnPostSaveAccount()
+        public async Task<IActionResult> OnPostSaveAccountAsync(CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(Account.AccountName))
             {
                 ErrorMessage = "Supermarket name is required.";
-                LoadContext();
+                await LoadContextAsync(cancellationToken);
                 return Page();
             }
 
-            var ok = _salesService.SaveSupermarketAccount(Account);
-            if (ok)
-            {
-                SuccessMessage = $"Supermarket '{Account.AccountName}' details updated successfully.";
-                return RedirectToPage(new { id = Account.Id });
-            }
+            var ok = await _salesService.SaveSupermarketAccountAsync(Account, cancellationToken);
+            TempData[ok ? "SuccessMessage" : "ErrorMessage"] = ok
+                ? $"Supermarket '{Account.AccountName}' details updated successfully."
+                : "Failed to update supermarket details.";
 
-            ErrorMessage = "Failed to update supermarket details.";
-            LoadContext();
-            return Page();
+            return ok
+                ? RedirectToPage(new { id = Account.Id })
+                : Page();
         }
 
-        public IActionResult OnPostSavePrices(int accountId, Dictionary<int, decimal> prices)
+        public async Task<IActionResult> OnPostSavePricesAsync(
+            int accountId,
+            Dictionary<int, decimal> prices,
+            CancellationToken cancellationToken = default)
         {
             if (accountId <= 0)
             {
@@ -77,20 +77,15 @@ namespace Manufacture.Pages.Sales.PosAccounts
                 return RedirectToPage(new { id = accountId });
             }
 
-            var ok = _salesService.SetBatchCustomAgreedPrices(accountId, prices ?? new());
-            if (ok)
-            {
-                SuccessMessage = "Custom agreed SKU pricing contract successfully updated.";
-            }
-            else
-            {
-                ErrorMessage = "Failed to update custom agreed prices.";
-            }
+            var ok = await _salesService.SetBatchCustomAgreedPricesAsync(accountId, prices ?? new(), cancellationToken);
+            TempData[ok ? "SuccessMessage" : "ErrorMessage"] = ok
+                ? "Custom agreed SKU pricing contract successfully updated."
+                : "Failed to update custom agreed prices.";
 
             return RedirectToPage(new { id = accountId });
         }
 
-        public IActionResult OnPostToggleStatus(int id)
+        public async Task<IActionResult> OnPostToggleStatusAsync(int id, CancellationToken cancellationToken = default)
         {
             if (id <= 0)
             {
@@ -98,12 +93,11 @@ namespace Manufacture.Pages.Sales.PosAccounts
                 return RedirectToPage(new { id });
             }
 
-            var ok = _salesService.ToggleSupermarketStatus(id);
+            var ok = await _salesService.ToggleSupermarketStatusAsync(id, cancellationToken);
             if (ok)
             {
-                var account = _salesService.GetSupermarketAccountById(id);
-                var statusText = account != null && account.IsActive ? "Activated" : "Suspended";
-                SuccessMessage = $"Supermarket account status changed to: {statusText}.";
+                var account = await _salesService.GetSupermarketAccountAsync(id, cancellationToken);
+                SuccessMessage = $"Supermarket account status changed to: {(account?.IsActive == true ? "Activated" : "Suspended")}.";
             }
             else
             {
@@ -113,10 +107,10 @@ namespace Manufacture.Pages.Sales.PosAccounts
             return RedirectToPage(new { id });
         }
 
-        private void LoadContext()
+        private async Task LoadContextAsync(CancellationToken cancellationToken)
         {
-            CatalogSkus = _salesService.GetCatalogSkus();
-            SalesReps = _salesService.GetAllReps();
+            CatalogSkus = await _salesService.GetCatalogSkusAsync(cancellationToken);
+            SalesReps = await _salesService.GetSalesRepsAsync(cancellationToken: cancellationToken);
             AssignedRep = SalesReps.FirstOrDefault(r => r.Id == Account.AssignedRepId);
         }
     }

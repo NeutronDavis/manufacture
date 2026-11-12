@@ -78,11 +78,11 @@
 
                     <div class="form-control">
                         <label class="label"><span class="label-text font-semibold text-xs">Assigned Sales Rep / Cashier</span></label>
-                        <select asp-for="Terminal.AssignedUserId" class="select select-bordered select-sm w-full">
+                        <select asp-for="Terminal.AssignedEmployeeId" class="select select-bordered select-sm w-full">
                             <option value="">-- Unassigned (Shared Register / Floating Till) --</option>
-                            @foreach (var user in Model.EligibleUsers)
+                            @foreach (var employee in Model.EligibleEmployees)
                             {
-                                <option value="@user.Id">@user.Name (@user.Role) - @user.PhoneNumber</option>
+                                <option value="@employee.Id">@employee.FullName (@employee.StaffCode) - @employee.Department</option>
                             }
                         </select>
                         <span class="text-[11px] text-base-content/50 mt-1">Owner responsible for daily route float and drawer balancing.</span>

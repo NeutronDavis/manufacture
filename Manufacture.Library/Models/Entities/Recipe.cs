@@ -47,5 +47,7 @@ public partial class Recipe
 
     public virtual ICollection<RouteSheetItem> RouteSheetItems { get; set; } = new List<RouteSheetItem>();
 
+    public virtual ICollection<SalesBonusRule> SalesBonusRules { get; set; } = new List<SalesBonusRule>();
+
     public virtual ICollection<SupermarketAccountPrice> SupermarketAccountPrices { get; set; } = new List<SupermarketAccountPrice>();
 }

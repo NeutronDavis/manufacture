@@ -1,0 +1,233 @@
+@page "{id:int}"
+@model Manufacture.Pages.Sales.PreOrderSchedule.DetailsModel
+@{
+    ViewData["Title"] = $"Pre-Order {Model.Order.OrderNumber}";
+    var order = Model.Order;
+    var totalUnits = order.Items.Sum(i => i.Quantity);
+    var bonusUnits = order.Items.Sum(i => i.BonusQuantity);
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Sales/PreOrderSchedule/Index" class="hover:underline">Pre-Order Schedule</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">@order.OrderNumber</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-clock-rotate-left text-warning"></i> Pre-Order @order.OrderNumber
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Target delivery: <strong class="font-mono">@order.TargetDeliveryDate.ToString("yyyy-MM-dd")</strong>
+                &bull; @totalUnits ordered units
+                @if (bonusUnits > 0)
+                {
+                    <text>&bull; @bonusUnits bonus units</text>
+                }
+            </p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+            <a asp-page="/Sales/PreOrderSchedule/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs font-semibold gap-1.5">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Schedule
+            </a>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success text-xs rounded-xl"><span>@TempData["SuccessMessage"]</span></div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-error text-xs rounded-xl"><span>@TempData["ErrorMessage"]</span></div>
+    }
+
+    <!-- Customer-visible pre-order record. Staff-only sales rep assignment and settlement controls are intentionally omitted. -->
+    <div class="grid grid-cols-1 gap-6 items-start">
+        <div class="space-y-6">
+            <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-file-invoice text-primary"></i> Pre-Order Record
+                    </h2>
+                    <span class="badge badge-neutral badge-xs font-bold uppercase tracking-wider">Customer Copy</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                    <div>
+                        <div class="text-[10px] uppercase font-bold opacity-60">Customer</div>
+                        <div class="font-bold text-base-content mt-0.5">@order.CustomerName</div>
+                        <span class="badge badge-ghost border border-base-300 text-[10px] mt-1">@order.CustomerCategory</span>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase font-bold opacity-60">Order Type</div>
+                        <div class="font-bold text-base-content mt-0.5">@order.Type</div>
+                        <div class="text-[10px] opacity-60 mt-0.5">Booked by @order.BookedByType</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase font-bold opacity-60">Target Delivery Date</div>
+                        <div class="font-bold font-mono text-warning mt-0.5">
+                            <i class="fa-solid fa-calendar-day"></i> @order.TargetDeliveryDate.ToString("yyyy-MM-dd")
+                        </div>
+                        <div class="text-[10px] opacity-60 mt-0.5">Booked @order.OrderDate.ToString("yyyy-MM-dd HH:mm")</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase font-bold opacity-60">Payment Channel</div>
+                        <div class="mt-0.5">
+                            <span class="badge badge-ghost border border-base-300 font-mono font-bold">@order.PaymentMethod</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase font-bold opacity-60">Payment Status</div>
+                        <div class="mt-0.5">
+                            <span class="badge @(order.PaymentStatus == OrderPaymentStatus.Completed ? "badge-success" : order.PaymentStatus == OrderPaymentStatus.PartiallyPaid ? "badge-warning" : "badge-ghost") badge-sm font-bold">
+                                @order.PaymentStatus
+                            </span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase font-bold opacity-60">Operational Status</div>
+                        <div class="mt-0.5">
+                            <span class="badge @(order.Status == OrderStatus.Dispatched ? "badge-neutral" : order.Status == OrderStatus.ReadyToLoad ? "badge-info" : order.Status == OrderStatus.InProduction ? "badge-warning" : "badge-ghost") badge-sm font-bold">
+                                @order.Status
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(order.Notes))
+                {
+                    <div class="rounded-xl bg-base-200 border border-base-300 p-3 text-xs">
+                        <div class="text-[10px] uppercase font-bold opacity-60 mb-1">Dispatch / Loading Note</div>
+                        <div class="opacity-90">@order.Notes</div>
+                    </div>
+                }
+            </div>
+
+            <div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden">
+                <div class="p-4 border-b border-base-200 font-black text-sm flex items-center justify-between gap-2">
+                    <span class="flex items-center gap-2">
+                        <i class="fa-solid fa-boxes-stacked text-primary"></i> Pre-Order Lines
+                    </span>
+                    <span class="badge badge-neutral badge-xs font-mono font-bold">@order.Items.Count product type@(order.Items.Count == 1 ? "" : "s")</span>
+                </div>
+                <table class="table table-sm text-xs">
+                    <thead>
+                        <tr class="uppercase text-[10px] opacity-60">
+                            <th class="pl-4">Product</th>
+                            <th class="text-right">Ordered Qty</th>
+                            <th class="text-right">Bonus</th>
+                            <th class="text-right">Unit Price</th>
+                            <th class="text-right pr-4">Line Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in order.Items)
+                        {
+                            <tr>
+                                <td class="font-bold pl-4">@item.ProductName</td>
+                                <td class="text-right font-mono font-bold">@item.Quantity</td>
+                                <td class="text-right font-mono text-success">+@item.BonusQuantity</td>
+                                <td class="text-right font-mono">&#8358;@item.UnitPrice.ToString("N0")</td>
+                                <td class="text-right font-mono font-bold pr-4">&#8358;@item.TotalPrice.ToString("N0")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="border-t border-base-300">
+                            <td colspan="4" class="text-right font-bold pl-4">Gross Pre-Order Total</td>
+                            <td class="text-right font-mono font-black pr-4">&#8358;@order.TotalAmount.ToString("N0")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">
+                <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-route text-primary"></i> Fulfilment Timeline
+                </h2>
+
+                @{
+                    var status = order.Status;
+                    var booked = true;
+                    var inProduction = status is OrderStatus.InProduction or OrderStatus.ReadyToLoad or OrderStatus.Dispatched;
+                    var readyToLoad = status is OrderStatus.ReadyToLoad or OrderStatus.Dispatched;
+                    var dispatched = status == OrderStatus.Dispatched;
+                }
+
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                    <div class="rounded-xl border border-success/30 bg-success/5 p-3 @(booked ? "" : "opacity-50")">
+                        <div class="font-bold text-success flex items-center gap-1.5"><i class="fa-solid fa-check-circle"></i> Booked</div>
+                        <div class="text-[10px] opacity-60 mt-1">@order.OrderDate.ToString("yyyy-MM-dd HH:mm")</div>
+                    </div>
+                    <div class="rounded-xl border p-3 @(inProduction ? "border-warning/30 bg-warning/5" : "border-base-300 bg-base-200/40 opacity-60")">
+                        <div class="font-bold flex items-center gap-1.5 @(inProduction ? "text-warning" : "opacity-70")">
+                            <i class="fa-solid fa-bread-slice"></i> In Production
+                        </div>
+                        <div class="text-[10px] opacity-60 mt-1">@(inProduction ? "Production has started" : "Awaiting production")</div>
+                    </div>
+                    <div class="rounded-xl border p-3 @(readyToLoad ? "border-info/30 bg-info/5" : "border-base-300 bg-base-200/40 opacity-60")">
+                        <div class="font-bold flex items-center gap-1.5 @(readyToLoad ? "text-info" : "opacity-70")">
+                            <i class="fa-solid fa-truck-ramp-box"></i> Ready To Load
+                        </div>
+                        <div class="text-[10px] opacity-60 mt-1">@(readyToLoad ? "Loading slip available" : "Pending loading")</div>
+                    </div>
+                    <div class="rounded-xl border p-3 @(dispatched ? "border-neutral/30 bg-neutral/5" : "border-base-300 bg-base-200/40 opacity-60")">
+                        <div class="font-bold flex items-center gap-1.5 @(dispatched ? "text-base-content" : "opacity-70")">
+                            <i class="fa-solid fa-truck-fast"></i> Dispatched
+                        </div>
+                        <div class="text-[10px] opacity-60 mt-1">
+                            @if (dispatched)
+                            {
+                                @(string.IsNullOrWhiteSpace(order.VerifiedByLoaderName) ? "Out for delivery" : $"Signed by {order.VerifiedByLoaderName}")
+                            }
+                            else
+                            {
+                                <text>Out for delivery</text>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden">
+                <div class="p-4 border-b border-base-200 font-black text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-primary"></i> Payment History
+                </div>
+                @if (order.Payments.Any())
+                {
+                    <table class="table table-sm text-xs">
+                        <thead>
+                            <tr class="uppercase text-[10px] opacity-60">
+                                <th class="pl-4">Date</th>
+                                <th>Method</th>
+                                <th>Reference</th>
+                                <th>Received By</th>
+                                <th class="text-right pr-4">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var payment in order.Payments)
+                            {
+                                <tr>
+                                    <td class="font-mono pl-4">@payment.PaymentDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td>@payment.PaymentMethod</td>
+                                    <td class="font-mono">@payment.Reference</td>
+                                    <td>@payment.ReceivedBy</td>
+                                    <td class="text-right font-mono font-bold text-success pr-4">&#8358;@payment.Amount.ToString("N0")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="p-6 text-xs opacity-60">No payments have been recorded for this pre-order. Payment is handled by the sales team when the order is picked up.</div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

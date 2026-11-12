@@ -24,9 +24,11 @@ namespace Manufacture.Pages.Production.Recipes
         public Recipe Recipe { get; set; } = new();
         public RecipeCostingResultDto Costing { get; set; } = new();
         public List<ProductionBatch> RecentBatches { get; set; } = new();
+        public string UserRole { get; set; } = string.Empty;
 
         public void OnGet(int id)
         {
+            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
             var recipe = _productionService.GetRecipeById(id);
             if (recipe == null)
             {

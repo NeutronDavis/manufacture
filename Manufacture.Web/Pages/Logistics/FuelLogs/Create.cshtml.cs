@@ -21,11 +21,13 @@ namespace Manufacture.Pages.Logistics.FuelLogs
         public string? ReturnUrl { get; set; }
 
         public List<VehicleDto> Vehicles { get; set; } = new();
+        public List<EmployeeDto> Drivers { get; set; } = new();
 
         public async Task OnGetAsync(int? vehicleId, string? returnUrl)
         {
             ReturnUrl = returnUrl;
             Vehicles = await _fleetService.GetVehiclesAsync();
+            Drivers = await _fleetService.GetLogisticsDriversAsync();
 
             if (vehicleId.HasValue)
             {
@@ -34,6 +36,7 @@ namespace Manufacture.Pages.Logistics.FuelLogs
                 if (vehicle != null)
                 {
                     LogInput.FuelType = vehicle.FuelType;
+                    LogInput.EmployeeId = vehicle.AssignedEmployeeId;
                 }
             }
 
@@ -45,6 +48,7 @@ namespace Manufacture.Pages.Logistics.FuelLogs
         public async Task<IActionResult> OnPostAsync()
         {
             Vehicles = await _fleetService.GetVehiclesAsync();
+            Drivers = await _fleetService.GetLogisticsDriversAsync();
 
             if (!ModelState.IsValid)
             {

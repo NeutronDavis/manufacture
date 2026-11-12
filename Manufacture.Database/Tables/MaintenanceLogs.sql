@@ -7,6 +7,8 @@ CREATE TABLE [dbo].[MaintenanceLogs]
     [Cost]              DECIMAL (18, 2) NOT NULL CONSTRAINT [DF_MaintenanceLogs_Cost] DEFAULT (0),
     [WorkshopOrVendor]  NVARCHAR (150) NOT NULL CONSTRAINT [DF_MaintenanceLogs_WorkshopOrVendor] DEFAULT (N''),
     [InvoiceNumber]     NVARCHAR (60)  NOT NULL CONSTRAINT [DF_MaintenanceLogs_InvoiceNumber] DEFAULT (N''),
+    [BeforeImageUrl]    NVARCHAR (500) NULL,
+    [AfterImageUrl]     NVARCHAR (500) NULL,
     [CreatedAt]         DATETIME2 (3)  NOT NULL CONSTRAINT [DF_MaintenanceLogs_CreatedAt] DEFAULT (SYSUTCDATETIME()),
     [UpdatedAt]         DATETIME2 (3)  NOT NULL CONSTRAINT [DF_MaintenanceLogs_UpdatedAt] DEFAULT (SYSUTCDATETIME()),
 

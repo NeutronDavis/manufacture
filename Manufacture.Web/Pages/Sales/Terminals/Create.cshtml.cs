@@ -1,19 +1,20 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.Domain;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.Domain;
 
 namespace Manufacture.Pages.Sales.Terminals
 {
     public class CreateModel : PageModel
     {
-        private readonly MockSalesService _salesService;
-        private readonly MockUserService _userService;
+        private readonly ISalesService _salesService;
+        private readonly IEmployeeService _employeeService;
 
-        public CreateModel(MockSalesService salesService, MockUserService userService)
+        public CreateModel(ISalesService salesService, IEmployeeService employeeService)
         {
             _salesService = salesService;
-            _userService = userService;
+            _employeeService = employeeService;
         }
 
         [BindProperty]
@@ -27,42 +28,49 @@ namespace Manufacture.Pages.Sales.Terminals
             IsActive = true
         };
 
-        public List<User> EligibleUsers { get; set; } = new();
+        public List<EmployeeDto> EligibleEmployees { get; set; } = new();
 
-        public void OnGet()
+        public async Task OnGetAsync(CancellationToken cancellationToken = default)
         {
-            EligibleUsers = _userService.GetAll();
-            var all = _salesService.GetAllTerminals();
-            int nextNum = all.Any() ? all.Max(t => t.Id) + 1 : 1;
+            await LoadEmployeesAsync(cancellationToken);
+            var all = await _salesService.GetTerminalsAsync(includeInactive: true, cancellationToken);
+            var nextNum = all.Any() ? all.Max(t => t.Id) + 1 : 1;
             Terminal.TerminalCode = $"POS-{nextNum:00}";
             Terminal.TerminalName = $"Checkout Register #{nextNum}";
             Terminal.CashAccountName = $"Cash Till #{nextNum}";
             Terminal.PosBankAccountName = $"Moniepoint POS #{nextNum:00} - 9028129";
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(Terminal.TerminalName))
             {
                 ModelState.AddModelError("Terminal.TerminalName", "Terminal name is required.");
-                EligibleUsers = _userService.GetAll();
+                await LoadEmployeesAsync(cancellationToken);
                 return Page();
             }
 
-            if (Terminal.AssignedUserId.HasValue && Terminal.AssignedUserId.Value > 0)
+            try
             {
-                var user = _userService.GetById(Terminal.AssignedUserId.Value);
-                Terminal.AssignedUserName = user?.Name ?? "Unassigned";
+                var created = await _salesService.CreateTerminalAsync(Terminal, cancellationToken);
+                TempData["SuccessMessage"] = $"POS Terminal '{created.TerminalName}' ({created.TerminalCode}) registered successfully.";
+                return RedirectToPage("/Sales/Terminals/Index");
             }
-            else
+            catch (InvalidOperationException ex)
             {
-                Terminal.AssignedUserId = null;
-                Terminal.AssignedUserName = "Unassigned";
+                ModelState.AddModelError(string.Empty, ex.Message);
+                await LoadEmployeesAsync(cancellationToken);
+                return Page();
             }
+        }
 
-            var created = _salesService.CreateTerminal(Terminal);
-            TempData["SuccessMessage"] = $"POS Terminal '{created.TerminalName}' ({created.TerminalCode}) registered successfully.";
-            return RedirectToPage("/Sales/Terminals/Index");
+        private async Task LoadEmployeesAsync(CancellationToken cancellationToken)
+        {
+            var employees = await _employeeService.GetAllAsync(includeInactive: false, includeDeleted: false, cancellationToken);
+            EligibleEmployees = employees
+                .Where(e => e.Department.Contains("Sales", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(e => e.FullName)
+                .ToList();
         }
     }
 }

@@ -2,6 +2,8 @@
 @model Manufacture.Pages.UserManagement.EditModel
 @{
     ViewData["Title"] = $"Edit User - {Model.UserInput.Name}";
+    var selectedRole = Model.Roles.FirstOrDefault(r => r.Id == Model.UserInput.RoleId);
+    var showCustomerLink = string.Equals(selectedRole?.Name, "Customer", StringComparison.OrdinalIgnoreCase);
 }
 
 <div class="space-y-6 w-full">
@@ -16,10 +18,10 @@
                 <span class="text-primary font-bold">Edit User</span>
             </div>
             <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
-                <i class="fa-solid fa-user-pen text-primary"></i> Edit User: @Model.UserInput.Name
+                <i class="fa-solid fa-user-pen text-primary"></i> Edit System User Account
             </h1>
             <p class="text-xs opacity-70 mt-0.5">
-                Update account profile, assigned RBAC permissions, and 6-digit terminal PIN.
+                Update the employee link, account credentials, and 6-digit numeric PIN for quick shift terminal access.
             </p>
         </div>
         <div>
@@ -41,85 +43,116 @@
     <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
         <input type="hidden" asp-for="UserInput.Id" />
         <input type="hidden" asp-for="UserInput.IsActive" />
+        <input type="hidden" asp-for="UserInput.PhoneNumber" />
+        <input type="hidden" asp-for="UserInput.PosTerminalId" />
 
         <!-- Left Section (~70% width, 8 Cols) -->
         <div class="lg:col-span-8 space-y-6">
             <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
                 <div class="card-body p-6 space-y-5">
-                    
+
                     <div class="flex items-center justify-between border-b border-base-200 pb-3">
                         <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
                             <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
                                 <i class="fa-solid fa-id-badge"></i>
                             </div>
-                            <span>Account Profile & Security</span>
+                            <span>User Profile &amp; Security Credentials</span>
                         </div>
-                        <span class="badge badge-neutral badge-xs font-bold uppercase tracking-wider">Role: @Model.UserInput.RoleDisplayName</span>
+                        <span class="badge badge-neutral badge-xs font-bold uppercase tracking-wider">Access Control</span>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+                        <!-- Employee Record -->
                         <div class="sm:col-span-2 form-control w-full">
                             <label class="label pb-1.5">
                                 <span class="label-text font-bold text-xs text-base-content">
-                                    User Full Name <span class="text-error">*</span>
+                                    Employee Record (Staff) <span class="text-error">*</span>
                                 </span>
                             </label>
-                            <input type="text" asp-for="UserInput.Name" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" required />
+                            <select asp-for="UserInput.EmployeeId" id="employeeSelect" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary" required>
+                                <option value="">-- Select Employee --</option>
+                                @foreach (var employee in Model.Employees)
+                                {
+                                    <option value="@employee.Id" data-name="@employee.FullName" data-email="@employee.Email">@employee.FullName (@employee.Department - @employee.Designation)</option>
+                                }
+                            </select>
+                            <span class="text-[10px] opacity-60 mt-1">Selecting an employee fills the full name and email below automatically.</span>
+                            <span asp-validation-for="UserInput.EmployeeId" class="text-error text-[10px] mt-1"></span>
                         </div>
 
+                        <!-- Full Name -->
                         <div class="sm:col-span-2 form-control w-full">
                             <label class="label pb-1.5">
                                 <span class="label-text font-bold text-xs text-base-content">
-                                    Email Address <span class="text-error">*</span>
+                                    Full Name <span class="text-error">*</span>
                                 </span>
                             </label>
-                            <input type="email" asp-for="UserInput.Email" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" required />
+                            <input type="text" asp-for="UserInput.Name" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" placeholder="e.g. Babatunde Alabi" required />
                         </div>
 
+                        <!-- Email Address -->
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Email Address (Login Username) <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="email" asp-for="UserInput.Email" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="babatunde@bakery.com" required />
+                        </div>
+
+                        <!-- Password -->
                         <div class="form-control w-full">
                             <label class="label pb-1.5">
                                 <span class="label-text font-bold text-xs text-base-content">
-                                    System Role & Permissions <span class="text-error">*</span>
+                                    Reset Password (Optional)
                                 </span>
                             </label>
-                            <select asp-for="UserInput.RoleId" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary" required>
-                                <option value="">— Select a system role —</option>
+                            <input type="password" asp-for="UserInput.Password" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="Leave blank to keep current" />
+                        </div>
+
+                        <!-- 6-Digit PIN Code -->
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    6-Digit Fast Login PIN (Optional)
+                                </span>
+                            </label>
+                            <input type="text" maxlength="6" pattern="[0-9]{6}" asp-for="UserInput.PinCode" class="input input-bordered input-sm w-full font-mono tracking-widest text-center font-black bg-base-200 border-base-300 rounded-xl text-sm focus:bg-base-100 focus:border-primary text-primary" placeholder="Leave blank to keep current" />
+                        </div>
+
+                        <!-- Assigned System Role -->
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Assigned System Role &amp; Permissions <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <select asp-for="UserInput.RoleId" id="roleSelect" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary" required>
+                                <option value="">-- Select a system role --</option>
                                 @foreach (var role in Model.Roles)
                                 {
-                                    <option value="@role.Id">@role.DisplayName (@role.Name)</option>
+                                    <option value="@role.Id" data-role-name="@role.Name">@role.DisplayName (@role.Name)</option>
                                 }
                             </select>
                             <span asp-validation-for="UserInput.RoleId" class="text-error text-[10px] mt-1"></span>
                         </div>
 
-                        <div class="form-control w-full">
+                        <!-- Linked Customer Account -->
+                        <div id="customerLinkField" class="sm:col-span-2 form-control w-full @(showCustomerLink ? "" : "hidden")" style="@(showCustomerLink ? "" : "display:none")">
                             <label class="label pb-1.5">
                                 <span class="label-text font-bold text-xs text-base-content">
-                                    6-Digit Fast Login PIN
+                                    Linked Customer Account
                                 </span>
                             </label>
-                            <input type="text" maxlength="6" pattern="\d{6}" asp-for="UserInput.PinCode" class="input input-bordered input-sm w-full font-mono text-center font-black bg-base-200 border-base-300 rounded-xl text-sm focus:bg-base-100 focus:border-primary tracking-widest text-primary" placeholder="Leave blank to keep current" />
-                        </div>
-
-                        <div class="form-control w-full">
-                            <label class="label pb-1.5">
-                                <span class="label-text font-bold text-xs text-base-content">Reset Password (Optional)</span>
-                            </label>
-                            <input type="password" asp-for="UserInput.Password" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="Leave blank to keep current" />
-                        </div>
-
-                        <div class="form-control w-full">
-                            <label class="label pb-1.5">
-                                <span class="label-text font-bold text-xs text-base-content">Phone Number</span>
-                            </label>
-                            <input type="tel" asp-for="UserInput.PhoneNumber" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="+234 80..." />
-                        </div>
-
-                        <div class="sm:col-span-2 form-control w-full">
-                            <label class="label pb-1.5">
-                                <span class="label-text font-bold text-xs text-base-content">Assigned POS Terminal (For Sales Reps)</span>
-                            </label>
-                            <input type="text" asp-for="UserInput.PosTerminalId" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. POS-01" />
+                            <select asp-for="UserInput.CustomerId" id="customerSelect" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary">
+                                <option value="">-- No linked customer (staff account) --</option>
+                                @foreach (var customer in Model.Customers)
+                                {
+                                    <option value="@customer.Id">@customer.Name (@customer.MemberCode) - @customer.Category</option>
+                                }
+                            </select>
+                            <span class="text-[10px] opacity-60 mt-1">Required for Customer portal users. This drives their Pre-Order Schedule and dashboard lookup.</span>
                         </div>
                     </div>
 
@@ -129,16 +162,18 @@
 
         <!-- Right Sticky Section (~30% width, 4 Cols) -->
         <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+
+            <!-- Summary & Actions Card -->
             <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
                 <div class="flex items-center justify-between border-b border-base-200 pb-3">
                     <h2 class="font-black text-sm text-base-content flex items-center gap-2">
-                        <i class="fa-solid fa-shield-halved text-primary"></i> Update Profile
+                        <i class="fa-solid fa-shield-halved text-primary"></i> Account Summary
                     </h2>
                     <span class="badge badge-success badge-xs font-bold">Active</span>
                 </div>
 
                 <p class="text-[11px] opacity-70 leading-relaxed">
-                    Saving modifications will immediately take effect on the user's active session and POS terminal permissions.
+                    Saving modifications will immediately update the user's profile, role permissions, and POS terminal access.
                 </p>
 
                 <div class="space-y-2 pt-2 border-t border-base-200">
@@ -151,6 +186,66 @@
                     </a>
                 </div>
             </div>
+
+            <!-- Fast PIN Authentication Note -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 text-xs space-y-2">
+                <div class="font-bold text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-keypad text-primary"></i> Fast PIN Authentication
+                </div>
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    For sales reps and cashier terminals, the 6-digit PIN provides fast touch authentication without typing full credentials during busy retail rush hours.
+                </p>
+            </div>
+
         </div>
     </form>
 </div>
+
+@section Scripts {
+<script>
+    function toggleCustomerLinkField() {
+        const roleSelect = document.getElementById('roleSelect');
+        const customerField = document.getElementById('customerLinkField');
+        const customerSelect = document.getElementById('customerSelect');
+        if (!roleSelect || !customerField || !customerSelect) return;
+
+        const selectedOption = roleSelect.options[roleSelect.selectedIndex];
+        const roleName = selectedOption?.getAttribute('data-role-name') || '';
+        const isCustomer = roleName.toLowerCase() === 'customer';
+
+        customerField.classList.toggle('hidden', !isCustomer);
+        customerField.style.display = isCustomer ? '' : 'none';
+        customerSelect.required = isCustomer;
+        if (!isCustomer) {
+            customerSelect.value = '';
+        }
+    }
+
+    function populateFromEmployee() {
+        const employeeSelect = document.getElementById('employeeSelect');
+        if (!employeeSelect) return;
+
+        const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
+        const nameInput = document.getElementById('UserInput_Name');
+        const emailInput = document.getElementById('UserInput_Email');
+        if (!selectedOption || !selectedOption.value) return;
+
+        if (nameInput) nameInput.value = selectedOption.getAttribute('data-name') || '';
+        if (emailInput) emailInput.value = selectedOption.getAttribute('data-email') || '';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const roleSelect = document.getElementById('roleSelect');
+        if (roleSelect) {
+            roleSelect.addEventListener('change', toggleCustomerLinkField);
+        }
+
+        const employeeSelect = document.getElementById('employeeSelect');
+        if (employeeSelect) {
+            employeeSelect.addEventListener('change', populateFromEmployee);
+        }
+
+        toggleCustomerLinkField();
+    });
+</script>
+}

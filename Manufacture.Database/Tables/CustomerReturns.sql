@@ -9,6 +9,7 @@ CREATE TABLE [dbo].[CustomerReturns]
     [Quantity]           INT            NOT NULL,
     [UnitPrice]          DECIMAL (18, 2) NOT NULL CONSTRAINT [DF_CustomerReturns_UnitPrice] DEFAULT (0),
     [RefundAmount]       AS ([Quantity] * [UnitPrice]) PERSISTED,
+    [ReplacementQuantity] INT           NOT NULL CONSTRAINT [DF_CustomerReturns_ReplacementQuantity] DEFAULT (0),
     [ReturnDate]         DATETIME2 (3)  NOT NULL CONSTRAINT [DF_CustomerReturns_ReturnDate] DEFAULT (SYSUTCDATETIME()),
     [Reason]             NVARCHAR (250) NOT NULL CONSTRAINT [DF_CustomerReturns_Reason] DEFAULT (N''),
     [ReplacementIssued]  BIT            NOT NULL CONSTRAINT [DF_CustomerReturns_ReplacementIssued] DEFAULT (0),
@@ -23,6 +24,7 @@ CREATE TABLE [dbo].[CustomerReturns]
     CONSTRAINT [FK_CustomerReturns_Recipes] FOREIGN KEY ([RecipeId]) REFERENCES [dbo].[Recipes] ([Id]),
     CONSTRAINT [FK_CustomerReturns_SalesReps] FOREIGN KEY ([SalesRepId]) REFERENCES [dbo].[SalesReps] ([Id]),
     CONSTRAINT [CK_CustomerReturns_Quantity] CHECK ([Quantity] > 0),
+    CONSTRAINT [CK_CustomerReturns_ReplacementQuantity] CHECK ([ReplacementQuantity] >= 0),
     CONSTRAINT [CK_CustomerReturns_UnitPrice] CHECK ([UnitPrice] >= 0)
 );
 GO

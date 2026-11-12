@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model Manufacture.Pages.Sales.IndexModel
 @{
     ViewData["Title"] = "Sales & POS Hub";
@@ -21,8 +21,8 @@
             </p>
         </div>
         <div class="flex items-center gap-2">
-            <a asp-page="/Sales/Orders/PreOrders" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
-                <i class="fa-solid fa-clock-rotate-left text-xs"></i> View Pre-Orders
+            <a asp-page="/Sales/Orders/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-receipt text-xs"></i> Orders &amp; Invoices
             </a>
             <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
                 <i class="fa-solid fa-cart-plus text-xs"></i> New POS Sale
@@ -46,16 +46,7 @@
             <div class="stat-desc opacity-70">Processed loading slips</div>
         </div>
 
-        <div class="stat p-5">
-            <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-money-bill-trend-up"></i></div>
-            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Revenue Tracked</div>
-            <div class="stat-value text-2xl font-black font-mono text-success">
-                ₦@Model.RecentOrders.Sum(o => o.TotalAmount).ToString("N0")
-            </div>
-            <div class="stat-desc opacity-70">Cash, POS bank & transfers</div>
-        </div>
-
-        <div class="stat p-5">
+<div class="stat p-5">
             <div class="stat-figure text-info text-2xl"><i class="fa-solid fa-print"></i></div>
             <div class="stat-title text-[10px] uppercase font-bold opacity-60">Loading Slips Issued</div>
             <div class="stat-value text-2xl font-black font-mono text-info">
@@ -98,7 +89,7 @@
                 </div>
             </div>
 
-            <!-- 2. Daily Route Reconciliation -->
+            <!-- 2. Sales Reconciliation -->
             <div class="card bg-base-100 border border-base-300 shadow-xs hover:shadow-md hover:border-warning transition-all duration-200 rounded-2xl p-6 flex flex-col justify-between">
                 <div class="space-y-3">
                     <div class="flex items-center justify-between">
@@ -108,7 +99,7 @@
                         <span class="badge badge-warning badge-sm font-semibold">Step 2: Balance</span>
                     </div>
                     <div>
-                        <h3 class="font-bold text-base text-base-content">Daily Credit & Stock Reconcile</h3>
+                        <h3 class="font-bold text-base text-base-content">Sales Reconciliation</h3>
                         <p class="text-xs text-base-content/70 mt-1 leading-relaxed">
                             Sold + Returned + Damaged == Active inventory validation. Aggregated lump-sum payment drawer with treasury policy variance audit.
                         </p>
@@ -116,7 +107,7 @@
                 </div>
                 <div class="pt-4 border-t border-base-200 mt-4">
                     <a asp-page="/Sales/Reconciliation/Index" class="btn btn-warning btn-sm w-full gap-2 font-bold text-warning-content">
-                        <i class="fa-solid fa-calculator text-xs"></i> Reconcile Route Sheets
+                        <i class="fa-solid fa-calculator text-xs"></i> Open Sales Reconciliation
                     </a>
                 </div>
             </div>
@@ -152,9 +143,12 @@
             <h2 class="text-sm font-black text-base-content flex items-center gap-2">
                 <i class="fa-solid fa-desktop text-primary"></i> Dedicated Checkout Registers
             </h2>
-            <a asp-page="/Sales/Terminals/Index" class="btn btn-xs btn-ghost text-primary font-semibold">
-                Manage Terminals &rarr;
-            </a>
+            @if (!string.Equals(Model.UserRole, "SalesRep", StringComparison.OrdinalIgnoreCase))
+            {
+                <a asp-page="/Sales/Terminals/Index" class="btn btn-xs btn-ghost text-primary font-semibold">
+                    Manage Terminals &rarr;
+                </a>
+            }
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -167,7 +161,7 @@
                                 <span class="badge badge-neutral badge-xs font-mono font-bold">@term.TerminalCode</span>
                                 <h3 class="font-black text-base text-base-content mt-1">@term.TerminalName</h3>
                             </div>
-                            <span class="badge badge-success badge-xs font-bold">● Active</span>
+                            <span class="badge badge-success badge-xs font-bold">â— Active</span>
                         </div>
 
                         <div class="p-3 bg-base-200 border border-base-300 rounded-xl flex items-center justify-between text-xs">
@@ -188,9 +182,12 @@
                         </div>
 
                         <div class="flex justify-between items-center pt-2 border-t border-base-200">
-                            <a asp-page="/Sales/Terminals/Assign" asp-route-id="@term.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg text-xs font-semibold hover:border-primary">
-                                <i class="fa-solid fa-user-plus text-[10px]"></i> Assign Rep
-                            </a>
+                            @if (!string.Equals(Model.UserRole, "SalesRep", StringComparison.OrdinalIgnoreCase))
+                            {
+                                <a asp-page="/Sales/Terminals/Assign" asp-route-id="@term.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg text-xs font-semibold hover:border-primary">
+                                    <i class="fa-solid fa-user-plus text-[10px]"></i> Assign Rep
+                                </a>
+                            }
                             <a asp-page="/Sales/Orders/Create" class="btn btn-xs btn-neutral rounded-lg text-xs font-bold shadow-xs">
                                 Sell on @term.TerminalCode
                             </a>
@@ -224,7 +221,7 @@
                             <th>Date / Time</th>
                             <th>Customer</th>
                             <th>Sales Rep</th>
-                            <th>Net Total (₦)</th>
+                            <th>Gross Total (â‚¦)</th>
                             <th>Payment Channel</th>
                             <th>Slip Status</th>
                             <th class="text-right pr-4">Action</th>
@@ -240,7 +237,7 @@
                                 <td class="font-mono text-xs opacity-70 py-3">@order.OrderDate.ToString("yyyy-MM-dd HH:mm")</td>
                                 <td class="font-bold text-base-content py-3">@order.CustomerName</td>
                                 <td class="opacity-80 py-3">@order.SalesRepName</td>
-                                <td class="font-mono font-black text-success py-3">₦@order.TotalAmount.ToString("N0")</td>
+                                <td class="font-mono font-black text-success py-3">â‚¦@order.TotalAmount.ToString("N0")</td>
                                 <td>
                                     <span class="badge badge-ghost border border-base-300 text-[10px] font-mono font-semibold">@order.PaymentMethod</span>
                                 </td>

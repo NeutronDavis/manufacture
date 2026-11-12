@@ -40,12 +40,15 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AddPageRoute("/Logistics/Charter/Details", "Fleet/Charter/Details/{id:int}");
     options.Conventions.AddPageRoute("/Logistics/WeeklyRunningCosts/Index", "Fleet/Weekly-Running-Costs");
     options.Conventions.AddPageRoute("/Logistics/WeeklyRunningCosts/Index", "Fleet/WeeklyRunningCosts");
+    options.Conventions.AddPageRoute("/Logistics/Maintenance/Index", "Fleet/Maintenance");
     options.Conventions.AddPageRoute("/Logistics/Maintenance/Create", "Fleet/Maintenance/Create");
     options.Conventions.AddPageRoute("/Logistics/Maintenance/Create", "Fleet/Maintenance/New");
+    options.Conventions.AddPageRoute("/Logistics/Maintenance/Details", "Fleet/Maintenance/Details/{id:int}");
     options.Conventions.AddPageRoute("/Logistics/FuelLogs/Create", "Fleet/FuelLogs/Create");
     options.Conventions.AddPageRoute("/Logistics/FuelLogs/Create", "Fleet/FuelLogs/New");
     options.Conventions.AddPageRoute("/Logistics/Vehicles/Create", "Fleet/Vehicles/Create");
     options.Conventions.AddPageRoute("/Logistics/Vehicles/Create", "Fleet/Vehicles/New");
+    options.Conventions.AddPageRoute("/Logistics/Vehicles/Details", "Fleet/Vehicles/Details/{id:int}");
     options.Conventions.AddPageRoute("/Sales/PosAccounts/Index", "Sales/Supermarkets");
     options.Conventions.AddPageRoute("/Sales/PosAccounts/Create", "Sales/Supermarkets/Create");
     options.Conventions.AddPageRoute("/Sales/PosAccounts/Edit", "Sales/Supermarkets/Edit/{id:int?}");
@@ -84,6 +87,10 @@ builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IPayrollService, PayrollService>();
 builder.Services.AddScoped<IFleetService, FleetService>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<ISalesService, SalesService>();
+builder.Services.AddScoped<IOrganizationService, OrganizationService>();
+builder.Services.AddScoped<IImageUploadService, ImageUploadService>();
 
 // Production Recipe Builder & Cost Engine (doc/recipe-costing.md).
 // Resolves live ingredient prices, so it must be registered AFTER the

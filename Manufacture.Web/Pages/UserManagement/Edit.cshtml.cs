@@ -8,16 +8,22 @@ namespace Manufacture.Pages.UserManagement
     public class EditModel : PageModel
     {
         private readonly IUserService _userService;
+        private readonly ISalesService _salesService;
+        private readonly IEmployeeService _employeeService;
 
-        public EditModel(IUserService userService)
+        public EditModel(IUserService userService, ISalesService salesService, IEmployeeService employeeService)
         {
             _userService = userService;
+            _salesService = salesService;
+            _employeeService = employeeService;
         }
 
         [BindProperty]
         public UserDto UserInput { get; set; } = new();
 
         public List<RoleDto> Roles { get; set; } = new();
+        public List<Manufacture.Models.Domain.Customer> Customers { get; set; } = new();
+        public List<EmployeeDto> Employees { get; set; } = new();
 
         public async Task<IActionResult> OnGetAsync(int id)
         {
@@ -34,12 +40,16 @@ namespace Manufacture.Pages.UserManagement
             UserInput.Password = null;
 
             await LoadRolesAsync();
+            await LoadCustomersAsync();
+            await LoadEmployeesAsync();
             return Page();
         }
 
         public async Task<IActionResult> OnPostAsync()
         {
             await LoadRolesAsync();
+            await LoadCustomersAsync();
+            await LoadEmployeesAsync();
 
             if (!ModelState.IsValid)
             {
@@ -78,6 +88,16 @@ namespace Manufacture.Pages.UserManagement
         private async Task LoadRolesAsync()
         {
             Roles = await _userService.GetRolesAsync();
+        }
+
+        private async Task LoadCustomersAsync()
+        {
+            Customers = await _salesService.GetCustomersAsync(cancellationToken: default);
+        }
+
+        private async Task LoadEmployeesAsync()
+        {
+            Employees = await _employeeService.GetAllAsync(includeInactive: false, includeDeleted: false, cancellationToken: default);
         }
     }
 }

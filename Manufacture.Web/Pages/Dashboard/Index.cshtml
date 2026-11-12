@@ -43,7 +43,7 @@
                     {
                         <span>POS Checkout Terminal &bull; Counter Sales, Multi-Channel Accounts & Print-to-Load Slips.</span>
                     }
-                    else if (Model.ActiveRole == "Vendor")
+                    else if (Model.ActiveRole == "Customer")
                     {
                         <span>Client Pre-Order Portal &bull; Supermarket Standing Orders, Credit Balance & Delivery Slips.</span>
                     }
@@ -98,11 +98,8 @@
                     <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
                         <i class="fa-solid fa-cash-register"></i> Instant POS Checkout
                     </a>
-                    <a asp-page="/Sales/Orders/PreOrders" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-3.5 text-xs">
-                        <i class="fa-solid fa-clock-rotate-left"></i> Book Pre-Order
-                    </a>
                 }
-                @if (Model.ActiveRole == "Vendor")
+                @if (Model.ActiveRole == "Customer")
                 {
                     <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
                         <i class="fa-solid fa-cart-shopping"></i> Place Next Day Pre-Order
@@ -123,6 +120,25 @@
             </div>
         </div>
     </div>
+
+    @if (Model.ActiveRole != "Customer")
+    {
+        @* <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-info/10 text-info flex items-center justify-center">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase font-bold opacity-60">Daily Standing Pre-Orders</div>
+                        <div class="text-xl font-black font-mono text-info">@Model.DailyStandingPreOrders.Count</div>
+                        <div class="text-[10px] opacity-60">@Model.DailyPreOrderUnits units &bull; ₦@Model.DailyPreOrderValue.ToString("N0")</div>
+                    </div>
+                </div>
+                <a asp-page="/Sales/Orders/Index" class="btn btn-xs btn-outline border-base-300 rounded-xl font-bold">Open Orders &amp; Invoices</a>
+            </div>
+        </div> *@
+    }
 
     <!-- 1. SUPER ADMIN DASHBOARD -->
     @if (Model.ActiveRole == "SuperAdmin")
@@ -292,14 +308,14 @@
                 <div class="stat p-5">
                     <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-receipt"></i></div>
                     <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Completed Tickets</div>
-                    <div class="stat-value text-2xl font-black font-mono text-primary">@Model.RepTodayOrders.Count</div>
+                    <div class="stat-value text-2xl font-black font-mono text-primary">@Model.RepCompletedTickets</div>
                     <div class="stat-desc opacity-70">Dispatched loading slips</div>
                 </div>
 
                 <div class="stat p-5">
                     <div class="stat-figure text-info text-2xl"><i class="fa-solid fa-cash-register"></i></div>
                     <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Assigned Terminal</div>
-                    <div class="stat-value text-xl font-black font-mono text-info">@(Model.AssignedTerminal?.TerminalName ?? "POS-01 (Main Gate)")</div>
+                    <div class="stat-value text-xl font-black font-mono text-info">@(Model.AssignedTerminal?.TerminalName ?? (Model.ActiveRole == "SalesRep" ? "No terminal assigned" : "POS-01 (Main Gate)"))</div>
                     <div class="stat-desc opacity-70">Active session</div>
                 </div>
             </div>
@@ -308,15 +324,15 @@
                 <a asp-page="/Sales/Orders/Create" class="btn btn-neutral flex-1 rounded-xl font-bold py-3 text-xs shadow-xs">
                     <i class="fa-solid fa-cash-register"></i> Open POS Checkout Terminal
                 </a>
-                <a asp-page="/Sales/Orders/PreOrders" class="btn btn-outline border-base-300 flex-1 rounded-xl font-bold py-3 text-xs">
+                <a asp-page="/Sales/PreOrderSchedule/Index" class="btn btn-outline border-base-300 flex-1 rounded-xl font-bold py-3 text-xs">
                     <i class="fa-solid fa-clock-rotate-left"></i> Book Next-Day Pre-Order
                 </a>
             </div>
         </div>
     }
 
-    <!-- 5. VENDOR / CLIENT DASHBOARD -->
-    @if (Model.ActiveRole == "Vendor")
+    <!-- 5. CUSTOMER DASHBOARD -->
+    @if (Model.ActiveRole == "Customer")
     {
         <div class="space-y-6">
             <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
@@ -340,18 +356,48 @@
                     <div class="stat-value text-2xl font-black font-mono text-success">@Model.VendorOrders.Count</div>
                     <div class="stat-desc opacity-70">Scheduled standing orders</div>
                 </div>
+
+                <div class="stat p-5">
+                    <div class="stat-figure text-info text-2xl"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Daily Standing Pre-Orders</div>
+                    <div class="stat-value text-2xl font-black font-mono text-info">@Model.DailyStandingPreOrders.Count</div>
+                    <div class="stat-desc opacity-70">@Model.DailyPreOrderUnits units &bull; ₦@Model.DailyPreOrderValue.ToString("N0")</div>
+                </div>
             </div>
 
             <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6">
                 <div class="flex items-center justify-between border-b border-base-200 pb-3 mb-4">
                     <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
-                        <i class="fa-solid fa-cart-plus text-primary"></i> Supermarket Daily Standing Pre-Order
+                        <i class="fa-solid fa-cart-plus text-primary"></i> Daily Standing Pre-Orders
                     </h2>
-                    <a asp-page="/Sales/Orders/Create" class="btn btn-xs btn-neutral rounded-xl font-bold">New Booking</a>
+                    <a asp-page="/Sales/Orders/Create" asp-route-orderType="Supermarket / Partner Order" class="btn btn-xs btn-neutral rounded-xl font-bold">New Booking</a>
                 </div>
-                <p class="text-xs opacity-70">
-                    Your scheduled standing pre-orders are tracked and aggregated directly into the daily production mixer forecast.
-                </p>
+
+                @if (Model.DailyStandingPreOrders.Any())
+                {
+                    <div class="space-y-2">
+                        @foreach (var preOrder in Model.DailyStandingPreOrders)
+                        {
+                            <div class="p-3 rounded-xl bg-base-200/60 border border-base-300 flex items-center justify-between gap-3 text-xs">
+                                <div>
+                                    <div class="font-mono font-bold text-primary">@preOrder.OrderNumber</div>
+                                    <div class="font-semibold">@preOrder.CustomerName</div>
+                                    <div class="text-[10px] opacity-60">@preOrder.Items.Sum(i => i.Quantity) units &bull; Target @preOrder.TargetDeliveryDate.ToString("yyyy-MM-dd")</div>
+                                </div>
+                                <div class="text-right">
+                                    <div class="font-mono font-bold">₦@preOrder.TotalAmount.ToString("N0")</div>
+                                    <span class="badge badge-warning badge-xs font-bold">@preOrder.Status</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-xs opacity-70">
+                        No standing pre-orders have been booked yet. Your bookings will appear here and feed the daily production forecast.
+                    </p>
+                }
             </div>
         </div>
     }

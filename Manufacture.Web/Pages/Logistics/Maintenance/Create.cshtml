@@ -32,7 +32,7 @@
     </div>
 
     <!-- Standard 2-Column Full-Width Form Layout -->
-    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+    <form method="post" enctype="multipart/form-data" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
         <input type="hidden" asp-for="ReturnUrl" />
 
         <!-- Left Section (~70% width, 8 Cols) -->
@@ -127,6 +127,39 @@
                                 </span>
                             </label>
                             <input type="text" asp-for="MaintenanceInput.InvoiceNumber" id="inputInvoice" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" placeholder="e.g. INV-2026-891" oninput="updateSummary()" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Before / After Photo Evidence Card -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-camera-retro"></i>
+                            </div>
+                            <span>Photo Evidence (Before &amp; After)</span>
+                        </div>
+                        <span class="badge badge-warning badge-xs font-bold uppercase tracking-wider">Optional</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Before Service Photo</span>
+                            </label>
+                            <input type="file" asp-for="BeforeImage" accept="image/*" class="file-input file-input-bordered file-input-sm w-full rounded-xl" />
+                            <span class="text-[10px] opacity-60 mt-1">Choose from your device or open the camera on mobile. JPG, PNG, WEBP or GIF up to 5 MB.</span>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">After Service Photo</span>
+                            </label>
+                            <input type="file" asp-for="AfterImage" accept="image/*" class="file-input file-input-bordered file-input-sm w-full rounded-xl" />
+                            <span class="text-[10px] opacity-60 mt-1">Capture the completed repair or serviced part as evidence.</span>
                         </div>
                     </div>
                 </div>

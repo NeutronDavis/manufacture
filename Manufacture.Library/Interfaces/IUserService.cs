@@ -13,6 +13,10 @@ namespace Manufacture.Library.Interfaces
 
         Task<List<RoleDto>> GetRolesAsync(CancellationToken cancellationToken = default);
 
+        Task<RoleDto> SaveRoleAsync(RoleDto dto, CancellationToken cancellationToken = default);
+
+        Task<bool> DeleteRoleAsync(int id, CancellationToken cancellationToken = default);
+
         Task<UserDto> CreateAsync(UserDto dto, CancellationToken cancellationToken = default);
 
         Task<bool> UpdateAsync(UserDto dto, CancellationToken cancellationToken = default);

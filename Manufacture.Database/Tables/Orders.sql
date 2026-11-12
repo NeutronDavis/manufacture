@@ -10,13 +10,17 @@ CREATE TABLE [dbo].[Orders]
     [SalesRepName]        NVARCHAR (150) NULL,
     [PosTerminalId]       INT            NULL,
     [PosTerminalCode]     NVARCHAR (20)  NULL,
+    [BookedByType]        INT            NOT NULL CONSTRAINT [DF_Orders_BookedByType] DEFAULT (0),
+    [CreatedByUserId]     INT            NULL,
     [SubTotal]            DECIMAL (18, 2) NOT NULL CONSTRAINT [DF_Orders_SubTotal] DEFAULT (0),
     [Discount]            DECIMAL (18, 2) NOT NULL CONSTRAINT [DF_Orders_Discount] DEFAULT (0),
     [TotalAmount]         AS ([SubTotal] - [Discount]) PERSISTED,
     [AmountPaid]          DECIMAL (18, 2) NOT NULL CONSTRAINT [DF_Orders_AmountPaid] DEFAULT (0),
     [BalanceDue]          AS (([SubTotal] - [Discount]) - [AmountPaid]) PERSISTED,
     [PaymentMethod]       INT            NOT NULL CONSTRAINT [DF_Orders_PaymentMethod] DEFAULT (0),
+    [PaymentStatus]       INT            NOT NULL CONSTRAINT [DF_Orders_PaymentStatus] DEFAULT (0),
     [Status]              INT            NOT NULL CONSTRAINT [DF_Orders_Status] DEFAULT (0),
+    [ClosedAt]            DATETIME2 (3)  NULL,
     [OrderDate]           DATETIME2 (3)  NOT NULL CONSTRAINT [DF_Orders_OrderDate] DEFAULT (SYSUTCDATETIME()),
     [TargetDeliveryDate]  DATETIME2 (3)  NOT NULL CONSTRAINT [DF_Orders_TargetDeliveryDate] DEFAULT (SYSUTCDATETIME()),
     [IsPrintedForLoading] BIT            NOT NULL CONSTRAINT [DF_Orders_IsPrintedForLoading] DEFAULT (0),
@@ -33,9 +37,12 @@ CREATE TABLE [dbo].[Orders]
     CONSTRAINT [FK_Orders_Customers] FOREIGN KEY ([CustomerId]) REFERENCES [dbo].[Customers] ([Id]),
     CONSTRAINT [FK_Orders_SalesReps] FOREIGN KEY ([SalesRepId]) REFERENCES [dbo].[SalesReps] ([Id]),
     CONSTRAINT [FK_Orders_PosTerminals] FOREIGN KEY ([PosTerminalId]) REFERENCES [dbo].[PosTerminals] ([Id]),
+    CONSTRAINT [FK_Orders_CreatedByUser] FOREIGN KEY ([CreatedByUserId]) REFERENCES [dbo].[Users] ([Id]),
     CONSTRAINT [CK_Orders_OrderType] CHECK ([OrderType] IN (0, 1)),
     CONSTRAINT [CK_Orders_CustomerCategory] CHECK ([CustomerCategory] IN (0, 1, 2, 3)),
     CONSTRAINT [CK_Orders_PaymentMethod] CHECK ([PaymentMethod] IN (0, 1, 2, 3)),
+    CONSTRAINT [CK_Orders_PaymentStatus] CHECK ([PaymentStatus] IN (0, 1, 2)),
+    CONSTRAINT [CK_Orders_BookedByType] CHECK ([BookedByType] IN (0, 1, 2)),
     CONSTRAINT [CK_Orders_Status] CHECK ([Status] IN (0, 1, 2, 3, 4, 5)),
     CONSTRAINT [CK_Orders_Amounts] CHECK ([SubTotal] >= 0 AND [Discount] >= 0 AND [Discount] <= [SubTotal] AND [AmountPaid] >= 0)
 );
@@ -56,4 +63,13 @@ GO
 
 CREATE NONCLUSTERED INDEX [IX_Orders_Status_TargetDeliveryDate]
     ON [dbo].[Orders] ([Status] ASC, [TargetDeliveryDate] ASC);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_Orders_PaymentStatus_OrderDate]
+    ON [dbo].[Orders] ([PaymentStatus] ASC, [OrderDate] DESC);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_Orders_CreatedByUserId]
+    ON [dbo].[Orders] ([CreatedByUserId] ASC)
+    WHERE [CreatedByUserId] IS NOT NULL;
 GO

@@ -154,7 +154,7 @@ namespace Manufacture.Services
                     CustomerPhone = "+2348028877662",
                     VehicleId = 4,
                     VehicleRegNumber = "APP-714-DX",
-                    DriverId = 4,
+                    DriverEmployeeId = 4,
                     DriverName = "Ibrahim Yakubu",
                     Legs = new List<TripLeg>
                     {
@@ -178,7 +178,7 @@ namespace Manufacture.Services
                     CustomerPhone = "+2348035544332",
                     VehicleId = 5,
                     VehicleRegNumber = "IKJ-520-YY",
-                    DriverId = 5,
+                    DriverEmployeeId = 5,
                     DriverName = "Kingsley Obi",
                     Legs = new List<TripLeg>
                     {
@@ -200,7 +200,7 @@ namespace Manufacture.Services
                     CustomerPhone = "+2348039988771",
                     VehicleId = 4,
                     VehicleRegNumber = "APP-714-DX",
-                    DriverId = 4,
+                    DriverEmployeeId = 4,
                     DriverName = "Ibrahim Yakubu",
                     Legs = new List<TripLeg>
                     {
@@ -498,7 +498,7 @@ namespace Manufacture.Services
                 CustomerPhone = dto.CustomerPhone,
                 VehicleId = dto.VehicleId,
                 VehicleRegNumber = vehicle?.RegistrationNumber ?? dto.VehicleRegNumber,
-                DriverId = dto.DriverId ?? 0,
+                DriverEmployeeId = dto.DriverEmployeeId,
                 DriverName = vehicle?.AssignedDriverName ?? dto.DriverName,
                 DriverAllowance = dto.DriverAllowance,
                 SecurityEscortFee = dto.SecurityEscortFee,

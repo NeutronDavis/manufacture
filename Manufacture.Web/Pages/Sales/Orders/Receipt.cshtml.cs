@@ -1,38 +1,44 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.Domain;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.Domain;
 
 namespace Manufacture.Pages.Sales.Orders
 {
     public class ReceiptModel : PageModel
     {
-        private readonly MockSalesService _salesService;
+        private readonly ISalesService _salesService;
 
-        public ReceiptModel(MockSalesService salesService)
+        public ReceiptModel(ISalesService salesService)
         {
             _salesService = salesService;
         }
 
         public Order Order { get; set; } = new();
 
-        public IActionResult OnGet(int id)
+        public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancellationToken = default)
         {
-            var order = _salesService.GetOrderById(id);
-            if (order == null) return RedirectToPage("/Sales/Orders/Index");
+            var order = await _salesService.GetOrderAsync(id, cancellationToken);
+            if (order == null)
+            {
+                return RedirectToPage("/Sales/Orders/Index");
+            }
 
             Order = order;
             return Page();
         }
 
-        public IActionResult OnPostMarkPrinted(int id)
+        public async Task<IActionResult> OnPostMarkPrintedAsync(int id, CancellationToken cancellationToken = default)
         {
-            _salesService.MarkPrintedForLoading(id);
+            await _salesService.MarkPrintedForLoadingAsync(id, cancellationToken);
             TempData["SuccessMessage"] = "Order slip marked as printed. Loading authorized.";
             return RedirectToPage(new { id });
         }
 
-        public IActionResult OnPostDispatchOrder(int id, string loaderName)
+        public async Task<IActionResult> OnPostDispatchOrderAsync(
+            int id,
+            string loaderName,
+            CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(loaderName))
             {
@@ -40,15 +46,10 @@ namespace Manufacture.Pages.Sales.Orders
                 return RedirectToPage(new { id });
             }
 
-            var success = _salesService.VerifyAndDispatchByLoader(id, loaderName);
-            if (success)
-            {
-                TempData["SuccessMessage"] = $"Stock verified and dispatched by {loaderName}. Order status updated to Dispatched.";
-            }
-            else
-            {
-                TempData["ErrorMessage"] = "Cannot dispatch order: order slip must be printed first.";
-            }
+            var success = await _salesService.VerifyAndDispatchAsync(id, loaderName, cancellationToken);
+            TempData[success ? "SuccessMessage" : "ErrorMessage"] = success
+                ? $"Stock verified and dispatched by {loaderName}. Order status updated to Dispatched."
+                : "Cannot dispatch order: order slip must be printed first.";
 
             return RedirectToPage(new { id });
         }

@@ -1,15 +1,15 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.DTOs;
 
 namespace Manufacture.Pages.Sales.Customers
 {
     public class CreateModel : PageModel
     {
-        private readonly MockSalesService _salesService;
+        private readonly ISalesService _salesService;
 
-        public CreateModel(MockSalesService salesService)
+        public CreateModel(ISalesService salesService)
         {
             _salesService = salesService;
         }
@@ -21,13 +21,24 @@ namespace Manufacture.Pages.Sales.Customers
         {
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken = default)
         {
-            if (!ModelState.IsValid) return Page();
+            if (!ModelState.IsValid)
+            {
+                return Page();
+            }
 
-            var customer = _salesService.CreateCustomer(CustomerInput);
-            TempData["SuccessMessage"] = $"Client '{customer.Name}' registered successfully with code {customer.MemberCode}.";
-            return RedirectToPage("/Sales/Customers/Index");
+            try
+            {
+                var customer = await _salesService.CreateCustomerAsync(CustomerInput, cancellationToken);
+                TempData["SuccessMessage"] = $"Customer '{customer.Name}' registered successfully with code {customer.MemberCode}.";
+                return RedirectToPage("/Sales/Customers/Index");
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+                return Page();
+            }
         }
     }
 }

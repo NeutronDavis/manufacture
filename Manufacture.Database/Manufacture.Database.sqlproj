@@ -28,13 +28,15 @@
     <Build Include="Tables\CustomerReturns.sql" />
     <Build Include="Tables\Customers.sql" />
     <Build Include="Tables\DailyRepRouteSheets.sql" />
-    <Build Include="Tables\Drivers.sql" />
+    <Build Include="Tables\Departments.sql" />
     <Build Include="Tables\Employees.sql" />
     <Build Include="Tables\FuelLogs.sql" />
     <Build Include="Tables\Ingredients.sql" />
     <Build Include="Tables\InventoryItems.sql" />
+    <Build Include="Tables\JobRoles.sql" />
     <Build Include="Tables\MaintenanceLogs.sql" />
     <Build Include="Tables\OrderItems.sql" />
+    <Build Include="Tables\OrderPayments.sql" />
     <Build Include="Tables\Orders.sql" />
     <Build Include="Tables\PayrollDeductionLines.sql" />
     <Build Include="Tables\PayrollRecords.sql" />
@@ -53,7 +55,9 @@
     <Build Include="Tables\RouteRates.sql" />
     <Build Include="Tables\RouteSheetItems.sql" />
     <Build Include="Tables\SalaryAdvances.sql" />
+    <Build Include="Tables\SalesBonusRules.sql" />
     <Build Include="Tables\SalesReps.sql" />
+    <Build Include="Tables\StockMovements.sql" />
     <Build Include="Tables\StoreRequestItems.sql" />
     <Build Include="Tables\StoreRequests.sql" />
     <Build Include="Tables\SupermarketAccountPrices.sql" />

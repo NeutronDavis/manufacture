@@ -1,37 +1,44 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.Domain;
 
 namespace Manufacture.Pages.Inventory
 {
     public class IndexModel : PageModel
     {
-        private readonly MockInventoryService _inventoryService;
+        private readonly IInventoryService _inventoryService;
 
-        public IndexModel(MockInventoryService inventoryService)
+        public IndexModel(IInventoryService inventoryService)
         {
             _inventoryService = inventoryService;
         }
 
-        public List<InventoryItem> Items { get; set; } = new();
+        public List<InventoryItemDto> Items { get; set; } = new();
         public int LowStockCount { get; set; }
         public int PendingRequestsCount { get; set; }
 
-        public void OnGet()
+        public async Task OnGetAsync(CancellationToken cancellationToken = default)
         {
-            Items = _inventoryService.GetAllItems();
-            LowStockCount = _inventoryService.GetLowStockItems().Count;
-            PendingRequestsCount = _inventoryService.GetAllRequests().Count(r => r.Status == StoreRequestStatus.Pending);
+            Items = await _inventoryService.GetItemsAsync(cancellationToken: cancellationToken);
+            LowStockCount = await _inventoryService.GetLowStockCountAsync(cancellationToken);
+            PendingRequestsCount = await _inventoryService.GetPendingRequestCountAsync(cancellationToken);
         }
 
-        public IActionResult OnPostRestock(int id, decimal quantity)
+        public async Task<IActionResult> OnPostRestockAsync(
+            int id,
+            decimal quantity,
+            CancellationToken cancellationToken = default)
         {
             if (quantity > 0)
             {
-                _inventoryService.RestockItem(id, quantity);
-                TempData["SuccessMessage"] = $"Added +{quantity} units to inventory stock.";
+                var userName = HttpContext.Session.GetString("UserName") ?? "Store Manager";
+                var restocked = await _inventoryService.RestockItemAsync(id, quantity, userName, cancellationToken);
+                TempData[restocked ? "SuccessMessage" : "ErrorMessage"] = restocked
+                    ? $"Added +{quantity:N1} units to inventory stock."
+                    : "The inventory item could not be restocked.";
             }
+
             return RedirectToPage();
         }
     }

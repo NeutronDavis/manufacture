@@ -1,8 +1,9 @@
 @page
 @model Manufacture.Pages.Sales.Reconciliation.IndexModel
 @{
-    ViewData["Title"] = "End-of-Day Route Closing & Reconciliation";
+    ViewData["Title"] = "Sales Reconciliation";
     var sheet = Model.SelectedSheet;
+    var filterDateValue = Model.FilterDate?.ToString("yyyy-MM-dd") ?? (Model.IsSalesRep ? DateTime.UtcNow.ToString("yyyy-MM-dd") : string.Empty);
 }
 
 <div class="space-y-6 w-full pb-12">
@@ -14,13 +15,13 @@
                 <span>&gt;</span>
                 <a asp-page="/Sales/Index" class="hover:underline">Sales &amp; POS</a>
                 <span>&gt;</span>
-                <span>End-of-Day Closing &amp; Reconciliation</span>
+                <span>Sales Reconciliation</span>
             </div>
             <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2.5">
-                <i class="fa-solid fa-calculator text-primary"></i> End-of-Day Route Closing &amp; Payment Drawer
+                <i class="fa-solid fa-calculator text-primary"></i> Sales Reconciliation &amp; Payment Drawer
             </h1>
             <p class="text-xs opacity-70 mt-1 max-w-4xl">
-                Reconcile physical stock counts against actual sales, log unsold closing stock for rollover, and record lump-sum payments without SKU breakdown to calculate the rep's updated running balance.
+                Reconcile gross sales against stock movement, record customer returns and damaged goods, roll unsold closing stock into tomorrow, and calculate net revenue and the rep's updated running balance.
             </p>
         </div>
         <div class="flex items-center gap-2 self-start sm:self-auto flex-wrap">
@@ -65,10 +66,14 @@
         <div class="lg:col-span-4 card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
             <div class="p-4 border-b border-base-300 bg-base-200/50 flex items-center justify-between">
                 <div class="font-bold text-xs uppercase tracking-wider opacity-70 flex items-center gap-2">
-                    <i class="fa-solid fa-calendar-day text-primary"></i> Route Sheets To Close
+                    <i class="fa-solid fa-calendar-day text-primary"></i> @(Model.IsSalesRep ? "My Route Sheets To Close" : (Model.FilterDate.HasValue ? "Route Sheets To Close" : "All Route Sheets To Close"))
                 </div>
                 <form method="get" class="flex items-center gap-1.5">
-                    <input type="date" name="FilterDate" value="@((Model.FilterDate ?? DateTime.UtcNow).ToString("yyyy-MM-dd"))" onchange="this.form.submit()" class="input input-xs input-bordered rounded-lg text-[10px] font-mono" />
+                    <input type="date" name="FilterDate" value="@filterDateValue" onchange="this.form.submit()" class="input input-xs input-bordered rounded-lg text-[10px] font-mono" />
+                    @if (!Model.IsSalesRep)
+                    {
+                        <a asp-page="/Sales/Reconciliation/Index" class="btn btn-xs btn-ghost rounded-lg text-[10px] font-bold" title="Show all route sheets across every date">All Dates</a>
+                    }
                 </form>
             </div>
 
@@ -177,7 +182,7 @@
                                 <h3 class="text-xs font-bold uppercase tracking-wider text-base-content flex items-center gap-1.5">
                                     <i class="fa-solid fa-boxes-stacked text-primary"></i> Physical Route Stock Balancing Matrix
                                 </h3>
-                                <span class="text-[10px] opacity-60">Rule: Sold + Returned + Damaged == Active Inventory</span>
+                                <span class="text-[10px] opacity-60">Rule: Sold + Unsold Closing + Damaged + Replacements == Active Inventory</span>
                             </div>
 
                             <div class="overflow-x-auto">
@@ -189,8 +194,9 @@
                                             <th class="text-right">Today Loaded</th>
                                             <th class="text-right font-bold text-base-content">Active Stock</th>
                                             <th class="text-right text-success font-bold">Qty Sold</th>
-                                            <th class="text-right text-amber-500 font-bold">Unsold Return</th>
+                                            <th class="text-right text-amber-500 font-bold">Unsold Closing</th>
                                             <th class="text-right text-error font-bold">Damaged</th>
+                                            <th class="text-right text-info font-bold">Replacement</th>
                                             <th class="text-right">Unit Price</th>
                                             <th class="text-right pr-3 font-bold text-primary">Expected Value</th>
                                         </tr>
@@ -255,6 +261,22 @@
                                                         <span class="font-bold text-error">@it.QtyDamaged.ToString("N0")</span>
                                                     }
                                                 </td>
+                                                <td class="text-right">
+                                                    @if (!isReadOnly)
+                                                    {
+                                                        <input type="number"
+                                                               name="ReplacementQuantities[@it.ProductId]"
+                                                               value="@it.QtyReplacementIssued"
+                                                               min="0"
+                                                               max="@it.TotalActiveInventory"
+                                                               class="input input-xs input-bordered rounded-lg w-16 text-right font-mono font-bold text-info replacement-input"
+                                                               oninput="recalcReconciliation()" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="font-bold text-info">@it.QtyReplacementIssued.ToString("N0")</span>
+                                                    }
+                                                </td>
                                                 <td class="text-right opacity-80">₦@it.UnitSellingPrice.ToString("N0")</td>
                                                 <td class="text-right pr-3 font-bold text-primary expected-cell">
                                                     ₦@it.ExpectedItemRevenue.ToString("N0")
@@ -271,6 +293,7 @@
                                             <td class="text-right font-mono text-success text-sm" id="totalSoldUnits">@sheet.Items.Sum(i => i.QtySold)</td>
                                             <td class="text-right font-mono text-amber-500 text-sm" id="totalReturnedUnits">@sheet.Items.Sum(i => i.QtyReturned)</td>
                                             <td class="text-right font-mono text-error text-sm" id="totalDamagedUnits">@sheet.Items.Sum(i => i.QtyDamaged)</td>
+                                            <td class="text-right font-mono text-info text-sm" id="totalReplacementUnits">@sheet.Items.Sum(i => i.QtyReplacementIssued)</td>
                                             <td></td>
                                             <td class="text-right pr-3 font-mono text-primary text-sm" id="totalExpectedRevenueDisplay">
                                                 ₦@sheet.TotalExpectedSalesRevenue.ToString("N0")
@@ -375,18 +398,26 @@
                                     <i class="fa-solid fa-scale-balanced text-primary"></i> Daily Account Ledger Reconciliation
                                 </h4>
                                 <span class="badge badge-outline border-base-300 font-mono text-xs">
-                                    Formula: Prev Debt + Expected Sales - Total Payments
+                                    Formula: Prev Debt + Gross Sales - Total Payments
                                 </span>
                             </div>
 
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
+                            <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 pt-1">
                                 <!-- Today's Expected -->
                                 <div class="p-3 bg-base-200/60 rounded-xl border border-base-300">
-                                    <div class="text-[10px] uppercase font-bold opacity-60">Today's Expected Sales</div>
+                                    <div class="text-[10px] uppercase font-bold opacity-60">Gross Sales</div>
                                     <div class="text-lg font-black font-mono text-primary mt-1" id="calloutExpected">
                                         ₦@sheet.TotalExpectedSalesRevenue.ToString("N0")
                                     </div>
                                     <div class="text-[9px] opacity-60">From verified units sold</div>
+                                </div>
+
+                                <div class="p-3 bg-base-200/60 rounded-xl border border-base-300">
+                                    <div class="text-[10px] uppercase font-bold opacity-60">Net Revenue</div>
+                                    <div class="text-lg font-black font-mono text-success mt-1">
+                                        ₦@Model.NetRevenue.ToString("N0")
+                                    </div>
+                                    <div class="text-[9px] opacity-60">Gross − returns − damages</div>
                                 </div>
 
                                 <!-- Previous Debt -->
@@ -445,7 +476,7 @@
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div class="space-y-1">
                                         <label class="text-xs font-semibold">Cashier / Reconciler Name:</label>
-                                        <input type="text" name="CashierName" value="Chief Cashier" required class="input input-sm input-bordered w-full rounded-xl text-xs font-bold" />
+                                        <input type="text" name="CashierName" value="@Model.DefaultCashierName" required class="input input-sm input-bordered w-full rounded-xl text-xs font-bold" />
                                     </div>
                                     <div class="space-y-1">
                                         <label class="text-xs font-semibold">Settlement Notes / Remarks:</label>
@@ -478,6 +509,107 @@
                         }
                     </div>
                 </form>
+
+                <!-- Customer Returns / Replacements -->
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                    <div class="flex items-center justify-between border-b border-base-300 pb-3">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-base-content flex items-center gap-1.5">
+                            <i class="fa-solid fa-rotate-left text-warning"></i> Customer Returns (Mold / Expired Bread)
+                        </h3>
+                        <span class="badge badge-warning badge-xs font-bold">@Model.CustomerReturns.Count Records</span>
+                    </div>
+
+                    <p class="text-[11px] opacity-70">
+                        Bad bread returned from a prior sale is replaced from today's truck stock. The replacement is recorded against today's route so the rep is not penalised for the missing fresh loaf.
+                    </p>
+
+                    @if (Model.CustomerReturns.Any())
+                    {
+                        <div class="overflow-x-auto">
+                            <table class="table table-sm text-xs">
+                                <thead>
+                                    <tr class="opacity-60 uppercase text-[9px]">
+                                        <th>Return #</th>
+                                        <th>Product</th>
+                                        <th>Qty Returned</th>
+                                        <th>Replacement Qty</th>
+                                        <th>Reason</th>
+                                        <th>Recorded By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var ret in Model.CustomerReturns)
+                                    {
+                                        <tr>
+                                            <td class="font-mono font-bold">@ret.ReturnNumber</td>
+                                            <td>@ret.ProductName</td>
+                                            <td class="font-mono text-error">@ret.Quantity</td>
+                                            <td class="font-mono text-info">@ret.ReplacementQuantity</td>
+                                            <td>@ret.Reason</td>
+                                            <td>@ret.RecordedBy</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    @if (Model.CanEdit && !isReadOnly)
+                    {
+                        <form method="post" asp-page-handler="RecordReturn" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end border-t border-base-300 pt-4">
+                            <div class="md:col-span-3 form-control">
+                                <label class="label pb-1"><span class="label-text text-[10px] font-bold">Customer</span></label>
+                                <select asp-for="ReturnInput.CustomerId" class="select select-bordered select-sm text-xs" required>
+                                    <option value="">-- Customer --</option>
+                                    @foreach (var customer in Model.Customers)
+                                    {
+                                        <option value="@customer.Id">@customer.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="md:col-span-3 form-control">
+                                <label class="label pb-1"><span class="label-text text-[10px] font-bold">Product</span></label>
+                                <select asp-for="ReturnInput.RecipeId" class="select select-bordered select-sm text-xs" required>
+                                    <option value="">-- Product --</option>
+                                    @foreach (var product in Model.Products)
+                                    {
+                                        <option value="@product.Id">@product.Name (@product.Code)</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="md:col-span-2 form-control">
+                                <label class="label pb-1"><span class="label-text text-[10px] font-bold">Qty Returned</span></label>
+                                <input asp-for="ReturnInput.Quantity" type="number" min="1" value="1" class="input input-sm input-bordered font-mono text-xs" required />
+                            </div>
+                            <div class="md:col-span-2 form-control">
+                                <label class="label pb-1"><span class="label-text text-[10px] font-bold">Replacement Qty</span></label>
+                                <input asp-for="ReturnInput.ReplacementQuantity" type="number" min="0" value="1" class="input input-sm input-bordered font-mono text-xs" />
+                            </div>
+                            <div class="md:col-span-2 form-control">
+                                <label class="label pb-1"><span class="label-text text-[10px] font-bold">Sales Rep</span></label>
+                                <select asp-for="ReturnInput.SalesRepId" class="select select-bordered select-sm text-xs">
+                                    @foreach (var rep in Model.SalesReps)
+                                    {
+                                        <option value="@rep.Id" selected="@(rep.Id == sheet.RepId)">@rep.FullName</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="md:col-span-6 form-control">
+                                <label class="label pb-1"><span class="label-text text-[10px] font-bold">Reason</span></label>
+                                <input asp-for="ReturnInput.Reason" class="input input-sm input-bordered text-xs" value="Mold / expired bread" required />
+                            </div>
+                            <div class="md:col-span-4 form-control">
+                                <label class="label pb-1"><span class="label-text text-[10px] font-bold">Notes</span></label>
+                                <input asp-for="ReturnInput.Notes" class="input input-sm input-bordered text-xs" />
+                            </div>
+                            <div class="md:col-span-2">
+                                <button type="submit" class="btn btn-sm btn-warning w-full rounded-xl text-xs font-bold gap-1">
+                                    <i class="fa-solid fa-plus"></i> Record Return
+                                </button>
+                            </div>
+                        </form>
+                    }
+                </div>
             }
         </div>
     </div>
@@ -497,6 +629,7 @@
         var totalSold = 0;
         var totalReturned = 0;
         var totalDamaged = 0;
+        var totalReplacement = 0;
 
         // Iterate through all SKU rows
         var rows = document.querySelectorAll('.item-row');
@@ -507,14 +640,17 @@
             var soldInput = row.querySelector('.sold-input');
             var returnedInput = row.querySelector('.returned-input');
             var damagedInput = row.querySelector('.damaged-input');
+            var replacementInput = row.querySelector('.replacement-input');
 
             var sold = soldInput ? (parseInt(soldInput.value) || 0) : 0;
             var returned = returnedInput ? (parseInt(returnedInput.value) || 0) : 0;
             var damaged = damagedInput ? (parseInt(damagedInput.value) || 0) : 0;
+            var replacement = replacementInput ? (parseInt(replacementInput.value) || 0) : 0;
 
             totalSold += sold;
             totalReturned += returned;
             totalDamaged += damaged;
+            totalReplacement += replacement;
 
             var itemExp = sold * price;
             totalExpected += itemExp;
@@ -534,6 +670,9 @@
 
         var totalDmgEl = document.getElementById('totalDamagedUnits');
         if (totalDmgEl) totalDmgEl.textContent = totalDamaged.toLocaleString('en-US');
+
+        var totalReplacementEl = document.getElementById('totalReplacementUnits');
+        if (totalReplacementEl) totalReplacementEl.textContent = totalReplacement.toLocaleString('en-US');
 
         var totalExpEl = document.getElementById('totalExpectedRevenueDisplay');
         if (totalExpEl) totalExpEl.textContent = formatMoney(totalExpected);

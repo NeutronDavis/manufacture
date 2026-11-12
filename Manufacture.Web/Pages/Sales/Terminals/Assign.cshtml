@@ -80,12 +80,12 @@
                             </span>
                         </label>
                         
-                        <select name="SelectedUserId" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary" required>
-                            <option value="">-- Choose Sales Representative --</option>
-                            @foreach (var user in Model.EligibleUsers)
+                        <select name="SelectedEmployeeId" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary">
+                            <option value="">-- Unassigned --</option>
+                            @foreach (var employee in Model.EligibleEmployees)
                             {
-                                <option value="@user.Id" selected="@(user.Id == Model.Terminal.AssignedUserId)">
-                                    @user.Name (@user.Role) &bull; 6-Digit PIN: @user.PinCode
+                                <option value="@employee.Id" selected="@(employee.Id == Model.Terminal.AssignedEmployeeId)">
+                                    @employee.FullName (@employee.StaffCode) &bull; @employee.Department
                                 </option>
                             }
                         </select>

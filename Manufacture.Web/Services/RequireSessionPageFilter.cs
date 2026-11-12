@@ -32,6 +32,33 @@ namespace Manufacture.Services
             if (!context.HttpContext.Session.GetInt32("UserId").HasValue)
             {
                 context.Result = new RedirectToPageResult("/Login");
+                return;
+            }
+
+            var role = context.HttpContext.Session.GetString("UserRole");
+            if (string.Equals(role, "SalesRep", StringComparison.OrdinalIgnoreCase))
+            {
+                if (path.StartsWithSegments("/Sales/Terminals", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Result = new RedirectToPageResult("/Sales/Index");
+                }
+
+                return;
+            }
+
+            if (!string.Equals(role, "Customer", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            var allowedForVendor = path.StartsWithSegments("/Dashboard", StringComparison.OrdinalIgnoreCase)
+                || path.StartsWithSegments("/Sales/Orders/Create", StringComparison.OrdinalIgnoreCase)
+                || path.StartsWithSegments("/Sales/PreOrderSchedule", StringComparison.OrdinalIgnoreCase)
+                || AnonymousPaths.Any(p => path.StartsWithSegments(p, StringComparison.OrdinalIgnoreCase));
+
+            if (!allowedForVendor)
+            {
+                context.Result = new RedirectToPageResult("/Sales/PreOrderSchedule/Index");
             }
         }
 

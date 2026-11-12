@@ -33,5 +33,7 @@ public partial class InventoryItem
 
     public virtual Supplier? PreferredSupplier { get; set; }
 
+    public virtual ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
+
     public virtual ICollection<StoreRequestItem> StoreRequestItems { get; set; } = new List<StoreRequestItem>();
 }

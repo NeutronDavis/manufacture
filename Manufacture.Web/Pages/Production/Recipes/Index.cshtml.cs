@@ -21,9 +21,11 @@ namespace Manufacture.Pages.Production.Recipes
         }
 
         public List<RecipeCostingResultDto> Recipes { get; set; } = new();
+        public string UserRole { get; set; } = string.Empty;
 
         public void OnGet()
         {
+            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
             Recipes = _engine.CostAll(includeInactive: true);
         }
 

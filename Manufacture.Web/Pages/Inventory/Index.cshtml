@@ -32,6 +32,9 @@
             <a asp-page="/Inventory/Requests/Create" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-3.5 text-xs">
                 <i class="fa-solid fa-clipboard-question text-xs"></i> Request Materials
             </a>
+            <a asp-page="/Inventory/Movements/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-3.5 text-xs">
+                <i class="fa-solid fa-arrow-right-arrow-left text-xs"></i> Stock Ledger
+            </a>
             <a asp-page="/Inventory/Items/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 text-xs shadow-xs">
                 <i class="fa-solid fa-plus text-xs"></i> Add Stock Item
             </a>
@@ -122,8 +125,9 @@
                 <button type="button" onclick="setCategoryFilter('all', this)" class="btn btn-xs btn-neutral rounded-lg font-bold cat-pill">All Items</button>
                 <button type="button" onclick="setCategoryFilter('raw materials', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg cat-pill">Raw Materials</button>
                 <button type="button" onclick="setCategoryFilter('packaging', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg cat-pill">Packaging</button>
-                <button type="button" onclick="setCategoryFilter('additives', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg cat-pill">Additives & Flavor</button>
-                <button type="button" onclick="setCategoryFilter('fuel', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg cat-pill">Fuel & Utility</button>
+                <button type="button" onclick="setCategoryFilter('additive', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg cat-pill">Additive / Flavor</button>
+                <button type="button" onclick="setCategoryFilter('fuel', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg cat-pill">Fuel</button>
+                <button type="button" onclick="setCategoryFilter('utilities', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg cat-pill">Utilities</button>
             </div>
 
             <!-- Stock Health Pills -->

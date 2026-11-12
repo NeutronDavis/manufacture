@@ -60,7 +60,7 @@ namespace Manufacture.Services
             CancellationToken cancellationToken = default)
         {
             var employee = await _db.Employees
-                .FirstOrDefaultAsync(e => e.Id == dto.EmployeeId, cancellationToken)
+                .FirstOrDefaultAsync(e => e.Id == dto.EmployeeId && !e.IsDeleted, cancellationToken)
                 ?? throw new InvalidOperationException("Select a valid employee.");
 
             if (!employee.IsActive || employee.EmploymentStatus == "Inactive")
@@ -299,7 +299,7 @@ namespace Manufacture.Services
             var settings = await _settingsService.GetPayrollSettingsAsync(cancellationToken);
             var employees = await _db.Employees
                 .AsNoTracking()
-                .Where(e => e.IsActive && e.EmploymentStatus != "Inactive")
+                .Where(e => !e.IsDeleted && e.IsActive && e.EmploymentStatus != "Inactive")
                 .OrderBy(e => e.FullName)
                 .ToListAsync(cancellationToken);
 
@@ -402,7 +402,7 @@ namespace Manufacture.Services
             }
 
             var employees = await _db.Employees
-                .Where(e => e.IsActive && e.EmploymentStatus != "Inactive")
+                .Where(e => !e.IsDeleted && e.IsActive && e.EmploymentStatus != "Inactive")
                 .OrderBy(e => e.FullName)
                 .ToListAsync(cancellationToken);
 

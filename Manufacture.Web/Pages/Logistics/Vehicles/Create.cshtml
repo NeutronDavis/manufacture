@@ -30,7 +30,7 @@
     </div>
 
     <!-- Standard 2-Column Full-Width Form Layout -->
-    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+    <form method="post" enctype="multipart/form-data" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
         
         <!-- Left Section (~70% width, 8 Cols) -->
         <div class="lg:col-span-8 space-y-6">
@@ -63,6 +63,14 @@
                                 </span>
                             </label>
                             <input type="text" asp-for="VehicleInput.MakeAndModel" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. Toyota HiAce 2.7 Delivery Van" required />
+                        </div>
+
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Vehicle Image</span>
+                            </label>
+                            <input type="file" asp-for="ImageFile" accept="image/*" class="file-input file-input-bordered file-input-sm w-full rounded-xl" />
+                            <span class="text-[10px] opacity-60 mt-1">JPG, PNG, WEBP or GIF up to 5 MB.</span>
                         </div>
 
                         <div class="form-control w-full">

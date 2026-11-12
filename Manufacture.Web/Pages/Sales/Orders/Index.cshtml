@@ -23,9 +23,6 @@
             </p>
         </div>
         <div class="flex items-center gap-2">
-            <a asp-page="/Sales/Orders/PreOrders" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
-                <i class="fa-solid fa-clock-rotate-left text-xs"></i> Pre-Orders Only
-            </a>
             <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
                 <i class="fa-solid fa-cart-plus text-xs"></i> New POS Order
             </a>
@@ -85,7 +82,7 @@
                             <th>Customer & Category</th>
                             <th>Items Breakdown</th>
                             <th>Payment Channel</th>
-                            <th>Net Total</th>
+                            <th>Gross Total</th>
                             <th>Settlement</th>
                             <th>Loading Slip</th>
                             <th>Dispatch</th>
@@ -117,11 +114,27 @@
                                 <td class="py-3">
                                     <div class="font-bold text-base-content">@o.CustomerName</div>
                                     <span class="badge badge-ghost border border-base-300 text-[10px] opacity-70">@o.CustomerCategory</span>
+                                    <div class="text-[10px] mt-1">
+                                        @if (string.IsNullOrWhiteSpace(o.SalesRepName))
+                                        {
+                                            <span class="badge badge-warning badge-xs font-bold">Awaiting Sales Rep</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="opacity-60">Rep: @o.SalesRepName</span>
+                                        }
+                                    </div>
                                 </td>
                                 <td class="py-3 max-w-xs text-[11px] opacity-90">
                                     @foreach (var item in o.Items)
                                     {
-                                        <div><strong class="text-base-content font-mono">@item.Quantity</strong> × @item.ProductName</div>
+                                        <div>
+                                            <strong class="text-base-content font-mono">@item.Quantity</strong> x @item.ProductName
+                                            @if (item.BonusQuantity > 0)
+                                            {
+                                                <span class="badge badge-success badge-xs font-mono ml-1">+@item.BonusQuantity bonus</span>
+                                            }
+                                        </div>
                                     }
                                 </td>
                                 <td class="py-3">
@@ -136,6 +149,7 @@
                                     {
                                         <div class="text-error font-bold">Due: ₦@o.BalanceDue.ToString("N0")</div>
                                     }
+                                    <span class="badge @(o.PaymentStatus == OrderPaymentStatus.Completed ? "badge-success" : o.PaymentStatus == OrderPaymentStatus.PartiallyPaid ? "badge-warning" : "badge-error") badge-xs font-bold mt-1">@o.PaymentStatus</span>
                                 </td>
                                 <td class="py-3">
                                     @if (o.IsPrintedForLoading)
@@ -167,9 +181,14 @@
                                     }
                                 </td>
                                 <td class="text-right pr-4 py-3">
-                                    <a asp-page="/Sales/Orders/Receipt" asp-route-id="@o.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg gap-1 font-semibold hover:border-primary" title="Print Loading Slip / Receipt">
-                                        <i class="fa-solid fa-print text-[10px]"></i> Slip
-                                    </a>
+                                    <div class="flex items-center justify-end gap-1">
+                                        <a asp-page="/Sales/Orders/Details" asp-route-id="@o.Id" class="btn btn-xs btn-ghost rounded-lg gap-1 font-semibold" title="Open order and apply payment">
+                                            <i class="fa-solid fa-eye text-[10px]"></i> Details
+                                        </a>
+                                        <a asp-page="/Sales/Orders/Receipt" asp-route-id="@o.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg gap-1 font-semibold hover:border-primary" title="Print Loading Slip / Receipt">
+                                            <i class="fa-solid fa-print text-[10px]"></i> Slip
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         }

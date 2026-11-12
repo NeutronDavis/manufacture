@@ -25,6 +25,10 @@ public partial class Order
 
     public string? PosTerminalCode { get; set; }
 
+    public int BookedByType { get; set; }
+
+    public int? CreatedByUserId { get; set; }
+
     public decimal SubTotal { get; set; }
 
     public decimal Discount { get; set; }
@@ -37,7 +41,11 @@ public partial class Order
 
     public int PaymentMethod { get; set; }
 
+    public int PaymentStatus { get; set; }
+
     public int Status { get; set; }
+
+    public DateTime? ClosedAt { get; set; }
 
     public DateTime OrderDate { get; set; }
 
@@ -61,9 +69,13 @@ public partial class Order
 
     public virtual Customer Customer { get; set; } = null!;
 
+    public virtual User? CreatedByUser { get; set; }
+
     public virtual ICollection<CustomerReturn> CustomerReturns { get; set; } = new List<CustomerReturn>();
 
     public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+
+    public virtual ICollection<OrderPayment> OrderPayments { get; set; } = new List<OrderPayment>();
 
     public virtual PosTerminal? PosTerminal { get; set; }
 

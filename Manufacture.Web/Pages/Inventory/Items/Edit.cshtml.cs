@@ -1,16 +1,15 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.DTOs;
-using Manufacture.Models.Domain;
 
 namespace Manufacture.Pages.Inventory.Items
 {
     public class EditModel : PageModel
     {
-        private readonly MockInventoryService _inventoryService;
+        private readonly IInventoryService _inventoryService;
 
-        public EditModel(MockInventoryService inventoryService)
+        public EditModel(IInventoryService inventoryService)
         {
             _inventoryService = inventoryService;
         }
@@ -18,56 +17,53 @@ namespace Manufacture.Pages.Inventory.Items
         [BindProperty]
         public InventoryItemDto ItemInput { get; set; } = new();
 
-        public List<Supplier> Suppliers { get; set; } = new();
-        public InventoryItem OriginalItem { get; set; } = default!;
+        public List<SupplierDto> Suppliers { get; set; } = new();
 
-        public IActionResult OnGet(int id)
+        public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancellationToken = default)
         {
-            var item = _inventoryService.GetItemById(id);
+            var item = await _inventoryService.GetItemAsync(id, cancellationToken);
             if (item == null)
             {
                 TempData["ErrorMessage"] = "Warehouse inventory item not found.";
                 return RedirectToPage("/Inventory/Index");
             }
 
-            OriginalItem = item;
-            Suppliers = _inventoryService.GetAllSuppliers();
-
-            ItemInput = new InventoryItemDto
-            {
-                Id = item.Id,
-                ItemCode = item.ItemCode,
-                Name = item.Name,
-                Category = item.Category,
-                Unit = item.Unit,
-                QuantityInStock = item.QuantityInStock,
-                ReorderThreshold = item.ReorderThreshold,
-                UnitCostPrice = item.UnitCostPrice,
-                PreferredSupplierId = item.PreferredSupplierId
-            };
-
+            ItemInput = item;
+            await LoadSuppliersAsync(cancellationToken);
             return Page();
         }
 
-        public IActionResult OnPost(int id)
+        public async Task<IActionResult> OnPostAsync(int id, CancellationToken cancellationToken = default)
         {
             if (!ModelState.IsValid)
             {
-                var item = _inventoryService.GetItemById(id);
-                if (item != null) OriginalItem = item;
-                Suppliers = _inventoryService.GetAllSuppliers();
+                await LoadSuppliersAsync(cancellationToken);
                 return Page();
             }
 
-            var updated = _inventoryService.UpdateItem(id, ItemInput);
-            if (updated == null)
+            try
             {
-                TempData["ErrorMessage"] = "Item could not be updated or was not found.";
-                return RedirectToPage("/Inventory/Index");
-            }
+                var updated = await _inventoryService.UpdateItemAsync(id, ItemInput, cancellationToken);
+                if (updated == null)
+                {
+                    TempData["ErrorMessage"] = "Item could not be updated or was not found.";
+                    return RedirectToPage("/Inventory/Index");
+                }
 
-            TempData["SuccessMessage"] = $"Warehouse stock item '{updated.Name}' updated successfully.";
-            return RedirectToPage("/Inventory/Items/Details", new { id = updated.Id });
+                TempData["SuccessMessage"] = $"Warehouse stock item '{updated.Name}' updated successfully.";
+                return RedirectToPage("/Inventory/Items/Details", new { id = updated.Id });
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+                await LoadSuppliersAsync(cancellationToken);
+                return Page();
+            }
+        }
+
+        private async Task LoadSuppliersAsync(CancellationToken cancellationToken)
+        {
+            Suppliers = await _inventoryService.GetSuppliersAsync(cancellationToken: cancellationToken);
         }
     }
 }

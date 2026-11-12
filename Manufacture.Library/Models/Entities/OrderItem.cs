@@ -15,7 +15,11 @@ public partial class OrderItem
 
     public int Quantity { get; set; }
 
+    public int BonusQuantity { get; set; }
+
     public decimal UnitPrice { get; set; }
+
+    public int? TotalQuantity { get; set; }
 
     public decimal? LineTotal { get; set; }
 

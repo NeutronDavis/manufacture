@@ -9,7 +9,7 @@ public partial class FuelLog
 
     public int VehicleId { get; set; }
 
-    public int? DriverId { get; set; }
+    public int? EmployeeId { get; set; }
 
     public DateTime FuelDate { get; set; }
 
@@ -27,7 +27,7 @@ public partial class FuelLog
 
     public DateTime CreatedAt { get; set; }
 
-    public virtual Driver? Driver { get; set; }
+    public virtual Employee? Employee { get; set; }
 
     public virtual Vehicle Vehicle { get; set; } = null!;
 }

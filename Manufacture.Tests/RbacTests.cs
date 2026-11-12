@@ -12,7 +12,7 @@ namespace Manufacture.Tests
             var roleNames = new[]
             {
                 "SuperAdmin", "ProductionManager", "StoreManager",
-                "SalesRep", "Vendor", "HrPayrollManager"
+                "SalesRep", "Customer", "HrPayrollManager"
             };
 
             Assert.Equal(10, RbacDefaults.Modules.Count);
@@ -41,9 +41,9 @@ namespace Manufacture.Tests
             Assert.True(cache.CanEdit("ProductionManager", "Recipes"));
             Assert.True(cache.CanRequest("ProductionManager", "Inventory"));
             Assert.True(cache.CanIssue("StoreManager", "Inventory"));
-            Assert.True(cache.CanBookOwn("Vendor", "PreOrders"));
+            Assert.True(cache.CanBookOwn("Customer", "PreOrders"));
 
-            Assert.False(cache.HasAccess("Vendor", "Reports"));
+            Assert.False(cache.HasAccess("Customer", "Reports"));
             Assert.False(cache.CanEdit("SalesRep", "Recipes"));
             Assert.False(cache.CanManage("SalesRep", "Sales"));
         }
@@ -53,7 +53,7 @@ namespace Manufacture.Tests
             var roleNames = new[]
             {
                 "SuperAdmin", "ProductionManager", "StoreManager",
-                "SalesRep", "Vendor", "HrPayrollManager"
+                "SalesRep", "Customer", "HrPayrollManager"
             };
 
             var roles = roleNames

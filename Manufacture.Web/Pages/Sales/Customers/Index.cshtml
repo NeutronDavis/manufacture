@@ -1,7 +1,7 @@
 @page
 @model Manufacture.Pages.Sales.Customers.IndexModel
 @{
-    ViewData["Title"] = "Clients, Supermarkets & Vendors";
+    ViewData["Title"] = "Customers";
 }
 
 <div class="space-y-6 w-full">
@@ -13,18 +13,18 @@
                 <span>&gt;</span>
                 <a asp-page="/Sales/Orders/Index" class="hover:underline">Sales & POS</a>
                 <span>&gt;</span>
-                <span class="text-primary font-bold">Clients & Vendors</span>
+                <span class="text-primary font-bold">Customers</span>
             </div>
             <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
-                <i class="fa-solid fa-store text-primary"></i> Clients, Supermarkets & Vendor Directory
+                <i class="fa-solid fa-store text-primary"></i> Clients, Supermarkets Directory
             </h1>
             <p class="text-xs opacity-70 mt-0.5">
-                Manage supermarket accounts, vendor wholesaler codes, and credit receivable ledgers.
+                Manage customer accounts, supermarket outlets, and credit receivable ledgers.
             </p>
         </div>
         <div>
             <a asp-page="/Sales/Customers/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
-                <i class="fa-solid fa-plus text-xs"></i> Register Client / Vendor
+                <i class="fa-solid fa-plus text-xs"></i> Register Client
             </a>
         </div>
     </div>
@@ -33,9 +33,9 @@
     <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
         <div class="stat p-5">
             <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-users"></i></div>
-            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Registered Clients</div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Registered Customers</div>
             <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.Customers.Count</div>
-            <div class="stat-desc opacity-70">Supermarkets, wholesalers & vendors</div>
+            <div class="stat-desc opacity-70">Walk-in, wholesale & supermarket customers</div>
         </div>
 
         <div class="stat p-5">
@@ -75,24 +75,23 @@
                 <input type="text" 
                        id="customerSearchInput" 
                        oninput="filterCustomers()" 
-                       placeholder="Search by client name, code (e.g. CLI-101), phone, or address..." 
+                       placeholder="Search by customer name, code, phone, or address..." 
                        class="input input-bordered input-sm w-full pl-9 bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" />
             </div>
 
             <!-- Total Count -->
             <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
                 <span id="customerCountBadge" class="badge badge-neutral badge-xs font-mono font-bold">
-                    @Model.Customers.Count Clients
+                    @Model.Customers.Count Customers
                 </span>
             </div>
         </div>
 
         <!-- Quick Category Filter Pills -->
         <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-            <button type="button" onclick="setCategoryFilter('all', this)" class="btn btn-xs btn-neutral rounded-lg font-bold filter-pill">All Clients</button>
+            <button type="button" onclick="setCategoryFilter('all', this)" class="btn btn-xs btn-neutral rounded-lg font-bold filter-pill">All Customers</button>
             <button type="button" onclick="setCategoryFilter('supermarket', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill">Supermarkets</button>
-            <button type="button" onclick="setCategoryFilter('wholesaler', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill">Wholesalers</button>
-            <button type="button" onclick="setCategoryFilter('vendor', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill">Vendors</button>
+            <button type="button" onclick="setCategoryFilter('externalvendor', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill">Wholesale Depots</button>
             <button type="button" onclick="setCategoryFilter('debtors', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg filter-pill text-error font-semibold">With Outstanding Debt</button>
         </div>
     </div>
@@ -114,7 +113,7 @@
                 <table class="table table-sm w-full text-xs">
                     <thead>
                         <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
-                            <th class="py-3 pl-4">Client Code</th>
+                            <th class="py-3 pl-4">Customer Code</th>
                             <th>Customer / Company Name</th>
                             <th>Category</th>
                             <th>Phone Contact</th>
@@ -178,7 +177,7 @@
             <!-- No Results Alert -->
             <div id="noCustomersAlert" class="alert alert-info shadow-xs rounded-2xl text-xs py-4 hidden flex items-center gap-3">
                 <i class="fa-solid fa-circle-info text-base"></i>
-                <span>No clients matched your search query or selected category filter.</span>
+                <span>No customers matched your search query or selected category filter.</span>
             </div>
 
         </div>
@@ -233,7 +232,7 @@
             }
         });
 
-        countBadge.innerText = `${visibleCount} Client${visibleCount !== 1 ? 's' : ''}`;
+        countBadge.innerText = `${visibleCount} Customer${visibleCount !== 1 ? 's' : ''}`;
 
         if (visibleCount === 0) {
             noResults.classList.remove('hidden');

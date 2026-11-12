@@ -14,6 +14,7 @@ CREATE TABLE [dbo].[RouteSheetItems]
     [QtySold]               INT            NOT NULL CONSTRAINT [DF_RouteSheetItems_QtySold] DEFAULT (0),
     [ClosingStockQty]       INT            NOT NULL CONSTRAINT [DF_RouteSheetItems_ClosingStockQty] DEFAULT (0),
     [QtyDamaged]            INT            NOT NULL CONSTRAINT [DF_RouteSheetItems_QtyDamaged] DEFAULT (0),
+    [QtyReplacementIssued]  INT            NOT NULL CONSTRAINT [DF_RouteSheetItems_QtyReplacementIssued] DEFAULT (0),
     [ExpectedItemRevenue]   AS ([QtySold] * [UnitSellingPrice]) PERSISTED,
     [CreatedAt]             DATETIME2 (3)  NOT NULL CONSTRAINT [DF_RouteSheetItems_CreatedAt] DEFAULT (SYSUTCDATETIME()),
     [UpdatedAt]             DATETIME2 (3)  NOT NULL CONSTRAINT [DF_RouteSheetItems_UpdatedAt] DEFAULT (SYSUTCDATETIME()),
@@ -23,7 +24,7 @@ CREATE TABLE [dbo].[RouteSheetItems]
     CONSTRAINT [FK_RouteSheetItems_DailyRepRouteSheets] FOREIGN KEY ([RouteSheetId]) REFERENCES [dbo].[DailyRepRouteSheets] ([Id]) ON DELETE CASCADE,
     CONSTRAINT [FK_RouteSheetItems_Recipes] FOREIGN KEY ([RecipeId]) REFERENCES [dbo].[Recipes] ([Id]),
     CONSTRAINT [CK_RouteSheetItems_Category] CHECK ([Category] IN (0, 1, 2)),
-    CONSTRAINT [CK_RouteSheetItems_Quantities] CHECK ([RepOrderRequestedQty] >= 0 AND [YesterdayClosingStock] >= 0 AND [TodayNewlyLoadedQty] >= 0 AND [QtySold] >= 0 AND [ClosingStockQty] >= 0 AND [QtyDamaged] >= 0),
+    CONSTRAINT [CK_RouteSheetItems_Quantities] CHECK ([RepOrderRequestedQty] >= 0 AND [YesterdayClosingStock] >= 0 AND [TodayNewlyLoadedQty] >= 0 AND [QtySold] >= 0 AND [ClosingStockQty] >= 0 AND [QtyDamaged] >= 0 AND [QtyReplacementIssued] >= 0),
     CONSTRAINT [CK_RouteSheetItems_UnitSellingPrice] CHECK ([UnitSellingPrice] >= 0)
 );
 GO

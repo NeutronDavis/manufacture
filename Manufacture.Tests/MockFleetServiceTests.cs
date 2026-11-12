@@ -173,7 +173,7 @@ namespace Manufacture.Tests
                 CustomerName = "Nigerian Breweries PLC",
                 CustomerPhone = "+2348023456789",
                 VehicleId = vehicle.Id,
-                DriverId = vehicle.Id,
+                DriverEmployeeId = vehicle.Id,
                 DriverAllowance = 80_000m,
                 SecurityEscortFee = 200_000m,
                 TollsAndRoadLevies = 50_000m,

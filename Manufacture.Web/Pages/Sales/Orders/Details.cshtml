@@ -1,0 +1,192 @@
+@page "{id:int}"
+@model Manufacture.Pages.Sales.Orders.DetailsModel
+@{
+    ViewData["Title"] = $"Order {Model.Order.OrderNumber}";
+    var order = Model.Order;
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Sales/Orders/Index" class="hover:underline">Orders</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">@order.OrderNumber</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-receipt text-primary"></i> Order @order.OrderNumber
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">Order-tied debt, payment history, and settlement status.</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+            <a asp-page="/Sales/Orders/Receipt" asp-route-id="@order.Id" class="btn btn-sm btn-outline rounded-xl text-xs font-semibold gap-1.5">
+                <i class="fa-solid fa-print text-xs"></i> Receipt / Loading Slip
+            </a>
+            <a asp-page="/Sales/Orders/Index" class="btn btn-sm btn-ghost rounded-xl text-xs font-semibold">Back to Orders</a>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success text-xs rounded-xl"><span>@TempData["SuccessMessage"]</span></div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-error text-xs rounded-xl"><span>@TempData["ErrorMessage"]</span></div>
+    }
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div class="lg:col-span-8 space-y-6">
+            <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div><span class="opacity-60">Customer:</span> <strong>@order.CustomerName</strong></div>
+                    <div><span class="opacity-60">Sales Rep:</span> <strong>@order.SalesRepName</strong></div>
+                    <div><span class="opacity-60">Order Date:</span> <strong class="font-mono">@order.OrderDate.ToString("yyyy-MM-dd HH:mm")</strong></div>
+                    <div><span class="opacity-60">POS Terminal:</span> <strong class="font-mono">@order.PosTerminalCode</strong></div>
+                    <div>
+                        <span class="opacity-60">Operational Status:</span>
+                        <span class="badge badge-neutral badge-sm font-bold">@order.Status</span>
+                    </div>
+                    <div>
+                        <span class="opacity-60">Payment Status:</span>
+                        <span class="badge @(order.PaymentStatus == OrderPaymentStatus.Completed ? "badge-success" : order.PaymentStatus == OrderPaymentStatus.PartiallyPaid ? "badge-warning" : "badge-error") badge-sm font-bold">
+                            @order.PaymentStatus
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden">
+                <div class="p-4 border-b border-base-200 font-black text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-boxes-stacked text-primary"></i> Order Lines
+                </div>
+                <table class="table table-sm text-xs">
+                    <thead>
+                        <tr class="uppercase text-[10px] opacity-60">
+                            <th>Product</th>
+                            <th class="text-right">Qty</th>
+                            <th class="text-right">Bonus</th>
+                            <th class="text-right">Unit Price</th>
+                            <th class="text-right">Line Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in order.Items)
+                        {
+                            <tr>
+                                <td class="font-bold">@item.ProductName</td>
+                                <td class="text-right font-mono">@item.Quantity</td>
+                                <td class="text-right font-mono text-success">+@item.BonusQuantity</td>
+                                <td class="text-right font-mono">₦@item.UnitPrice.ToString("N0")</td>
+                                <td class="text-right font-mono font-bold">₦@item.TotalPrice.ToString("N0")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden">
+                <div class="p-4 border-b border-base-200 font-black text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-primary"></i> Payment History
+                </div>
+                @if (order.Payments.Any())
+                {
+                    <table class="table table-sm text-xs">
+                        <thead>
+                            <tr class="uppercase text-[10px] opacity-60">
+                                <th>Date</th>
+                                <th>Method</th>
+                                <th>Reference</th>
+                                <th>Received By</th>
+                                <th class="text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var payment in order.Payments)
+                            {
+                                <tr>
+                                    <td class="font-mono">@payment.PaymentDate.ToString("yyyy-MM-dd HH:mm")</td>
+                                    <td>@payment.PaymentMethod</td>
+                                    <td class="font-mono">@payment.Reference</td>
+                                    <td>@payment.ReceivedBy</td>
+                                    <td class="text-right font-mono font-bold text-success">₦@payment.Amount.ToString("N0")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <div class="p-6 text-xs opacity-60">No payments recorded for this order yet.</div>
+                }
+            </div>
+        </div>
+
+        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+            <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">
+                <h2 class="font-black text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-user-tie text-primary"></i> Sales Rep Assignment
+                </h2>
+                <form method="post" asp-page-handler="AssignRep" asp-route-id="@order.Id" class="space-y-3">
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-[10px] font-bold">Assigned Sales Rep</span></label>
+                        <select name="selectedSalesRepId" class="select select-sm select-bordered text-xs">
+                            <option value="">-- Unassigned --</option>
+                            @foreach (var rep in Model.SalesReps)
+                            {
+                                <option value="@rep.Id" selected="@(rep.Id == Model.SelectedSalesRepId)">@rep.FullName (@rep.EmployeeCode) - @rep.RouteName</option>
+                            }
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-outline rounded-xl text-xs font-bold w-full">Save Assignment</button>
+                </form>
+            </div>
+
+            <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">
+                <h2 class="font-black text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-money-bill-wave text-primary"></i> Settlement
+                </h2>
+                <div class="space-y-2 text-xs font-mono">
+                    <div class="flex justify-between"><span class="opacity-60">Gross Total</span><span class="font-bold">₦@order.TotalAmount.ToString("N0")</span></div>
+                    <div class="flex justify-between"><span class="opacity-60">Paid</span><span class="font-bold text-success">₦@order.AmountPaid.ToString("N0")</span></div>
+                    <div class="flex justify-between border-t border-base-200 pt-2"><span class="opacity-60">Balance Due</span><span class="font-black text-error">₦@order.BalanceDue.ToString("N0")</span></div>
+                </div>
+
+                @if (order.BalanceDue > 0)
+                {
+                    <form method="post" class="space-y-3 border-t border-base-200 pt-4">
+                        <input type="hidden" asp-for="PaymentInput.OrderId" />
+                        <div class="form-control">
+                            <label class="label pb-1"><span class="label-text text-[10px] font-bold">Amount</span></label>
+                            <input asp-for="PaymentInput.Amount" type="number" min="0.01" step="0.01" class="input input-sm input-bordered font-mono text-xs" required />
+                        </div>
+                        <div class="form-control">
+                            <label class="label pb-1"><span class="label-text text-[10px] font-bold">Payment Method</span></label>
+                            <select asp-for="PaymentInput.PaymentMethod" class="select select-sm select-bordered text-xs">
+                                <option value="Cash">Cash</option>
+                                <option value="BankTransfer">Bank Transfer</option>
+                                <option value="PosBank">POS Bank</option>
+                                <option value="CreditOwing">Credit Adjustment</option>
+                            </select>
+                        </div>
+                        <div class="form-control">
+                            <label class="label pb-1"><span class="label-text text-[10px] font-bold">Reference</span></label>
+                            <input asp-for="PaymentInput.Reference" class="input input-sm input-bordered text-xs" placeholder="Bank ref / receipt no." />
+                        </div>
+                        <div class="form-control">
+                            <label class="label pb-1"><span class="label-text text-[10px] font-bold">Notes</span></label>
+                            <input asp-for="PaymentInput.Notes" class="input input-sm input-bordered text-xs" />
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-neutral w-full rounded-xl text-xs font-bold gap-1.5">
+                            <i class="fa-solid fa-circle-check text-success"></i> Apply Payment to This Order
+                        </button>
+                    </form>
+                }
+                else
+                {
+                    <div class="alert alert-success text-xs py-2"><span>This order is fully settled.</span></div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

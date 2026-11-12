@@ -27,6 +27,16 @@ namespace Manufacture.Models.DTOs
         [Range(1, int.MaxValue, ErrorMessage = "Select a system role.")]
         public int RoleId { get; set; }
 
+        [Required(ErrorMessage = "Select the employee record for this user.")]
+        public int? EmployeeId { get; set; }
+
+        public string? EmployeeName { get; set; }
+        public string? EmployeeDepartment { get; set; }
+        public string? EmployeeDesignation { get; set; }
+
+        public int? CustomerId { get; set; }
+        public string? CustomerName { get; set; }
+
         /// <summary>Role machine name, e.g. SuperAdmin. Populated for display.</summary>
         public string Role { get; set; } = "SalesRep";
 
@@ -54,6 +64,7 @@ namespace Manufacture.Models.DTOs
         public string Name { get; set; } = string.Empty;
         public string DisplayName { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
+        public bool IsSystemRole { get; set; }
     }
 
     public class EmployeeDto
@@ -63,6 +74,8 @@ namespace Manufacture.Models.DTOs
         public string FullName { get; set; } = string.Empty;
         [Required]
         public string StaffCode { get; set; } = string.Empty;
+        public int? DepartmentId { get; set; }
+        public int? JobRoleId { get; set; }
         [Required]
         public string Department { get; set; } = "Production";
         [Required]
@@ -72,6 +85,7 @@ namespace Manufacture.Models.DTOs
         [EmailAddress]
         public string Email { get; set; } = string.Empty;
         public string Address { get; set; } = string.Empty;
+        public string PassportUrl { get; set; } = string.Empty;
         public string BankName { get; set; } = string.Empty;
         public string BankAccountNumber { get; set; } = string.Empty;
         [Required]
@@ -96,5 +110,26 @@ namespace Manufacture.Models.DTOs
 
         public DateTime EmploymentDate { get; set; } = DateTime.UtcNow;
         public bool IsActive { get; set; } = true;
+        public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
+        public int? DeletedBy { get; set; }
+        public DateTime? TerminationDate { get; set; }
+        public string TerminationReason { get; set; } = string.Empty;
+    }
+
+    public class EmployeeDependencyDto
+    {
+        public int PayrollRecords { get; set; }
+        public int PayrollDeductionLines { get; set; }
+        public int SalaryAdvances { get; set; }
+        public int FuelLogs { get; set; }
+        public int CharterBookings { get; set; }
+        public int VehicleAssignments { get; set; }
+
+        public int TotalRecords =>
+            PayrollRecords + PayrollDeductionLines + SalaryAdvances +
+            FuelLogs + CharterBookings + VehicleAssignments;
+
+        public bool CanHardDelete => TotalRecords == 0;
     }
 }

@@ -17,9 +17,9 @@ public partial class Vehicle
 
     public int? AssignedEmployeeId { get; set; }
 
-    public int? AssignedDriverId { get; set; }
-
     public string FuelType { get; set; } = null!;
+
+    public string? ImageUrl { get; set; }
 
     public decimal TankCapacityLitres { get; set; }
 
@@ -36,8 +36,6 @@ public partial class Vehicle
     public DateTime UpdatedAt { get; set; }
 
     public byte[] RowVersion { get; set; } = null!;
-
-    public virtual Driver? AssignedDriver { get; set; }
 
     public virtual Employee? AssignedEmployee { get; set; }
 

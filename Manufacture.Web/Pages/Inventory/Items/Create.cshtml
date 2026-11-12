@@ -60,10 +60,14 @@
                         <div class="form-control w-full">
                             <label class="label pb-1.5">
                                 <span class="label-text font-bold text-xs text-base-content">
-                                    Item Code <span class="text-error">*</span>
+                                    Item Code
                                 </span>
                             </label>
-                            <input type="text" asp-for="ItemInput.ItemCode" class="input input-bordered input-sm w-full font-mono uppercase bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" placeholder="e.g. RAW-FAT-02" required />
+                            <div class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs flex items-center gap-2 opacity-80">
+                                <i class="fa-solid fa-wand-magic-sparkles text-primary text-[11px]"></i>
+                                <span class="font-mono font-bold uppercase tracking-wide">Auto-generated on save</span>
+                            </div>
+                            <span class="text-[10px] opacity-60 mt-1">The system assigns a unique warehouse SKU automatically.</span>
                         </div>
 
                         <div class="form-control w-full">
@@ -71,10 +75,11 @@
                                 <span class="label-text font-bold text-xs text-base-content">Category</span>
                             </label>
                             <select asp-for="ItemInput.Category" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary">
-                                <option value="Raw Materials">Raw Materials (Flour, Sugar, Yeast)</option>
-                                <option value="Packaging">Packaging (Nylon, Clips, Tags)</option>
-                                <option value="Additives">Additives & Flavors</option>
-                                <option value="Fuel & Utility">Fuel & Utility (Oven Gas, Diesel)</option>
+                                <option value="Raw Materials">Raw Materials (Flour, Sugar, Yeast, Softeners, Flavors)</option>
+                                <option value="Packaging">Packaging (Nylon Wraps, Dispenser Bottles, Caps)</option>
+                                <option value="Additive/Flavor">Additive / Flavor (Preservatives, Seasonings, Flavors)</option>
+                                <option value="Fuel">Fuel (Petrol, LPG)</option>
+                                <option value="Utilities">Utilities (Diesel, Water Treatment)</option>
                             </select>
                         </div>
 
@@ -101,6 +106,7 @@
                                 <span class="label-text font-bold text-xs text-base-content">Opening Stock Quantity</span>
                             </label>
                             <input type="number" step="0.1" min="0" asp-for="ItemInput.QuantityInStock" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" value="20" required />
+                            <span class="text-[10px] opacity-60 mt-1">Initial opening balance only. Later deductions happen when a store request is approved.</span>
                         </div>
 
                         <div class="form-control w-full">

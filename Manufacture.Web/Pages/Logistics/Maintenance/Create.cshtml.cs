@@ -8,14 +8,22 @@ namespace Manufacture.Pages.Logistics.Maintenance
     public class CreateModel : PageModel
     {
         private readonly IFleetService _fleetService;
+        private readonly IImageUploadService _imageUploadService;
 
-        public CreateModel(IFleetService fleetService)
+        public CreateModel(IFleetService fleetService, IImageUploadService imageUploadService)
         {
             _fleetService = fleetService;
+            _imageUploadService = imageUploadService;
         }
 
         [BindProperty]
         public MaintenanceLogDto MaintenanceInput { get; set; } = new();
+
+        [BindProperty]
+        public IFormFile? BeforeImage { get; set; }
+
+        [BindProperty]
+        public IFormFile? AfterImage { get; set; }
 
         [BindProperty(SupportsGet = true)]
         public string? ReturnUrl { get; set; }
@@ -53,6 +61,24 @@ namespace Manufacture.Pages.Logistics.Maintenance
 
             try
             {
+                if (BeforeImage is { Length: > 0 })
+                {
+                    await using var beforeStream = BeforeImage.OpenReadStream();
+                    MaintenanceInput.BeforeImageUrl = await _imageUploadService.UploadAsync(
+                        beforeStream,
+                        BeforeImage.FileName,
+                        "uploads/maintenance");
+                }
+
+                if (AfterImage is { Length: > 0 })
+                {
+                    await using var afterStream = AfterImage.OpenReadStream();
+                    MaintenanceInput.AfterImageUrl = await _imageUploadService.UploadAsync(
+                        afterStream,
+                        AfterImage.FileName,
+                        "uploads/maintenance");
+                }
+
                 var created = await _fleetService.CreateMaintenanceLogAsync(MaintenanceInput);
                 TempData["SuccessMessage"] =
                     $"Maintenance service cost of ₦{created.Cost:N0} recorded for {created.VehicleRegNumber}.";
@@ -62,7 +88,7 @@ namespace Manufacture.Pages.Logistics.Maintenance
                     return Redirect(ReturnUrl);
                 }
 
-                return RedirectToPage("/Logistics/WeeklyRunningCosts/Index", new { WeekDate = created.ServiceDate.ToString("yyyy-MM-dd") });
+                return RedirectToPage("/Logistics/Maintenance/Details", new { id = created.Id });
             }
             catch (InvalidOperationException ex)
             {

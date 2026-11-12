@@ -22,7 +22,7 @@ public partial class ManufactureDbContext : DbContext
 
     public virtual DbSet<DailyRepRouteSheet> DailyRepRouteSheets { get; set; }
 
-    public virtual DbSet<Driver> Drivers { get; set; }
+    public virtual DbSet<Department> Departments { get; set; }
 
     public virtual DbSet<Employee> Employees { get; set; }
 
@@ -32,11 +32,15 @@ public partial class ManufactureDbContext : DbContext
 
     public virtual DbSet<InventoryItem> InventoryItems { get; set; }
 
+    public virtual DbSet<JobRole> JobRoles { get; set; }
+
     public virtual DbSet<MaintenanceLog> MaintenanceLogs { get; set; }
 
     public virtual DbSet<Order> Orders { get; set; }
 
     public virtual DbSet<OrderItem> OrderItems { get; set; }
+
+    public virtual DbSet<OrderPayment> OrderPayments { get; set; }
 
     public virtual DbSet<PayrollDeductionLine> PayrollDeductionLines { get; set; }
 
@@ -72,7 +76,11 @@ public partial class ManufactureDbContext : DbContext
 
     public virtual DbSet<SalaryAdvance> SalaryAdvances { get; set; }
 
+    public virtual DbSet<SalesBonusRule> SalesBonusRules { get; set; }
+
     public virtual DbSet<SalesRep> SalesReps { get; set; }
+
+    public virtual DbSet<StockMovement> StockMovements { get; set; }
 
     public virtual DbSet<StoreRequest> StoreRequests { get; set; }
 
@@ -153,9 +161,9 @@ public partial class ManufactureDbContext : DbContext
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())", "DF_CharterBookings_UpdatedAt");
 
-            entity.HasOne(d => d.Driver).WithMany(p => p.CharterBookings)
-                .HasForeignKey(d => d.DriverId)
-                .HasConstraintName("FK_CharterBookings_Drivers");
+            entity.HasOne(d => d.DriverEmployee).WithMany(p => p.CharterBookings)
+                .HasForeignKey(d => d.DriverEmployeeId)
+                .HasConstraintName("FK_CharterBookings_Employees");
 
             entity.HasOne(d => d.Vehicle).WithMany(p => p.CharterBookings)
                 .HasForeignKey(d => d.VehicleId)
@@ -297,35 +305,38 @@ public partial class ManufactureDbContext : DbContext
                 .HasConstraintName("FK_DailyRepRouteSheets_Vehicles");
         });
 
-        modelBuilder.Entity<Driver>(entity =>
+        modelBuilder.Entity<Department>(entity =>
         {
-            entity.HasIndex(e => e.LicenseNumber, "UX_Drivers_LicenseNumber")
-                .IsUnique()
-                .HasFilter("([LicenseNumber] IS NOT NULL)");
+            entity.HasIndex(e => e.Name, "UQ_Departments_Name").IsUnique();
 
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(3)
-                .HasDefaultValueSql("(sysutcdatetime())", "DF_Drivers_CreatedAt");
-            entity.Property(e => e.FullName).HasMaxLength(150);
-            entity.Property(e => e.IsActive).HasDefaultValue(true, "DF_Drivers_IsActive");
-            entity.Property(e => e.LicenseNumber).HasMaxLength(40);
-            entity.Property(e => e.PhoneNumber)
-                .HasMaxLength(30)
-                .HasDefaultValue("", "DF_Drivers_PhoneNumber");
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_Departments_CreatedAt");
+            entity.Property(e => e.Description)
+                .HasMaxLength(300)
+                .HasDefaultValue("", "DF_Departments_Description");
+            entity.Property(e => e.IsActive).HasDefaultValue(true, "DF_Departments_IsActive");
+            entity.Property(e => e.Name).HasMaxLength(80);
             entity.Property(e => e.UpdatedAt)
                 .HasPrecision(3)
-                .HasDefaultValueSql("(sysutcdatetime())", "DF_Drivers_UpdatedAt");
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_Departments_UpdatedAt");
         });
 
         modelBuilder.Entity<Employee>(entity =>
         {
+            entity.HasIndex(e => new { e.DepartmentId, e.IsActive }, "IX_Employees_DepartmentId_IsActive").HasFilter("([DepartmentId] IS NOT NULL)");
+
             entity.HasIndex(e => new { e.Department, e.IsActive }, "IX_Employees_Department_IsActive");
 
-            entity.HasIndex(e => e.StaffCode, "UQ_Employees_StaffCode").IsUnique();
+            entity.HasIndex(e => e.JobRoleId, "IX_Employees_JobRoleId").HasFilter("([JobRoleId] IS NOT NULL)");
 
             entity.HasIndex(e => e.Email, "UX_Employees_Email")
                 .IsUnique()
-                .HasFilter("([Email]<>N'')");
+                .HasFilter("([IsDeleted]=(0) AND [Email]<>N'')");
+
+            entity.HasIndex(e => e.StaffCode, "UX_Employees_StaffCode")
+                .IsUnique()
+                .HasFilter("([IsDeleted]=(0))");
 
             entity.Property(e => e.Address)
                 .HasMaxLength(300)
@@ -340,6 +351,7 @@ public partial class ManufactureDbContext : DbContext
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())", "DF_Employees_CreatedAt");
+            entity.Property(e => e.DeletedAt).HasPrecision(3);
             entity.Property(e => e.Department).HasMaxLength(80);
             entity.Property(e => e.Designation).HasMaxLength(100);
             entity.Property(e => e.Email)
@@ -372,18 +384,32 @@ public partial class ManufactureDbContext : DbContext
                 .HasMaxLength(30)
                 .HasDefaultValue("", "DF_Employees_GuarantorPhone");
             entity.Property(e => e.IsActive).HasDefaultValue(true, "DF_Employees_IsActive");
+            entity.Property(e => e.PassportUrl).HasMaxLength(500);
             entity.Property(e => e.PhoneNumber).HasMaxLength(30);
             entity.Property(e => e.RowVersion)
                 .IsRowVersion()
                 .IsConcurrencyToken();
             entity.Property(e => e.StaffCode).HasMaxLength(30);
+            entity.Property(e => e.TerminationReason)
+                .HasMaxLength(300)
+                .HasDefaultValue("", "DF_Employees_TerminationReason");
             entity.Property(e => e.UpdatedAt)
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())", "DF_Employees_UpdatedAt");
+
+            entity.HasOne(d => d.DepartmentNavigation).WithMany(p => p.Employees)
+                .HasForeignKey(d => d.DepartmentId)
+                .HasConstraintName("FK_Employees_Departments");
+
+            entity.HasOne(d => d.JobRole).WithMany(p => p.Employees)
+                .HasForeignKey(d => d.JobRoleId)
+                .HasConstraintName("FK_Employees_JobRoles");
         });
 
         modelBuilder.Entity<FuelLog>(entity =>
         {
+            entity.HasIndex(e => e.EmployeeId, "IX_FuelLogs_EmployeeId").HasFilter("([EmployeeId] IS NOT NULL)");
+
             entity.HasIndex(e => e.FuelDate, "IX_FuelLogs_FuelDate").IsDescending();
 
             entity.HasIndex(e => new { e.VehicleId, e.FuelDate }, "IX_FuelLogs_VehicleId_FuelDate").IsDescending(false, true);
@@ -409,9 +435,9 @@ public partial class ManufactureDbContext : DbContext
                 .HasComputedColumnSql("([LitresDispensed]*[PricePerLitre])", true)
                 .HasColumnType("decimal(37, 4)");
 
-            entity.HasOne(d => d.Driver).WithMany(p => p.FuelLogs)
-                .HasForeignKey(d => d.DriverId)
-                .HasConstraintName("FK_FuelLogs_Drivers");
+            entity.HasOne(d => d.Employee).WithMany(p => p.FuelLogs)
+                .HasForeignKey(d => d.EmployeeId)
+                .HasConstraintName("FK_FuelLogs_Employees");
 
             entity.HasOne(d => d.Vehicle).WithMany(p => p.FuelLogs)
                 .HasForeignKey(d => d.VehicleId)
@@ -488,10 +514,35 @@ public partial class ManufactureDbContext : DbContext
                 .HasConstraintName("FK_InventoryItems_Suppliers");
         });
 
+        modelBuilder.Entity<JobRole>(entity =>
+        {
+            entity.HasIndex(e => new { e.DepartmentId, e.IsActive }, "IX_JobRoles_DepartmentId_IsActive").HasFilter("([DepartmentId] IS NOT NULL)");
+
+            entity.HasIndex(e => e.Name, "UQ_JobRoles_Name").IsUnique();
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_JobRoles_CreatedAt");
+            entity.Property(e => e.Description)
+                .HasMaxLength(300)
+                .HasDefaultValue("", "DF_JobRoles_Description");
+            entity.Property(e => e.IsActive).HasDefaultValue(true, "DF_JobRoles_IsActive");
+            entity.Property(e => e.Name).HasMaxLength(100);
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_JobRoles_UpdatedAt");
+
+            entity.HasOne(d => d.Department).WithMany(p => p.JobRoles)
+                .HasForeignKey(d => d.DepartmentId)
+                .HasConstraintName("FK_JobRoles_Departments");
+        });
+
         modelBuilder.Entity<MaintenanceLog>(entity =>
         {
             entity.HasIndex(e => new { e.VehicleId, e.ServiceDate }, "IX_MaintenanceLogs_VehicleId_ServiceDate").IsDescending(false, true);
 
+            entity.Property(e => e.AfterImageUrl).HasMaxLength(500);
+            entity.Property(e => e.BeforeImageUrl).HasMaxLength(500);
             entity.Property(e => e.Cost).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(3)
@@ -519,6 +570,8 @@ public partial class ManufactureDbContext : DbContext
 
             entity.HasIndex(e => e.OrderDate, "IX_Orders_OrderDate").IsDescending();
 
+            entity.HasIndex(e => new { e.PaymentStatus, e.OrderDate }, "IX_Orders_PaymentStatus_OrderDate").IsDescending(false, true);
+
             entity.HasIndex(e => new { e.SalesRepId, e.OrderDate }, "IX_Orders_SalesRepId_OrderDate")
                 .IsDescending(false, true)
                 .HasFilter("([SalesRepId] IS NOT NULL)");
@@ -527,10 +580,15 @@ public partial class ManufactureDbContext : DbContext
 
             entity.HasIndex(e => e.OrderNumber, "UQ_Orders_OrderNumber").IsUnique();
 
+            entity.HasIndex(e => e.CreatedByUserId, "IX_Orders_CreatedByUserId")
+                .HasFilter("([CreatedByUserId] IS NOT NULL)");
+
             entity.Property(e => e.AmountPaid).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.BookedByType).HasDefaultValue(0, "DF_Orders_BookedByType");
             entity.Property(e => e.BalanceDue)
                 .HasComputedColumnSql("(([SubTotal]-[Discount])-[AmountPaid])", true)
                 .HasColumnType("decimal(20, 2)");
+            entity.Property(e => e.ClosedAt).HasPrecision(3);
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())", "DF_Orders_CreatedAt");
@@ -574,6 +632,11 @@ public partial class ManufactureDbContext : DbContext
             entity.HasOne(d => d.SalesRep).WithMany(p => p.Orders)
                 .HasForeignKey(d => d.SalesRepId)
                 .HasConstraintName("FK_Orders_SalesReps");
+
+            entity.HasOne(d => d.CreatedByUser).WithMany()
+                .HasForeignKey(d => d.CreatedByUserId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_Orders_CreatedByUser");
         });
 
         modelBuilder.Entity<OrderItem>(entity =>
@@ -589,6 +652,7 @@ public partial class ManufactureDbContext : DbContext
                 .HasComputedColumnSql("([Quantity]*[UnitPrice])", true)
                 .HasColumnType("decimal(29, 2)");
             entity.Property(e => e.ProductName).HasMaxLength(150);
+            entity.Property(e => e.TotalQuantity).HasComputedColumnSql("([Quantity]+[BonusQuantity])", true);
             entity.Property(e => e.UnitPrice).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.UpdatedAt)
                 .HasPrecision(3)
@@ -602,6 +666,35 @@ public partial class ManufactureDbContext : DbContext
                 .HasForeignKey(d => d.RecipeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_OrderItems_Recipes");
+        });
+
+        modelBuilder.Entity<OrderPayment>(entity =>
+        {
+            entity.HasIndex(e => new { e.OrderId, e.PaymentDate }, "IX_OrderPayments_OrderId_PaymentDate").IsDescending(false, true);
+
+            entity.HasIndex(e => e.PaymentDate, "IX_OrderPayments_PaymentDate").IsDescending();
+
+            entity.Property(e => e.Amount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_OrderPayments_CreatedAt");
+            entity.Property(e => e.Notes)
+                .HasMaxLength(300)
+                .HasDefaultValue("", "DF_OrderPayments_Notes");
+            entity.Property(e => e.PaymentDate)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_OrderPayments_PaymentDate");
+            entity.Property(e => e.ReceivedBy)
+                .HasMaxLength(150)
+                .HasDefaultValue("", "DF_OrderPayments_ReceivedBy");
+            entity.Property(e => e.Reference)
+                .HasMaxLength(80)
+                .HasDefaultValue("", "DF_OrderPayments_Reference");
+
+            entity.HasOne(d => d.Order).WithMany(p => p.OrderPayments)
+                .HasForeignKey(d => d.OrderId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_OrderPayments_Orders");
         });
 
         modelBuilder.Entity<PayrollDeductionLine>(entity =>
@@ -751,6 +844,8 @@ public partial class ManufactureDbContext : DbContext
 
         modelBuilder.Entity<PosTerminal>(entity =>
         {
+            entity.HasIndex(e => e.AssignedEmployeeId, "IX_PosTerminals_AssignedEmployeeId").HasFilter("([AssignedEmployeeId] IS NOT NULL)");
+
             entity.HasIndex(e => e.AssignedUserId, "IX_PosTerminals_AssignedUserId").HasFilter("([AssignedUserId] IS NOT NULL)");
 
             entity.HasIndex(e => e.TerminalCode, "UQ_PosTerminals_TerminalCode").IsUnique();
@@ -773,6 +868,10 @@ public partial class ManufactureDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())", "DF_PosTerminals_UpdatedAt");
+
+            entity.HasOne(d => d.AssignedEmployee).WithMany(p => p.PosTerminals)
+                .HasForeignKey(d => d.AssignedEmployeeId)
+                .HasConstraintName("FK_PosTerminals_Employees");
 
             entity.HasOne(d => d.AssignedUser).WithMany(p => p.PosTerminals)
                 .HasForeignKey(d => d.AssignedUserId)
@@ -1119,8 +1218,29 @@ public partial class ManufactureDbContext : DbContext
                 .HasConstraintName("FK_SalaryAdvances_Employees");
         });
 
+        modelBuilder.Entity<SalesBonusRule>(entity =>
+        {
+            entity.HasIndex(e => new { e.RecipeId, e.IsActive }, "IX_SalesBonusRules_RecipeId_IsActive");
+
+            entity.HasIndex(e => new { e.RecipeId, e.ThresholdQuantity }, "UQ_SalesBonusRules_Recipe_Threshold").IsUnique();
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_SalesBonusRules_CreatedAt");
+            entity.Property(e => e.IsActive).HasDefaultValue(true, "DF_SalesBonusRules_IsActive");
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_SalesBonusRules_UpdatedAt");
+
+            entity.HasOne(d => d.Recipe).WithMany(p => p.SalesBonusRules)
+                .HasForeignKey(d => d.RecipeId)
+                .HasConstraintName("FK_SalesBonusRules_Recipes");
+        });
+
         modelBuilder.Entity<SalesRep>(entity =>
         {
+            entity.HasIndex(e => e.EmployeeId, "IX_SalesReps_EmployeeId").HasFilter("([EmployeeId] IS NOT NULL)");
+
             entity.HasIndex(e => new { e.RouteName, e.IsActive }, "IX_SalesReps_RouteName_IsActive");
 
             entity.HasIndex(e => e.VehicleId, "IX_SalesReps_VehicleId").HasFilter("([VehicleId] IS NOT NULL)");
@@ -1151,6 +1271,10 @@ public partial class ManufactureDbContext : DbContext
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())", "DF_SalesReps_UpdatedAt");
 
+            entity.HasOne(d => d.Employee).WithMany(p => p.SalesReps)
+                .HasForeignKey(d => d.EmployeeId)
+                .HasConstraintName("FK_SalesReps_Employees");
+
             entity.HasOne(d => d.PosTerminal).WithMany(p => p.SalesReps)
                 .HasForeignKey(d => d.PosTerminalId)
                 .HasConstraintName("FK_SalesReps_PosTerminals");
@@ -1163,6 +1287,36 @@ public partial class ManufactureDbContext : DbContext
             entity.HasOne(d => d.Vehicle).WithMany(p => p.SalesReps)
                 .HasForeignKey(d => d.VehicleId)
                 .HasConstraintName("FK_SalesReps_Vehicles");
+        });
+
+        modelBuilder.Entity<StockMovement>(entity =>
+        {
+            entity.HasIndex(e => e.CreatedAt, "IX_StockMovements_CreatedAt").IsDescending();
+
+            entity.HasIndex(e => new { e.InventoryItemId, e.CreatedAt }, "IX_StockMovements_InventoryItemId_CreatedAt").IsDescending(false, true);
+
+            entity.HasIndex(e => e.StoreRequestId, "IX_StockMovements_StoreRequestId").HasFilter("([StoreRequestId] IS NOT NULL)");
+
+            entity.Property(e => e.BalanceAfter).HasColumnType("decimal(18, 3)");
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_StockMovements_CreatedAt");
+            entity.Property(e => e.MovementType).HasMaxLength(20);
+            entity.Property(e => e.Notes).HasMaxLength(300);
+            entity.Property(e => e.PerformedBy)
+                .HasMaxLength(150)
+                .HasDefaultValue("System", "DF_StockMovements_PerformedBy");
+            entity.Property(e => e.Quantity).HasColumnType("decimal(18, 3)");
+            entity.Property(e => e.ReferenceNumber).HasMaxLength(40);
+
+            entity.HasOne(d => d.InventoryItem).WithMany(p => p.StockMovements)
+                .HasForeignKey(d => d.InventoryItemId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_StockMovements_InventoryItems");
+
+            entity.HasOne(d => d.StoreRequest).WithMany(p => p.StockMovements)
+                .HasForeignKey(d => d.StoreRequestId)
+                .HasConstraintName("FK_StockMovements_StoreRequests");
         });
 
         modelBuilder.Entity<StoreRequest>(entity =>
@@ -1357,6 +1511,13 @@ public partial class ManufactureDbContext : DbContext
 
             entity.HasIndex(e => e.Email, "UQ_Users_Email").IsUnique();
 
+            entity.HasIndex(e => e.CustomerId, "IX_Users_CustomerId")
+                .HasFilter("([CustomerId] IS NOT NULL)");
+
+            entity.HasIndex(e => e.EmployeeId, "UX_Users_EmployeeId")
+                .IsUnique()
+                .HasFilter("([EmployeeId] IS NOT NULL)");
+
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())", "DF_Users_CreatedAt");
@@ -1381,12 +1542,20 @@ public partial class ManufactureDbContext : DbContext
                 .HasForeignKey(d => d.RoleId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_Users_Roles");
+
+            entity.HasOne(d => d.Customer).WithOne()
+                .HasForeignKey<User>(d => d.CustomerId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_Users_Customers");
+
+            entity.HasOne(d => d.Employee).WithOne()
+                .HasForeignKey<User>(d => d.EmployeeId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_Users_Employees");
         });
 
         modelBuilder.Entity<Vehicle>(entity =>
         {
-            entity.HasIndex(e => e.AssignedDriverId, "IX_Vehicles_AssignedDriverId").HasFilter("([AssignedDriverId] IS NOT NULL)");
-
             entity.HasIndex(e => e.AssignedEmployeeId, "IX_Vehicles_AssignedEmployeeId").HasFilter("([AssignedEmployeeId] IS NOT NULL)");
 
             entity.HasIndex(e => new { e.Status, e.IsActive }, "IX_Vehicles_Status_IsActive");
@@ -1399,7 +1568,8 @@ public partial class ManufactureDbContext : DbContext
             entity.Property(e => e.CurrentOdometerKm).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.FuelType)
                 .HasMaxLength(40)
-                .HasDefaultValue("PMS (Petrol)", "DF_Vehicles_FuelType");
+                .HasDefaultValue("Petrol", "DF_Vehicles_FuelType");
+            entity.Property(e => e.ImageUrl).HasMaxLength(500);
             entity.Property(e => e.IsActive).HasDefaultValue(true, "DF_Vehicles_IsActive");
             entity.Property(e => e.MakeAndModel).HasMaxLength(120);
             entity.Property(e => e.RegistrationNumber).HasMaxLength(20);
@@ -1421,10 +1591,6 @@ public partial class ManufactureDbContext : DbContext
             entity.Property(e => e.VehicleType)
                 .HasMaxLength(40)
                 .HasDefaultValue("Van", "DF_Vehicles_VehicleType");
-
-            entity.HasOne(d => d.AssignedDriver).WithMany(p => p.Vehicles)
-                .HasForeignKey(d => d.AssignedDriverId)
-                .HasConstraintName("FK_Vehicles_Drivers");
 
             entity.HasOne(d => d.AssignedEmployee).WithMany(p => p.Vehicles)
                 .HasForeignKey(d => d.AssignedEmployeeId)

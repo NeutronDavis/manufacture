@@ -1,15 +1,15 @@
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
-using Manufacture.Models.DTOs;
 
 namespace Manufacture.Pages.Inventory.Suppliers
 {
     public class CreateModel : PageModel
     {
-        private readonly MockInventoryService _inventoryService;
+        private readonly IInventoryService _inventoryService;
 
-        public CreateModel(MockInventoryService inventoryService)
+        public CreateModel(IInventoryService inventoryService)
         {
             _inventoryService = inventoryService;
         }
@@ -21,13 +21,24 @@ namespace Manufacture.Pages.Inventory.Suppliers
         {
         }
 
-        public IActionResult OnPost()
+        public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken = default)
         {
-            if (!ModelState.IsValid) return Page();
+            if (!ModelState.IsValid)
+            {
+                return Page();
+            }
 
-            var sup = _inventoryService.CreateSupplier(SupplierInput);
-            TempData["SuccessMessage"] = $"Supplier '{sup.Name}' added to directory.";
-            return RedirectToPage("/Inventory/Suppliers/Index");
+            try
+            {
+                var supplier = await _inventoryService.CreateSupplierAsync(SupplierInput, cancellationToken);
+                TempData["SuccessMessage"] = $"Supplier '{supplier.Name}' added to directory.";
+                return RedirectToPage("/Inventory/Suppliers/Index");
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+                return Page();
+            }
         }
     }
 }

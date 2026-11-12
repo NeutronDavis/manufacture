@@ -15,7 +15,7 @@ public partial class CharterBooking
 
     public int VehicleId { get; set; }
 
-    public int? DriverId { get; set; }
+    public int? DriverEmployeeId { get; set; }
 
     public string DriverName { get; set; } = null!;
 
@@ -45,7 +45,7 @@ public partial class CharterBooking
 
     public byte[] RowVersion { get; set; } = null!;
 
-    public virtual Driver? Driver { get; set; }
+    public virtual Employee? DriverEmployee { get; set; }
 
     public virtual ICollection<TripLeg> TripLegs { get; set; } = new List<TripLeg>();
 

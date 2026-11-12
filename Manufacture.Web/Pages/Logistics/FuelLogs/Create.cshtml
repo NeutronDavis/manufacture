@@ -65,6 +65,19 @@
 
                         <div class="form-control w-full">
                             <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Driver / Employee</span>
+                            </label>
+                            <select asp-for="LogInput.EmployeeId" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
+                                <option value="">-- Unassigned --</option>
+                                @foreach (var driver in Model.Drivers)
+                                {
+                                    <option value="@driver.Id">@driver.FullName (@driver.StaffCode)</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
                                 <span class="label-text font-bold text-xs text-base-content">
                                     Litres / kWh Dispensed <span class="text-error">*</span>
                                 </span>

@@ -5,7 +5,7 @@ CREATE TABLE [dbo].[CharterBookings]
     [CustomerName]          NVARCHAR (150) NOT NULL,
     [CustomerPhone]         NVARCHAR (30)  NOT NULL CONSTRAINT [DF_CharterBookings_CustomerPhone] DEFAULT (N''),
     [VehicleId]             INT            NOT NULL,
-    [DriverId]              INT            NULL,
+    [DriverEmployeeId]      INT            NULL,
     [DriverName]            NVARCHAR (150) NOT NULL CONSTRAINT [DF_CharterBookings_DriverName] DEFAULT (N''),
     [DriverAllowance]       DECIMAL (18, 2) NOT NULL CONSTRAINT [DF_CharterBookings_DriverAllowance] DEFAULT (0),
     [SecurityEscortFee]     DECIMAL (18, 2) NOT NULL CONSTRAINT [DF_CharterBookings_SecurityEscortFee] DEFAULT (0),
@@ -24,7 +24,7 @@ CREATE TABLE [dbo].[CharterBookings]
     CONSTRAINT [PK_CharterBookings] PRIMARY KEY CLUSTERED ([Id] ASC),
     CONSTRAINT [UQ_CharterBookings_BookingRef] UNIQUE ([BookingRef]),
     CONSTRAINT [FK_CharterBookings_Vehicles] FOREIGN KEY ([VehicleId]) REFERENCES [dbo].[Vehicles] ([Id]),
-    CONSTRAINT [FK_CharterBookings_Drivers] FOREIGN KEY ([DriverId]) REFERENCES [dbo].[Drivers] ([Id]),
+    CONSTRAINT [FK_CharterBookings_Employees] FOREIGN KEY ([DriverEmployeeId]) REFERENCES [dbo].[Employees] ([Id]),
     CONSTRAINT [CK_CharterBookings_TripStatus] CHECK ([TripStatus] IN (0, 1, 2, 3)),
     CONSTRAINT [CK_CharterBookings_Amounts] CHECK ([DriverAllowance] >= 0 AND [SecurityEscortFee] >= 0 AND [TollsAndRoadLevies] >= 0 AND [GrossCharterFee] >= 0)
 );

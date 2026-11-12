@@ -4,6 +4,8 @@ CREATE TABLE [dbo].[Users]
     [Name]               NVARCHAR (150)   NOT NULL,
     [Email]              NVARCHAR (256)   NOT NULL,
     [RoleId]             INT              NOT NULL,
+    [EmployeeId]         INT              NULL,
+    [CustomerId]         INT              NULL,
     [PinCodeHash]        NVARCHAR (256)   NOT NULL,
     [PasswordHash]       NVARCHAR (256)   NOT NULL,
     [SecurityStamp]      UNIQUEIDENTIFIER NOT NULL CONSTRAINT [DF_Users_SecurityStamp] DEFAULT (NEWID()),
@@ -18,7 +20,9 @@ CREATE TABLE [dbo].[Users]
 
     CONSTRAINT [PK_Users] PRIMARY KEY CLUSTERED ([Id] ASC),
     CONSTRAINT [UQ_Users_Email] UNIQUE ([Email]),
-    CONSTRAINT [FK_Users_Roles] FOREIGN KEY ([RoleId]) REFERENCES [dbo].[Roles] ([Id])
+    CONSTRAINT [FK_Users_Roles] FOREIGN KEY ([RoleId]) REFERENCES [dbo].[Roles] ([Id]),
+    CONSTRAINT [FK_Users_Employees] FOREIGN KEY ([EmployeeId]) REFERENCES [dbo].[Employees] ([Id]),
+    CONSTRAINT [FK_Users_Customers] FOREIGN KEY ([CustomerId]) REFERENCES [dbo].[Customers] ([Id])
 );
 GO
 
@@ -29,4 +33,14 @@ GO
 CREATE NONCLUSTERED INDEX [IX_Users_PosTerminalCode]
     ON [dbo].[Users] ([PosTerminalCode] ASC)
     WHERE [PosTerminalCode] IS NOT NULL;
+GO
+
+CREATE NONCLUSTERED INDEX [IX_Users_CustomerId]
+    ON [dbo].[Users] ([CustomerId] ASC)
+    WHERE [CustomerId] IS NOT NULL;
+GO
+
+CREATE UNIQUE NONCLUSTERED INDEX [UX_Users_EmployeeId]
+    ON [dbo].[Users] ([EmployeeId] ASC)
+    WHERE [EmployeeId] IS NOT NULL;
 GO

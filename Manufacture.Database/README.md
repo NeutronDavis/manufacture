@@ -100,7 +100,7 @@ per role. All seeded accounts use the password `Password123!`.
 | `production@bakery.com` | `222222` | Production Manager |
 | `store@bakery.com` | `333333` | Store Manager |
 | `sales@bakery.com` | `444444` | Sales Representative |
-| `vendor@bakery.com` | `555555` | Vendor |
+| `customer@bakery.com` | `555555` | Customer |
 | `hr@bakery.com` | `666666` | HR & Payroll Manager |
 
 Passwords and PINs are stored as ASP.NET Core `PasswordHasher` hashes.

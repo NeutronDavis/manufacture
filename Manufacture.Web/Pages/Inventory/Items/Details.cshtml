@@ -53,6 +53,9 @@
             <a asp-page="/Inventory/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
                 <i class="fa-solid fa-arrow-left text-xs"></i> Back
             </a>
+            <a asp-page="/Inventory/Movements/Index" asp-route-itemId="@item.Id" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-right-arrow-left text-xs"></i> Stock Ledger
+            </a>
             <button type="button" onclick="document.getElementById('restockModal').showModal()" class="btn btn-sm btn-outline btn-primary rounded-xl text-xs gap-1.5 font-bold">
                 <i class="fa-solid fa-plus text-xs"></i> Quick Restock
             </button>

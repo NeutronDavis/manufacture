@@ -19,7 +19,7 @@
                 <i class="fa-solid fa-clipboard-check text-primary"></i> Store Release & Raw Material Issuance
             </h1>
             <p class="text-xs opacity-70 mt-0.5">
-                Digital approval and automated warehouse stock deduction workflow between Production and Store Keeper.
+                Digital approval workflow between Production and the Store Keeper. Warehouse stock is deducted only when a request is approved and issued.
             </p>
         </div>
         <div>
@@ -28,6 +28,21 @@
             </a>
         </div>
     </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-check text-base"></i>
+            <span class="font-medium">@TempData["SuccessMessage"]</span>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-xmark text-base"></i>
+            <span class="font-medium">@TempData["ErrorMessage"]</span>
+        </div>
+    }
 
     <!-- Search & Status Filter Toolbar -->
     <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4 space-y-3">

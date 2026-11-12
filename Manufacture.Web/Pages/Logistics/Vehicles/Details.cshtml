@@ -1,0 +1,59 @@
+@page "{id:int}"
+@model Manufacture.Pages.Logistics.Vehicles.DetailsModel
+@{
+    ViewData["Title"] = "Vehicle Details";
+    var v = Model.Vehicle;
+}
+
+<div class="space-y-6 w-full max-w-5xl mx-auto">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Logistics/Vehicles/Index" class="hover:underline">Vehicles</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">@v.RegistrationNumber</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight">@v.MakeAndModel</h1>
+            <p class="text-xs opacity-70 mt-0.5">@v.RegistrationNumber · @v.Type · @v.Function</p>
+        </div>
+        <div class="flex gap-2">
+            <a asp-page="/Logistics/FuelLogs/Create" asp-route-vehicleId="@v.Id" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5">
+                <i class="fa-solid fa-gas-pump text-xs"></i> Log Fuel
+            </a>
+            <a asp-page="/Logistics/Maintenance/Create" asp-route-vehicleId="@v.Id" class="btn btn-sm btn-neutral rounded-xl text-xs gap-1.5">
+                <i class="fa-solid fa-wrench text-xs"></i> Log Maintenance
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-5">
+            @if (!string.IsNullOrWhiteSpace(v.ImageUrl))
+            {
+                <img src="@v.ImageUrl" alt="@v.MakeAndModel" class="w-full rounded-2xl border border-base-300 object-cover max-h-96" />
+            }
+            else
+            {
+                <div class="w-full h-64 rounded-2xl border border-dashed border-base-300 bg-base-200 flex items-center justify-center text-xs opacity-50">
+                    No vehicle image uploaded
+                </div>
+            }
+        </div>
+        <div class="lg:col-span-7">
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div><div class="text-[10px] uppercase font-bold opacity-60">Registration</div><div class="font-mono font-bold mt-0.5">@v.RegistrationNumber</div></div>
+                    <div><div class="text-[10px] uppercase font-bold opacity-60">Vehicle Type</div><div class="font-bold mt-0.5">@v.Type</div></div>
+                    <div><div class="text-[10px] uppercase font-bold opacity-60">Function</div><div class="font-bold mt-0.5">@v.Function</div></div>
+                    <div><div class="text-[10px] uppercase font-bold opacity-60">Status</div><div class="font-bold mt-0.5">@v.Status</div></div>
+                    <div><div class="text-[10px] uppercase font-bold opacity-60">Fuel Type</div><div class="font-bold mt-0.5">@v.FuelType</div></div>
+                    <div><div class="text-[10px] uppercase font-bold opacity-60">Tank Capacity</div><div class="font-mono font-bold mt-0.5">@v.TankCapacityLitres.ToString("N0") L</div></div>
+                    <div><div class="text-[10px] uppercase font-bold opacity-60">Odometer</div><div class="font-mono font-bold mt-0.5">@v.CurrentOdometerKm.ToString("N0") km</div></div>
+                    <div><div class="text-[10px] uppercase font-bold opacity-60">Assigned Driver</div><div class="font-bold mt-0.5">@(string.IsNullOrWhiteSpace(v.AssignedDriverName) ? "Unassigned" : v.AssignedDriverName)</div></div>
+                    <div><div class="text-[10px] uppercase font-bold opacity-60">Driver Phone</div><div class="font-mono font-bold mt-0.5">@(string.IsNullOrWhiteSpace(v.DriverPhoneNumber) ? "—" : v.DriverPhoneNumber)</div></div>
+                    <div><div class="text-[10px] uppercase font-bold opacity-60">Last Service</div><div class="font-mono font-bold mt-0.5">@(v.LastServiceDate?.ToString("dd MMM yyyy") ?? "—")</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

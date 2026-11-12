@@ -19,6 +19,10 @@ public partial class MaintenanceLog
 
     public string InvoiceNumber { get; set; } = null!;
 
+    public string? BeforeImageUrl { get; set; }
+
+    public string? AfterImageUrl { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

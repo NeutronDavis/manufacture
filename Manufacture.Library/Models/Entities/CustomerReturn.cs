@@ -23,6 +23,8 @@ public partial class CustomerReturn
 
     public decimal? RefundAmount { get; set; }
 
+    public int ReplacementQuantity { get; set; }
+
     public DateTime ReturnDate { get; set; }
 
     public string Reason { get; set; } = null!;

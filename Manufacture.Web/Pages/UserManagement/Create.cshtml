@@ -2,6 +2,8 @@
 @model Manufacture.Pages.UserManagement.CreateModel
 @{
     ViewData["Title"] = "Create User Account";
+    var selectedRole = Model.Roles.FirstOrDefault(r => r.Id == Model.UserInput.RoleId);
+    var showCustomerLink = string.Equals(selectedRole?.Name, "Customer", StringComparison.OrdinalIgnoreCase);
 }
 
 <div class="space-y-6 w-full">
@@ -58,6 +60,24 @@
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         
+                        <!-- Employee Record -->
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Employee Record (Staff) <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <select asp-for="UserInput.EmployeeId" id="employeeSelect" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary" required>
+                                <option value="">-- Select Employee --</option>
+                                @foreach (var employee in Model.Employees)
+                                {
+                                    <option value="@employee.Id" data-name="@employee.FullName" data-email="@employee.Email">@employee.FullName (@employee.Department - @employee.Designation)</option>
+                                }
+                            </select>
+                            <span class="text-[10px] opacity-60 mt-1">Selecting an employee fills the full name and email below automatically.</span>
+                            <span asp-validation-for="UserInput.EmployeeId" class="text-error text-[10px] mt-1"></span>
+                        </div>
+
                         <!-- Full Name -->
                         <div class="sm:col-span-2 form-control w-full">
                             <label class="label pb-1.5">
@@ -105,14 +125,31 @@
                                     Assigned System Role & Permissions <span class="text-error">*</span>
                                 </span>
                             </label>
-                            <select asp-for="UserInput.RoleId" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary" required>
+                            <select asp-for="UserInput.RoleId" id="roleSelect" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary" required>
                                 <option value="">— Select a system role —</option>
                                 @foreach (var role in Model.Roles)
                                 {
-                                    <option value="@role.Id">@role.DisplayName (@role.Name)</option>
+                                    <option value="@role.Id" data-role-name="@role.Name">@role.DisplayName (@role.Name)</option>
                                 }
                             </select>
                             <span asp-validation-for="UserInput.RoleId" class="text-error text-[10px] mt-1"></span>
+                        </div>
+
+                        <!-- Linked Customer Account -->
+                        <div id="customerLinkField" class="sm:col-span-2 form-control w-full @(showCustomerLink ? "" : "hidden")" style="@(showCustomerLink ? "" : "display:none")">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
+                                    Linked Customer Account
+                                </span>
+                            </label>
+                            <select asp-for="UserInput.CustomerId" id="customerSelect" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary">
+                                <option value="">-- No linked customer (staff account) --</option>
+                                @foreach (var customer in Model.Customers)
+                                {
+                                    <option value="@customer.Id">@customer.Name (@customer.MemberCode) - @customer.Category</option>
+                                }
+                            </select>
+                            <span class="text-[10px] opacity-60 mt-1">Required for Customer portal users. This drives their Pre-Order Schedule and dashboard lookup.</span>
                         </div>
                     </div>
 
@@ -160,3 +197,52 @@
         </div>
     </form>
 </div>
+
+@section Scripts {
+<script>
+    function toggleCustomerLinkField() {
+        const roleSelect = document.getElementById('roleSelect');
+        const customerField = document.getElementById('customerLinkField');
+        const customerSelect = document.getElementById('customerSelect');
+        if (!roleSelect || !customerField || !customerSelect) return;
+
+        const selectedOption = roleSelect.options[roleSelect.selectedIndex];
+        const roleName = selectedOption?.getAttribute('data-role-name') || '';
+        const isCustomer = roleName.toLowerCase() === 'customer';
+
+        customerField.classList.toggle('hidden', !isCustomer);
+        customerField.style.display = isCustomer ? '' : 'none';
+        customerSelect.required = isCustomer;
+        if (!isCustomer) {
+            customerSelect.value = '';
+        }
+    }
+
+    function populateFromEmployee() {
+        const employeeSelect = document.getElementById('employeeSelect');
+        if (!employeeSelect) return;
+
+        const selectedOption = employeeSelect.options[employeeSelect.selectedIndex];
+        const nameInput = document.getElementById('UserInput_Name');
+        const emailInput = document.getElementById('UserInput_Email');
+        if (!selectedOption || !selectedOption.value) return;
+
+        if (nameInput) nameInput.value = selectedOption.getAttribute('data-name') || '';
+        if (emailInput) emailInput.value = selectedOption.getAttribute('data-email') || '';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const roleSelect = document.getElementById('roleSelect');
+        if (roleSelect) {
+            roleSelect.addEventListener('change', toggleCustomerLinkField);
+        }
+
+        const employeeSelect = document.getElementById('employeeSelect');
+        if (employeeSelect) {
+            employeeSelect.addEventListener('change', populateFromEmployee);
+        }
+
+        toggleCustomerLinkField();
+    });
+</script>
+}

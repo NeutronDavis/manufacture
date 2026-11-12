@@ -54,7 +54,16 @@
                     <option value="active">Active</option>
                     <option value="leave">On Leave</option>
                     <option value="inactive">Inactive</option>
+                    <option value="archived">Archived</option>
                 </select>
+                <a asp-page="/HR/Index"
+                   asp-route-showArchived="@(!Model.ShowArchived)"
+                   asp-route-month="@Model.SelectedMonth"
+                   asp-route-year="@Model.SelectedYear"
+                   class="btn btn-xs btn-ghost bg-base-200 rounded-lg font-semibold w-full justify-start gap-2">
+                    <i class="fa-solid fa-box-archive text-[10px]"></i>
+                    @(Model.ShowArchived ? "Hide Archived Employees" : "Show Archived Employees")
+                </a>
                 <div class="flex flex-wrap gap-1.5 text-xs">
                     <button type="button" onclick="setDepartmentFilter('All')" class="dept-filter-btn btn btn-xs btn-neutral rounded-lg font-semibold" data-dept="All">All Staff</button>
                     @foreach (var dept in Model.Employees.Select(e => e.Department).Distinct().OrderBy(d => d))
@@ -78,9 +87,11 @@
                     @foreach (var emp in Model.Employees)
                     {
                         var selected = Model.SelectedEmployee?.Id == emp.Id;
-                        var status = !emp.IsActive || emp.EmploymentStatus == "Inactive"
-                            ? "inactive"
-                            : emp.EmploymentStatus == "OnLeave" ? "leave" : "active";
+                        var status = emp.IsDeleted
+                            ? "archived"
+                            : !emp.IsActive || emp.EmploymentStatus == "Inactive"
+                                ? "inactive"
+                                : emp.EmploymentStatus == "OnLeave" ? "leave" : "active";
                         <a asp-page="/HR/Index"
                            asp-route-employeeId="@emp.Id"
                            asp-route-month="@Model.SelectedMonth"
@@ -91,9 +102,18 @@
                            data-dept="@emp.Department"
                            data-status="@status">
                             <div class="flex items-center gap-3">
-                                <div class="avatar placeholder">
-                                    <div class="bg-base-200 text-base-content border border-base-300 rounded-full w-10 shadow-xs">
-                                        <span class="text-xs font-bold font-mono">@emp.FullName.Substring(0, Math.Min(2, emp.FullName.Length)).ToUpper()</span>
+                                <div class="avatar shrink-0">
+                                    <div class="w-10 h-10 rounded-full border border-base-300 shadow-xs overflow-hidden bg-base-200">
+                                        @if (!string.IsNullOrWhiteSpace(emp.PassportUrl))
+                                        {
+                                            <img src="@emp.PassportUrl" alt="@emp.FullName" class="w-full h-full object-cover" />
+                                        }
+                                        else
+                                        {
+                                            <div class="w-full h-full flex items-center justify-center text-base-content">
+                                                <span class="text-xs font-bold font-mono">@emp.FullName.Substring(0, Math.Min(2, emp.FullName.Length)).ToUpper()</span>
+                                            </div>
+                                        }
                                     </div>
                                 </div>
                                 <div>
@@ -102,7 +122,11 @@
                                 </div>
                             </div>
                             <div>
-                                @if (!emp.IsActive || emp.EmploymentStatus == "Inactive")
+                                @if (emp.IsDeleted)
+                                {
+                                    <span class="badge badge-neutral badge-xs font-bold">● ARCHIVED</span>
+                                }
+                                else if (!emp.IsActive || emp.EmploymentStatus == "Inactive")
                                 {
                                     <span class="badge badge-error badge-xs font-bold">● INACTIVE</span>
                                 }
@@ -138,19 +162,92 @@
 
                 <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
                     <div class="card-body p-6 space-y-5">
+                        @if (emp.IsDeleted)
+                        {
+                            <div class="alert alert-warning rounded-xl text-xs py-3">
+                                <i class="fa-solid fa-box-archive"></i>
+                                <div>
+                                    <div class="font-bold">This employee is archived.</div>
+                                    <div>
+                                        Archived @(emp.DeletedAt?.ToLocalTime().ToString("dd MMM yyyy HH:mm") ?? "—")
+                                        @if (!string.IsNullOrWhiteSpace(emp.TerminationReason))
+                                        {
+                                            <span> · @emp.TerminationReason</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div class="flex items-center gap-4">
-                                <div class="w-16 h-16 rounded-2xl bg-primary text-primary-content flex items-center justify-center text-2xl font-black shrink-0 shadow-xs">
-                                    @emp.FullName.Substring(0, Math.Min(2, emp.FullName.Length)).ToUpper()
+                                <div class="w-16 h-16 rounded-2xl bg-primary text-primary-content flex items-center justify-center text-2xl font-black shrink-0 shadow-xs overflow-hidden">
+                                    @if (!string.IsNullOrWhiteSpace(emp.PassportUrl))
+                                    {
+                                        <img src="@emp.PassportUrl" alt="@emp.FullName" class="w-full h-full object-cover" />
+                                    }
+                                    else
+                                    {
+                                        @emp.FullName.Substring(0, Math.Min(2, emp.FullName.Length)).ToUpper()
+                                    }
                                 </div>
                                 <div>
                                     <h2 class="text-xl font-black text-base-content tracking-tight">@emp.FullName</h2>
                                     <p class="text-xs opacity-70 mt-0.5">@emp.Designation · @emp.Department · @emp.StaffCode</p>
                                 </div>
                             </div>
-                            <a asp-page="/HR/Employees/Edit" asp-route-id="@emp.Id" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs font-semibold px-4">
-                                Edit Profile
-                            </a>
+                            <div class="flex flex-wrap items-center gap-2 sm:justify-end">
+                                @if (emp.IsDeleted)
+                                {
+                                    <form method="post" asp-page-handler="Restore">
+                                        <input type="hidden" name="id" value="@emp.Id" />
+                                        <input type="hidden" name="month" value="@Model.SelectedMonth" />
+                                        <input type="hidden" name="year" value="@Model.SelectedYear" />
+                                        <input type="hidden" name="showArchived" value="@Model.ShowArchived" />
+                                        <button type="submit" class="btn btn-sm btn-success rounded-xl text-xs font-semibold px-4">
+                                            <i class="fa-solid fa-rotate-left"></i> Restore Employee
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <a asp-page="/HR/Employees/Edit" asp-route-id="@emp.Id" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs font-semibold px-4">
+                                        Edit Profile
+                                    </a>
+                                    <div class="dropdown dropdown-end">
+                                        <div tabindex="0" role="button" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs font-semibold px-4 gap-2">
+                                            Status: @(emp.EmploymentStatus == "OnLeave" ? "On Leave" : emp.EmploymentStatus)
+                                            <i class="fa-solid fa-chevron-down text-[8px]"></i>
+                                        </div>
+                                        <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-xl z-50 w-44 p-1.5 shadow-xl border border-base-300 text-xs">
+                                            @foreach (var statusOption in new[] { "Active", "OnLeave", "Inactive" })
+                                            {
+                                                <li>
+                                                    <form method="post" asp-page-handler="ChangeStatus">
+                                                        <input type="hidden" name="id" value="@emp.Id" />
+                                                        <input type="hidden" name="status" value="@statusOption" />
+                                                        <input type="hidden" name="month" value="@Model.SelectedMonth" />
+                                                        <input type="hidden" name="year" value="@Model.SelectedYear" />
+                                                        <input type="hidden" name="showArchived" value="@Model.ShowArchived" />
+                                                        <button type="submit" class="w-full text-left @(emp.EmploymentStatus == statusOption ? "font-bold" : "")">
+                                                            @(statusOption == "OnLeave" ? "On Leave" : statusOption)
+                                                            @if (emp.EmploymentStatus == statusOption)
+                                                            {
+                                                                <i class="fa-solid fa-check text-success ml-1"></i>
+                                                            }
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                            }
+                                        </ul>
+                                    </div>
+                                    <button type="button"
+                                            onclick="document.getElementById('removeEmployeeModal').showModal()"
+                                            class="btn btn-sm btn-outline btn-error rounded-xl text-xs font-semibold px-4 gap-2">
+                                        <i class="fa-solid fa-user-minus"></i> Remove
+                                    </button>
+                                }
+                            </div>
                         </div>
 
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-base-200 text-xs">
@@ -367,6 +464,105 @@
                         }
                     </div>
                 </div>
+
+                @if (!emp.IsDeleted && Model.SelectedDependencies is not null)
+                {
+                    var deps = Model.SelectedDependencies!;
+                    <dialog id="removeEmployeeModal" class="modal">
+                        <div class="modal-box max-w-2xl rounded-2xl">
+                            <form method="dialog">
+                                <button class="btn btn-sm btn-circle btn-ghost absolute right-3 top-3">✕</button>
+                            </form>
+
+                            <h3 class="text-lg font-black text-base-content">Remove @emp.FullName</h3>
+                            <p class="text-xs opacity-70 mt-1">
+                                Archiving keeps payroll, advances, fuel, charter, and audit history.
+                                Permanent deletion is only available when no linked records exist.
+                            </p>
+
+                            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-5 text-xs">
+                                <div class="rounded-xl bg-base-200 p-3">
+                                    <div class="text-[10px] uppercase font-bold opacity-60">Payroll Records</div>
+                                    <div class="text-lg font-black font-mono">@deps.PayrollRecords</div>
+                                </div>
+                                <div class="rounded-xl bg-base-200 p-3">
+                                    <div class="text-[10px] uppercase font-bold opacity-60">Deduction Lines</div>
+                                    <div class="text-lg font-black font-mono">@deps.PayrollDeductionLines</div>
+                                </div>
+                                <div class="rounded-xl bg-base-200 p-3">
+                                    <div class="text-[10px] uppercase font-bold opacity-60">Salary Advances</div>
+                                    <div class="text-lg font-black font-mono">@deps.SalaryAdvances</div>
+                                </div>
+                                <div class="rounded-xl bg-base-200 p-3">
+                                    <div class="text-[10px] uppercase font-bold opacity-60">Fuel Logs</div>
+                                    <div class="text-lg font-black font-mono">@deps.FuelLogs</div>
+                                </div>
+                                <div class="rounded-xl bg-base-200 p-3">
+                                    <div class="text-[10px] uppercase font-bold opacity-60">Charter Bookings</div>
+                                    <div class="text-lg font-black font-mono">@deps.CharterBookings</div>
+                                </div>
+                                <div class="rounded-xl bg-base-200 p-3">
+                                    <div class="text-[10px] uppercase font-bold opacity-60">Vehicle Assignments</div>
+                                    <div class="text-lg font-black font-mono">@deps.VehicleAssignments</div>
+                                </div>
+                            </div>
+
+                            @if (deps.CanHardDelete)
+                            {
+                                <div class="alert alert-success rounded-xl text-xs py-3 mt-4">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                    <span>No linked records found. This employee can be permanently deleted.</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="alert alert-warning rounded-xl text-xs py-3 mt-4">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                    <span>Linked records exist. Use Archive to preserve financial history.</span>
+                                </div>
+                            }
+
+                            <div class="mt-5 space-y-3">
+                                <form method="post" asp-page-handler="Archive" class="flex flex-col sm:flex-row sm:items-end gap-2">
+                                    <input type="hidden" name="id" value="@emp.Id" />
+                                    <input type="hidden" name="month" value="@Model.SelectedMonth" />
+                                    <input type="hidden" name="year" value="@Model.SelectedYear" />
+                                    <input type="hidden" name="showArchived" value="@Model.ShowArchived" />
+                                    <div class="form-control flex-1">
+                                        <label class="label pb-1"><span class="label-text text-[10px] font-bold uppercase opacity-60">Archive Reason (optional)</span></label>
+                                        <input type="text" name="reason" maxlength="300" placeholder="e.g. Resigned, contract ended..."
+                                               class="input input-sm input-bordered w-full rounded-xl text-xs" />
+                                    </div>
+                                    <button type="submit" class="btn btn-sm btn-warning rounded-xl text-xs font-bold px-4">
+                                        <i class="fa-solid fa-box-archive"></i> Archive Employee
+                                    </button>
+                                </form>
+
+                                @if (deps.CanHardDelete)
+                                {
+                                    <form method="post" asp-page-handler="Delete" onsubmit="return confirm('Permanently delete this employee? This cannot be undone.');">
+                                        <input type="hidden" name="id" value="@emp.Id" />
+                                        <input type="hidden" name="month" value="@Model.SelectedMonth" />
+                                        <input type="hidden" name="year" value="@Model.SelectedYear" />
+                                        <input type="hidden" name="showArchived" value="@Model.ShowArchived" />
+                                        <button type="submit" class="btn btn-sm btn-error rounded-xl text-xs font-bold px-4">
+                                            <i class="fa-solid fa-trash"></i> Delete Permanently
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+
+                            <div class="modal-action">
+                                <form method="dialog">
+                                    <button class="btn btn-sm btn-ghost rounded-xl text-xs">Cancel</button>
+                                </form>
+                            </div>
+                        </div>
+                        <form method="dialog" class="modal-backdrop">
+                            <button>close</button>
+                        </form>
+                    </dialog>
+                }
             }
         </div>
     </div>

@@ -45,7 +45,7 @@ namespace Manufacture.Models.Domain
         public string CustomerPhone { get; set; } = string.Empty;
         public int VehicleId { get; set; }
         public string VehicleRegNumber { get; set; } = string.Empty;
-        public int DriverId { get; set; }
+        public int? DriverEmployeeId { get; set; }
         public string DriverName { get; set; } = string.Empty;
 
         // Route & Multi-Leg Layover Details

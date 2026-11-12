@@ -23,6 +23,12 @@ namespace Manufacture.Pages.Logistics.Charter
         [BindProperty(SupportsGet = true)]
         public string? Search { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public DateTime? FromDate { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public DateTime? ToDate { get; set; }
+
         public int TotalBookingsCount => Bookings.Count;
         public int InTransitCount => Bookings.Count(b => b.TripStatus == CharterTripStatus.InTransit);
         public decimal TotalGrossRevenue => Bookings.Where(b => b.TripStatus != CharterTripStatus.Cancelled).Sum(b => b.GrossCharterFee);
@@ -31,6 +37,20 @@ namespace Manufacture.Pages.Logistics.Charter
         public async Task OnGetAsync()
         {
             Bookings = await _fleetService.GetCharterBookingsAsync(StatusFilter, Search);
+
+            if (FromDate.HasValue)
+            {
+                Bookings = Bookings
+                    .Where(b => b.DepartureDate.Date >= FromDate.Value.Date)
+                    .ToList();
+            }
+
+            if (ToDate.HasValue)
+            {
+                Bookings = Bookings
+                    .Where(b => b.DepartureDate.Date <= ToDate.Value.Date)
+                    .ToList();
+            }
         }
 
         public async Task<IActionResult> OnPostUpdateStatusAsync(int id, CharterTripStatus newStatus)
@@ -40,7 +60,7 @@ namespace Manufacture.Pages.Logistics.Charter
                 ? $"Booking status successfully updated to {newStatus}."
                 : "Could not find booking to update status.";
 
-            return RedirectToPage(new { StatusFilter, Search });
+            return RedirectToPage(new { StatusFilter, Search, FromDate, ToDate });
         }
     }
 }

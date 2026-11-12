@@ -33,6 +33,8 @@ public partial class RouteSheetItem
 
     public int QtyDamaged { get; set; }
 
+    public int QtyReplacementIssued { get; set; }
+
     public decimal? ExpectedItemRevenue { get; set; }
 
     public DateTime CreatedAt { get; set; }

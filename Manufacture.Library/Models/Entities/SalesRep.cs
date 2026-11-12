@@ -9,6 +9,8 @@ public partial class SalesRep
 
     public string RepCode { get; set; } = null!;
 
+    public int? EmployeeId { get; set; }
+
     public int? UserId { get; set; }
 
     public string FullName { get; set; } = null!;
@@ -34,6 +36,8 @@ public partial class SalesRep
     public virtual ICollection<CustomerReturn> CustomerReturns { get; set; } = new List<CustomerReturn>();
 
     public virtual ICollection<DailyRepRouteSheet> DailyRepRouteSheets { get; set; } = new List<DailyRepRouteSheet>();
+
+    public virtual Employee? Employee { get; set; }
 
     public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
 
