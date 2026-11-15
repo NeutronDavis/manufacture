@@ -10,7 +10,7 @@ CREATE TABLE [dbo].[ProductionBatches]
     [Shift]                 NVARCHAR (40)  NOT NULL CONSTRAINT [DF_ProductionBatches_Shift] DEFAULT (N'Morning'),
     [BakerInCharge]         NVARCHAR (150) NOT NULL CONSTRAINT [DF_ProductionBatches_BakerInCharge] DEFAULT (N''),
     [FlourBagsUsed]         DECIMAL (18, 3) NOT NULL CONSTRAINT [DF_ProductionBatches_FlourBagsUsed] DEFAULT (0),
-    [ProductCategory]       INT            NOT NULL CONSTRAINT [DF_ProductionBatches_ProductCategory] DEFAULT (0),
+    [ProductionProductTypeId] INT          NULL,
     [BatchInputQuantity]    DECIMAL (18, 3) NOT NULL CONSTRAINT [DF_ProductionBatches_BatchInputQuantity] DEFAULT (1),
     [BatchInputUnitLabel]   NVARCHAR (60)  NOT NULL CONSTRAINT [DF_ProductionBatches_BatchInputUnitLabel] DEFAULT (N'Flour Bags (50kg)'),
     [OutputUnitLabel]       NVARCHAR (40)  NOT NULL CONSTRAINT [DF_ProductionBatches_OutputUnitLabel] DEFAULT (N'loaves'),
@@ -33,8 +33,8 @@ CREATE TABLE [dbo].[ProductionBatches]
     CONSTRAINT [UQ_ProductionBatches_BatchNumber] UNIQUE ([BatchNumber]),
     CONSTRAINT [FK_ProductionBatches_Recipes] FOREIGN KEY ([RecipeId]) REFERENCES [dbo].[Recipes] ([Id]),
     CONSTRAINT [FK_ProductionBatches_Orders] FOREIGN KEY ([LinkedOrderId]) REFERENCES [dbo].[Orders] ([Id]),
+    CONSTRAINT [FK_ProductionBatches_ProductionProductTypes] FOREIGN KEY ([ProductionProductTypeId]) REFERENCES [dbo].[ProductionProductTypes] ([Id]),
     CONSTRAINT [CK_ProductionBatches_Quantities] CHECK ([TargetQuantity] >= 0 AND [ActualQuantity] >= 0 AND [FlourBagsUsed] >= 0 AND [BatchInputQuantity] >= 0),
-    CONSTRAINT [CK_ProductionBatches_ProductCategory] CHECK ([ProductCategory] IN (0, 1, 2)),
     CONSTRAINT [CK_ProductionBatches_Status] CHECK ([Status] IN (0, 1, 2, 3, 4)),
     CONSTRAINT [CK_ProductionBatches_Costs] CHECK ([TotalBatchCost] >= 0 AND [CalculatedUnitCost] >= 0 AND [ExpectedUnitCost] >= 0)
 );
@@ -46,6 +46,11 @@ GO
 
 CREATE NONCLUSTERED INDEX [IX_ProductionBatches_RecipeId_Status]
     ON [dbo].[ProductionBatches] ([RecipeId] ASC, [Status] ASC);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_ProductionBatches_ProductionProductTypeId]
+    ON [dbo].[ProductionBatches] ([ProductionProductTypeId] ASC)
+    WHERE [ProductionProductTypeId] IS NOT NULL;
 GO
 
 CREATE NONCLUSTERED INDEX [IX_ProductionBatches_LinkedOrderId]

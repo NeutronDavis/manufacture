@@ -6,6 +6,7 @@ CREATE TABLE [dbo].[StockMovements]
     [Quantity]        DECIMAL (18, 3) NOT NULL,
     [BalanceAfter]    DECIMAL (18, 3) NOT NULL,
     [StoreRequestId]  INT            NULL,
+    [StoreRequestItemId] INT         NULL,
     [ReferenceNumber] NVARCHAR (40)  NULL,
     [Notes]           NVARCHAR (300) NULL,
     [PerformedBy]     NVARCHAR (150) NOT NULL CONSTRAINT [DF_StockMovements_PerformedBy] DEFAULT (N'System'),
@@ -14,6 +15,7 @@ CREATE TABLE [dbo].[StockMovements]
     CONSTRAINT [PK_StockMovements] PRIMARY KEY CLUSTERED ([Id] ASC),
     CONSTRAINT [FK_StockMovements_InventoryItems] FOREIGN KEY ([InventoryItemId]) REFERENCES [dbo].[InventoryItems] ([Id]),
     CONSTRAINT [FK_StockMovements_StoreRequests] FOREIGN KEY ([StoreRequestId]) REFERENCES [dbo].[StoreRequests] ([Id]),
+    CONSTRAINT [FK_StockMovements_StoreRequestItems] FOREIGN KEY ([StoreRequestItemId]) REFERENCES [dbo].[StoreRequestItems] ([Id]),
     CONSTRAINT [CK_StockMovements_Type] CHECK ([MovementType] IN (N'Receipt', N'Issue')),
     CONSTRAINT [CK_StockMovements_Amounts] CHECK ([Quantity] > 0 AND [BalanceAfter] >= 0)
 );
@@ -26,6 +28,11 @@ GO
 CREATE NONCLUSTERED INDEX [IX_StockMovements_StoreRequestId]
     ON [dbo].[StockMovements] ([StoreRequestId] ASC)
     WHERE [StoreRequestId] IS NOT NULL;
+GO
+
+CREATE NONCLUSTERED INDEX [IX_StockMovements_StoreRequestItemId]
+    ON [dbo].[StockMovements] ([StoreRequestItemId] ASC)
+    WHERE [StoreRequestItemId] IS NOT NULL;
 GO
 
 CREATE NONCLUSTERED INDEX [IX_StockMovements_CreatedAt]

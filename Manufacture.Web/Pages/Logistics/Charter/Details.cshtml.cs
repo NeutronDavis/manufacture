@@ -17,17 +17,20 @@ namespace Manufacture.Pages.Logistics.Charter
 
         public CharterBookingDto? Booking { get; set; }
         public VehicleDto? Vehicle { get; set; }
+        public List<FuelLogDto> FuelLogs { get; set; } = new();
+        public decimal TotalFuelCost => FuelLogs.Sum(log => log.TotalCost);
 
-        public async Task<IActionResult> OnGetAsync(int id)
+        public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancellationToken = default)
         {
-            Booking = await _fleetService.GetCharterBookingAsync(id);
+            Booking = await _fleetService.GetCharterBookingAsync(id, cancellationToken);
             if (Booking == null)
             {
                 TempData["ErrorMessage"] = "Charter booking not found.";
                 return RedirectToPage("/Logistics/Charter/Index");
             }
 
-            Vehicle = await _fleetService.GetVehicleAsync(Booking.VehicleId);
+            Vehicle = await _fleetService.GetVehicleAsync(Booking.VehicleId, cancellationToken);
+            FuelLogs = await _fleetService.GetFuelLogsForCharterAsync(id, cancellationToken);
             return Page();
         }
 

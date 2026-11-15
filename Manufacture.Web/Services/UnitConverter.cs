@@ -34,6 +34,9 @@ namespace Manufacture.Services
         public static bool CanConvert(string fromUnit, string toUnit, string? materialName) =>
             Service.CanConvert(fromUnit, toUnit, materialName);
 
+        public static bool CanConvert(string fromUnit, string toUnit, string? materialName, decimal? densityKgPerLitre) =>
+            Service.CanConvert(fromUnit, toUnit, materialName, densityKgPerLitre);
+
         public static decimal ToPricingUnit(decimal quantity, string enteredUnit, string pricingUnit) =>
             Service.ToPricingUnit(quantity, enteredUnit, pricingUnit);
 
@@ -48,5 +51,8 @@ namespace Manufacture.Services
 
         public static IReadOnlyList<string> GetCompatibleUnits(string? baseUnit, string? materialName = null) =>
             Service.GetCompatibleUnits(baseUnit, materialName);
+
+        public static IReadOnlyList<string> GetCompatibleUnits(string? baseUnit, string? materialName, decimal? densityKgPerLitre) =>
+            Service.GetCompatibleUnits(baseUnit, materialName, densityKgPerLitre);
     }
 }

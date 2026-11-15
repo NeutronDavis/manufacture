@@ -23,6 +23,15 @@ namespace Manufacture.Pages.Inventory.Movements
         [BindProperty(SupportsGet = true)]
         public string? MovementType { get; set; }
 
+        [BindProperty(SupportsGet = true)]
+        public DateOnly? DateFrom { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public DateOnly? DateTo { get; set; }
+
+        [BindProperty(SupportsGet = true)]
+        public string? Search { get; set; }
+
         public decimal TotalReceipts => Movements
             .Where(m => m.MovementType == "Receipt")
             .Sum(m => m.Quantity);
@@ -34,7 +43,14 @@ namespace Manufacture.Pages.Inventory.Movements
         public async Task OnGetAsync(CancellationToken cancellationToken = default)
         {
             Items = await _inventoryService.GetItemsAsync(includeInactive: true, cancellationToken);
-            Movements = await _inventoryService.GetStockMovementsAsync(ItemId, MovementType, 250, cancellationToken);
+            Movements = await _inventoryService.GetStockMovementsAsync(
+                inventoryItemId: ItemId,
+                movementType: MovementType,
+                take: 250,
+                fromDate: DateFrom,
+                toDate: DateTo,
+                search: Search,
+                cancellationToken: cancellationToken);
         }
     }
 }

@@ -17,6 +17,10 @@ namespace Manufacture.Library.Interfaces
 
         Task<List<FuelLogDto>> GetFuelLogsAsync(CancellationToken cancellationToken = default);
 
+        Task<List<FuelLogDto>> GetFuelLogsForCharterAsync(int charterBookingId, CancellationToken cancellationToken = default);
+
+        Task<List<FuelLogDto>> GetFuelLogsForDispatchAsync(int fleetDispatchId, CancellationToken cancellationToken = default);
+
         Task<FuelLogDto> CreateFuelLogAsync(FuelLogDto dto, CancellationToken cancellationToken = default);
 
         Task<MaintenanceLogDto> CreateMaintenanceLogAsync(MaintenanceLogDto dto, CancellationToken cancellationToken = default);
@@ -24,20 +28,6 @@ namespace Manufacture.Library.Interfaces
         Task<List<MaintenanceLogDto>> GetMaintenanceLogsAsync(CancellationToken cancellationToken = default);
 
         Task<MaintenanceLogDto?> GetMaintenanceLogAsync(int id, CancellationToken cancellationToken = default);
-
-        Task<List<RouteRateDto>> GetRouteRatesAsync(string? search = null, string? vehicleType = null, CancellationToken cancellationToken = default);
-
-        Task<RouteRateDto?> GetRouteRateAsync(int id, CancellationToken cancellationToken = default);
-
-        Task<RouteRateDto> CreateRouteRateAsync(RouteRateDto dto, CancellationToken cancellationToken = default);
-
-        Task<bool> UpdateRouteRateAsync(RouteRateDto dto, CancellationToken cancellationToken = default);
-
-        Task<bool> DeleteRouteRateAsync(int id, CancellationToken cancellationToken = default);
-
-        Task<bool> SetRouteRateActiveAsync(int id, bool isActive, CancellationToken cancellationToken = default);
-
-        Task<List<RouteRateDto>> GetActiveRouteRatesAsync(CancellationToken cancellationToken = default);
 
         Task<List<CharterBookingDto>> GetCharterBookingsAsync(string? status = null, string? search = null, CancellationToken cancellationToken = default);
 

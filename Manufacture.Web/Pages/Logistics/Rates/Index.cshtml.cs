@@ -1,5 +1,6 @@
 using Manufacture.Library.Interfaces;
 using Manufacture.Models.DTOs;
+using Manufacture.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -7,57 +8,48 @@ namespace Manufacture.Pages.Logistics.Rates
 {
     public class IndexModel : PageModel
     {
-        private readonly IFleetService _fleetService;
+        private readonly ICharterQuoteService _quotes;
+        private readonly RbacCache _rbac;
 
-        public IndexModel(IFleetService fleetService)
+        public IndexModel(ICharterQuoteService quotes, RbacCache rbac)
         {
-            _fleetService = fleetService;
+            _quotes = quotes;
+            _rbac = rbac;
         }
 
-        public List<RouteRateDto> Rates { get; set; } = new();
+        public List<CharterQuoteDto> Quotes { get; set; } = new();
+
+        [BindProperty(SupportsGet = true)]
+        public string? StatusFilter { get; set; } = "All";
 
         [BindProperty(SupportsGet = true)]
         public string? Search { get; set; }
 
-        [BindProperty(SupportsGet = true)]
-        public string? VehicleFilter { get; set; }
+        public string ActiveRole { get; set; } = "SuperAdmin";
+        public bool CanApprove => string.Equals(ActiveRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase)
+            || _rbac.CanApprove(ActiveRole, "Fleet");
 
-        public int TotalRoutesCount => Rates.Count;
-        public decimal AvgRateWithFuel => Rates.Any() ? Rates.Average(r => r.RateWithFuel) : 0;
-        public decimal AvgRateWithoutFuel => Rates.Any() ? Rates.Average(r => r.RateWithoutFuel) : 0;
-        public int ActiveLanesCount => Rates.Count(r => r.IsActive);
+        public int DraftCount => Quotes.Count(q => q.Status == CharterQuoteStatus.Draft);
+        public int PendingCount => Quotes.Count(q => q.Status == CharterQuoteStatus.PendingApproval);
+        public int ApprovedCount => Quotes.Count(q => q.Status == CharterQuoteStatus.Approved);
+        public int ConvertedCount => Quotes.Count(q => q.Status == CharterQuoteStatus.Converted);
+        public decimal TotalQuotedValue => Quotes.Where(q => q.Status != CharterQuoteStatus.Rejected).Sum(q => q.QuotedAmount);
 
-        public List<string> AvailableVehicleTypes { get; set; } = new()
+        public async Task OnGetAsync(CancellationToken cancellationToken)
         {
-            "30-Ton Haulage Truck",
-            "15-Ton Box Truck",
-            "Delivery Van",
-            "VIP Escort Patrol"
+            ActiveRole = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
+            Quotes = await _quotes.GetCharterQuotesAsync(StatusFilter, Search, cancellationToken);
+        }
+
+        public string StatusBadge(CharterQuoteStatus status) => status switch
+        {
+            CharterQuoteStatus.Draft => "badge-ghost",
+            CharterQuoteStatus.PendingApproval => "badge-warning",
+            CharterQuoteStatus.Approved => "badge-success",
+            CharterQuoteStatus.Rejected => "badge-error",
+            CharterQuoteStatus.Expired => "badge-neutral",
+            CharterQuoteStatus.Converted => "badge-info",
+            _ => "badge-ghost"
         };
-
-        public async Task OnGetAsync()
-        {
-            Rates = await _fleetService.GetRouteRatesAsync(Search, VehicleFilter);
-        }
-
-        public async Task<IActionResult> OnPostDeleteRateAsync(int id)
-        {
-            var success = await _fleetService.DeleteRouteRateAsync(id);
-            TempData[success ? "SuccessMessage" : "ErrorMessage"] = success
-                ? "Route rate deleted successfully."
-                : "Route rate could not be found.";
-            return RedirectToPage(new { Search, VehicleFilter });
-        }
-
-        public async Task<IActionResult> OnPostToggleStatusAsync(int id)
-        {
-            var rate = await _fleetService.GetRouteRateAsync(id);
-            if (rate != null)
-            {
-                await _fleetService.SetRouteRateActiveAsync(id, !rate.IsActive);
-                TempData["SuccessMessage"] = $"Route {rate.OriginState} → {rate.DestinationState} status set to {(!rate.IsActive ? "Active" : "Inactive")}.";
-            }
-            return RedirectToPage(new { Search, VehicleFilter });
-        }
     }
 }

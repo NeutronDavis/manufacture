@@ -8,10 +8,12 @@ namespace Manufacture.Pages.Logistics.FuelLogs
     public class CreateModel : PageModel
     {
         private readonly IFleetService _fleetService;
+        private readonly IFleetDispatchService _dispatchService;
 
-        public CreateModel(IFleetService fleetService)
+        public CreateModel(IFleetService fleetService, IFleetDispatchService dispatchService)
         {
             _fleetService = fleetService;
+            _dispatchService = dispatchService;
         }
 
         [BindProperty]
@@ -22,14 +24,57 @@ namespace Manufacture.Pages.Logistics.FuelLogs
 
         public List<VehicleDto> Vehicles { get; set; } = new();
         public List<EmployeeDto> Drivers { get; set; } = new();
+        public VehicleDto? LockedVehicle { get; set; }
+        public string? CharterBookingRef { get; set; }
+        public string? FleetDispatchRef { get; set; }
+        public bool IsVehicleLocked => LogInput.CharterBookingId.HasValue || LogInput.FleetDispatchId.HasValue;
 
-        public async Task OnGetAsync(int? vehicleId, string? returnUrl)
+        public async Task OnGetAsync(
+            int? vehicleId,
+            string? returnUrl,
+            int? charterBookingId,
+            int? fleetDispatchId,
+            CancellationToken cancellationToken = default)
         {
             ReturnUrl = returnUrl;
-            Vehicles = await _fleetService.GetVehiclesAsync();
-            Drivers = await _fleetService.GetLogisticsDriversAsync();
+            Vehicles = await _fleetService.GetVehiclesAsync(cancellationToken);
+            Drivers = await _fleetService.GetLogisticsDriversAsync(cancellationToken);
 
-            if (vehicleId.HasValue)
+            if (charterBookingId.HasValue)
+            {
+                var booking = await _fleetService.GetCharterBookingAsync(charterBookingId.Value, cancellationToken)
+                    ?? throw new InvalidOperationException("Charter booking not found.");
+                LogInput.CharterBookingId = booking.Id;
+                LogInput.VehicleId = booking.VehicleId;
+                LogInput.EmployeeId = booking.DriverEmployeeId;
+                LogInput.RouteDescription = booking.BookingRef;
+                CharterBookingRef = booking.BookingRef;
+            }
+            else if (fleetDispatchId.HasValue)
+            {
+                var dispatch = await _dispatchService.GetDispatchAsync(fleetDispatchId.Value, cancellationToken)
+                    ?? throw new InvalidOperationException("Fleet dispatch not found.");
+                LogInput.FleetDispatchId = dispatch.Id;
+                LogInput.VehicleId = dispatch.VehicleId;
+                LogInput.EmployeeId = dispatch.DriverEmployeeId;
+                LogInput.RouteDescription = dispatch.DispatchRef;
+                FleetDispatchRef = dispatch.DispatchRef;
+            }
+
+            if (LogInput.VehicleId > 0)
+            {
+                LockedVehicle = Vehicles.FirstOrDefault(v => v.Id == LogInput.VehicleId);
+                if (LockedVehicle != null)
+                {
+                    LogInput.FuelType = LockedVehicle.FuelType;
+                    if (!LogInput.EmployeeId.HasValue)
+                    {
+                        LogInput.EmployeeId = LockedVehicle.AssignedEmployeeId;
+                    }
+                }
+            }
+
+            if (vehicleId.HasValue && !IsVehicleLocked)
             {
                 LogInput.VehicleId = vehicleId.Value;
                 var vehicle = Vehicles.FirstOrDefault(v => v.Id == vehicleId.Value);
@@ -45,10 +90,23 @@ namespace Manufacture.Pages.Logistics.FuelLogs
             LogInput.PetrolStation = "NNPC Mega Station";
         }
 
-        public async Task<IActionResult> OnPostAsync()
+        public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken = default)
         {
-            Vehicles = await _fleetService.GetVehiclesAsync();
-            Drivers = await _fleetService.GetLogisticsDriversAsync();
+            Vehicles = await _fleetService.GetVehiclesAsync(cancellationToken);
+            Drivers = await _fleetService.GetLogisticsDriversAsync(cancellationToken);
+            LockedVehicle = Vehicles.FirstOrDefault(v => v.Id == LogInput.VehicleId);
+
+            if (LogInput.CharterBookingId.HasValue)
+            {
+                var booking = await _fleetService.GetCharterBookingAsync(LogInput.CharterBookingId.Value, cancellationToken);
+                CharterBookingRef = booking?.BookingRef;
+            }
+
+            if (LogInput.FleetDispatchId.HasValue)
+            {
+                var dispatch = await _dispatchService.GetDispatchAsync(LogInput.FleetDispatchId.Value, cancellationToken);
+                FleetDispatchRef = dispatch?.DispatchRef;
+            }
 
             if (!ModelState.IsValid)
             {
@@ -64,6 +122,16 @@ namespace Manufacture.Pages.Logistics.FuelLogs
                 if (!string.IsNullOrWhiteSpace(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
                 {
                     return Redirect(ReturnUrl);
+                }
+
+                if (LogInput.CharterBookingId.HasValue)
+                {
+                    return Redirect($"/Fleet/Charter/Details/{LogInput.CharterBookingId.Value}");
+                }
+
+                if (LogInput.FleetDispatchId.HasValue)
+                {
+                    return Redirect($"/Fleet/Dispatches/Details/{LogInput.FleetDispatchId.Value}");
                 }
 
                 return RedirectToPage("/Logistics/FuelLogs/Index");

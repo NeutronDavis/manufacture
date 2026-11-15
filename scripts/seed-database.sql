@@ -390,36 +390,98 @@ WHERE [JobRoleId] IS NULL
 GO
 
 /* -------------------------------------------------------------------------
+   Production categories and product types (Settings-managed master data)
+   ------------------------------------------------------------------------- */
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[ProductionCategories] WHERE [Name] = N'Bread')
+    INSERT INTO [dbo].[ProductionCategories] ([Name], [Description], [IsActive])
+    VALUES (N'Bread', N'Bread, loaves, and baked dough products.', 1);
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[ProductionCategories] WHERE [Name] = N'Water')
+    INSERT INTO [dbo].[ProductionCategories] ([Name], [Description], [IsActive])
+    VALUES (N'Water', N'Bottled and dispenser water production.', 1);
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[ProductionCategories] WHERE [Name] = N'Snacks')
+    INSERT INTO [dbo].[ProductionCategories] ([Name], [Description], [IsActive])
+    VALUES (N'Snacks', N'Popcorn and other ready-to-eat snacks.', 1);
+
+DECLARE @CatBread INT = (SELECT [Id] FROM [dbo].[ProductionCategories] WHERE [Name] = N'Bread');
+DECLARE @CatWater INT = (SELECT [Id] FROM [dbo].[ProductionCategories] WHERE [Name] = N'Water');
+DECLARE @CatSnacks INT = (SELECT [Id] FROM [dbo].[ProductionCategories] WHERE [Name] = N'Snacks');
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[ProductionProductTypes] WHERE [ProductionCategoryId] = @CatBread AND [Name] = N'Bread')
+    INSERT INTO [dbo].[ProductionProductTypes] ([ProductionCategoryId], [Name], [Baseline], [OutputUnitNoun], [IsActive])
+    VALUES (@CatBread, N'Bread', N'1 Bag of Flour (50 kg)', N'loaves', 1);
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[ProductionProductTypes] WHERE [ProductionCategoryId] = @CatWater AND [Name] = N'Water')
+    INSERT INTO [dbo].[ProductionProductTypes] ([ProductionCategoryId], [Name], [Baseline], [OutputUnitNoun], [IsActive])
+    VALUES (@CatWater, N'Water', N'1 Production Run', N'bottles', 1);
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[ProductionProductTypes] WHERE [ProductionCategoryId] = @CatSnacks AND [Name] = N'Popcorn')
+    INSERT INTO [dbo].[ProductionProductTypes] ([ProductionCategoryId], [Name], [Baseline], [OutputUnitNoun], [IsActive])
+    VALUES (@CatSnacks, N'Popcorn', N'1 Cooking Pot (~2 kg corn)', N'bags', 1);
+
+DECLARE @PtBread INT = (SELECT [Id] FROM [dbo].[ProductionProductTypes] WHERE [ProductionCategoryId] = @CatBread AND [Name] = N'Bread');
+DECLARE @PtWater INT = (SELECT [Id] FROM [dbo].[ProductionProductTypes] WHERE [ProductionCategoryId] = @CatWater AND [Name] = N'Water');
+DECLARE @PtPopcorn INT = (SELECT [Id] FROM [dbo].[ProductionProductTypes] WHERE [ProductionCategoryId] = @CatSnacks AND [Name] = N'Popcorn');
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[ProductionShifts] WHERE [Name] = N'Morning Shift')
+    INSERT INTO [dbo].[ProductionShifts] ([Name], [StartTime], [EndTime], [IsActive])
+    VALUES (N'Morning Shift', CAST(N'06:00' AS TIME(0)), CAST(N'14:00' AS TIME(0)), 1);
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[ProductionShifts] WHERE [Name] = N'Afternoon Shift')
+    INSERT INTO [dbo].[ProductionShifts] ([Name], [StartTime], [EndTime], [IsActive])
+    VALUES (N'Afternoon Shift', CAST(N'14:00' AS TIME(0)), CAST(N'22:00' AS TIME(0)), 1);
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[ProductionShifts] WHERE [Name] = N'Night Shift')
+    INSERT INTO [dbo].[ProductionShifts] ([Name], [StartTime], [EndTime], [IsActive])
+    VALUES (N'Night Shift', CAST(N'22:00' AS TIME(0)), CAST(N'06:00' AS TIME(0)), 1);
+GO
+
+/* -------------------------------------------------------------------------
    Sellable product catalog (Production recipe master used by Sales & POS)
    ------------------------------------------------------------------------- */
 
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Recipes] WHERE [Code] = N'BRD-JMB')
-    INSERT INTO [dbo].[Recipes] ([Name], [Code], [Description], [ProductType], [BaselineUnit], [ExpectedYield], [OutputUnit], [PackagingCost], [LaborAndOverheadPerUnit], [SellingPrice], [IsActive])
-    VALUES (N'Jumbo Family Bread', N'BRD-JMB', N'Family-size jumbo loaf.', 0, 0, 200.000, N'loaves', 35.0000, 80.0000, 1400.00, 1);
+    INSERT INTO [dbo].[Recipes] ([Name], [Code], [Description], [ProductionProductTypeId], [ExpectedYield], [OutputUnit], [SellingPrice], [IsActive])
+    VALUES (N'Jumbo Family Bread', N'BRD-JMB', N'Family-size jumbo loaf.', (SELECT [Id] FROM [dbo].[ProductionProductTypes] WHERE [Name] = N'Bread'), 200.000, N'loaves', 1400.00, 1);
 
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Recipes] WHERE [Code] = N'BRD-MED')
-    INSERT INTO [dbo].[Recipes] ([Name], [Code], [Description], [ProductType], [BaselineUnit], [ExpectedYield], [OutputUnit], [PackagingCost], [LaborAndOverheadPerUnit], [SellingPrice], [IsActive])
-    VALUES (N'Medium Loaf Bread', N'BRD-MED', N'Medium everyday loaf.', 0, 0, 240.000, N'loaves', 22.0000, 55.0000, 900.00, 1);
+    INSERT INTO [dbo].[Recipes] ([Name], [Code], [Description], [ProductionProductTypeId], [ExpectedYield], [OutputUnit], [SellingPrice], [IsActive])
+    VALUES (N'Medium Loaf Bread', N'BRD-MED', N'Medium everyday loaf.', (SELECT [Id] FROM [dbo].[ProductionProductTypes] WHERE [Name] = N'Bread'), 240.000, N'loaves', 900.00, 1);
 
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Recipes] WHERE [Code] = N'BRD-61')
-    INSERT INTO [dbo].[Recipes] ([Name], [Code], [Description], [ProductType], [BaselineUnit], [ExpectedYield], [OutputUnit], [PackagingCost], [LaborAndOverheadPerUnit], [SellingPrice], [IsActive])
-    VALUES (N'Special 61 Butter Bread', N'BRD-61', N'Butter-rich special loaf.', 0, 0, 180.000, N'loaves', 30.0000, 70.0000, 1100.00, 1);
+    INSERT INTO [dbo].[Recipes] ([Name], [Code], [Description], [ProductionProductTypeId], [ExpectedYield], [OutputUnit], [SellingPrice], [IsActive])
+    VALUES (N'Special 61 Butter Bread', N'BRD-61', N'Butter-rich special loaf.', (SELECT [Id] FROM [dbo].[ProductionProductTypes] WHERE [Name] = N'Bread'), 180.000, N'loaves', 1100.00, 1);
 
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Recipes] WHERE [Code] = N'BRD-RND')
-    INSERT INTO [dbo].[Recipes] ([Name], [Code], [Description], [ProductType], [BaselineUnit], [ExpectedYield], [OutputUnit], [PackagingCost], [LaborAndOverheadPerUnit], [SellingPrice], [IsActive])
-    VALUES (N'Round Family Loaf', N'BRD-RND', N'Round family loaf.', 0, 0, 220.000, N'loaves', 20.0000, 50.0000, 850.00, 1);
+    INSERT INTO [dbo].[Recipes] ([Name], [Code], [Description], [ProductionProductTypeId], [ExpectedYield], [OutputUnit], [SellingPrice], [IsActive])
+    VALUES (N'Round Family Loaf', N'BRD-RND', N'Round family loaf.', (SELECT [Id] FROM [dbo].[ProductionProductTypes] WHERE [Name] = N'Bread'), 220.000, N'loaves', 850.00, 1);
 
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Recipes] WHERE [Code] = N'BRD-6IN1')
-    INSERT INTO [dbo].[Recipes] ([Name], [Code], [Description], [ProductType], [BaselineUnit], [ExpectedYield], [OutputUnit], [PackagingCost], [LaborAndOverheadPerUnit], [SellingPrice], [IsActive])
-    VALUES (N'6-in-1 Multigrain Loaf', N'BRD-6IN1', N'Multigrain sandwich loaf.', 0, 0, 180.000, N'loaves', 25.0000, 60.0000, 780.00, 1);
+    INSERT INTO [dbo].[Recipes] ([Name], [Code], [Description], [ProductionProductTypeId], [ExpectedYield], [OutputUnit], [SellingPrice], [IsActive])
+    VALUES (N'6-in-1 Multigrain Loaf', N'BRD-6IN1', N'Multigrain sandwich loaf.', (SELECT [Id] FROM [dbo].[ProductionProductTypes] WHERE [Name] = N'Bread'), 180.000, N'loaves', 780.00, 1);
 
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Recipes] WHERE [Code] = N'WTR-189')
-    INSERT INTO [dbo].[Recipes] ([Name], [Code], [Description], [ProductType], [BaselineUnit], [ExpectedYield], [OutputUnit], [PackagingCost], [LaborAndOverheadPerUnit], [SellingPrice], [IsActive])
-    VALUES (N'Purified Water 18.9L', N'WTR-189', N'18.9L dispenser bottle.', 1, 1, 250.000, N'bottles', 95.0000, 40.0000, 250.00, 1);
+    INSERT INTO [dbo].[Recipes] ([Name], [Code], [Description], [ProductionProductTypeId], [ExpectedYield], [OutputUnit], [SellingPrice], [IsActive])
+    VALUES (N'Purified Water 18.9L', N'WTR-189', N'18.9L dispenser bottle.', (SELECT [Id] FROM [dbo].[ProductionProductTypes] WHERE [Name] = N'Water'), 250.000, N'bottles', 250.00, 1);
 
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Recipes] WHERE [Code] = N'POP-40')
-    INSERT INTO [dbo].[Recipes] ([Name], [Code], [Description], [ProductType], [BaselineUnit], [ExpectedYield], [OutputUnit], [PackagingCost], [LaborAndOverheadPerUnit], [SellingPrice], [IsActive])
-    VALUES (N'Popcorn 40g Bag', N'POP-40', N'40g ready-to-eat popcorn bag.', 2, 2, 500.000, N'bags', 6.0000, 20.0000, 200.00, 1);
+    INSERT INTO [dbo].[Recipes] ([Name], [Code], [Description], [ProductionProductTypeId], [ExpectedYield], [OutputUnit], [SellingPrice], [IsActive])
+    VALUES (N'Popcorn 40g Bag', N'POP-40', N'40g ready-to-eat popcorn bag.', (SELECT [Id] FROM [dbo].[ProductionProductTypes] WHERE [Name] = N'Popcorn'), 500.000, N'bags', 200.00, 1);
+
+/* Backfill product-type links for recipes created before production settings existed. */
+UPDATE [dbo].[Recipes]
+SET [ProductionProductTypeId] = (SELECT [Id] FROM [dbo].[ProductionProductTypes] WHERE [Name] = N'Bread')
+WHERE [Code] LIKE N'BRD-%' AND [ProductionProductTypeId] IS NULL;
+
+UPDATE [dbo].[Recipes]
+SET [ProductionProductTypeId] = (SELECT [Id] FROM [dbo].[ProductionProductTypes] WHERE [Name] = N'Water')
+WHERE [Code] LIKE N'WTR-%' AND [ProductionProductTypeId] IS NULL;
+
+UPDATE [dbo].[Recipes]
+SET [ProductionProductTypeId] = (SELECT [Id] FROM [dbo].[ProductionProductTypes] WHERE [Name] = N'Popcorn')
+WHERE [Code] LIKE N'POP-%' AND [ProductionProductTypeId] IS NULL;
 GO
 
 /* -------------------------------------------------------------------------
@@ -752,6 +814,167 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[InventoryItems] WHERE [ItemCode] = N'UTL-WTR
     INSERT INTO [dbo].[InventoryItems] ([ItemCode], [Name], [Category], [Unit], [QuantityInStock], [ReorderThreshold], [UnitCostPrice], [PreferredSupplierId], [LastRestockedDate], [IsActive])
     VALUES (N'UTL-WTR-01', N'Water Treatment Chemicals', N'Utilities', N'Bags (25kg)', 120, 40, 3500, @SupWater, CONVERT(DATE, DATEADD(DAY, -2, SYSUTCDATETIME())), 1);
 
+/* Package size, package unit, and supplier density for recipe conversions. */
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 50, [PackageUnitOfMeasure] = N'kg' WHERE [ItemCode] = N'RAW-FLR-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 50, [PackageUnitOfMeasure] = N'kg' WHERE [ItemCode] = N'RAW-SGR-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 10, [PackageUnitOfMeasure] = N'kg' WHERE [ItemCode] = N'RAW-YST-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 15, [PackageUnitOfMeasure] = N'kg' WHERE [ItemCode] = N'RAW-SHT-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 25, [PackageUnitOfMeasure] = N'kg' WHERE [ItemCode] = N'RAW-SLT-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 1,  [PackageUnitOfMeasure] = N'L'  WHERE [ItemCode] = N'RAW-WTR-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 50, [PackageUnitOfMeasure] = N'kg' WHERE [ItemCode] = N'RAW-CRN-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 25, [PackageUnitOfMeasure] = N'L'  WHERE [ItemCode] = N'RAW-OIL-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 10, [PackageUnitOfMeasure] = N'kg' WHERE [ItemCode] = N'RAW-SFT-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 1,  [PackageUnitOfMeasure] = N'L'  WHERE [ItemCode] = N'RAW-FLV-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 1000, [PackageUnitOfMeasure] = N'pcs' WHERE [ItemCode] = N'PKG-NYL-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 1000, [PackageUnitOfMeasure] = N'pcs' WHERE [ItemCode] = N'PKG-NYL-02';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 1,  [PackageUnitOfMeasure] = N'pcs' WHERE [ItemCode] = N'PKG-BTL-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 1000, [PackageUnitOfMeasure] = N'pcs' WHERE [ItemCode] = N'PKG-CAP-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 1,  [PackageUnitOfMeasure] = N'pcs' WHERE [ItemCode] = N'PKG-SEA-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 1,  [PackageUnitOfMeasure] = N'pcs' WHERE [ItemCode] = N'PKG-OUT-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 1000, [PackageUnitOfMeasure] = N'pcs' WHERE [ItemCode] = N'PKG-LBL-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 500, [PackageUnitOfMeasure] = N'pcs' WHERE [ItemCode] = N'PKG-BAG-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 25, [PackageUnitOfMeasure] = N'kg' WHERE [ItemCode] = N'ADD-PRV-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 10, [PackageUnitOfMeasure] = N'kg' WHERE [ItemCode] = N'ADD-FLV-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 10, [PackageUnitOfMeasure] = N'kg' WHERE [ItemCode] = N'ADD-SEA-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 1,  [PackageUnitOfMeasure] = N'L'  WHERE [ItemCode] = N'FUE-PMS-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 1,  [PackageUnitOfMeasure] = N'kg' WHERE [ItemCode] = N'FUE-LPG-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 1,  [PackageUnitOfMeasure] = N'L'  WHERE [ItemCode] = N'UTL-DSL-01';
+UPDATE [dbo].[InventoryItems] SET [PackageSize] = 25, [PackageUnitOfMeasure] = N'kg' WHERE [ItemCode] = N'UTL-WTR-01';
+
+UPDATE [dbo].[InventoryItems]
+SET [DensityKgPerLitre] = 0.92
+WHERE [ItemCode] = N'RAW-OIL-01' AND [DensityKgPerLitre] IS NULL;
+
+UPDATE [dbo].[InventoryItems]
+SET [DensityKgPerLitre] = 1.00
+WHERE [ItemCode] = N'RAW-FLV-01' AND [DensityKgPerLitre] IS NULL;
+GO
+
+/* -------------------------------------------------------------------------
+   Measurement densities and requisition conversion backfill.
+   Existing inventory density values become selectable measurement records.
+   ------------------------------------------------------------------------- */
+
+INSERT INTO [dbo].[MeasurementDensities] ([MaterialName], [DensityKgPerLitre], [IsActive])
+SELECT i.[Name], MAX(i.[DensityKgPerLitre]), 1
+FROM [dbo].[InventoryItems] i
+WHERE i.[DensityKgPerLitre] IS NOT NULL
+  AND i.[DensityKgPerLitre] > 0
+  AND NOT EXISTS
+  (
+      SELECT 1 FROM [dbo].[MeasurementDensities] d
+      WHERE d.[MaterialName] = i.[Name]
+  )
+GROUP BY i.[Name];
+
+UPDATE i
+SET i.[MeasurementDensityId] = d.[Id],
+    i.[DensityKgPerLitre] = d.[DensityKgPerLitre]
+FROM [dbo].[InventoryItems] i
+JOIN [dbo].[MeasurementDensities] d ON d.[MaterialName] = i.[Name]
+WHERE i.[DensityKgPerLitre] IS NOT NULL
+  AND i.[DensityKgPerLitre] > 0
+  AND i.[MeasurementDensityId] IS NULL;
+
+/* Existing requisition lines were entered in warehouse stock units. */
+UPDATE sri
+SET sri.[BaseQuantity] = sri.[RequestedQuantity] * ii.[PackageSize],
+    sri.[BaseUnit] = ii.[PackageUnitOfMeasure],
+    sri.[StockQuantity] = sri.[RequestedQuantity],
+    sri.[StockUnit] = ii.[Unit]
+FROM [dbo].[StoreRequestItems] sri
+JOIN [dbo].[InventoryItems] ii ON ii.[Id] = sri.[InventoryItemId]
+WHERE sri.[StockQuantity] = 0;
+GO
+
+/* Link existing issue movements to their request line where the match is unambiguous. */
+UPDATE sm
+SET sm.[StoreRequestItemId] = sri.[Id]
+FROM [dbo].[StockMovements] sm
+JOIN [dbo].[StoreRequestItems] sri
+  ON sri.[StoreRequestId] = sm.[StoreRequestId]
+ AND sri.[InventoryItemId] = sm.[InventoryItemId]
+WHERE sm.[StoreRequestId] IS NOT NULL
+  AND sm.[StoreRequestItemId] IS NULL
+  AND (SELECT COUNT(*) FROM [dbo].[StoreRequestItems] x
+       WHERE x.[StoreRequestId] = sm.[StoreRequestId]
+         AND x.[InventoryItemId] = sm.[InventoryItemId]) = 1;
+GO
+
+/* -------------------------------------------------------------------------
+   Seed recipe formulas from the legacy recipe master.
+   Quantities are expressed in the inventory item's base unit (kg/L/pcs).
+   ------------------------------------------------------------------------- */
+
+DECLARE @SeedIngredientLines TABLE
+(
+    [RecipeCode] NVARCHAR (40)  NOT NULL,
+    [ItemCode]   NVARCHAR (40)  NOT NULL,
+    [Quantity]   DECIMAL (18, 4) NOT NULL
+);
+
+INSERT INTO @SeedIngredientLines ([RecipeCode], [ItemCode], [Quantity]) VALUES
+    (N'BRD-JMB', N'RAW-FLR-01', 50.0000), (N'BRD-JMB', N'RAW-SGR-01', 5.0000),
+    (N'BRD-JMB', N'RAW-YST-01', 0.6000),  (N'BRD-JMB', N'RAW-SHT-01', 2.0000),
+    (N'BRD-JMB', N'RAW-SLT-01', 0.4000),  (N'BRD-JMB', N'RAW-WTR-01', 28.0000),
+    (N'BRD-JMB', N'ADD-PRV-01', 0.1000),  (N'BRD-JMB', N'ADD-FLV-01', 0.3000),
+    (N'BRD-JMB', N'PKG-NYL-01', 200.0000),
+    (N'BRD-MED', N'RAW-FLR-01', 50.0000), (N'BRD-MED', N'RAW-SGR-01', 4.0000),
+    (N'BRD-MED', N'RAW-YST-01', 0.5000),  (N'BRD-MED', N'RAW-SHT-01', 1.5000),
+    (N'BRD-MED', N'RAW-SLT-01', 0.3500),  (N'BRD-MED', N'RAW-WTR-01', 26.0000),
+    (N'BRD-MED', N'ADD-PRV-01', 0.1000),  (N'BRD-MED', N'ADD-FLV-01', 0.2000),
+    (N'BRD-MED', N'PKG-NYL-02', 240.0000),
+    (N'BRD-61',  N'RAW-FLR-01', 50.0000), (N'BRD-61',  N'RAW-SGR-01', 6.0000),
+    (N'BRD-61',  N'RAW-YST-01', 0.7000),  (N'BRD-61',  N'RAW-SHT-01', 3.0000),
+    (N'BRD-61',  N'RAW-SLT-01', 0.4000),  (N'BRD-61',  N'RAW-WTR-01', 30.0000),
+    (N'BRD-61',  N'ADD-PRV-01', 0.1000),  (N'BRD-61',  N'ADD-FLV-01', 0.4000),
+    (N'BRD-61',  N'PKG-NYL-01', 180.0000),
+    (N'BRD-RND', N'RAW-FLR-01', 50.0000), (N'BRD-RND', N'RAW-SGR-01', 4.5000),
+    (N'BRD-RND', N'RAW-YST-01', 0.5500),  (N'BRD-RND', N'RAW-SHT-01', 2.5000),
+    (N'BRD-RND', N'RAW-SLT-01', 0.4000),  (N'BRD-RND', N'RAW-WTR-01', 27.0000),
+    (N'BRD-RND', N'ADD-PRV-01', 0.1000),  (N'BRD-RND', N'ADD-FLV-01', 0.2000),
+    (N'BRD-RND', N'PKG-NYL-01', 220.0000),
+    (N'BRD-6IN1', N'RAW-FLR-01', 50.0000), (N'BRD-6IN1', N'RAW-SGR-01', 5.0000),
+    (N'BRD-6IN1', N'RAW-YST-01', 0.6000),  (N'BRD-6IN1', N'RAW-SHT-01', 2.0000),
+    (N'BRD-6IN1', N'RAW-SLT-01', 0.4000),  (N'BRD-6IN1', N'RAW-WTR-01', 28.0000),
+    (N'BRD-6IN1', N'ADD-PRV-01', 0.1000),  (N'BRD-6IN1', N'ADD-FLV-01', 0.3000),
+    (N'BRD-6IN1', N'PKG-NYL-01', 180.0000),
+    (N'WTR-189', N'RAW-WTR-01', 500.0000), (N'WTR-189', N'PKG-BTL-01', 250.0000),
+    (N'POP-40',  N'RAW-CRN-01', 2.0000),  (N'POP-40',  N'RAW-OIL-01', 0.3000),
+    (N'POP-40',  N'ADD-SEA-01', 0.1500),  (N'POP-40',  N'PKG-BAG-01', 500.0000);
+
+INSERT INTO [dbo].[RecipeIngredients]
+    ([RecipeId], [InventoryItemId], [Unit], [QuantityUnit], [QuantityPerBatch], [BaselineYield], [IngredientUnitCost])
+SELECT
+    r.[Id],
+    inv.[Id],
+    CASE
+        WHEN inv.[PackageUnitOfMeasure] IN (N'L', N'l', N'litres', N'Litres') THEN N'litres'
+        WHEN inv.[PackageUnitOfMeasure] IN (N'kg', N'KG', N'Kilograms') THEN N'kg'
+        WHEN inv.[PackageUnitOfMeasure] IN (N'g', N'G', N'grams') THEN N'g'
+        WHEN inv.[PackageUnitOfMeasure] IN (N'ml', N'ML') THEN N'ml'
+        ELSE N'pcs'
+    END,
+    CASE
+        WHEN inv.[PackageUnitOfMeasure] IN (N'L', N'l', N'litres', N'Litres') THEN N'litres'
+        WHEN inv.[PackageUnitOfMeasure] IN (N'kg', N'KG', N'Kilograms') THEN N'kg'
+        WHEN inv.[PackageUnitOfMeasure] IN (N'g', N'G', N'grams') THEN N'g'
+        WHEN inv.[PackageUnitOfMeasure] IN (N'ml', N'ML') THEN N'ml'
+        ELSE N'pcs'
+    END,
+    l.[Quantity],
+    r.[ExpectedYield],
+    CASE WHEN inv.[PackageSize] > 0 THEN inv.[UnitCostPrice] / inv.[PackageSize] ELSE inv.[UnitCostPrice] END
+FROM @SeedIngredientLines l
+JOIN [dbo].[Recipes] r ON r.[Code] = l.[RecipeCode]
+JOIN [dbo].[InventoryItems] inv ON inv.[ItemCode] = l.[ItemCode]
+WHERE NOT EXISTS
+(
+    SELECT 1 FROM [dbo].[RecipeIngredients] ri
+    WHERE ri.[RecipeId] = r.[Id] AND ri.[InventoryItemId] = inv.[Id]
+);
+GO
+
 /* Store requests and issued lines */
 DECLARE @ItemFlour INT = (SELECT [Id] FROM [dbo].[InventoryItems] WHERE [ItemCode] = N'RAW-FLR-01');
 DECLARE @ItemSugar INT = (SELECT [Id] FROM [dbo].[InventoryItems] WHERE [ItemCode] = N'RAW-SGR-01');
@@ -994,27 +1217,6 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[MaintenanceLogs] WHERE [InvoiceNumber] = N'S
 IF NOT EXISTS (SELECT 1 FROM [dbo].[MaintenanceLogs] WHERE [InvoiceNumber] = N'SVC-2026-003')
     INSERT INTO [dbo].[MaintenanceLogs] ([VehicleId], [ServiceDate], [Description], [Cost], [WorkshopOrVendor], [InvoiceNumber])
     VALUES (@V3, CONVERT(DATE, DATEADD(DAY, -5, SYSUTCDATETIME())), N'Air conditioning and suspension check', 45000.00, N'Coaster Care Lagos', N'SVC-2026-003');
-
-/* Statewide route pricing matrix */
-MERGE [dbo].[RouteRates] AS target
-USING (VALUES
-    (N'Lagos', N'Rivers (Port Harcourt)', N'30-Ton Haulage Truck', 1850000.00, 1350000.00, 18),
-    (N'Lagos', N'Kano (Dawanau Grain Corridor)', N'30-Ton Haulage Truck', 2200000.00, 1550000.00, 24),
-    (N'Lagos', N'Abuja (FCT Commercial)', N'15-Ton Box Truck', 1400000.00, 1050000.00, 14),
-    (N'Lagos', N'Edo (Benin City Hub)', N'15-Ton Box Truck', 750000.00, 550000.00, 7),
-    (N'Lagos', N'Anambra (Onitsha Main Market)', N'30-Ton Haulage Truck', 1600000.00, 1200000.00, 12),
-    (N'Lagos', N'Delta (Warri Energy Route)', N'30-Ton Haulage Truck', 1450000.00, 1100000.00, 11),
-    (N'Lagos', N'Oyo (Ibadan Wholesale Hub)', N'Delivery Van', 280000.00, 210000.00, 3),
-    (N'Edo (Benin City Hub)', N'Rivers (Port Harcourt)', N'30-Ton Haulage Truck', 950000.00, 700000.00, 7),
-    (N'Ogun (Agbara)', N'Kaduna (Industrial Zone)', N'30-Ton Haulage Truck', 1950000.00, 1400000.00, 20),
-    (N'Lagos', N'Abia (Aba Commercial Depot)', N'15-Ton Box Truck', 1500000.00, 1150000.00, 14)
-) AS source ([OriginState], [DestinationState], [VehicleTypeRequired], [RateWithFuel], [RateWithoutFuel], [EstimatedHours])
-ON target.[OriginState] = source.[OriginState]
-   AND target.[DestinationState] = source.[DestinationState]
-   AND target.[VehicleTypeRequired] = source.[VehicleTypeRequired]
-WHEN NOT MATCHED BY TARGET THEN
-    INSERT ([OriginState], [DestinationState], [VehicleTypeRequired], [RateWithFuel], [RateWithoutFuel], [EstimatedHours], [IsActive])
-    VALUES (source.[OriginState], source.[DestinationState], source.[VehicleTypeRequired], source.[RateWithFuel], source.[RateWithoutFuel], source.[EstimatedHours], 1);
 
 /* Charter bookings across all three statuses */
 
@@ -1480,7 +1682,7 @@ USING
         (N'Reports',   N'StoreManager',      N'View Only'),
         (N'Reports',   N'SalesRep',          N'View Only'),
         (N'Reports',   N'Customer',            N'None'),
-        (N'Reports',   N'HrPayrollManager',  N'None'),
+        (N'Reports',   N'HrPayrollManager',  N'View Only'),
 
         (N'Settings',  N'SuperAdmin',        N'Full Access'),
         (N'Settings',  N'ProductionManager', N'None'),

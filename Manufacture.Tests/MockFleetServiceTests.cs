@@ -67,86 +67,6 @@ namespace Manufacture.Tests
         }
 
         [Fact]
-        public void RouteRates_ShouldSupportNationwideStatewideCorridors()
-        {
-            var rates = _service.GetAllRouteRates();
-            
-            Assert.NotEmpty(rates);
-            Assert.Contains(rates, r => r.OriginState == "Lagos" && r.DestinationState.Contains("Port Harcourt"));
-            Assert.Contains(rates, r => r.OriginState == "Lagos" && r.DestinationState.Contains("Kano"));
-            Assert.Contains(rates, r => r.OriginState == "Lagos" && r.DestinationState.Contains("Abuja"));
-        }
-
-        [Fact]
-        public void CalculateTripRate_SingleLegWithFuel_ShouldApplyWithFuelRate()
-        {
-            var legs = new List<TripLegDto>
-            {
-                new TripLegDto
-                {
-                    LegNumber = 1,
-                    OriginState = "Lagos",
-                    DestinationState = "Rivers (Port Harcourt)",
-                    FuelOption = FuelOption.WithFuel
-                }
-            };
-
-            var total = _service.CalculateTripRate(legs);
-
-            Assert.Equal(1_850_000m, total);
-            Assert.Equal(1_850_000m, legs[0].LegCost);
-        }
-
-        [Fact]
-        public void CalculateTripRate_SingleLegWithoutFuel_ShouldApplyWithoutFuelRate()
-        {
-            var legs = new List<TripLegDto>
-            {
-                new TripLegDto
-                {
-                    LegNumber = 1,
-                    OriginState = "Lagos",
-                    DestinationState = "Rivers (Port Harcourt)",
-                    FuelOption = FuelOption.WithoutFuel
-                }
-            };
-
-            var total = _service.CalculateTripRate(legs);
-
-            Assert.Equal(1_350_000m, total);
-            Assert.Equal(1_350_000m, legs[0].LegCost);
-        }
-
-        [Fact]
-        public void CalculateTripRate_MultiLegLayovers_ShouldAggregateAccurately()
-        {
-            // Leg 1: Lagos -> Edo (Benin City Hub) With Fuel (750,000)
-            // Leg 2: Edo (Benin City Hub) -> Rivers (Port Harcourt) Freight Only (700,000)
-            var legs = new List<TripLegDto>
-            {
-                new TripLegDto
-                {
-                    LegNumber = 1,
-                    OriginState = "Lagos",
-                    DestinationState = "Edo (Benin City Hub)",
-                    FuelOption = FuelOption.WithFuel
-                },
-                new TripLegDto
-                {
-                    LegNumber = 2,
-                    OriginState = "Edo (Benin City Hub)",
-                    DestinationState = "Rivers (Port Harcourt)",
-                    FuelOption = FuelOption.WithoutFuel
-                }
-            };
-
-            var total = _service.CalculateTripRate(legs);
-
-            Assert.Equal(750_000m + 700_000m, total);
-            Assert.Equal(1_450_000m, total);
-        }
-
-        [Fact]
         public void CalculateTripProfitability_ShouldDeductIncidentalsAccurately()
         {
             var booking = new CharterBookingDto
@@ -161,45 +81,6 @@ namespace Manufacture.Tests
 
             Assert.Equal(270_000m, incidentals);
             Assert.Equal(1_830_000m, netRevenue);
-        }
-
-        [Fact]
-        public void CreateCharterBooking_ShouldPersistAndAssignTripLegs()
-        {
-            var vehicle = _service.GetAllVehicles().First(v => v.Type == "Truck");
-
-            var dto = new CharterBookingDto
-            {
-                CustomerName = "Nigerian Breweries PLC",
-                CustomerPhone = "+2348023456789",
-                VehicleId = vehicle.Id,
-                DriverEmployeeId = vehicle.Id,
-                DriverAllowance = 80_000m,
-                SecurityEscortFee = 200_000m,
-                TollsAndRoadLevies = 50_000m,
-                DepartureDate = DateTime.UtcNow.Date.AddDays(2),
-                Legs = new List<TripLegDto>
-                {
-                    new TripLegDto
-                    {
-                        LegNumber = 1,
-                        OriginState = "Lagos",
-                        DestinationState = "Kano (Dawanau Grain Corridor)",
-                        FuelOption = FuelOption.WithFuel
-                    }
-                }
-            };
-
-            var created = _service.CreateCharterBooking(dto);
-
-            Assert.NotNull(created);
-            Assert.True(created.Id > 0);
-            Assert.StartsWith("LOG-", created.BookingRef);
-            Assert.Equal(2_200_000m, created.GrossCharterFee);
-            Assert.Equal(330_000m, created.TotalTripIncidentals);
-            Assert.Equal(1_870_000m, created.NetCharterRevenue);
-            Assert.Single(created.Legs);
-            Assert.Equal(CharterTripStatus.Booked, created.TripStatus);
         }
 
         [Fact]
@@ -260,36 +141,6 @@ namespace Manufacture.Tests
             Assert.Equal(145_000m, log.Cost);
             Assert.Equal(serviceDate, vehicle.LastServiceDate);
             Assert.Contains(log, _service.GetAllMaintenanceLogs());
-        }
-
-        [Fact]
-        public void RouteRate_CreateAndUpdate_ShouldWorkCorrectly()
-        {
-            var newRateDto = new RouteRateDto
-            {
-                OriginState = "Lagos",
-                DestinationState = "Calabar",
-                VehicleTypeRequired = "30-Ton Haulage Truck",
-                RateWithFuel = 2_400_000m,
-                RateWithoutFuel = 1_600_000m,
-                EstimatedHours = 18,
-                IsActive = true
-            };
-
-            var created = _service.CreateRouteRate(newRateDto);
-            Assert.NotNull(created);
-            Assert.True(created.Id > 0);
-
-            // Update
-            newRateDto.RateWithFuel = 2_500_000m;
-            var updated = _service.UpdateRouteRate(created.Id, newRateDto);
-            Assert.NotNull(updated);
-            Assert.Equal(2_500_000m, updated.RateWithFuel);
-
-            // Delete
-            var deleted = _service.DeleteRouteRate(created.Id);
-            Assert.True(deleted);
-            Assert.Null(_service.GetRouteRateById(created.Id));
         }
     }
 }

@@ -18,20 +18,10 @@ namespace Manufacture.Pages.Settings
             _rbacService = rbacService;
         }
 
-        public TreasuryPolicySettings Policy { get; set; } = new();
         public PayrollSettingsDto Payroll { get; set; } = new();
 
         public bool CanEdit { get; set; }
         public string UserRole { get; set; } = string.Empty;
-
-        [BindProperty]
-        public decimal PlannedCashPercent { get; set; }
-
-        [BindProperty]
-        public decimal AlertTolerancePercent { get; set; }
-
-        [BindProperty]
-        public string PolicyMemo { get; set; } = string.Empty;
 
         [BindProperty]
         public PayrollSettingsDto PayrollInput { get; set; } = new();
@@ -48,58 +38,10 @@ namespace Manufacture.Pages.Settings
             return Page();
         }
 
-        public async Task<IActionResult> OnPostSaveTreasuryAsync()
-        {
-            if (!await AuthorizeAsync()) return RedirectToPage("/Dashboard/Index");
-            if (!CanEdit) return Forbid();
-
-            if (PlannedCashPercent < 0m || PlannedCashPercent > 100m)
-            {
-                ModelState.AddModelError(nameof(PlannedCashPercent), "Planned cash benchmark must be between 0% and 100%.");
-                await LoadAsync();
-                return Page();
-            }
-
-            if (AlertTolerancePercent < 0m || AlertTolerancePercent > 50m)
-            {
-                ModelState.AddModelError(nameof(AlertTolerancePercent), "Alert tolerance threshold must be between 0% and 50%.");
-                await LoadAsync();
-                return Page();
-            }
-
-            var userName = UserName();
-            await _settingsService.UpdateTreasuryPolicyAsync(
-                PlannedCashPercent,
-                AlertTolerancePercent,
-                PolicyMemo,
-                userName);
-
-            TempData["SuccessMessage"] =
-                $"Treasury benchmark updated to {PlannedCashPercent:0.#}% cash / {100m - PlannedCashPercent:0.#}% digital.";
-            return RedirectToPage();
-        }
-
-        public async Task<IActionResult> OnPostResetTreasuryAsync()
-        {
-            if (!await AuthorizeAsync()) return RedirectToPage("/Dashboard/Index");
-            if (UserRole != "SuperAdmin")
-            {
-                TempData["ErrorMessage"] = "Only a SuperAdmin can reset the treasury policy.";
-                return RedirectToPage();
-            }
-
-            await _settingsService.ResetTreasuryPolicyAsync(UserName());
-            TempData["SuccessMessage"] = "Treasury policy restored to default (32% cash / 68% digital, 6% tolerance).";
-            return RedirectToPage();
-        }
-
         public async Task<IActionResult> OnPostSavePayrollAsync()
         {
             if (!await AuthorizeAsync()) return RedirectToPage("/Dashboard/Index");
             if (!CanEdit) return Forbid();
-
-            // This form only posts payroll fields.
-            ModelState.Remove(nameof(PolicyMemo));
 
             if (!ValidatePayrollSettings(PayrollInput))
             {
@@ -142,12 +84,7 @@ namespace Manufacture.Pages.Settings
 
         private async Task LoadAsync()
         {
-            Policy = await _settingsService.GetTreasuryPolicyAsync();
             Payroll = await _settingsService.GetPayrollSettingsAsync();
-
-            PlannedCashPercent = Policy.PlannedCashPercent;
-            AlertTolerancePercent = Policy.AlertTolerancePercent;
-            PolicyMemo = Policy.PolicyMemo;
         }
 
         private bool ValidatePayrollSettings(PayrollSettingsDto settings)

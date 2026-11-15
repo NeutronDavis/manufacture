@@ -272,8 +272,6 @@ namespace Manufacture.Tests
                 BaselineUnit = recipe.BaselineUnit.ToString(),
                 ExpectedYield = originalYield * 2,
                 OutputUnit = recipe.OutputUnit,
-                PackagingCost = recipe.PackagingCost,
-                LaborAndOverheadPerUnit = recipe.LaborAndOverheadPerUnit,
                 SellingPrice = recipe.SellingPrice,
                 Ingredients = recipe.Ingredients.Select(i => new RecipeIngredientInputDto
                 {

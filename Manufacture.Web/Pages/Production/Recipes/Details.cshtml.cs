@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Manufacture.Library.Interfaces;
 using Manufacture.Models.DTOs;
 using Manufacture.Models.Domain;
 using Manufacture.Services;
@@ -6,16 +7,14 @@ using Manufacture.Services;
 namespace Manufacture.Pages.Production.Recipes
 {
     /// <summary>
-    /// Read-only view of a recipe's full costing breakdown: batch-level material
-    /// consumption, per-unit allocation, and the margin against the configured
-    /// selling price.
+    /// Read-only view of a recipe's full costing breakdown.
     /// </summary>
     public class DetailsModel : PageModel
     {
-        private readonly MockProductionService _productionService;
+        private readonly IProductionService _productionService;
         private readonly RecipeCostingEngine _engine;
 
-        public DetailsModel(MockProductionService productionService, RecipeCostingEngine engine)
+        public DetailsModel(IProductionService productionService, RecipeCostingEngine engine)
         {
             _productionService = productionService;
             _engine = engine;

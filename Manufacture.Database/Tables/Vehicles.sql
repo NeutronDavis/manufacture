@@ -22,7 +22,7 @@ CREATE TABLE [dbo].[Vehicles]
     CONSTRAINT [FK_Vehicles_Employees] FOREIGN KEY ([AssignedEmployeeId]) REFERENCES [dbo].[Employees] ([Id]),
     CONSTRAINT [CK_Vehicles_TankCapacity] CHECK ([TankCapacityLitres] > 0),
     CONSTRAINT [CK_Vehicles_Odometer] CHECK ([CurrentOdometerKm] >= 0),
-    CONSTRAINT [CK_Vehicles_Status] CHECK ([Status] IN (N'Active', N'InMaintenance', N'Grounded'))
+    CONSTRAINT [CK_Vehicles_Status] CHECK ([Status] IN (N'Active', N'InMaintenance', N'Grounded', N'InTransit'))
 );
 GO
 

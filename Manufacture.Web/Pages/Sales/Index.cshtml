@@ -1,4 +1,4 @@
-﻿@page
+@page
 @model Manufacture.Pages.Sales.IndexModel
 @{
     ViewData["Title"] = "Sales & POS Hub";
@@ -161,7 +161,7 @@
                                 <span class="badge badge-neutral badge-xs font-mono font-bold">@term.TerminalCode</span>
                                 <h3 class="font-black text-base text-base-content mt-1">@term.TerminalName</h3>
                             </div>
-                            <span class="badge badge-success badge-xs font-bold">â— Active</span>
+                            <span class="badge badge-success badge-xs font-bold">● Active</span>
                         </div>
 
                         <div class="p-3 bg-base-200 border border-base-300 rounded-xl flex items-center justify-between text-xs">
@@ -221,7 +221,7 @@
                             <th>Date / Time</th>
                             <th>Customer</th>
                             <th>Sales Rep</th>
-                            <th>Gross Total (â‚¦)</th>
+                            <th>Gross Total (₦)</th>
                             <th>Payment Channel</th>
                             <th>Slip Status</th>
                             <th class="text-right pr-4">Action</th>
@@ -237,7 +237,7 @@
                                 <td class="font-mono text-xs opacity-70 py-3">@order.OrderDate.ToString("yyyy-MM-dd HH:mm")</td>
                                 <td class="font-bold text-base-content py-3">@order.CustomerName</td>
                                 <td class="opacity-80 py-3">@order.SalesRepName</td>
-                                <td class="font-mono font-black text-success py-3">â‚¦@order.TotalAmount.ToString("N0")</td>
+                                <td class="font-mono font-black text-success py-3">₦@order.TotalAmount.ToString("N0")</td>
                                 <td>
                                     <span class="badge badge-ghost border border-base-300 text-[10px] font-mono font-semibold">@order.PaymentMethod</span>
                                 </td>

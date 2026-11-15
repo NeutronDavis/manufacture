@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Manufacture.Library.Interfaces;
 using Manufacture.Models.DTOs;
 using Manufacture.Models.Domain;
 using Manufacture.Services;
@@ -12,10 +13,10 @@ namespace Manufacture.Pages.Production.Recipes
     /// </summary>
     public class EditModel : PageModel
     {
-        private readonly MockProductionService _productionService;
+        private readonly IProductionService _productionService;
         private readonly RecipeCostingEngine _engine;
 
-        public EditModel(MockProductionService productionService, RecipeCostingEngine engine)
+        public EditModel(IProductionService productionService, RecipeCostingEngine engine)
         {
             _productionService = productionService;
             _engine = engine;
@@ -25,8 +26,7 @@ namespace Manufacture.Pages.Production.Recipes
         public RecipeBuilderDto RecipeInput { get; set; } = new();
 
         public List<Ingredient> AvailableIngredients { get; set; } = new();
-        public IReadOnlyList<BaselineOptionDto> Baselines { get; set; } = RecipeCatalog.Baselines;
-        public IReadOnlyList<ProductType> ProductTypes { get; set; } = RecipeCatalog.ProductTypes;
+        public List<ProductionProductType> ProductTypes { get; set; } = new();
         public bool Found { get; set; }
 
         public IActionResult OnGet(int id)
@@ -36,13 +36,13 @@ namespace Manufacture.Pages.Production.Recipes
 
             Found = true;
             RecipeInput = MapToBuilderDto(recipe);
-            AvailableIngredients = _productionService.GetAllIngredients();
+            LoadFormData();
             return Page();
         }
 
         public IActionResult OnPost()
         {
-            AvailableIngredients = _productionService.GetAllIngredients();
+            LoadFormData();
             Found = true;
 
             var yield = RecipeInput.ExpectedYield > 0 ? RecipeInput.ExpectedYield : 1m;
@@ -66,11 +66,27 @@ namespace Manufacture.Pages.Production.Recipes
                         string.Empty,
                         "Keep at least one raw material with a quantity greater than zero.");
                 }
+
+                var productType = ProductTypes.FirstOrDefault(p => p.Id == RecipeInput.ProductionProductTypeId);
+                if (productType != null)
+                {
+                    RecipeInput.ProductType = productType.Name;
+                    RecipeInput.BaselineUnit = productType.Baseline;
+                    RecipeInput.OutputUnit = productType.OutputUnitNoun;
+                }
                 return Page();
             }
 
-            if (!_productionService.UpdateRecipe(RecipeInput))
-                return RedirectToPage("/Production/Recipes/Index");
+            try
+            {
+                if (!_productionService.UpdateRecipe(RecipeInput))
+                    return RedirectToPage("/Production/Recipes/Index");
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+                return Page();
+            }
 
             var updated = _productionService.GetRecipeById(RecipeInput.Id);
             var costing = _engine.Cost(updated);
@@ -91,18 +107,23 @@ namespace Manufacture.Pages.Production.Recipes
             return RedirectToPage("/Production/Recipes/Details", new { id = RecipeInput.Id });
         }
 
+        private void LoadFormData()
+        {
+            AvailableIngredients = _productionService.GetAllIngredients();
+            ProductTypes = _productionService.GetProductTypes(includeInactive: true);
+        }
+
         private static RecipeBuilderDto MapToBuilderDto(Recipe recipe) => new()
         {
             Id = recipe.Id,
             Name = recipe.Name,
             Code = recipe.Code,
             Description = recipe.Description,
-            ProductType = recipe.ProductType.ToString(),
-            BaselineUnit = recipe.BaselineUnit.ToString(),
+            ProductionProductTypeId = recipe.ProductionProductTypeId ?? 0,
+            ProductType = string.IsNullOrWhiteSpace(recipe.ProductTypeName) ? recipe.ProductType.ToString() : recipe.ProductTypeName,
+            BaselineUnit = recipe.Baseline,
             ExpectedYield = recipe.ExpectedYield,
             OutputUnit = recipe.OutputUnit,
-            PackagingCost = recipe.PackagingCost,
-            LaborAndOverheadPerUnit = recipe.LaborAndOverheadPerUnit,
             SellingPrice = recipe.SellingPrice,
             Ingredients = recipe.Ingredients.Select(i =>
             {

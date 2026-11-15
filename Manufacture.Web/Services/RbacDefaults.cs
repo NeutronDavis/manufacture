@@ -105,7 +105,7 @@ namespace Manufacture.Services
                 ("Reports", "StoreManager", "View Only"),
                 ("Reports", "SalesRep", "View Only"),
                 ("Reports", "Customer", "None"),
-                ("Reports", "HrPayrollManager", "None"),
+                ("Reports", "HrPayrollManager", "View Only"),
 
                 ("Settings", "SuperAdmin", "Full Access"),
                 ("Settings", "ProductionManager", "None"),

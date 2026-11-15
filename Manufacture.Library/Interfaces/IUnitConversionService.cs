@@ -35,7 +35,7 @@ namespace Manufacture.Library.Interfaces
         MeasurementKind Classify(string? unit);
 
         /// <summary>Checks whether two units can be converted into each other.</summary>
-        bool CanConvert(string? fromUnit, string? toUnit, string? materialName = null);
+        bool CanConvert(string? fromUnit, string? toUnit, string? materialName = null, decimal? densityKgPerLitre = null);
 
         /// <summary>
         /// Converts a quantity from one unit to another. Returns 0 if conversion is invalid.
@@ -67,7 +67,7 @@ namespace Manufacture.Library.Interfaces
         /// <summary>
         /// Returns all compatible units that make sense for a given material and its base unit.
         /// </summary>
-        IReadOnlyList<string> GetCompatibleUnits(string? baseUnit, string? materialName = null);
+        IReadOnlyList<string> GetCompatibleUnits(string? baseUnit, string? materialName = null, decimal? densityKgPerLitre = null);
 
         /// <summary>
         /// Extracts pack size from compound units like "Bags (50kg)" -> 50.

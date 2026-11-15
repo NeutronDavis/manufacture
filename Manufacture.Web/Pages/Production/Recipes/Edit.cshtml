@@ -98,29 +98,24 @@
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="space-y-1.5">
-                            <label class="text-xs font-semibold text-slate-700" for="RecipeInput_ProductType">Product Type <span class="text-rose-500">*</span></label>
-                            <select asp-for="RecipeInput.ProductType" id="RecipeInput_ProductType"
+                            <label class="text-xs font-semibold text-slate-700" for="RecipeInput_ProductionProductTypeId">Product Type <span class="text-rose-500">*</span></label>
+                            <select asp-for="RecipeInput.ProductionProductTypeId" id="RecipeInput_ProductionProductTypeId"
                                     class="select select-sm select-bordered w-full rounded-lg text-xs"
                                     onchange="syncBaselineDefaults()">
                                 @foreach (var type in Model.ProductTypes)
                                 {
-                                    <option value="@type">@type</option>
+                                    <option value="@type.Id" data-baseline="@type.Baseline" data-output-unit="@type.OutputUnitNoun">
+                                        @type.Name (@type.CategoryName)
+                                    </option>
                                 }
                             </select>
                         </div>
 
                         <div class="space-y-1.5">
-                            <label class="text-xs font-semibold text-slate-700" for="RecipeInput_BaselineUnit">Baseline Unit <span class="text-rose-500">*</span></label>
-                            <select asp-for="RecipeInput.BaselineUnit" id="RecipeInput_BaselineUnit"
-                                    class="select select-sm select-bordered w-full rounded-lg text-xs"
-                                    onchange="recalcAll()">
-                                @foreach (var baseline in Model.Baselines)
-                                {
-                                    <option value="@baseline.Key" data-yield="@baseline.SuggestedYield" data-unit="@baseline.OutputUnit">
-                                        @baseline.DisplayName
-                                    </option>
-                                }
-                            </select>
+                            <label class="text-xs font-semibold text-slate-700" for="RecipeInput_BaselineUnit">Baseline Unit</label>
+                            <input type="text" asp-for="RecipeInput.BaselineUnit" id="RecipeInput_BaselineUnit"
+                                   class="input input-sm input-bordered w-full rounded-lg text-xs bg-slate-100"
+                                   readonly disabled />
                         </div>
 
                         <div class="space-y-1.5 sm:col-span-2">
@@ -146,45 +141,24 @@
                         <div class="space-y-1.5">
                             <label class="text-xs font-semibold text-slate-700" for="RecipeInput_OutputUnit">Output Unit Noun</label>
                             <input type="text" asp-for="RecipeInput.OutputUnit" id="RecipeInput_OutputUnit"
-                                   class="input input-sm input-bordered w-full rounded-lg text-xs font-mono"
-                                   placeholder="loaves / bottles / bags" oninput="recalcAll()" />
+                                   class="input input-sm input-bordered w-full rounded-lg text-xs font-mono bg-slate-100"
+                                   readonly disabled />
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Card 3: Per-Unit Overhead & Pricing Target -->
+            <!-- Card 3: Pricing Target -->
             <div class="card bg-white border border-slate-200 shadow-xs rounded-2xl">
                 <div class="card-body p-6 space-y-4">
                     <div class="flex items-center gap-2 font-bold text-slate-800 text-sm">
                         <div class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-600 flex items-center justify-center text-xs">
                             <i class="fa-solid fa-coins"></i>
                         </div>
-                        <span>Per-Unit Overhead &amp; Pricing Target</span>
+                        <span>Pricing Target</span>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="space-y-1.5">
-                            <label class="text-xs font-semibold text-slate-700" for="RecipeInput_PackagingCost">
-                                Handling &amp; Label Cost per Unit (₦)
-                            </label>
-                            <input type="number" step="0.5" min="0" asp-for="RecipeInput.PackagingCost"
-                                   id="RecipeInput_PackagingCost" class="input input-sm input-bordered w-full rounded-lg text-xs font-mono"
-                                   oninput="recalcAll()" />
-                            <p class="text-[10px] text-slate-400 leading-snug">
-                                Wrappers and bottles are entered as materials below; this is handling overhead only.
-                            </p>
-                        </div>
-
-                        <div class="space-y-1.5">
-                            <label class="text-xs font-semibold text-slate-700" for="RecipeInput_LaborAndOverheadPerUnit">
-                                Labor &amp; Overhead per Unit (₦)
-                            </label>
-                            <input type="number" step="0.5" min="0" asp-for="RecipeInput.LaborAndOverheadPerUnit"
-                                   id="RecipeInput_LaborAndOverheadPerUnit" class="input input-sm input-bordered w-full rounded-lg text-xs font-mono"
-                                   oninput="recalcAll()" />
-                        </div>
-
                         <div class="space-y-1.5 sm:col-span-2">
                             <label class="text-xs font-semibold text-slate-700" for="RecipeInput_SellingPrice">
                                 Configured Selling Price per Unit (₦) <span class="text-rose-500">*</span>
@@ -307,7 +281,7 @@
                 </div>
 
                 <div class="text-[10px] text-slate-500 leading-relaxed font-sans pt-1 border-t border-amber-200/60">
-                    Per-unit cost = batch material total ÷ expected yield, plus per-unit overhead.
+                    Per-unit cost = total batch material cost ÷ expected yield.
                 </div>
             </div>
         </div>
@@ -328,6 +302,7 @@
             packageUnit = i.PackageUnit ?? i.Unit,
             packageCost = i.PackageCostPrice > 0 ? i.PackageCostPrice : i.UnitCost,
             stockOnHand = i.PackageStockOnHand > 0 ? i.PackageStockOnHand : i.CurrentStock,
+            density = i.DensityKgPerLitre,
             supplierName = i.SupplierName ?? "Warehouse Store"
         })));
 
@@ -339,22 +314,15 @@
             quantityUnit = string.IsNullOrWhiteSpace(line.QuantityUnit) ? line.IngredientUnit : line.QuantityUnit
         })));
 
-    // Baselines, so the JS mirrors the server-side catalog for auto-fill.
-    const baselines = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
-        Model.Baselines.Select(b => new {
-            key = b.Key,
-            displayName = b.DisplayName,
-            description = b.Description,
-            outputUnit = b.OutputUnit,
-            suggestedYield = b.SuggestedYield,
-            suggestedQuantityUnits = b.SuggestedQuantityUnits
+    // Product types loaded from production settings.
+    const productTypes = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        Model.ProductTypes.Select(p => new {
+            id = p.Id,
+            name = p.Name,
+            categoryName = p.CategoryName,
+            baseline = p.Baseline,
+            outputUnit = p.OutputUnitNoun
         })));
-
-    const defaultBaselineFor = {
-        Bread: 'FlourBag50Kg',
-        Water: 'WaterRun18_9L',
-        Popcorn: 'PopcornPot'
-    };
 
     function naira(value, decimals) {
         const d = decimals === undefined ? 2 : decimals;
@@ -363,9 +331,9 @@
         });
     }
 
-    function currentBaseline() {
-        const sel = document.getElementById('RecipeInput_BaselineUnit');
-        return baselines.find(b => b.key === sel.value) || baselines[0];
+    function currentProductType() {
+        const sel = document.getElementById('RecipeInput_ProductionProductTypeId');
+        return productTypes.find(p => String(p.id) === sel?.value) || productTypes[0] || null;
     }
 
     function currentYield() {
@@ -388,17 +356,18 @@
         if (!material) return ['kg', 'g', 'pcs'];
         const kind = classifyUnit(material.unit);
         const isLiquid = /water|oil|milk|syrup|juice|flavor|flavour|liquid/i.test(material.name);
+        const hasDensity = parseFloat(material.density) > 0;
         const hasBottleVol = /18\.9\s*L|dispenser/i.test(material.name);
 
         let list = [];
         if (kind === 'mass') {
             list = ['kg', 'g', 'mg', 'ton', 'lb', 'oz'];
             if (material.packageUnit && !list.includes(material.packageUnit)) list.push(material.packageUnit);
-            if (isLiquid) list.push('litres', 'ml', 'cl');
+            if (isLiquid || hasDensity) list.push('litres', 'ml', 'cl');
         } else if (kind === 'volume') {
             list = ['litres', 'ml', 'cl', 'dl', 'gal', 'cup', 'tbsp', 'tsp', 'm3'];
             if (material.packageUnit && !list.includes(material.packageUnit)) list.push(material.packageUnit);
-            if (isLiquid) list.push('kg', 'g');
+            if (isLiquid || hasDensity) list.push('kg', 'g');
         } else {
             list = ['pcs', 'dozen', 'pack', 'carton', 'box', 'crate'];
             if (material.packageUnit && !list.includes(material.packageUnit)) list.push(material.packageUnit);
@@ -409,14 +378,14 @@
         return list;
     }
 
-    function convertUnit(qty, fromUnit, toUnit, materialName) {
+    function convertUnit(qty, fromUnit, toUnit, materialName, densityOverride) {
         if (!qty || qty === 0) return 0;
         if (!fromUnit || !toUnit || fromUnit.trim().toLowerCase() === toUnit.trim().toLowerCase()) return qty;
 
         const fromKind = classifyUnit(fromUnit);
         const toKind = classifyUnit(toUnit);
         const isLiquid = /water|oil|milk|syrup|juice|flavor|flavour|liquid/i.test(materialName || '');
-        const density = /oil/i.test(materialName || '') ? 0.92 : (/milk/i.test(materialName || '') ? 1.03 : 1.0);
+        const density = densityOverride || (/oil/i.test(materialName || '') ? 0.92 : (/milk/i.test(materialName || '') ? 1.03 : 1.0));
 
         function toGrams(q, u) {
             const clean = u.replace(/\([^)]*\)/g, '').trim().toLowerCase();
@@ -491,8 +460,8 @@
             return basePcs;
         }
 
-        // 2. Liquid bridge between Mass and Volume
-        if (isLiquid) {
+        // 2. Density bridge between Mass and Volume
+        if (isLiquid || (densityOverride && densityOverride > 0)) {
             if (fromKind === 'mass' && toKind === 'volume') {
                 const grams = toGrams(qty, fromUnit);
                 const kg = grams / 1000;
@@ -535,7 +504,7 @@
 
             const qty = parseFloat(row.qty) || 0;
             const enteredUnit = row.quantityUnit || material.unit;
-            const convertedQty = convertUnit(qty, enteredUnit, material.unit, material.name);
+            const convertedQty = convertUnit(qty, enteredUnit, material.unit, material.name, material.density);
             const lineCost = convertedQty * material.costPerUnit;
             const y = currentYield();
             const perUnit = y > 0 ? lineCost / y : 0;
@@ -555,15 +524,9 @@
                             onchange="onMaterialChange(${idx}, this.value)">
                         ${inventoryMaterials.map(m => `
                             <option value="${m.id}" ${m.id === material.id ? 'selected' : ''}>
-                                [${m.itemCode}] ${m.name} (${m.stockOnHand.toLocaleString('en-US', {maximumFractionDigits: 1})} ${m.packageUnit} in store) — ₦${m.costPerUnit.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 2})}/${m.unit}
+                                ${m.name}
                             </option>`).join('')}
                     </select>
-                    <div class="flex items-center gap-2 mt-1 text-[10px] text-slate-500">
-                        <span class="badge badge-ghost badge-xs font-mono font-bold">${material.itemCode}</span>
-                        <span>Store Stock: <strong class="text-slate-700">${material.stockOnHand.toLocaleString('en-US', {maximumFractionDigits: 1})} ${material.packageUnit}</strong></span>
-                        <span class="opacity-40">&bull;</span>
-                        <span>Package: <strong>₦${material.packageCost.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</strong></span>
-                    </div>
                 </td>
                 <td class="py-2.5 text-center">
                     <div class="flex flex-col items-center">
@@ -643,7 +606,7 @@
         // If a quantity is already entered and switching units, convert the quantity number
         // e.g. 0.5 kg -> 500 g, or 500 g -> 0.5 kg
         if (rowsData[index].qty > 0 && oldUnit && material) {
-            const convertedVal = convertUnit(rowsData[index].qty, oldUnit, newUnit, material.name);
+            const convertedVal = convertUnit(rowsData[index].qty, oldUnit, newUnit, material.name, material.density);
             if (convertedVal > 0) {
                 rowsData[index].qty = Math.round(convertedVal * 10000) / 10000;
                 const inputEl = document.querySelector(`input[name="RecipeInput.Ingredients[${index}].QuantityPerBatch"]`);
@@ -656,8 +619,6 @@
 
     function recalcAll() {
         const y = currentYield();
-        const overhead = (parseFloat(document.getElementById('RecipeInput_PackagingCost')?.value) || 0)
-                       + (parseFloat(document.getElementById('RecipeInput_LaborAndOverheadPerUnit')?.value) || 0);
         const selling = parseFloat(document.getElementById('RecipeInput_SellingPrice')?.value) || 0;
         const noun = (document.getElementById('RecipeInput_OutputUnit')?.value || 'units').trim() || 'units';
 
@@ -668,7 +629,7 @@
 
             const rawQty = parseFloat(row.qty) || 0;
             const enteredUnit = row.quantityUnit || material.unit;
-            const convertedQty = convertUnit(rawQty, enteredUnit, material.unit, material.name);
+            const convertedQty = convertUnit(rawQty, enteredUnit, material.unit, material.name, material.density);
             const line = convertedQty * material.costPerUnit;
             batchTotal += line;
 
@@ -693,7 +654,7 @@
         });
 
         const materialsPerUnit = y > 0 ? batchTotal / y : 0;
-        const unitCost = materialsPerUnit + overhead;
+        const unitCost = materialsPerUnit;
         const margin = selling - unitCost;
         const marginPct = selling > 0 ? (margin / selling) * 100 : 0;
 
@@ -713,24 +674,20 @@
     }
 
     function syncBaselineDefaults() {
-        const type = document.getElementById('RecipeInput_ProductType').value;
-        const key = defaultBaselineFor[type] || defaultBaselineFor.Bread;
-        document.getElementById('RecipeInput_BaselineUnit').value = key;
-
-        const b = baselines.find(x => x.key === key);
-        if (b) {
-            document.getElementById('RecipeInput_ExpectedYield').value = b.suggestedYield;
-            document.getElementById('RecipeInput_OutputUnit').value = b.outputUnit;
-        }
+        const type = currentProductType();
+        if (!type) return;
+        document.getElementById('RecipeInput_BaselineUnit').value = type.baseline;
+        document.getElementById('RecipeInput_OutputUnit').value = type.outputUnit;
+        renderBaselineHint();
         renderTable();
     }
 
     function renderBaselineHint() {
-        const b = currentBaseline();
+        const type = currentProductType();
         const el = document.getElementById('baselineHint');
-        if (el && b) el.innerText = b.description;
+        if (el && type) el.innerText = `${type.categoryName} • ${type.baseline}`;
         const badge = document.getElementById('outputUnitBadge');
-        if (badge && b) badge.innerText = b.outputUnit;
+        if (badge && type) badge.innerText = type.outputUnit;
     }
 
     document.addEventListener('DOMContentLoaded', () => {

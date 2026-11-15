@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Primitives;
+using Manufacture.Library.Interfaces;
 using Manufacture.Models.DTOs;
 using Manufacture.Models.Domain;
 using Manufacture.Services;
@@ -6,28 +7,25 @@ using Manufacture.Services;
 namespace Manufacture.Api
 {
     /// <summary>
-    /// Read-only analytics endpoints over <see cref="MockAnalyticsService"/>.
-    ///
-    /// The Razor Pages UI is the primary surface; these endpoints exist so the
-    /// dashboard and reports data can also be consumed by a future mobile
-    /// client or BI tool. Both routes return exactly the payload the pages use,
-    /// so the two can never diverge.
+    /// Read-only analytics endpoints. SuperAdmin dashboard routes are backed by
+    /// the operational database; the reports route still uses the existing
+    /// analytics engine while /Reports retains its current contract.
     /// </summary>
     public static class AnalyticsApi
     {
         public static void MapAnalyticsApi(this WebApplication app)
         {
-            app.MapGet("/api/dashboard/overview", (HttpRequest request, MockAnalyticsService analytics) =>
+            app.MapGet("/api/dashboard/overview", (HttpRequest request, ISuperAdminDashboardService analytics) =>
             {
                 var date = ParseDate(request.Query["date"]);
                 var timeframe = request.Query["timeframe"].ToString();
-                return Results.Ok(analytics.GetDashboardOverviewApi(timeframe, date));
+                return Results.Ok(analytics.GetOverviewApi(timeframe, date));
             });
 
-            app.MapGet("/api/dashboard/summary", (HttpRequest request, MockAnalyticsService analytics) =>
+            app.MapGet("/api/dashboard/summary", (HttpRequest request, ISuperAdminDashboardService analytics) =>
             {
                 var date = ParseDate(request.Query["date"]);
-                return Results.Ok(analytics.GetDashboardOverview(date));
+                return Results.Ok(analytics.GetOverview(date));
             });
 
             app.MapGet("/api/reports/query", (HttpRequest request, MockAnalyticsService analytics) =>

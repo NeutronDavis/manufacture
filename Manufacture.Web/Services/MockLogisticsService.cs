@@ -373,39 +373,6 @@ namespace Manufacture.Services
                 r.IsActive);
         }
 
-        public RouteRate CreateRouteRate(RouteRateDto dto)
-        {
-            var rate = new RouteRate
-            {
-                Id = _routeRates.Any() ? _routeRates.Max(r => r.Id) + 1 : 1,
-                OriginState = dto.OriginState,
-                DestinationState = dto.DestinationState,
-                VehicleTypeRequired = dto.VehicleTypeRequired,
-                RateWithFuel = dto.RateWithFuel,
-                RateWithoutFuel = dto.RateWithoutFuel,
-                EstimatedHours = dto.EstimatedHours,
-                IsActive = dto.IsActive
-            };
-            _routeRates.Add(rate);
-            return rate;
-        }
-
-        public RouteRate? UpdateRouteRate(int id, RouteRateDto dto)
-        {
-            var rate = GetRouteRateById(id);
-            if (rate == null) return null;
-
-            rate.OriginState = dto.OriginState;
-            rate.DestinationState = dto.DestinationState;
-            rate.VehicleTypeRequired = dto.VehicleTypeRequired;
-            rate.RateWithFuel = dto.RateWithFuel;
-            rate.RateWithoutFuel = dto.RateWithoutFuel;
-            rate.EstimatedHours = dto.EstimatedHours;
-            rate.IsActive = dto.IsActive;
-
-            return rate;
-        }
-
         public bool DeleteRouteRate(int id)
         {
             var rate = GetRouteRateById(id);

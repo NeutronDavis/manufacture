@@ -17,6 +17,8 @@ public partial class StockMovement
 
     public int? StoreRequestId { get; set; }
 
+    public int? StoreRequestItemId { get; set; }
+
     public string? ReferenceNumber { get; set; }
 
     public string? Notes { get; set; }
@@ -28,4 +30,6 @@ public partial class StockMovement
     public virtual InventoryItem InventoryItem { get; set; } = null!;
 
     public virtual StoreRequest? StoreRequest { get; set; }
+
+    public virtual StoreRequestItem? StoreRequestItem { get; set; }
 }

@@ -21,6 +21,14 @@ public partial class InventoryItem
 
     public decimal UnitCostPrice { get; set; }
 
+    public decimal PackageSize { get; set; } = 1m;
+
+    public string PackageUnitOfMeasure { get; set; } = "kg";
+
+    public decimal? DensityKgPerLitre { get; set; }
+
+    public int? MeasurementDensityId { get; set; }
+
     public int? PreferredSupplierId { get; set; }
 
     public DateOnly LastRestockedDate { get; set; }
@@ -32,6 +40,10 @@ public partial class InventoryItem
     public DateTime UpdatedAt { get; set; }
 
     public virtual Supplier? PreferredSupplier { get; set; }
+
+    public virtual MeasurementDensity? MeasurementDensity { get; set; }
+
+    public virtual ICollection<RecipeIngredient> RecipeIngredients { get; set; } = new List<RecipeIngredient>();
 
     public virtual ICollection<StockMovement> StockMovements { get; set; } = new List<StockMovement>();
 

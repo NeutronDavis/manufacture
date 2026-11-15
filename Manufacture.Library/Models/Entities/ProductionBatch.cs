@@ -25,7 +25,7 @@ public partial class ProductionBatch
 
     public decimal FlourBagsUsed { get; set; }
 
-    public int ProductCategory { get; set; }
+    public int? ProductionProductTypeId { get; set; }
 
     public decimal BatchInputQuantity { get; set; }
 
@@ -62,6 +62,8 @@ public partial class ProductionBatch
     public byte[] RowVersion { get; set; } = null!;
 
     public virtual Order? LinkedOrder { get; set; }
+
+    public virtual ProductionProductType? ProductionProductType { get; set; }
 
     public virtual ICollection<ProductionDefect> ProductionDefects { get; set; } = new List<ProductionDefect>();
 

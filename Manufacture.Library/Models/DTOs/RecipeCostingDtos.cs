@@ -47,6 +47,57 @@ namespace Manufacture.Models.DTOs
         public List<UpdateIngredientPriceDto> Updates { get; set; } = new();
     }
 
+    /// <summary>Review state of a raw-material price change proposal.</summary>
+    public enum IngredientPriceChangeStatus
+    {
+        Pending = 0,
+        Approved = 1,
+        Rejected = 2
+    }
+
+    /// <summary>A submitted raw-material price proposal and its review trail.</summary>
+    public class IngredientPriceChangeRequestDto
+    {
+        public int Id { get; set; }
+        public string RequestNumber { get; set; } = string.Empty;
+        public int InventoryItemId { get; set; }
+        public string InventoryItemName { get; set; } = string.Empty;
+        public string ItemCode { get; set; } = string.Empty;
+        public string Unit { get; set; } = "kg";
+        public decimal PreviousUnitCost { get; set; }
+        public decimal RequestedUnitCost { get; set; }
+        public decimal CurrentUnitCost { get; set; }
+        public IngredientPriceChangeStatus Status { get; set; }
+        public string RequestedByName { get; set; } = string.Empty;
+        public DateTime RequestedAt { get; set; }
+        public string? ReviewedByName { get; set; }
+        public DateTime? ReviewedAt { get; set; }
+        public string ReviewNotes { get; set; } = string.Empty;
+        public DateTime? AppliedAt { get; set; }
+
+        public decimal Difference => RequestedUnitCost - PreviousUnitCost;
+        public string StatusLabel => Status.ToString();
+    }
+
+    /// <summary>Result of submitting one or more ingredient price proposals.</summary>
+    public class PriceChangeSubmissionResultDto
+    {
+        public int SubmittedCount { get; set; }
+        public int SkippedCount { get; set; }
+        public List<string> Messages { get; set; } = new();
+        public List<string> Errors { get; set; } = new();
+        public bool Success => Errors.Count == 0;
+    }
+
+    /// <summary>Result of approving or rejecting a price proposal.</summary>
+    public class PriceChangeActionResultDto
+    {
+        public bool Success { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public int? RequestId { get; set; }
+        public int? InventoryItemId { get; set; }
+    }
+
     // =====================================================================
     // RECIPE BUILDER
     // =====================================================================
@@ -112,6 +163,9 @@ namespace Manufacture.Models.DTOs
         [StringLength(400)]
         public string Description { get; set; } = string.Empty;
 
+        [Range(1, int.MaxValue, ErrorMessage = "Select a product type.")]
+        public int ProductionProductTypeId { get; set; }
+
         [Required(ErrorMessage = "Select a product type.")]
         public string ProductType { get; set; } = "Bread";
 
@@ -123,12 +177,6 @@ namespace Manufacture.Models.DTOs
 
         [StringLength(24)]
         public string OutputUnit { get; set; } = "loaves";
-
-        [Range(0, 100_000)]
-        public decimal PackagingCost { get; set; }
-
-        [Range(0, 100_000)]
-        public decimal LaborAndOverheadPerUnit { get; set; }
 
         [Required(ErrorMessage = "Selling price is required.")]
         [Range(1, 100_000_000, ErrorMessage = "Selling price must be greater than zero.")]
@@ -178,6 +226,8 @@ namespace Manufacture.Models.DTOs
         public int RecipeId { get; set; }
         public string RecipeName { get; set; } = string.Empty;
         public string RecipeCode { get; set; } = string.Empty;
+        public int? ProductionCategoryId { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
         public string ProductType { get; set; } = string.Empty;
         public string BaselineUnit { get; set; } = string.Empty;
         public string BaselineUnitName { get; set; } = string.Empty;
@@ -244,8 +294,6 @@ namespace Manufacture.Models.DTOs
 
         // ---- Per unit level ----
         public decimal IngredientsCostPerUnit { get; set; }
-        public decimal PackagingCost { get; set; }
-        public decimal LaborAndOverheadPerUnit { get; set; }
         public decimal TotalUnitCost { get; set; }
 
         // ---- Profitability ----

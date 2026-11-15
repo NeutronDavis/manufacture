@@ -197,7 +197,7 @@
                     </a>
 
                     <!-- 2. Production -->
-                    @if (Rbac.HasAccess(userRole, "Production") || Rbac.HasAccess(userRole, "Recipes"))
+                    @if (userRole != "StoreManager" && (Rbac.HasAccess(userRole, "Production") || Rbac.HasAccess(userRole, "Recipes")))
                     {
                         <details class="erp-nav-dropdown" @(inProduction ? "open" : "")>
                             <summary class="@(inProduction ? "font-bold text-base-content" : "")">
@@ -227,20 +227,6 @@
                                     <a asp-page="/Production/Batches/Index" class="erp-nav-sub-item @(currentPath == "/Production/Batches" || currentPath == "/Production/Batches/Index" ? "erp-nav-active" : "")">
                                         <i class="fa-solid fa-layer-group text-[11px] w-3.5 text-center"></i>
                                         <span>Mixing Batches</span>
-                                    </a>
-                                }
-                                @if (Rbac.CanEdit(userRole, "Recipes") || userRole == "SuperAdmin")
-                                {
-                                    <a asp-page="/Production/Recipes/Create" class="erp-nav-sub-item @(currentPath == "/Production/Recipes/Create" ? "erp-nav-active" : "")">
-                                        <i class="fa-solid fa-flask text-[11px] w-3.5 text-center"></i>
-                                        <span>Build Recipe</span>
-                                    </a>
-                                }
-                                @if (Rbac.CanEdit(userRole, "Production") || userRole == "SuperAdmin")
-                                {
-                                    <a asp-page="/Production/Batches/Create" class="erp-nav-sub-item @(currentPath == "/Production/Batches/Create" ? "erp-nav-active" : "")">
-                                        <i class="fa-solid fa-clipboard-list text-[11px] w-3.5 text-center"></i>
-                                        <span>Log Batch Output</span>
                                     </a>
                                 }
                             </div>
@@ -274,7 +260,7 @@
                                     <span>Stock Ledger</span>
                                 </a>
 
-                                @if (Rbac.CanEdit(userRole, "Inventory") || userRole == "SuperAdmin")
+                                @if (userRole != "StoreManager" && (Rbac.CanEdit(userRole, "Inventory") || userRole == "SuperAdmin"))
                                 {
                                     <a asp-page="/Inventory/Suppliers/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Inventory/Suppliers") ? "erp-nav-active" : "")">
                                         <i class="fa-solid fa-truck-field text-[11px] w-3.5 text-center"></i>
@@ -311,7 +297,8 @@
                                         <span>Orders & Invoices</span>
                                     </a>
                                 }
-                                @if (Rbac.HasAccess(userRole, "Sales") || Rbac.HasAccess(userRole, "PreOrders"))
+                                @if ((Rbac.HasAccess(userRole, "Sales") || Rbac.HasAccess(userRole, "PreOrders"))
+                                    && userRole != "ProductionManager")
                                 {
                                     <a asp-page="/Sales/Orders/Create" class="erp-nav-sub-item @(currentPath == "/Sales/Orders/Create" ? "erp-nav-active" : "")">
                                         <i class="fa-solid fa-cart-plus text-[11px] w-3.5 text-center"></i>
@@ -356,7 +343,7 @@
                     }
 
                     <!-- 5. Fleet & Logistics -->
-                    @if (userRole != "Customer" && Rbac.HasAccess(userRole, "Fleet"))
+                    @if (userRole != "Customer" && userRole != "ProductionManager" && Rbac.HasAccess(userRole, "Fleet"))
                     {
                         <details class="erp-nav-dropdown" @(inFleet ? "open" : "")>
                             <summary class="@(inFleet ? "font-bold text-base-content" : "")">
@@ -376,9 +363,13 @@
                                     <span>Charter Bookings</span>
                                 </a>
                              
-                                <a asp-page="/Logistics/Rates/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Logistics/Rates") || currentPath.StartsWith("/Fleet/Rates") ? "erp-nav-active" : "")">
-                                    <i class="fa-solid fa-map-location-dot text-[11px] w-3.5 text-center"></i>
-                                    <span>Route Rates Matrix</span>
+                                <a asp-page="/Logistics/Rates/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Logistics/Rates") || currentPath.StartsWith("/Fleet/Rates") || currentPath.StartsWith("/Fleet/Quotes") ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-file-invoice-dollar text-[11px] w-3.5 text-center"></i>
+                                    <span>Client Quotes</span>
+                                </a>
+                                <a asp-page="/Logistics/Dispatches/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Logistics/Dispatches") || currentPath.StartsWith("/Fleet/Dispatches") ? "erp-nav-active" : "")">
+                                    <i class="fa-solid fa-truck-ramp-box text-[11px] w-3.5 text-center"></i>
+                                    <span>Delivery Dispatches</span>
                                 </a>
                                 <a asp-page="/Logistics/WeeklyRunningCosts/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Logistics/WeeklyRunningCosts", StringComparison.OrdinalIgnoreCase) || currentPath.StartsWith("/Fleet/WeeklyRunningCosts", StringComparison.OrdinalIgnoreCase) || currentPath.StartsWith("/Fleet/Weekly-Running-Costs", StringComparison.OrdinalIgnoreCase) ? "erp-nav-active" : "")">
                                     <i class="fa-solid fa-calendar-week text-[11px] w-3.5 text-center"></i>
@@ -486,22 +477,6 @@
                                     <i class="fa-solid fa-sliders text-[11px] w-3.5 text-center"></i>
                                     <span>Settings Hub</span>
                                 </a>
-                                <a asp-page="/Settings/Departments" class="erp-nav-sub-item @(currentPath.StartsWith("/Settings/Departments") ? "erp-nav-active" : "")">
-                                    <i class="fa-solid fa-building text-[11px] w-3.5 text-center"></i>
-                                    <span>Departments</span>
-                                </a>
-                                <a asp-page="/Settings/JobRoles" class="erp-nav-sub-item @(currentPath.StartsWith("/Settings/JobRoles") ? "erp-nav-active" : "")">
-                                    <i class="fa-solid fa-id-badge text-[11px] w-3.5 text-center"></i>
-                                    <span>Job Roles</span>
-                                </a>
-                                <a asp-page="/Settings/SalesRules" class="erp-nav-sub-item @(currentPath.StartsWith("/Settings/SalesRules") ? "erp-nav-active" : "")">
-                                    <i class="fa-solid fa-gift text-[11px] w-3.5 text-center"></i>
-                                    <span>Sales Bonus Rules</span>
-                                </a>
-                                <a asp-page="/Settings/Finance" class="erp-nav-sub-item @(currentPath.StartsWith("/Settings/Finance") ? "erp-nav-active" : "")">
-                                    <i class="fa-solid fa-scale-balanced text-[11px] w-3.5 text-center"></i>
-                                    <span>Finance &amp; Payroll</span>
-                                </a>
                                 <a asp-page="/Settings/Theme" class="erp-nav-sub-item @(currentPath == "/Settings/Theme" ? "erp-nav-active" : "")">
                                     <i class="fa-solid fa-palette text-[11px] w-3.5 text-center"></i>
                                     <span>Theme & Palettes</span>
@@ -510,10 +485,6 @@
                                     <i class="fa-solid fa-users-gear text-[11px] w-3.5 text-center"></i>
                                     <span>User Accounts & PINs</span>
                                 </a>
-                                @* <a asp-page="/UserManagement/Create" class="erp-nav-sub-item @(currentPath == "/UserManagement/Create" ? "erp-nav-active" : "")">
-                                    <i class="fa-solid fa-user-plus text-[11px] w-3.5 text-center"></i>
-                                    <span>Create User</span>
-                                </a> *@
                                 <a asp-page="/UserManagement/Roles" class="erp-nav-sub-item @(currentPath == "/UserManagement/Roles" ? "erp-nav-active" : "")">
                                     <i class="fa-solid fa-user-shield text-[11px] w-3.5 text-center"></i>
                                     <span>Platform Roles</span>

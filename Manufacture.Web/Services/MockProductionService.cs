@@ -486,8 +486,8 @@ namespace Manufacture.Services
                 OutputUnit = string.IsNullOrWhiteSpace(dto.OutputUnit)
                     ? RecipeCatalog.OutputUnitFor(baseline)
                     : dto.OutputUnit.Trim(),
-                PackagingCost = dto.PackagingCost,
-                LaborAndOverheadPerUnit = dto.LaborAndOverheadPerUnit,
+                PackagingCost = 0m,
+                LaborAndOverheadPerUnit = 0m,
                 SellingPrice = dto.SellingPrice,
                 IsActive = true
             };
@@ -511,8 +511,8 @@ namespace Manufacture.Services
             recipe.OutputUnit = string.IsNullOrWhiteSpace(dto.OutputUnit)
                 ? RecipeCatalog.OutputUnitFor(recipe.BaselineUnit)
                 : dto.OutputUnit.Trim();
-            recipe.PackagingCost = dto.PackagingCost;
-            recipe.LaborAndOverheadPerUnit = dto.LaborAndOverheadPerUnit;
+            recipe.PackagingCost = 0m;
+            recipe.LaborAndOverheadPerUnit = 0m;
             recipe.SellingPrice = dto.SellingPrice;
             recipe.Ingredients = BuildLines(dto.Ingredients, recipe.Id, recipe.ExpectedYield);
             return true;
@@ -706,8 +706,9 @@ namespace Manufacture.Services
             var overhead = (recipe?.PackagingCost ?? 0m) + (recipe?.LaborAndOverheadPerUnit ?? 0m);
             var totalMaterialCost = CalculateBatchMaterialCost(dto.RecipeId, inputQty);
             var plannedYield = (int)((recipe?.ExpectedYield ?? 100m) * inputQty);
+            var actualQuantity = Math.Max(0, dto.ActualQuantity ?? 0);
             var expectedUnitCost = plannedYield > 0 ? Math.Round((totalMaterialCost / plannedYield) + overhead, 2) : 0m;
-            var calculatedUnitCost = dto.ActualQuantity > 0 ? Math.Round(CalculateRunUnitCost(totalMaterialCost, dto.ActualQuantity) + overhead, 2) : 0m;
+            var calculatedUnitCost = actualQuantity > 0 ? Math.Round(CalculateRunUnitCost(totalMaterialCost, actualQuantity) + overhead, 2) : 0m;
 
             var batch = new ProductionBatch
             {
@@ -722,7 +723,7 @@ namespace Manufacture.Services
                 LinkedOrderId = dto.LinkedOrderId,
                 LinkedOrderNumber = dto.LinkedOrderNumber,
                 CustomerName = dto.CustomerName,
-                ActualQuantity = dto.ActualQuantity,
+                ActualQuantity = actualQuantity,
                 Shift = dto.Shift,
                 BakerInCharge = dto.BakerInCharge,
                 FlourBagsUsed = category == ProductType.Bread ? inputQty : 0m,

@@ -8,10 +8,12 @@ namespace Manufacture.Pages.Inventory.Requests
     public class CreateModel : PageModel
     {
         private readonly IInventoryService _inventoryService;
+        private readonly IUnitConversionService _unitConversion;
 
-        public CreateModel(IInventoryService inventoryService)
+        public CreateModel(IInventoryService inventoryService, IUnitConversionService unitConversion)
         {
             _inventoryService = inventoryService;
+            _unitConversion = unitConversion;
         }
 
         [BindProperty]
@@ -54,6 +56,40 @@ namespace Manufacture.Pages.Inventory.Requests
                 return Page();
             }
         }
+
+        public async Task<IActionResult> OnGetPreviewAsync(
+            int itemId,
+            decimal quantity,
+            string unit,
+            CancellationToken cancellationToken = default)
+        {
+            var conversion = await _inventoryService.ConvertRequestQuantityAsync(
+                itemId,
+                quantity,
+                unit,
+                cancellationToken);
+
+            return new JsonResult(new
+            {
+                success = string.IsNullOrWhiteSpace(conversion.ErrorMessage),
+                conversion.ErrorMessage,
+                conversion.ItemName,
+                conversion.BaseQuantity,
+                conversion.BaseUnit,
+                conversion.StockQuantity,
+                conversion.StockUnit,
+                conversion.AvailableStock,
+                conversion.IsEnoughStock,
+                conversion.RequestedQuantity,
+                conversion.RequestedUnit
+            });
+        }
+
+        public IReadOnlyList<string> CompatibleUnitsFor(InventoryItemDto item) =>
+            _unitConversion.GetCompatibleUnits(
+                item.PackageUnitOfMeasure,
+                item.Name,
+                item.DensityKgPerLitre);
 
         private async Task LoadItemsAsync(CancellationToken cancellationToken)
         {

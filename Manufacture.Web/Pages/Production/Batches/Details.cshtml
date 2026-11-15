@@ -459,6 +459,71 @@
 
             </div>
 
+            <!-- Defects Logged -->
+            <div class="card bg-base-100 border border-error/30 shadow-xs rounded-2xl p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <div>
+                        <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation text-error"></i> Defects Logged
+                        </h2>
+                        <p class="text-[11px] text-base-content/60 mt-0.5">
+                            Record the total defective units from this batch.
+                        </p>
+                    </div>
+                    <span class="badge @(Model.TotalBatchDefects > 0 ? "badge-error" : "badge-ghost") badge-xs font-bold font-mono">
+                        @Model.TotalBatchDefects.ToString("N0") @unitLabel
+                    </span>
+                </div>
+
+                @if (Model.BatchDefects.Any())
+                {
+                    var defect = Model.BatchDefects.First();
+                    <div class="rounded-xl bg-error/5 border border-error/20 p-3 text-xs space-y-1">
+                        <div class="flex items-center justify-between">
+                            <span class="opacity-60">Total Defected</span>
+                            <span class="font-black font-mono text-error">@Model.TotalBatchDefects.ToString("N0") @unitLabel</span>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(defect.DefectReason))
+                        {
+                            <div class="text-[11px] opacity-70">Reason: @defect.DefectReason</div>
+                        }
+                        <div class="text-[10px] opacity-50">
+                            Last logged by @defect.RecordedBy on @defect.RecordedAt.ToString("yyyy-MM-dd HH:mm")
+                        </div>
+                    </div>
+                }
+
+                <form method="post" asp-page-handler="LogDefects" class="space-y-3">
+                    <input type="hidden" asp-for="DefectInput.BatchId" />
+                    <div class="form-control w-full">
+                        <label class="label pb-1.5">
+                            <span class="label-text font-bold text-xs text-base-content">Total Defective Units (@unitLabel)</span>
+                        </label>
+                        <div class="join w-full">
+                            <input type="number" min="0" asp-for="DefectInput.Quantity"
+                                   class="input input-bordered input-sm join-item w-full font-mono font-bold bg-base-200 border-base-300 rounded-l-xl text-xs focus:bg-base-100 focus:border-error" />
+                            <span class="join-item bg-base-200 border border-base-300 border-l-0 font-mono text-[10px] font-bold px-3 flex items-center">
+                                @unitLabel
+                            </span>
+                        </div>
+                        <span class="text-[10px] opacity-60 mt-1">Enter 0 to clear the defect log for this batch.</span>
+                    </div>
+
+                    <div class="form-control w-full">
+                        <label class="label pb-1.5">
+                            <span class="label-text font-bold text-xs text-base-content">Defect Reason / Notes</span>
+                        </label>
+                        <textarea asp-for="DefectInput.Reason" rows="2" maxlength="250"
+                                  class="textarea textarea-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-error leading-relaxed"
+                                  placeholder="e.g. Oven burn, underweight, damaged during packing"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-error w-full rounded-xl font-bold py-2 text-xs shadow-xs gap-2">
+                        <i class="fa-solid fa-floppy-disk text-xs"></i> Save Defects Logged
+                    </button>
+                </form>
+            </div>
+
             <!-- Category Standard Benchmark Tip -->
             <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 text-xs space-y-2">
                 <div class="font-bold text-base-content flex items-center gap-2">
@@ -480,7 +545,6 @@
     const targetQty = @batch.TargetQuantity;
     const materialCost = @batch.TotalBatchCost;
     const unitLabel = '@unitLabel';
-    const overhead = @((recipe?.PackagingCost ?? 0m) + (recipe?.LaborAndOverheadPerUnit ?? 0m));
 
     function calculateDetailsLive() {
         const actual = parseInt(document.getElementById('actualInputQty').value) || 0;
@@ -490,7 +554,7 @@
         const liveInventoryEffectEl = document.getElementById('liveInventoryEffect');
 
         if (actual > 0) {
-            const unitCost = ((materialCost / actual) + overhead).toFixed(2);
+            const unitCost = (materialCost / actual).toFixed(2);
             liveUnitCostEl.innerText = `₦${unitCost} / ${unitLabel}`;
 
             if (targetQty > 0) {

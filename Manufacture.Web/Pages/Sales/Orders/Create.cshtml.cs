@@ -36,6 +36,12 @@ namespace Manufacture.Pages.Sales.Orders
             IsCustomer = string.Equals(UserRole, "Customer", StringComparison.OrdinalIgnoreCase);
             IsSalesRep = string.Equals(UserRole, "SalesRep", StringComparison.OrdinalIgnoreCase);
 
+            if (string.Equals(UserRole, "ProductionManager", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["ErrorMessage"] = "Production Managers cannot create POS orders.";
+                return RedirectToPage("/Sales/Orders/Index");
+            }
+
             if (IsCustomer)
             {
                 var userId = HttpContext.Session.GetInt32("UserId");
@@ -135,6 +141,12 @@ namespace Manufacture.Pages.Sales.Orders
             UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
             IsCustomer = string.Equals(UserRole, "Customer", StringComparison.OrdinalIgnoreCase);
             IsSalesRep = string.Equals(UserRole, "SalesRep", StringComparison.OrdinalIgnoreCase);
+
+            if (string.Equals(UserRole, "ProductionManager", StringComparison.OrdinalIgnoreCase))
+            {
+                TempData["ErrorMessage"] = "Production Managers cannot create POS orders.";
+                return RedirectToPage("/Sales/Orders/Index");
+            }
 
             if (IsCustomer)
             {

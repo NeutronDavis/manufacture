@@ -121,25 +121,6 @@
         </div>
     </div>
 
-    @if (Model.ActiveRole != "Customer")
-    {
-        @* <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-info/10 text-info flex items-center justify-center">
-                        <i class="fa-solid fa-clock-rotate-left"></i>
-                    </div>
-                    <div>
-                        <div class="text-[10px] uppercase font-bold opacity-60">Daily Standing Pre-Orders</div>
-                        <div class="text-xl font-black font-mono text-info">@Model.DailyStandingPreOrders.Count</div>
-                        <div class="text-[10px] opacity-60">@Model.DailyPreOrderUnits units &bull; ₦@Model.DailyPreOrderValue.ToString("N0")</div>
-                    </div>
-                </div>
-                <a asp-page="/Sales/Orders/Index" class="btn btn-xs btn-outline border-base-300 rounded-xl font-bold">Open Orders &amp; Invoices</a>
-            </div>
-        </div> *@
-    }
-
     <!-- 1. SUPER ADMIN DASHBOARD -->
     @if (Model.ActiveRole == "SuperAdmin")
     {
@@ -153,35 +134,117 @@
     <!-- 2. PRODUCTION MANAGER DASHBOARD -->
     @if (Model.ActiveRole == "ProductionManager")
     {
+        var dashboard = Model.ProductionDashboard;
         <div class="space-y-6">
-            <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
-                <div class="stat p-5">
-                    <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-layer-group"></i></div>
-                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Batches Mixed Today</div>
-                    <div class="stat-value text-2xl font-black font-mono text-primary">@Model.TodayBatches.Count</div>
-                    <div class="stat-desc opacity-70">Production runs completed</div>
+            <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4">
+                    <div class="flex items-center justify-between pb-2">
+                        <span class="text-[10px] font-bold uppercase tracking-wider opacity-60">Batches Today</span>
+                        <i class="fa-solid fa-layer-group text-primary"></i>
+                    </div>
+                    <div class="text-2xl font-black font-mono text-primary">@dashboard.TotalBatches</div>
+                    <div class="text-[10px] opacity-60 mt-1">
+                        @dashboard.CompletedBatches completed &bull; @dashboard.ActiveBatches active &bull; @dashboard.PlannedBatches planned
+                    </div>
                 </div>
 
-                <div class="stat p-5">
-                    <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-bread-slice"></i></div>
-                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Total Loaves Baked</div>
-                    <div class="stat-value text-2xl font-black font-mono text-success">@Model.TodayBatches.Sum(b => b.ActualQuantity)</div>
-                    <div class="stat-desc opacity-70">Ready for dispatch</div>
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4">
+                    <div class="flex items-center justify-between pb-2">
+                        <span class="text-[10px] font-bold uppercase tracking-wider opacity-60">Completed Today</span>
+                        <i class="fa-solid fa-circle-check text-success"></i>
+                    </div>
+                    <div class="text-2xl font-black font-mono text-success">@dashboard.CompletedBatches</div>
+                    <div class="text-[10px] opacity-60 mt-1">Runs ready for dispatch</div>
                 </div>
 
-                <div class="stat p-5">
-                    <div class="stat-figure text-warning text-2xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
-                    <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Yield Variance</div>
-                    <div class="stat-value text-2xl font-black font-mono text-warning">@Model.TodayBatches.Sum(b => b.Variance)</div>
-                    <div class="stat-desc opacity-70">Over/Under target loaf count</div>
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4">
+                    <div class="flex items-center justify-between pb-2">
+                        <span class="text-[10px] font-bold uppercase tracking-wider opacity-60">In Progress / Planned</span>
+                        <i class="fa-solid fa-blender text-info"></i>
+                    </div>
+                    <div class="text-2xl font-black font-mono text-info">@(dashboard.ActiveBatches + dashboard.PlannedBatches)</div>
+                    <div class="text-[10px] opacity-60 mt-1">Still on the production floor</div>
+                </div>
+
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4">
+                    <div class="flex items-center justify-between pb-2">
+                        <span class="text-[10px] font-bold uppercase tracking-wider opacity-60">Yield Achievement</span>
+                        <i class="fa-solid fa-chart-simple text-warning"></i>
+                    </div>
+                    <div class="text-2xl font-black font-mono text-warning">@dashboard.YieldAchievementPercent.ToString("0.0")%</div>
+                    <div class="text-[10px] opacity-60 mt-1">Actual vs planned units</div>
+                </div>
+
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4">
+                    <div class="flex items-center justify-between pb-2">
+                        <span class="text-[10px] font-bold uppercase tracking-wider opacity-60">Defects Logged</span>
+                        <i class="fa-solid fa-triangle-exclamation text-error"></i>
+                    </div>
+                    <div class="text-2xl font-black font-mono text-error">@dashboard.DefectQuantity</div>
+                    <div class="text-[10px] opacity-60 mt-1">Units recorded today</div>
                 </div>
             </div>
 
-            <!-- Active Production Batches Table -->
+            <!-- Output by Product Line -->
             <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
-                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3 flex-wrap gap-2">
                     <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
-                        <i class="fa-solid fa-industry text-primary"></i> Today's Oven Batch Log
+                        <i class="fa-solid fa-boxes-stacked text-primary"></i> Today's Output by Product Line
+                    </h2>
+                    <span class="badge badge-neutral badge-xs font-mono font-bold">@dashboard.OutputGroups.Count Product Lines</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table table-sm w-full text-xs">
+                        <thead>
+                            <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                                <th>Product Line</th>
+                                <th>Unit</th>
+                                <th class="text-right">Batches</th>
+                                <th class="text-right">Target</th>
+                                <th class="text-right">Actual</th>
+                                <th class="text-right">Variance</th>
+                                <th class="text-right pr-4">Yield</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-base-200">
+                            @if (dashboard.OutputGroups.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="7" class="text-center py-6 opacity-60">No production output recorded today.</td>
+                                </tr>
+                            }
+                            @foreach (var group in dashboard.OutputGroups)
+                            {
+                                <tr class="hover:bg-base-200/60 transition-colors">
+                                    <td class="py-3 pl-4">
+                                        <div class="font-bold text-base-content">@group.ProductTypeName</div>
+                                        <div class="text-[10px] opacity-60">@group.CategoryName</div>
+                                    </td>
+                                    <td><span class="badge badge-soft badge-xs font-semibold">@group.OutputUnit</span></td>
+                                    <td class="text-right font-mono">@group.BatchCount</td>
+                                    <td class="text-right font-mono">@group.TargetQuantity.ToString("N0")</td>
+                                    <td class="text-right font-mono font-black text-success">@group.ActualQuantity.ToString("N0")</td>
+                                    <td class="text-right">
+                                        <span class="badge @(group.Variance >= 0 ? "badge-success" : "badge-error") badge-xs font-bold font-mono">
+                                            @(group.Variance >= 0 ? "+" : "")@group.Variance.ToString("N0")
+                                        </span>
+                                    </td>
+                                    <td class="text-right pr-4 font-mono font-bold @(group.YieldPercent >= 100m ? "text-success" : "text-warning")">
+                                        @group.YieldPercent.ToString("0.0")%
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Today's Production Batches Table -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3 flex-wrap gap-2">
+                    <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-industry text-primary"></i> Today's Production Batch Log
                     </h2>
                     <a asp-page="/Production/Batches/Create" class="btn btn-xs btn-neutral rounded-xl font-bold">+ New Batch</a>
                 </div>
@@ -191,29 +254,69 @@
                         <thead>
                             <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
                                 <th>Batch Code</th>
-                                <th>Recipe</th>
-                                <th>Flour Bags Used</th>
-                                <th>Target Yield</th>
-                                <th>Actual Baked</th>
-                                <th>Variance</th>
-                                <th>Mixer Operator</th>
+                                <th>Product / Recipe</th>
+                                <th>Shift</th>
+                                <th class="text-right">Target Output</th>
+                                <th class="text-right">Actual Output</th>
+                                <th class="text-right">Variance</th>
+                                <th>Status</th>
+                                <th class="text-right pr-4">Action</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-base-200">
+                            @if (Model.TodayBatches.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="8" class="text-center py-6 opacity-60">No batches logged today.</td>
+                                </tr>
+                            }
                             @foreach (var batch in Model.TodayBatches)
                             {
+                                var outputUnit = string.IsNullOrWhiteSpace(batch.OutputUnitLabel) ? "units" : batch.OutputUnitLabel;
                                 <tr class="hover:bg-base-200/60 transition-colors">
-                                    <td class="font-mono font-bold text-base-content">@batch.BatchNumber</td>
-                                    <td class="font-bold text-base-content">@batch.RecipeName</td>
-                                    <td class="font-mono font-bold">@batch.FlourBagsUsed bags</td>
-                                    <td class="font-mono text-base-content">@batch.TargetQuantity loaves</td>
-                                    <td class="font-mono font-black text-success">@batch.ActualQuantity loaves</td>
-                                    <td>
-                                        <span class="badge @(batch.Variance >= 0 ? "badge-success" : "badge-error") badge-xs font-bold">
+                                    <td class="font-mono font-bold text-base-content pl-4">
+                                        <a asp-page="/Production/Batches/Details" asp-route-id="@batch.Id" class="text-primary hover:underline">
+                                            @batch.BatchNumber
+                                        </a>
+                                    </td>
+                                    <td class="py-3">
+                                        <div class="font-bold text-base-content">@batch.RecipeName</div>
+                                        <div class="flex items-center gap-1.5 mt-0.5">
+                                            <span class="badge badge-soft badge-xs font-semibold">@(string.IsNullOrWhiteSpace(batch.CategoryName) ? "Uncategorised" : batch.CategoryName)</span>
+                                            <span class="text-[10px] opacity-60 font-mono">@batch.BatchInputQuantity.ToString("0.##") @batch.BatchInputUnitLabel</span>
+                                        </div>
+                                    </td>
+                                    <td class="font-semibold opacity-80">@batch.Shift</td>
+                                    <td class="font-mono text-right">@batch.TargetQuantity.ToString("N0") <span class="text-[10px] opacity-60">@outputUnit</span></td>
+                                    <td class="font-mono font-black text-success text-right">@batch.ActualQuantity.ToString("N0") <span class="text-[10px] font-normal opacity-60">@outputUnit</span></td>
+                                    <td class="text-right">
+                                        <span class="badge @(batch.Variance >= 0 ? "badge-success" : "badge-error") badge-xs font-bold font-mono">
                                             @(batch.Variance >= 0 ? "+" : "")@batch.Variance
                                         </span>
                                     </td>
-                                    <td class="font-semibold opacity-80">@batch.BakerInCharge</td>
+                                    <td>
+                                        @switch (batch.Status)
+                                        {
+                                            case Manufacture.Models.Domain.BatchStatus.Completed:
+                                                <span class="badge badge-success badge-xs font-bold">Completed</span>
+                                                break;
+                                            case Manufacture.Models.Domain.BatchStatus.Baking:
+                                                <span class="badge badge-warning badge-xs font-bold">Baking</span>
+                                                break;
+                                            case Manufacture.Models.Domain.BatchStatus.InMixing:
+                                                <span class="badge badge-info badge-xs font-bold">Mixing</span>
+                                                break;
+                                            default:
+                                                <span class="badge badge-ghost badge-xs font-bold">@batch.Status</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td class="text-right pr-4">
+                                        <a asp-page="/Production/Batches/Details" asp-route-id="@batch.Id"
+                                           class="btn btn-xs btn-outline border-base-300 rounded-lg font-bold gap-1 hover:border-primary hover:text-primary">
+                                            <i class="fa-solid fa-eye text-[10px]"></i> Review Batch
+                                        </a>
+                                    </td>
                                 </tr>
                             }
                         </tbody>
@@ -282,7 +385,7 @@
                                     <td class="font-mono font-bold text-primary">@(firstItem?.RequestedQuantity ?? 0) @(firstItem?.Unit ?? "")</td>
                                     <td class="opacity-70">@req.Purpose</td>
                                     <td class="text-right">
-                                        <a asp-page="/Inventory/Requests/Details" asp-route-id="@req.Id" class="btn btn-xs btn-neutral rounded-lg font-bold">Review & Issue</a>
+                                        <a asp-page="/Inventory/Requests/Index" asp-route-focusId="@req.Id" asp-fragment="req-@req.Id" class="btn btn-xs btn-neutral rounded-lg font-bold">Review & Issue</a>
                                     </td>
                                 </tr>
                             }
@@ -569,14 +672,14 @@
 
             // What each KPI groups by, matching the server-side stage drill-down.
             const metricGrouping = {
-                'OrdersPlaced': 'By Sales Rep',
+                'OrdersPlaced': 'By Sales Rep & Product Category',
                 'Produced': 'By Product Category',
-                'Loaded': 'By Vehicle & Product Category',
+                'Loaded': 'By Sales Rep, Vehicle & Product Category',
                 'FactoryDefects': 'By Product Category',
                 'Sold': 'By Sales Rep & Product Category',
                 'Returned': 'By Sales Rep & Product Category',
-                'Damaged': 'By Product Category',
-                'CustomerReturns': 'By Product Category'
+                'Damaged': 'By Sales Rep & Product Category',
+                'CustomerReturns': 'By Sales Rep & Product Category'
             };
 
             // Column recipes for the stage table. `key` is a property on the
@@ -585,6 +688,7 @@
                 'OrdersPlaced': [
                     { key: 'groupLabel', label: 'Sales Rep', type: 'text' },
                     { key: 'groupSubLabel', label: 'Route / Vehicle', type: 'subtext' },
+                    { key: 'categoryLabel', label: 'Product Category', type: 'badge' },
                     { key: 'metricValue', label: 'Orders Placed', type: 'qty', highlight: true },
                     { key: 'sharePercent', label: 'Share', type: 'share' }
                 ],
@@ -594,8 +698,8 @@
                     { key: 'sharePercent', label: 'Share', type: 'share' }
                 ],
                 'Loaded': [
-                    { key: 'groupLabel', label: 'Vehicle', type: 'text' },
-                    { key: 'groupSubLabel', label: 'Vehicle Model', type: 'subtext' },
+                    { key: 'groupLabel', label: 'Sales Rep', type: 'text' },
+                    { key: 'groupSubLabel', label: 'Route / Vehicle', type: 'subtext' },
                     { key: 'categoryLabel', label: 'Product Category', type: 'badge' },
                     { key: 'metricValue', label: 'Loaded', type: 'qty', highlight: true },
                     { key: 'sharePercent', label: 'Share', type: 'share' }
@@ -619,14 +723,16 @@
                     { key: 'sharePercent', label: 'Share', type: 'share' }
                 ],
                 'Damaged': [
+                    { key: 'groupLabel', label: 'Sales Rep', type: 'text' },
                     { key: 'categoryLabel', label: 'Product Category', type: 'badge' },
                     { key: 'metricValue', label: 'Damaged', type: 'qty', highlight: true },
                     { key: 'loaded', label: 'Loaded', type: 'qty' },
                     { key: 'sharePercent', label: 'Share', type: 'share' }
                 ],
                 'CustomerReturns': [
+                    { key: 'groupLabel', label: 'Sales Rep', type: 'text' },
                     { key: 'categoryLabel', label: 'Product Category', type: 'badge' },
-                    { key: 'metricValue', label: 'Customer Returns', type: 'qty', highlight: true },
+                    { key: 'metricValue', label: 'Returns', type: 'qty', highlight: true },
                     { key: 'sharePercent', label: 'Share', type: 'share' }
                 ]
             };
@@ -650,7 +756,7 @@
                     list = list.filter(p =>
                         (p.productName && p.productName.toLowerCase().indexOf(term) !== -1) ||
                         (p.productCode && p.productCode.toLowerCase().indexOf(term) !== -1) ||
-                        (p.lineLabel && p.lineLabel.toLowerCase().indexOf(term) !== -1)
+                        (p.productionCategoryName && p.productionCategoryName.toLowerCase().indexOf(term) !== -1)
                     );
                 }
                 const sortKey = metric ? metric.charAt(0).toLowerCase() + metric.slice(1) : 'ordersPlaced';
@@ -849,11 +955,9 @@
                             const activeVal = item[stageKey] !== undefined ? item[stageKey] : item.ordersPlaced;
                             const sharePct = totalMetricUnits > 0 ? Math.round(activeVal / totalMetricUnits * 1000) / 10 : 0;
 
-                            const lineBadgeTone = item.lineLabel === 'Bread'
-                                ? 'badge-warning text-warning-content'
-                                : item.lineLabel === 'Water'
-                                ? 'badge-info text-info-content'
-                                : 'badge-primary text-primary-content';
+                            // Category name is database-driven. Do not infer colour or identity from
+                            // hardcoded Bread/Water label comparisons.
+                            const lineBadgeTone = 'badge-primary text-primary-content';
 
                             return '<tr class="hover:bg-base-200/50 transition-colors">'
                                 + '<td class="py-3">'
@@ -870,7 +974,7 @@
                                 +     '</div>'
                                 +   '</div>'
                                 + '</td>'
-                                + '<td><span class="badge badge-sm font-bold text-[10px] ' + lineBadgeTone + '">' + item.lineLabel + '</span></td>'
+                                + '<td><span class="badge badge-sm font-bold text-[10px] ' + lineBadgeTone + '">' + (item.productionCategoryName || 'Uncategorised') + '</span></td>'
                                 + '<td class="text-right font-mono font-semibold">' + money(item.unitPrice) + '</td>'
                                 + '<td class="text-right bg-primary/5">'
                                 +   '<span class="font-mono font-black text-sm text-primary">' + num(activeVal) + '</span>'
@@ -906,6 +1010,7 @@
                     repBody.innerHTML = rList.length
                         ? rList.map(r => {
                             const damaged = r.damaged > 0 ? 'text-error' : 'opacity-40';
+                            const customerReturns = r.customerReturns > 0 ? 'text-warning' : 'opacity-40';
                             const owed = r.outstandingBalance > 0 ? 'text-error' : 'text-success';
                             const hasShortfall = r.expectedRevenue > r.cashCollected;
                             const shortfallBadge = hasShortfall
@@ -927,12 +1032,13 @@
                                 + '<td class="text-right font-mono font-black text-success">' + num(r.sold) + '</td>'
                                 + '<td class="text-right font-mono font-bold text-warning">' + num(r.returned) + '</td>'
                                 + '<td class="text-right font-mono font-bold ' + damaged + '">' + num(r.damaged) + '</td>'
+                                + '<td class="text-right font-mono font-bold ' + customerReturns + '">' + num(r.customerReturns) + '</td>'
                                 + '<td class="text-right font-mono font-bold text-base-content">' + money(r.expectedRevenue) + '</td>'
                                 + '<td class="text-right font-mono font-bold text-success">' + money(r.cashCollected) + '</td>'
                                 + '<td class="text-right font-mono font-bold ' + owed + '">' + money(r.outstandingBalance) + '</td>'
                                 + '</tr>';
                         }).join('')
-                        : '<tr><td colspan="10" class="text-center py-10 opacity-50 text-xs font-medium">No sales rep activity recorded in this scope and period.</td></tr>';
+                        : '<tr><td colspan="11" class="text-center py-10 opacity-50 text-xs font-medium">No sales rep activity recorded in this scope and period.</td></tr>';
                 }
 
                 // Update Footer Summary Text

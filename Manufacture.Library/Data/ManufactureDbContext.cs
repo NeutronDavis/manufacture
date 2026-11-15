@@ -16,6 +16,10 @@ public partial class ManufactureDbContext : DbContext
 
     public virtual DbSet<CharterBooking> CharterBookings { get; set; }
 
+    public virtual DbSet<CharterQuoteLeg> CharterQuoteLegs { get; set; }
+
+    public virtual DbSet<CharterQuoteRequest> CharterQuoteRequests { get; set; }
+
     public virtual DbSet<Customer> Customers { get; set; }
 
     public virtual DbSet<CustomerReturn> CustomerReturns { get; set; }
@@ -26,15 +30,21 @@ public partial class ManufactureDbContext : DbContext
 
     public virtual DbSet<Employee> Employees { get; set; }
 
+    public virtual DbSet<FleetDispatch> FleetDispatches { get; set; }
+
+    public virtual DbSet<FleetDispatchStop> FleetDispatchStops { get; set; }
+
     public virtual DbSet<FuelLog> FuelLogs { get; set; }
 
-    public virtual DbSet<Ingredient> Ingredients { get; set; }
+    public virtual DbSet<IngredientPriceChangeRequest> IngredientPriceChangeRequests { get; set; }
 
     public virtual DbSet<InventoryItem> InventoryItems { get; set; }
 
     public virtual DbSet<JobRole> JobRoles { get; set; }
 
     public virtual DbSet<MaintenanceLog> MaintenanceLogs { get; set; }
+
+    public virtual DbSet<MeasurementDensity> MeasurementDensities { get; set; }
 
     public virtual DbSet<Order> Orders { get; set; }
 
@@ -54,7 +64,13 @@ public partial class ManufactureDbContext : DbContext
 
     public virtual DbSet<ProductionBatch> ProductionBatches { get; set; }
 
+    public virtual DbSet<ProductionCategory> ProductionCategories { get; set; }
+
     public virtual DbSet<ProductionDefect> ProductionDefects { get; set; }
+
+    public virtual DbSet<ProductionProductType> ProductionProductTypes { get; set; }
+
+    public virtual DbSet<ProductionShift> ProductionShifts { get; set; }
 
     public virtual DbSet<RbacModule> RbacModules { get; set; }
 
@@ -69,8 +85,6 @@ public partial class ManufactureDbContext : DbContext
     public virtual DbSet<RecipeIngredient> RecipeIngredients { get; set; }
 
     public virtual DbSet<Role> Roles { get; set; }
-
-    public virtual DbSet<RouteRate> RouteRates { get; set; }
 
     public virtual DbSet<RouteSheetItem> RouteSheetItems { get; set; }
 
@@ -130,6 +144,10 @@ public partial class ManufactureDbContext : DbContext
 
             entity.HasIndex(e => e.BookingRef, "UQ_CharterBookings_BookingRef").IsUnique();
 
+            entity.HasIndex(e => e.QuoteRequestId, "UX_CharterBookings_QuoteRequestId")
+                .IsUnique()
+                .HasFilter("([QuoteRequestId] IS NOT NULL)");
+
             entity.Property(e => e.BookingRef).HasMaxLength(40);
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(3)
@@ -165,10 +183,96 @@ public partial class ManufactureDbContext : DbContext
                 .HasForeignKey(d => d.DriverEmployeeId)
                 .HasConstraintName("FK_CharterBookings_Employees");
 
+            entity.HasOne(d => d.QuoteRequest).WithMany(p => p.CharterBookings)
+                .HasForeignKey(d => d.QuoteRequestId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CharterBookings_QuoteRequests");
+
             entity.HasOne(d => d.Vehicle).WithMany(p => p.CharterBookings)
                 .HasForeignKey(d => d.VehicleId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_CharterBookings_Vehicles");
+        });
+
+        modelBuilder.Entity<CharterQuoteRequest>(entity =>
+        {
+            entity.HasIndex(e => e.QuoteRef, "UQ_CharterQuoteRequests_QuoteRef").IsUnique();
+
+            entity.HasIndex(e => new { e.Status, e.RequestDate }, "IX_CharterQuoteRequests_Status_RequestDate").IsDescending(false, true);
+
+            entity.Property(e => e.CustomerName).HasMaxLength(150);
+            entity.Property(e => e.CustomerPhone)
+                .HasMaxLength(30)
+                .HasDefaultValue("", "DF_CharterQuoteRequests_CustomerPhone");
+            entity.Property(e => e.CustomerEmail).HasMaxLength(200);
+            entity.Property(e => e.RequestDate)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_CharterQuoteRequests_RequestDate");
+            entity.Property(e => e.VehicleTypeRequired).HasMaxLength(60);
+            entity.Property(e => e.TotalDistanceKm).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.QuotedAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.DriverAllowance).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.SecurityEscortFee).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TollsAndRoadLevies).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.TotalTripIncidentals)
+                .HasComputedColumnSql("(([DriverAllowance]+[SecurityEscortFee])+[TollsAndRoadLevies])", true)
+                .HasColumnType("decimal(20, 2)");
+            entity.Property(e => e.NetEstimate)
+                .HasComputedColumnSql("([QuotedAmount]-(([DriverAllowance]+[SecurityEscortFee])+[TollsAndRoadLevies]))", true)
+                .HasColumnType("decimal(21, 2)");
+            entity.Property(e => e.Notes)
+                .HasMaxLength(1000)
+                .HasDefaultValue("", "DF_CharterQuoteRequests_Notes");
+            entity.Property(e => e.RejectionReason).HasMaxLength(500);
+            entity.Property(e => e.SubmittedAt).HasPrecision(3);
+            entity.Property(e => e.ApprovedAt).HasPrecision(3);
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_CharterQuoteRequests_CreatedAt");
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_CharterQuoteRequests_UpdatedAt");
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion()
+                .IsConcurrencyToken();
+
+            entity.HasOne(d => d.ApprovedByUser).WithMany()
+                .HasForeignKey(d => d.ApprovedByUserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CharterQuoteRequests_ApprovedBy");
+
+            entity.HasOne(d => d.RequestedByUser).WithMany()
+                .HasForeignKey(d => d.RequestedByUserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CharterQuoteRequests_RequestedBy");
+
+            entity.HasOne(d => d.Vehicle).WithMany()
+                .HasForeignKey(d => d.VehicleId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_CharterQuoteRequests_Vehicles");
+        });
+
+        modelBuilder.Entity<CharterQuoteLeg>(entity =>
+        {
+            entity.HasIndex(e => new { e.CharterQuoteRequestId, e.LegNumber }, "UQ_CharterQuoteLegs_Quote_Leg").IsUnique();
+
+            entity.Property(e => e.OriginAddress).HasMaxLength(300);
+            entity.Property(e => e.OriginCityState).HasMaxLength(120);
+            entity.Property(e => e.DestinationAddress).HasMaxLength(300);
+            entity.Property(e => e.DestinationCityState).HasMaxLength(120);
+            entity.Property(e => e.DistanceKm).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.QuotedLegAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Notes).HasMaxLength(300);
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_CharterQuoteLegs_CreatedAt");
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_CharterQuoteLegs_UpdatedAt");
+
+            entity.HasOne(d => d.CharterQuoteRequest).WithMany(p => p.CharterQuoteLegs)
+                .HasForeignKey(d => d.CharterQuoteRequestId)
+                .HasConstraintName("FK_CharterQuoteLegs_CharterQuoteRequests");
         });
 
         modelBuilder.Entity<Customer>(entity =>
@@ -406,9 +510,82 @@ public partial class ManufactureDbContext : DbContext
                 .HasConstraintName("FK_Employees_JobRoles");
         });
 
+        modelBuilder.Entity<FleetDispatch>(entity =>
+        {
+            entity.HasIndex(e => new { e.DispatchDate, e.Status }, "IX_FleetDispatches_Date_Status").IsDescending(true, false);
+
+            entity.HasIndex(e => new { e.VehicleId, e.DispatchDate }, "IX_FleetDispatches_Vehicle_Date").IsDescending(false, true);
+
+            entity.HasIndex(e => e.DispatchRef, "UQ_FleetDispatches_Ref").IsUnique();
+
+            entity.Property(e => e.DispatchRef).HasMaxLength(40);
+            entity.Property(e => e.DriverName)
+                .HasMaxLength(150)
+                .HasDefaultValue("", "DF_FleetDispatches_DriverName");
+            entity.Property(e => e.Purpose).HasDefaultValue(0, "DF_FleetDispatches_Purpose");
+            entity.Property(e => e.Status).HasDefaultValue(0, "DF_FleetDispatches_Status");
+            entity.Property(e => e.OdometerStart).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.OdometerEnd).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.Notes)
+                .HasMaxLength(1000)
+                .HasDefaultValue("", "DF_FleetDispatches_Notes");
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_FleetDispatches_CreatedAt");
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_FleetDispatches_UpdatedAt");
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion()
+                .IsConcurrencyToken();
+
+            entity.HasOne(d => d.CreatedByUser).WithMany()
+                .HasForeignKey(d => d.CreatedByUserId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_FleetDispatches_Users");
+
+            entity.HasOne(d => d.DriverEmployee).WithMany()
+                .HasForeignKey(d => d.DriverEmployeeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_FleetDispatches_Employees");
+
+            entity.HasOne(d => d.Vehicle).WithMany(p => p.FleetDispatches)
+                .HasForeignKey(d => d.VehicleId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_FleetDispatches_Vehicles");
+        });
+
+        modelBuilder.Entity<FleetDispatchStop>(entity =>
+        {
+            entity.HasIndex(e => new { e.FleetDispatchId, e.StopNumber }, "UQ_FleetDispatchStops_Dispatch_Stop").IsUnique();
+
+            entity.Property(e => e.DeliveryPointName).HasMaxLength(150);
+            entity.Property(e => e.Address).HasMaxLength(300);
+            entity.Property(e => e.CityState).HasMaxLength(120);
+            entity.Property(e => e.ContactName).HasMaxLength(150);
+            entity.Property(e => e.ContactPhone).HasMaxLength(30);
+            entity.Property(e => e.Status).HasDefaultValue(0, "DF_FleetDispatchStops_Status");
+            entity.Property(e => e.DeliveredAt).HasPrecision(3);
+            entity.Property(e => e.Notes).HasMaxLength(500);
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_FleetDispatchStops_CreatedAt");
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_FleetDispatchStops_UpdatedAt");
+
+            entity.HasOne(d => d.FleetDispatch).WithMany(p => p.FleetDispatchStops)
+                .HasForeignKey(d => d.FleetDispatchId)
+                .HasConstraintName("FK_FleetDispatchStops_FleetDispatches");
+        });
+
         modelBuilder.Entity<FuelLog>(entity =>
         {
             entity.HasIndex(e => e.EmployeeId, "IX_FuelLogs_EmployeeId").HasFilter("([EmployeeId] IS NOT NULL)");
+
+            entity.HasIndex(e => e.CharterBookingId, "IX_FuelLogs_CharterBookingId").HasFilter("([CharterBookingId] IS NOT NULL)");
+
+            entity.HasIndex(e => e.FleetDispatchId, "IX_FuelLogs_FleetDispatchId").HasFilter("([FleetDispatchId] IS NOT NULL)");
 
             entity.HasIndex(e => e.FuelDate, "IX_FuelLogs_FuelDate").IsDescending();
 
@@ -435,9 +612,19 @@ public partial class ManufactureDbContext : DbContext
                 .HasComputedColumnSql("([LitresDispensed]*[PricePerLitre])", true)
                 .HasColumnType("decimal(37, 4)");
 
+            entity.HasOne(d => d.CharterBooking).WithMany(p => p.FuelLogs)
+                .HasForeignKey(d => d.CharterBookingId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_FuelLogs_CharterBookings");
+
             entity.HasOne(d => d.Employee).WithMany(p => p.FuelLogs)
                 .HasForeignKey(d => d.EmployeeId)
                 .HasConstraintName("FK_FuelLogs_Employees");
+
+            entity.HasOne(d => d.FleetDispatch).WithMany(p => p.FuelLogs)
+                .HasForeignKey(d => d.FleetDispatchId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_FuelLogs_FleetDispatches");
 
             entity.HasOne(d => d.Vehicle).WithMany(p => p.FuelLogs)
                 .HasForeignKey(d => d.VehicleId)
@@ -445,40 +632,23 @@ public partial class ManufactureDbContext : DbContext
                 .HasConstraintName("FK_FuelLogs_Vehicles");
         });
 
-        modelBuilder.Entity<Ingredient>(entity =>
+        modelBuilder.Entity<MeasurementDensity>(entity =>
         {
-            entity.HasIndex(e => new { e.Category, e.IsActive }, "IX_Ingredients_Category_IsActive");
+            entity.HasIndex(e => e.MaterialName, "UQ_MeasurementDensities_MaterialName").IsUnique();
+            entity.HasIndex(e => e.IsActive, "IX_MeasurementDensities_IsActive");
 
-            entity.HasIndex(e => e.SupplierId, "IX_Ingredients_SupplierId").HasFilter("([SupplierId] IS NOT NULL)");
-
-            entity.HasIndex(e => e.ItemCode, "UX_Ingredients_ItemCode")
-                .IsUnique()
-                .HasFilter("([ItemCode] IS NOT NULL)");
-
-            entity.Property(e => e.Category)
-                .HasMaxLength(60)
-                .HasDefaultValue("Raw Materials", "DF_Ingredients_Category");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(3)
-                .HasDefaultValueSql("(sysutcdatetime())", "DF_Ingredients_CreatedAt");
-            entity.Property(e => e.CurrentStock).HasColumnType("decimal(18, 3)");
-            entity.Property(e => e.IsActive).HasDefaultValue(true, "DF_Ingredients_IsActive");
-            entity.Property(e => e.ItemCode).HasMaxLength(40);
-            entity.Property(e => e.Name).HasMaxLength(150);
-            entity.Property(e => e.PackageCostPrice).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.PackageStockOnHand).HasColumnType("decimal(18, 3)");
-            entity.Property(e => e.PackageUnit).HasMaxLength(40);
-            entity.Property(e => e.Unit)
-                .HasMaxLength(40)
-                .HasDefaultValue("kg", "DF_Ingredients_Unit");
-            entity.Property(e => e.UnitCost).HasColumnType("decimal(18, 4)");
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_MeasurementDensities_CreatedAt");
+            entity.Property(e => e.DensityKgPerLitre).HasColumnType("decimal(18, 4)");
+            entity.Property(e => e.IsActive).HasDefaultValue(true, "DF_MeasurementDensities_IsActive");
+            entity.Property(e => e.MaterialName).HasMaxLength(150);
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion()
+                .IsConcurrencyToken();
             entity.Property(e => e.UpdatedAt)
                 .HasPrecision(3)
-                .HasDefaultValueSql("(sysutcdatetime())", "DF_Ingredients_UpdatedAt");
-
-            entity.HasOne(d => d.Supplier).WithMany(p => p.Ingredients)
-                .HasForeignKey(d => d.SupplierId)
-                .HasConstraintName("FK_Ingredients_Suppliers");
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_MeasurementDensities_UpdatedAt");
         });
 
         modelBuilder.Entity<InventoryItem>(entity =>
@@ -486,6 +656,8 @@ public partial class ManufactureDbContext : DbContext
             entity.HasIndex(e => new { e.Category, e.IsActive }, "IX_InventoryItems_Category_IsActive");
 
             entity.HasIndex(e => e.PreferredSupplierId, "IX_InventoryItems_PreferredSupplierId").HasFilter("([PreferredSupplierId] IS NOT NULL)");
+
+            entity.HasIndex(e => e.MeasurementDensityId, "IX_InventoryItems_MeasurementDensityId").HasFilter("([MeasurementDensityId] IS NOT NULL)");
 
             entity.HasIndex(e => e.ItemCode, "UQ_InventoryItems_ItemCode").IsUnique();
 
@@ -499,6 +671,13 @@ public partial class ManufactureDbContext : DbContext
             entity.Property(e => e.ItemCode).HasMaxLength(40);
             entity.Property(e => e.LastRestockedDate).HasDefaultValueSql("(CONVERT([date],sysutcdatetime()))", "DF_InventoryItems_LastRestockedDate");
             entity.Property(e => e.Name).HasMaxLength(150);
+            entity.Property(e => e.PackageSize)
+                .HasDefaultValue(1m, "DF_InventoryItems_PackageSize")
+                .HasColumnType("decimal(18, 3)");
+            entity.Property(e => e.PackageUnitOfMeasure)
+                .HasMaxLength(20)
+                .HasDefaultValue("kg", "DF_InventoryItems_PackageUnitOfMeasure");
+            entity.Property(e => e.DensityKgPerLitre).HasColumnType("decimal(18, 4)");
             entity.Property(e => e.QuantityInStock).HasColumnType("decimal(18, 3)");
             entity.Property(e => e.ReorderThreshold).HasColumnType("decimal(18, 3)");
             entity.Property(e => e.Unit)
@@ -512,6 +691,65 @@ public partial class ManufactureDbContext : DbContext
             entity.HasOne(d => d.PreferredSupplier).WithMany(p => p.InventoryItems)
                 .HasForeignKey(d => d.PreferredSupplierId)
                 .HasConstraintName("FK_InventoryItems_Suppliers");
+
+            entity.HasOne(d => d.MeasurementDensity).WithMany(p => p.InventoryItems)
+                .HasForeignKey(d => d.MeasurementDensityId)
+                .HasConstraintName("FK_InventoryItems_MeasurementDensities");
+        });
+
+        modelBuilder.Entity<IngredientPriceChangeRequest>(entity =>
+        {
+            entity.HasIndex(e => e.RequestNumber, "UQ_IngredientPriceChangeRequests_RequestNumber").IsUnique();
+
+            entity.HasIndex(e => new { e.Status, e.RequestedAt }, "IX_IngredientPriceChangeRequests_Status_RequestedAt").IsDescending(false, true);
+
+            entity.HasIndex(e => e.InventoryItemId, "IX_IngredientPriceChangeRequests_InventoryItemId");
+
+            entity.HasIndex(e => e.InventoryItemId, "UX_IngredientPriceChangeRequests_OpenItem")
+                .IsUnique()
+                .HasFilter("([Status] = 0)");
+
+            entity.Property(e => e.AppliedAt).HasPrecision(3);
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_IngredientPriceChangeRequests_CreatedAt");
+            entity.Property(e => e.InventoryItemName).HasMaxLength(150);
+            entity.Property(e => e.PreviousUnitCost).HasColumnType("decimal(18, 4)");
+            entity.Property(e => e.RequestedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_IngredientPriceChangeRequests_RequestedAt");
+            entity.Property(e => e.RequestedByName)
+                .HasMaxLength(150)
+                .HasDefaultValue("", "DF_IngredientPriceChangeRequests_RequestedByName");
+            entity.Property(e => e.RequestedUnitCost).HasColumnType("decimal(18, 4)");
+            entity.Property(e => e.RequestNumber).HasMaxLength(40);
+            entity.Property(e => e.ReviewNotes)
+                .HasMaxLength(500)
+                .HasDefaultValue("", "DF_IngredientPriceChangeRequests_ReviewNotes");
+            entity.Property(e => e.ReviewedAt).HasPrecision(3);
+            entity.Property(e => e.ReviewedByName).HasMaxLength(150);
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion()
+                .IsConcurrencyToken();
+            entity.Property(e => e.Status).HasDefaultValue(0, "DF_IngredientPriceChangeRequests_Status");
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_IngredientPriceChangeRequests_UpdatedAt");
+
+            entity.HasOne(d => d.InventoryItem).WithMany()
+                .HasForeignKey(d => d.InventoryItemId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_IngredientPriceChangeRequests_InventoryItems");
+
+            entity.HasOne(d => d.RequestedByUser).WithMany()
+                .HasForeignKey(d => d.RequestedByUserId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_IngredientPriceChangeRequests_RequestedByUsers");
+
+            entity.HasOne(d => d.ReviewedByUser).WithMany()
+                .HasForeignKey(d => d.ReviewedByUserId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_IngredientPriceChangeRequests_ReviewedByUsers");
         });
 
         modelBuilder.Entity<JobRole>(entity =>
@@ -879,6 +1117,70 @@ public partial class ManufactureDbContext : DbContext
                 .HasConstraintName("FK_PosTerminals_Users");
         });
 
+        modelBuilder.Entity<ProductionCategory>(entity =>
+        {
+            entity.HasIndex(e => e.Name, "UQ_ProductionCategories_Name").IsUnique();
+            entity.HasIndex(e => e.IsActive, "IX_ProductionCategories_IsActive");
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_ProductionCategories_CreatedAt");
+            entity.Property(e => e.Description)
+                .HasMaxLength(300)
+                .HasDefaultValue("", "DF_ProductionCategories_Description");
+            entity.Property(e => e.IsActive).HasDefaultValue(true, "DF_ProductionCategories_IsActive");
+            entity.Property(e => e.Name).HasMaxLength(80);
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion()
+                .IsConcurrencyToken();
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_ProductionCategories_UpdatedAt");
+        });
+
+        modelBuilder.Entity<ProductionProductType>(entity =>
+        {
+            entity.HasIndex(e => new { e.ProductionCategoryId, e.IsActive }, "IX_ProductionProductTypes_Category_IsActive");
+            entity.HasIndex(e => new { e.ProductionCategoryId, e.Name }, "UQ_ProductionProductTypes_Category_Name").IsUnique();
+
+            entity.Property(e => e.Baseline).HasMaxLength(150);
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_ProductionProductTypes_CreatedAt");
+            entity.Property(e => e.IsActive).HasDefaultValue(true, "DF_ProductionProductTypes_IsActive");
+            entity.Property(e => e.Name).HasMaxLength(120);
+            entity.Property(e => e.OutputUnitNoun).HasMaxLength(40);
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion()
+                .IsConcurrencyToken();
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_ProductionProductTypes_UpdatedAt");
+
+            entity.HasOne(d => d.ProductionCategory).WithMany(p => p.ProductTypes)
+                .HasForeignKey(d => d.ProductionCategoryId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ProductionProductTypes_ProductionCategories");
+        });
+
+        modelBuilder.Entity<ProductionShift>(entity =>
+        {
+            entity.HasIndex(e => e.Name, "UQ_ProductionShifts_Name").IsUnique();
+            entity.HasIndex(e => e.IsActive, "IX_ProductionShifts_IsActive");
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_ProductionShifts_CreatedAt");
+            entity.Property(e => e.IsActive).HasDefaultValue(true, "DF_ProductionShifts_IsActive");
+            entity.Property(e => e.Name).HasMaxLength(80);
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion()
+                .IsConcurrencyToken();
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_ProductionShifts_UpdatedAt");
+        });
+
         modelBuilder.Entity<ProductionBatch>(entity =>
         {
             entity.HasIndex(e => e.LinkedOrderId, "IX_ProductionBatches_LinkedOrderId").HasFilter("([LinkedOrderId] IS NOT NULL)");
@@ -886,6 +1188,9 @@ public partial class ManufactureDbContext : DbContext
             entity.HasIndex(e => e.ProductionDate, "IX_ProductionBatches_ProductionDate").IsDescending();
 
             entity.HasIndex(e => new { e.RecipeId, e.Status }, "IX_ProductionBatches_RecipeId_Status");
+
+            entity.HasIndex(e => e.ProductionProductTypeId, "IX_ProductionBatches_ProductionProductTypeId")
+                .HasFilter("([ProductionProductTypeId] IS NOT NULL)");
 
             entity.HasIndex(e => e.BatchNumber, "UQ_ProductionBatches_BatchNumber").IsUnique();
 
@@ -940,6 +1245,11 @@ public partial class ManufactureDbContext : DbContext
                 .HasForeignKey(d => d.RecipeId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ProductionBatches_Recipes");
+
+            entity.HasOne(d => d.ProductionProductType).WithMany(p => p.ProductionBatches)
+                .HasForeignKey(d => d.ProductionProductTypeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_ProductionBatches_ProductionProductTypes");
         });
 
         modelBuilder.Entity<ProductionDefect>(entity =>
@@ -1056,7 +1366,7 @@ public partial class ManufactureDbContext : DbContext
 
         modelBuilder.Entity<Recipe>(entity =>
         {
-            entity.HasIndex(e => new { e.ProductType, e.IsActive }, "IX_Recipes_ProductType_IsActive");
+            entity.HasIndex(e => new { e.ProductionProductTypeId, e.IsActive }, "IX_Recipes_ProductType_IsActive");
 
             entity.HasIndex(e => e.Code, "UQ_Recipes_Code").IsUnique();
 
@@ -1069,12 +1379,10 @@ public partial class ManufactureDbContext : DbContext
                 .HasDefaultValue("", "DF_Recipes_Description");
             entity.Property(e => e.ExpectedYield).HasColumnType("decimal(18, 3)");
             entity.Property(e => e.IsActive).HasDefaultValue(true, "DF_Recipes_IsActive");
-            entity.Property(e => e.LaborAndOverheadPerUnit).HasColumnType("decimal(18, 4)");
             entity.Property(e => e.Name).HasMaxLength(150);
             entity.Property(e => e.OutputUnit)
                 .HasMaxLength(40)
                 .HasDefaultValue("loaves", "DF_Recipes_OutputUnit");
-            entity.Property(e => e.PackagingCost).HasColumnType("decimal(18, 4)");
             entity.Property(e => e.RowVersion)
                 .IsRowVersion()
                 .IsConcurrencyToken();
@@ -1082,13 +1390,18 @@ public partial class ManufactureDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())", "DF_Recipes_UpdatedAt");
+
+            entity.HasOne(d => d.ProductionProductType).WithMany(p => p.Recipes)
+                .HasForeignKey(d => d.ProductionProductTypeId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Recipes_ProductionProductTypes");
         });
 
         modelBuilder.Entity<RecipeIngredient>(entity =>
         {
-            entity.HasIndex(e => e.IngredientId, "IX_RecipeIngredients_IngredientId");
+            entity.HasIndex(e => e.InventoryItemId, "IX_RecipeIngredients_IngredientId");
 
-            entity.HasIndex(e => new { e.RecipeId, e.IngredientId }, "UQ_RecipeIngredients_Recipe_Ingredient").IsUnique();
+            entity.HasIndex(e => new { e.RecipeId, e.InventoryItemId }, "UQ_RecipeIngredients_Recipe_Ingredient").IsUnique();
 
             entity.Property(e => e.BaselineYield)
                 .HasDefaultValue(1m, "DF_RecipeIngredients_BaselineYield")
@@ -1110,10 +1423,10 @@ public partial class ManufactureDbContext : DbContext
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())", "DF_RecipeIngredients_UpdatedAt");
 
-            entity.HasOne(d => d.Ingredient).WithMany(p => p.RecipeIngredients)
-                .HasForeignKey(d => d.IngredientId)
+            entity.HasOne(d => d.InventoryItem).WithMany(p => p.RecipeIngredients)
+                .HasForeignKey(d => d.InventoryItemId)
                 .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("FK_RecipeIngredients_Ingredients");
+                .HasConstraintName("FK_RecipeIngredients_InventoryItems");
 
             entity.HasOne(d => d.Recipe).WithMany(p => p.RecipeIngredients)
                 .HasForeignKey(d => d.RecipeId)
@@ -1136,26 +1449,6 @@ public partial class ManufactureDbContext : DbContext
             entity.Property(e => e.UpdatedAt)
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())", "DF_Roles_UpdatedAt");
-        });
-
-        modelBuilder.Entity<RouteRate>(entity =>
-        {
-            entity.HasIndex(e => e.IsActive, "IX_RouteRates_IsActive");
-
-            entity.HasIndex(e => new { e.OriginState, e.DestinationState, e.VehicleTypeRequired }, "UQ_RouteRates_Route_VehicleType").IsUnique();
-
-            entity.Property(e => e.CreatedAt)
-                .HasPrecision(3)
-                .HasDefaultValueSql("(sysutcdatetime())", "DF_RouteRates_CreatedAt");
-            entity.Property(e => e.DestinationState).HasMaxLength(120);
-            entity.Property(e => e.IsActive).HasDefaultValue(true, "DF_RouteRates_IsActive");
-            entity.Property(e => e.OriginState).HasMaxLength(80);
-            entity.Property(e => e.RateWithFuel).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.RateWithoutFuel).HasColumnType("decimal(18, 2)");
-            entity.Property(e => e.UpdatedAt)
-                .HasPrecision(3)
-                .HasDefaultValueSql("(sysutcdatetime())", "DF_RouteRates_UpdatedAt");
-            entity.Property(e => e.VehicleTypeRequired).HasMaxLength(60);
         });
 
         modelBuilder.Entity<RouteSheetItem>(entity =>
@@ -1297,6 +1590,8 @@ public partial class ManufactureDbContext : DbContext
 
             entity.HasIndex(e => e.StoreRequestId, "IX_StockMovements_StoreRequestId").HasFilter("([StoreRequestId] IS NOT NULL)");
 
+            entity.HasIndex(e => e.StoreRequestItemId, "IX_StockMovements_StoreRequestItemId").HasFilter("([StoreRequestItemId] IS NOT NULL)");
+
             entity.Property(e => e.BalanceAfter).HasColumnType("decimal(18, 3)");
             entity.Property(e => e.CreatedAt)
                 .HasPrecision(3)
@@ -1317,6 +1612,10 @@ public partial class ManufactureDbContext : DbContext
             entity.HasOne(d => d.StoreRequest).WithMany(p => p.StockMovements)
                 .HasForeignKey(d => d.StoreRequestId)
                 .HasConstraintName("FK_StockMovements_StoreRequests");
+
+            entity.HasOne(d => d.StoreRequestItem).WithMany()
+                .HasForeignKey(d => d.StoreRequestItemId)
+                .HasConstraintName("FK_StockMovements_StoreRequestItems");
         });
 
         modelBuilder.Entity<StoreRequest>(entity =>
@@ -1357,6 +1656,10 @@ public partial class ManufactureDbContext : DbContext
             entity.Property(e => e.IssuedQuantity).HasColumnType("decimal(18, 3)");
             entity.Property(e => e.ItemName).HasMaxLength(150);
             entity.Property(e => e.RequestedQuantity).HasColumnType("decimal(18, 3)");
+            entity.Property(e => e.BaseQuantity).HasColumnType("decimal(18, 3)");
+            entity.Property(e => e.BaseUnit).HasMaxLength(40);
+            entity.Property(e => e.StockQuantity).HasColumnType("decimal(18, 6)");
+            entity.Property(e => e.StockUnit).HasMaxLength(40);
             entity.Property(e => e.Unit).HasMaxLength(40);
             entity.Property(e => e.UpdatedAt)
                 .HasPrecision(3)
@@ -1495,8 +1798,11 @@ public partial class ManufactureDbContext : DbContext
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())", "DF_TripLegs_CreatedAt");
             entity.Property(e => e.DestinationState).HasMaxLength(120);
+            entity.Property(e => e.DestinationAddress).HasMaxLength(300);
+            entity.Property(e => e.DistanceKm).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.LegCost).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.OriginState).HasMaxLength(80);
+            entity.Property(e => e.OriginAddress).HasMaxLength(300);
 
             entity.HasOne(d => d.CharterBooking).WithMany(p => p.TripLegs)
                 .HasForeignKey(d => d.CharterBookingId)

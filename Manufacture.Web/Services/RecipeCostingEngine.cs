@@ -1,3 +1,4 @@
+using Manufacture.Library.Interfaces;
 using Manufacture.Models.DTOs;
 using Manufacture.Models.Domain;
 
@@ -18,11 +19,25 @@ namespace Manufacture.Services
     /// </summary>
     public class RecipeCostingEngine
     {
-        private readonly MockProductionService _productionService;
+        private readonly IProductionService? _productionService;
+        private readonly MockProductionService? _mockProductionService;
 
-        public RecipeCostingEngine(MockProductionService productionService)
+        private IProductionService Production =>
+            _productionService ?? throw new InvalidOperationException(
+                "The costing engine was created for the legacy in-memory service and cannot access database-backed costing.");
+
+        public RecipeCostingEngine(IProductionService productionService)
         {
             _productionService = productionService;
+        }
+
+        /// <summary>
+        /// Compatibility constructor for the legacy in-memory production service.
+        /// Used by mock analytics and the legacy production test suite.
+        /// </summary>
+        public RecipeCostingEngine(MockProductionService productionService)
+        {
+            _mockProductionService = productionService;
         }
 
         // =============================================================
@@ -37,6 +52,7 @@ namespace Manufacture.Services
         public decimal ResolveUnitCost(RecipeIngredient line)
         {
             if (line == null) return 0m;
+            if (_productionService == null) return line.IngredientUnitCost;
             var ingredient = _productionService.GetIngredientById(line.IngredientId);
             return ingredient?.UnitCost ?? line.IngredientUnitCost;
         }
@@ -50,50 +66,46 @@ namespace Manufacture.Services
         {
             if (newUnitCost < 0) return false;
 
-            var ingredient = _productionService.GetIngredientById(ingredientId);
-            if (ingredient == null) return false;
+            if (_mockProductionService != null)
+            {
+                var ingredient = _mockProductionService.GetIngredientById(ingredientId);
+                if (ingredient == null) return false;
+                ingredient.UnitCost = newUnitCost;
+                ingredient.UpdatedAt = DateTime.UtcNow;
+                _mockProductionService.GetAllRecipes(includeInactive: true);
+                return true;
+            }
 
-            ingredient.UnitCost = newUnitCost;
-            ingredient.UpdatedAt = DateTime.UtcNow;
-            SyncPriceSnapshot(ingredient);
-            return true;
+            return Production.UpdateIngredientPrice(ingredientId, newUnitCost);
         }
 
         /// <summary>Applies a batch of price edits. Returns the number applied.</summary>
         public int ApplyPriceUpdates(IEnumerable<UpdateIngredientPriceDto> updates)
         {
-            if (updates == null) return 0;
-            var applied = 0;
-            foreach (var u in updates)
+            if (_mockProductionService != null)
             {
-                if (UpdateIngredientPrice(u.IngredientId, u.NewUnitCost)) applied++;
-            }
-            return applied;
-        }
-
-        /// <summary>Pushes an ingredient's live price onto every recipe line using it.</summary>
-        public void SyncPriceSnapshot(Ingredient ingredient)
-        {
-            if (ingredient == null) return;
-            foreach (var recipe in _productionService.GetAllRecipes(includeInactive: true))
-            {
-                foreach (var line in recipe.Ingredients.Where(l => l.IngredientId == ingredient.Id))
+                if (updates == null) return 0;
+                var applied = 0;
+                foreach (var update in updates)
                 {
-                    line.IngredientUnitCost = ingredient.UnitCost;
+                    if (UpdateIngredientPrice(update.IngredientId, update.NewUnitCost)) applied++;
                 }
+                return applied;
             }
+
+            return Production.ApplyPriceUpdates(updates);
         }
 
         /// <summary>Refreshes every recipe line's stored price snapshot from the master.</summary>
         public int SyncAllPriceSnapshots()
         {
-            var touched = 0;
-            foreach (var ingredient in _productionService.GetAllIngredients())
+            if (_mockProductionService != null)
             {
-                SyncPriceSnapshot(ingredient);
-                touched++;
+                var recipes = _mockProductionService.GetAllRecipes(includeInactive: true);
+                return recipes.Sum(r => r.Ingredients.Count);
             }
-            return touched;
+
+            return Production.SyncAllPriceSnapshots();
         }
 
         // =============================================================
@@ -120,7 +132,11 @@ namespace Manufacture.Services
         /// <summary>Costs every active recipe at its expected yield.</summary>
         public List<RecipeCostingResultDto> CostAll(bool includeInactive = false)
         {
-            return _productionService.GetAllRecipes(includeInactive)
+            var recipes = _mockProductionService != null
+                ? _mockProductionService.GetAllRecipes(includeInactive)
+                : Production.GetAllRecipes(includeInactive);
+
+            return recipes
                 .Select(Cost)
                 .ToList();
         }
@@ -159,17 +175,17 @@ namespace Manufacture.Services
                 RecipeId = recipe.Id,
                 RecipeName = recipe.Name,
                 RecipeCode = recipe.Code,
-                ProductType = recipe.ProductType.ToString(),
-                BaselineUnit = recipe.BaselineUnit.ToString(),
-                BaselineUnitName = RecipeCatalog.BaselineDisplayName(recipe.BaselineUnit),
+                ProductionCategoryId = recipe.ProductionCategoryId,
+                CategoryName = recipe.CategoryName,
+                ProductType = string.IsNullOrWhiteSpace(recipe.ProductTypeName) ? recipe.ProductType.ToString() : recipe.ProductTypeName,
+                BaselineUnit = string.IsNullOrWhiteSpace(recipe.Baseline) ? recipe.BaselineUnit.ToString() : recipe.Baseline,
+                BaselineUnitName = string.IsNullOrWhiteSpace(recipe.Baseline) ? RecipeCatalog.BaselineDisplayName(recipe.BaselineUnit) : recipe.Baseline,
                 OutputUnit = string.IsNullOrWhiteSpace(recipe.OutputUnit)
                     ? RecipeCatalog.OutputUnitFor(recipe.BaselineUnit)
                     : recipe.OutputUnit,
                 ExpectedYield = recipe.ExpectedYield,
                 EffectiveYield = effectiveYield,
                 UsesActualYield = usesActualYield,
-                PackagingCost = recipe.PackagingCost,
-                LaborAndOverheadPerUnit = recipe.LaborAndOverheadPerUnit,
                 SellingPrice = recipe.SellingPrice
             };
 
@@ -243,16 +259,21 @@ namespace Manufacture.Services
         /// </summary>
         public DailyProductionPreviewDto PreviewDailyProduction(int recipeId, decimal actualYield, decimal batchInputQuantity = 1m)
         {
-            var recipe = _productionService.GetRecipeById(recipeId);
+            var recipe = _mockProductionService != null
+                ? _mockProductionService.GetRecipeById(recipeId)
+                : Production.GetRecipeById(recipeId);
             if (recipe == null || !recipe.IsActive)
                 return new DailyProductionPreviewDto { IsValid = false };
 
             if (batchInputQuantity <= 0) batchInputQuantity = 1m;
 
-            var labels = _productionService.GetCategoryLabels(recipe.ProductType);
-            var totalBatchMaterialCost = _productionService.CalculateBatchMaterialCost(recipeId, batchInputQuantity);
+            var labels = _mockProductionService != null
+                ? _mockProductionService.GetCategoryLabels(recipe.ProductType)
+                : Production.GetCategoryLabels(recipe.ProductType);
+            var totalBatchMaterialCost = _mockProductionService != null
+                ? _mockProductionService.CalculateBatchMaterialCost(recipeId, batchInputQuantity)
+                : Production.CalculateBatchMaterialCost(recipeId, batchInputQuantity);
             var plannedYield = recipe.ExpectedYield * batchInputQuantity;
-
             var overhead = recipe.PackagingCost + recipe.LaborAndOverheadPerUnit;
 
             var unitCostActual = actualYield > 0
@@ -272,10 +293,10 @@ namespace Manufacture.Services
             {
                 IsValid = actualYield > 0,
                 RecipeName = recipe.Name,
-                BaselineUnitName = RecipeCatalog.BaselineDisplayName(recipe.BaselineUnit),
+                BaselineUnitName = string.IsNullOrWhiteSpace(recipe.Baseline) ? RecipeCatalog.BaselineDisplayName(recipe.BaselineUnit) : recipe.Baseline,
                 OutputUnit = string.IsNullOrWhiteSpace(recipe.OutputUnit) ? labels.DefaultOutputUnit : recipe.OutputUnit,
                 BatchInputQuantity = batchInputQuantity,
-                BatchInputUnitLabel = labels.InputLabel,
+                BatchInputUnitLabel = string.IsNullOrWhiteSpace(recipe.Baseline) ? labels.InputLabel : recipe.Baseline,
                 ExpectedYield = plannedYield,
                 ActualYield = actualYield,
                 TotalBatchCost = totalBatchMaterialCost,
@@ -296,9 +317,14 @@ namespace Manufacture.Services
         public List<IngredientPriceDto> GetPriceMaster()
         {
             var cutoff = DateTime.UtcNow.AddDays(-RecipeCatalog.StalePriceAfterDays);
-            var recipes = _productionService.GetAllRecipes(includeInactive: true);
+            var recipes = _mockProductionService != null
+                ? _mockProductionService.GetAllRecipes(includeInactive: true)
+                : Production.GetAllRecipes(includeInactive: true);
+            var ingredients = _mockProductionService != null
+                ? _mockProductionService.GetAllIngredients()
+                : Production.GetAllIngredients();
 
-            return _productionService.GetAllIngredients()
+            return ingredients
                 .OrderBy(i => i.Category)
                 .ThenBy(i => i.Name)
                 .Select(i =>

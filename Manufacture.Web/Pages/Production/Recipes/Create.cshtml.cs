@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Manufacture.Library.Interfaces;
 using Manufacture.Models.DTOs;
 using Manufacture.Models.Domain;
 using Manufacture.Services;
@@ -7,16 +8,15 @@ using Manufacture.Services;
 namespace Manufacture.Pages.Production.Recipes
 {
     /// <summary>
-    /// Recipe Builder (doc/recipe-costing.md UI #1): define a product's ingredient
-    /// quantities against a single baseline production unit, and see the
-    /// per-unit cost breakdown derived from the expected batch yield.
+    /// Recipe Builder: define a product's ingredient quantities against a
+    /// configurable baseline production unit and see the per-unit material cost.
     /// </summary>
     public class CreateModel : PageModel
     {
-        private readonly MockProductionService _productionService;
+        private readonly IProductionService _productionService;
         private readonly RecipeCostingEngine _engine;
 
-        public CreateModel(MockProductionService productionService, RecipeCostingEngine engine)
+        public CreateModel(IProductionService productionService, RecipeCostingEngine engine)
         {
             _productionService = productionService;
             _engine = engine;
@@ -27,8 +27,7 @@ namespace Manufacture.Pages.Production.Recipes
 
         public List<Ingredient> AvailableIngredients { get; set; } = new();
         public List<Recipe> ExistingRecipes { get; set; } = new();
-        public IReadOnlyList<BaselineOptionDto> Baselines { get; set; } = RecipeCatalog.Baselines;
-        public IReadOnlyList<ProductType> ProductTypes { get; set; } = RecipeCatalog.ProductTypes;
+        public List<ProductionProductType> ProductTypes { get; set; } = new();
 
         public void OnGet()
         {
@@ -49,7 +48,6 @@ namespace Manufacture.Pages.Production.Recipes
                 }
             }
 
-            // Drop blank ingredient rows the user left behind.
             RecipeInput.Ingredients = RecipeInput.Ingredients
                 .Where(i => i.IngredientId > 0 && i.QuantityPerBatch > 0)
                 .ToList();
@@ -67,49 +65,69 @@ namespace Manufacture.Pages.Production.Recipes
                 return Page();
             }
 
-            // Warn (but do not block) when the configured price cannot cover cost.
-            var created = _productionService.CreateRecipe(RecipeInput);
-            var costing = _engine.Cost(created);
-
-            if (costing.HasNegativeMargin)
+            try
             {
-                TempData["ErrorMessage"] =
-                    $"Recipe saved, but it is priced BELOW cost: margin is " +
-                    $"₦{Math.Abs(costing.MarginAmount):N2} per unit. Review the selling price.";
-            }
-            else if (costing.HasThinMargin)
-            {
-                TempData["SuccessMessage"] =
-                    $"Recipe '{created.Name}' created. Base unit cost is " +
-                    $"₦{costing.TotalUnitCost:N2} with a thin margin of {costing.MarginPercentage}%.";
-            }
+                var created = _productionService.CreateRecipe(RecipeInput);
+                var costing = _engine.Cost(created);
 
-            return RedirectToPage("/Production/Recipes/Details", new { id = created.Id });
+                if (costing.HasNegativeMargin)
+                {
+                    TempData["ErrorMessage"] =
+                        $"Recipe saved, but it is priced BELOW cost: margin is " +
+                        $"₦{Math.Abs(costing.MarginAmount):N2} per unit. Review the selling price.";
+                }
+                else if (costing.HasThinMargin)
+                {
+                    TempData["SuccessMessage"] =
+                        $"Recipe '{created.Name}' created. Base unit cost is " +
+                        $"₦{costing.TotalUnitCost:N2} with a thin margin of {costing.MarginPercentage}%.";
+                }
+
+                return RedirectToPage("/Production/Recipes/Details", new { id = created.Id });
+            }
+            catch (InvalidOperationException ex)
+            {
+                ModelState.AddModelError(string.Empty, ex.Message);
+                SeedDefaults(preserveInput: true);
+                return Page();
+            }
         }
 
         private void LoadFormData()
         {
             AvailableIngredients = _productionService.GetAllIngredients();
             ExistingRecipes = _productionService.GetAllRecipes();
+            ProductTypes = _productionService.GetProductTypes();
         }
 
         private void SeedDefaults(bool preserveInput = false)
         {
             if (preserveInput)
             {
-                // Re-seed only a completely empty expected yield.
                 if (RecipeInput.ExpectedYield <= 0) RecipeInput.ExpectedYield = 200m;
-                if (string.IsNullOrWhiteSpace(RecipeInput.OutputUnit))
-                    RecipeInput.OutputUnit = RecipeCatalog.OutputUnitFor(
-                        RecipeCatalog.ParseBaseline(RecipeInput.BaselineUnit));
+                ApplyProductTypeDefaults();
                 return;
             }
 
-            RecipeInput.ProductType = nameof(ProductType.Bread);
-            RecipeInput.BaselineUnit = nameof(BaselineUnit.FlourBag50Kg);
+            var productType = ProductTypes.FirstOrDefault(p => p.Name == "Bread") ?? ProductTypes.FirstOrDefault();
+            RecipeInput.ProductionProductTypeId = productType?.Id ?? 0;
+            RecipeInput.ProductType = productType?.Name ?? "Bread";
+            RecipeInput.BaselineUnit = productType?.Baseline ?? "1 Bag of Flour (50 kg)";
             RecipeInput.ExpectedYield = 200m;
-            RecipeInput.OutputUnit = "loaves";
+            RecipeInput.OutputUnit = productType?.OutputUnitNoun ?? "loaves";
             RecipeInput.Code = "BRD-NEW";
+        }
+
+        private void ApplyProductTypeDefaults()
+        {
+            var productType = ProductTypes.FirstOrDefault(p => p.Id == RecipeInput.ProductionProductTypeId)
+                ?? ProductTypes.FirstOrDefault();
+            if (productType == null) return;
+
+            RecipeInput.ProductionProductTypeId = productType.Id;
+            RecipeInput.ProductType = productType.Name;
+            RecipeInput.BaselineUnit = productType.Baseline;
+            RecipeInput.OutputUnit = productType.OutputUnitNoun;
         }
     }
 }

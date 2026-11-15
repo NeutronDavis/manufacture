@@ -45,6 +45,19 @@ namespace Manufacture.Models.DTOs
         [Range(0, 10000000)]
         public decimal UnitCostPrice { get; set; }
 
+        [Range(0.0001, 1000000, ErrorMessage = "Package size must be greater than zero.")]
+        public decimal PackageSize { get; set; } = 1m;
+
+        [Required]
+        public string PackageUnitOfMeasure { get; set; } = "kg";
+
+        [Range(0.0001, 1000, ErrorMessage = "Density must be greater than zero when supplied.")]
+        public decimal? DensityKgPerLitre { get; set; }
+
+        public int? MeasurementDensityId { get; set; }
+
+        public string? MeasurementDensityName { get; set; }
+
         public int? PreferredSupplierId { get; set; }
 
         public string? PreferredSupplierName { get; set; }
@@ -63,6 +76,39 @@ namespace Manufacture.Models.DTOs
         public string Code { get; set; } = string.Empty;
         public decimal ExpectedYield { get; set; }
         public string OutputUnit { get; set; } = string.Empty;
+        public decimal QuantityPerBatch { get; set; }
+        public string Unit { get; set; } = string.Empty;
+        public decimal BaselineYield { get; set; }
+        public decimal BatchLineCost { get; set; }
+    }
+
+    public class MeasurementDensityDto
+    {
+        public int Id { get; set; }
+
+        [Required]
+        [StringLength(150)]
+        public string MaterialName { get; set; } = string.Empty;
+
+        [Range(0.0001, 1000, ErrorMessage = "Density must be greater than zero.")]
+        public decimal DensityKgPerLitre { get; set; }
+
+        public bool IsActive { get; set; } = true;
+    }
+
+    public class StoreRequestConversionDto
+    {
+        public int InventoryItemId { get; set; }
+        public string ItemName { get; set; } = string.Empty;
+        public decimal RequestedQuantity { get; set; }
+        public string RequestedUnit { get; set; } = string.Empty;
+        public decimal BaseQuantity { get; set; }
+        public string BaseUnit { get; set; } = string.Empty;
+        public decimal StockQuantity { get; set; }
+        public string StockUnit { get; set; } = string.Empty;
+        public decimal AvailableStock { get; set; }
+        public bool IsEnoughStock { get; set; }
+        public string? ErrorMessage { get; set; }
     }
 
     public class StockMovementDto
@@ -76,6 +122,14 @@ namespace Manufacture.Models.DTOs
         public decimal Quantity { get; set; }
         public decimal BalanceAfter { get; set; }
         public int? StoreRequestId { get; set; }
+        public int? StoreRequestItemId { get; set; }
+        public string? RequestNumber { get; set; }
+        public decimal? RequestedQuantity { get; set; }
+        public string? RequestedUnit { get; set; }
+        public decimal? BaseQuantity { get; set; }
+        public string? BaseUnit { get; set; }
+        public decimal? StockQuantity { get; set; }
+        public string? StockUnit { get; set; }
         public string? ReferenceNumber { get; set; }
         public string? Notes { get; set; }
         public string PerformedBy { get; set; } = string.Empty;
@@ -92,6 +146,14 @@ namespace Manufacture.Models.DTOs
 
         [Range(0, 1000000)]
         public decimal RequestedQuantity { get; set; }
+
+        public decimal BaseQuantity { get; set; }
+
+        public string BaseUnit { get; set; } = string.Empty;
+
+        public decimal StockQuantity { get; set; }
+
+        public string StockUnit { get; set; } = string.Empty;
 
         public decimal IssuedQuantity { get; set; }
     }

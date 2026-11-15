@@ -12,6 +12,7 @@ using OrderEntity = Manufacture.Models.Entities.Order;
 using OrderItemEntity = Manufacture.Models.Entities.OrderItem;
 using OrderPaymentEntity = Manufacture.Models.Entities.OrderPayment;
 using PosTerminalEntity = Manufacture.Models.Entities.PosTerminal;
+using ProductionProductTypeEntity = Manufacture.Models.Entities.ProductionProductType;
 using RecipeEntity = Manufacture.Models.Entities.Recipe;
 using RouteSheetEntity = Manufacture.Models.Entities.DailyRepRouteSheet;
 using RouteSheetItemEntity = Manufacture.Models.Entities.RouteSheetItem;
@@ -257,6 +258,8 @@ namespace Manufacture.Services
         {
             var recipes = await _db.Recipes
                 .AsNoTracking()
+                .Include(r => r.ProductionProductType)
+                .ThenInclude(p => p!.ProductionCategory)
                 .Where(r => r.IsActive)
                 .OrderBy(r => r.Name)
                 .ToListAsync(cancellationToken);
@@ -269,12 +272,14 @@ namespace Manufacture.Services
         {
             var recipes = await _db.Recipes
                 .AsNoTracking()
+                .Include(r => r.ProductionProductType)
+                .ThenInclude(p => p!.ProductionCategory)
                 .Where(r => r.IsActive)
                 .OrderBy(r => r.Name)
                 .ToListAsync(cancellationToken);
 
             return recipes
-                .Select(r => (r.Id, r.Code, r.Name, (ProductType)r.ProductType, r.SellingPrice))
+                .Select(r => (r.Id, r.Code, r.Name, MapProductType(r.ProductionProductType), r.SellingPrice))
                 .ToList();
         }
 
@@ -1077,6 +1082,9 @@ namespace Manufacture.Services
                 .FirstOrDefaultAsync(cancellationToken);
 
             var recipes = await _db.Recipes
+                .AsNoTracking()
+                .Include(r => r.ProductionProductType)
+                .ThenInclude(p => p!.ProductionCategory)
                 .Where(r => r.IsActive)
                 .OrderBy(r => r.Name)
                 .ToListAsync(cancellationToken);
@@ -1111,7 +1119,7 @@ namespace Manufacture.Services
                     RecipeId = recipe.Id,
                     ProductCode = recipe.Code,
                     ProductName = recipe.Name,
-                    Category = recipe.ProductType,
+                    Category = (int)MapProductType(recipe.ProductionProductType),
                     UnitSellingPrice = recipe.SellingPrice,
                     RepOrderRequestedQty = Math.Max(0, requested),
                     YesterdayClosingStock = yesterday,
@@ -1807,14 +1815,38 @@ namespace Manufacture.Services
                 Name = recipe.Name,
                 Code = recipe.Code,
                 Description = recipe.Description,
-                ProductType = (ProductType)recipe.ProductType,
-                BaselineUnit = (BaselineUnit)recipe.BaselineUnit,
+                ProductionProductTypeId = recipe.ProductionProductTypeId,
+                ProductTypeName = recipe.ProductionProductType?.Name ?? string.Empty,
+                ProductionCategoryId = recipe.ProductionProductType?.ProductionCategoryId,
+                CategoryName = recipe.ProductionProductType?.ProductionCategory?.Name ?? string.Empty,
+                Baseline = recipe.ProductionProductType?.Baseline ?? string.Empty,
+                ProductType = MapProductType(recipe.ProductionProductType),
+                BaselineUnit = MapBaselineUnit(recipe.ProductionProductType),
                 ExpectedYield = recipe.ExpectedYield,
                 OutputUnit = recipe.OutputUnit,
-                PackagingCost = recipe.PackagingCost,
-                LaborAndOverheadPerUnit = recipe.LaborAndOverheadPerUnit,
+                PackagingCost = 0m,
+                LaborAndOverheadPerUnit = 0m,
                 SellingPrice = recipe.SellingPrice,
                 IsActive = recipe.IsActive
+            };
+        }
+
+        private static ProductType MapProductType(ProductionProductTypeEntity? productType)
+        {
+            var value = $"{productType?.Name} {productType?.ProductionCategory?.Name}";
+            if (value.Contains("water", StringComparison.OrdinalIgnoreCase)) return ProductType.Water;
+            if (value.Contains("popcorn", StringComparison.OrdinalIgnoreCase)
+                || value.Contains("snack", StringComparison.OrdinalIgnoreCase)) return ProductType.Popcorn;
+            return ProductType.Bread;
+        }
+
+        private static BaselineUnit MapBaselineUnit(ProductionProductTypeEntity? productType)
+        {
+            return MapProductType(productType) switch
+            {
+                ProductType.Water => BaselineUnit.WaterRun18_9L,
+                ProductType.Popcorn => BaselineUnit.PopcornPot,
+                _ => BaselineUnit.FlourBag50Kg
             };
         }
 

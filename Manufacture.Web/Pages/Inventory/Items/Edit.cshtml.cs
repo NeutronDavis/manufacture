@@ -8,16 +8,19 @@ namespace Manufacture.Pages.Inventory.Items
     public class EditModel : PageModel
     {
         private readonly IInventoryService _inventoryService;
+        private readonly IMeasurementDensityService _measurementService;
 
-        public EditModel(IInventoryService inventoryService)
+        public EditModel(IInventoryService inventoryService, IMeasurementDensityService measurementService)
         {
             _inventoryService = inventoryService;
+            _measurementService = measurementService;
         }
 
         [BindProperty]
         public InventoryItemDto ItemInput { get; set; } = new();
 
         public List<SupplierDto> Suppliers { get; set; } = new();
+        public List<MeasurementDensityDto> MeasurementDensities { get; set; } = new();
 
         public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancellationToken = default)
         {
@@ -29,7 +32,7 @@ namespace Manufacture.Pages.Inventory.Items
             }
 
             ItemInput = item;
-            await LoadSuppliersAsync(cancellationToken);
+            await LoadFormDataAsync(cancellationToken);
             return Page();
         }
 
@@ -37,7 +40,7 @@ namespace Manufacture.Pages.Inventory.Items
         {
             if (!ModelState.IsValid)
             {
-                await LoadSuppliersAsync(cancellationToken);
+                await LoadFormDataAsync(cancellationToken);
                 return Page();
             }
 
@@ -56,14 +59,15 @@ namespace Manufacture.Pages.Inventory.Items
             catch (InvalidOperationException ex)
             {
                 ModelState.AddModelError(string.Empty, ex.Message);
-                await LoadSuppliersAsync(cancellationToken);
+                await LoadFormDataAsync(cancellationToken);
                 return Page();
             }
         }
 
-        private async Task LoadSuppliersAsync(CancellationToken cancellationToken)
+        private async Task LoadFormDataAsync(CancellationToken cancellationToken)
         {
             Suppliers = await _inventoryService.GetSuppliersAsync(cancellationToken: cancellationToken);
+            MeasurementDensities = await _measurementService.GetAllAsync(includeInactive: false, cancellationToken);
         }
     }
 }

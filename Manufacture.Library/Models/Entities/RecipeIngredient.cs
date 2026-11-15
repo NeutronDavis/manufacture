@@ -9,7 +9,7 @@ public partial class RecipeIngredient
 
     public int RecipeId { get; set; }
 
-    public int IngredientId { get; set; }
+    public int InventoryItemId { get; set; }
 
     public string Unit { get; set; } = null!;
 
@@ -29,7 +29,7 @@ public partial class RecipeIngredient
 
     public DateTime UpdatedAt { get; set; }
 
-    public virtual Ingredient Ingredient { get; set; } = null!;
+    public virtual InventoryItem InventoryItem { get; set; } = null!;
 
     public virtual Recipe Recipe { get; set; } = null!;
 }

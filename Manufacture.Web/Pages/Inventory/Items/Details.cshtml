@@ -4,6 +4,9 @@
     ViewData["Title"] = $"{Model.Item.Name} - Inventory Details";
     var item = Model.Item;
     var isLow = item.IsLowStock;
+    var baseStock = item.QuantityInStock * item.PackageSize;
+    var baseUnit = item.PackageUnitOfMeasure;
+    var hasDensity = item.DensityKgPerLitre.HasValue && item.DensityKgPerLitre.Value > 0m;
     var stockPercent = item.ReorderThreshold > 0 
         ? Math.Min(100, Math.Round((item.QuantityInStock / (item.ReorderThreshold * 2m)) * 100)) 
         : 100;
@@ -56,12 +59,15 @@
             <a asp-page="/Inventory/Movements/Index" asp-route-itemId="@item.Id" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
                 <i class="fa-solid fa-arrow-right-arrow-left text-xs"></i> Stock Ledger
             </a>
-            <button type="button" onclick="document.getElementById('restockModal').showModal()" class="btn btn-sm btn-outline btn-primary rounded-xl text-xs gap-1.5 font-bold">
-                <i class="fa-solid fa-plus text-xs"></i> Quick Restock
-            </button>
-            <a asp-page="/Inventory/Items/Edit" asp-route-id="@item.Id" class="btn btn-sm btn-neutral rounded-xl text-xs gap-1.5 font-bold shadow-xs">
-                <i class="fa-solid fa-pen-to-square text-xs"></i> Edit Item
-            </a>
+            @if (Model.CanManageStock)
+            {
+                <button type="button" onclick="document.getElementById('restockModal').showModal()" class="btn btn-sm btn-outline btn-primary rounded-xl text-xs gap-1.5 font-bold">
+                    <i class="fa-solid fa-plus text-xs"></i> Quick Restock
+                </button>
+                <a asp-page="/Inventory/Items/Edit" asp-route-id="@item.Id" class="btn btn-sm btn-neutral rounded-xl text-xs gap-1.5 font-bold shadow-xs">
+                    <i class="fa-solid fa-pen-to-square text-xs"></i> Edit Item
+                </a>
+            }
         </div>
     </div>
 
@@ -91,15 +97,18 @@
                 </div>
             </div>
             <div class="text-2xl font-black font-mono @(isLow ? "text-error" : "text-base-content")">
-                @item.QuantityInStock.ToString("N0") <span class="text-xs font-normal opacity-60">@item.Unit</span>
+                @item.QuantityInStock.ToString("N3") <span class="text-xs font-normal opacity-60">@item.Unit</span>
+            </div>
+            <div class="text-[10px] opacity-60 mt-1 font-mono">
+                = @baseStock.ToString("N3") @baseUnit total base stock
             </div>
             <div class="mt-2 space-y-1">
                 <div class="w-full bg-base-200 rounded-full h-1.5 overflow-hidden">
                     <div class="h-full rounded-full @(isLow ? "bg-error" : "bg-primary")" style="width: @stockPercent%;"></div>
                 </div>
                 <div class="flex justify-between text-[10px] opacity-60 font-mono">
-                    <span>Reorder: @item.ReorderThreshold.ToString("N0")</span>
-                    <span>@(item.QuantityInStock > item.ReorderThreshold ? $"+{(item.QuantityInStock - item.ReorderThreshold):N0} Buffer" : "Under Limit")</span>
+                    <span>Reorder: @item.ReorderThreshold.ToString("N3")</span>
+                    <span>@(item.QuantityInStock > item.ReorderThreshold ? $"+{(item.QuantityInStock - item.ReorderThreshold):N3} Buffer" : "Under Limit")</span>
                 </div>
             </div>
         </div>
@@ -113,10 +122,13 @@
                 </div>
             </div>
             <div class="text-2xl font-black font-mono text-base-content">
-                ₦@item.UnitCostPrice.ToString("N0")
+                ₦@item.UnitCostPrice.ToString("N2")
             </div>
             <p class="text-[11px] opacity-60 mt-1">
-                Master purchase rate per @item.Unit
+                Per package: @item.PackageSize.ToString("N3") @item.PackageUnitOfMeasure (@item.Unit)
+            </p>
+            <p class="text-[10px] opacity-50 mt-0.5 font-mono">
+                Base rate: ₦@Model.UnitBaseCost.ToString("N2") / @baseUnit
             </p>
         </div>
 
@@ -129,10 +141,10 @@
                 </div>
             </div>
             <div class="text-2xl font-black font-mono text-success">
-                ₦@Model.TotalStockValuation.ToString("N0")
+                ₦@Model.TotalStockValuation.ToString("N2")
             </div>
-            <p class="text-[11px] opacity-60 mt-1">
-                @item.QuantityInStock.ToString("N0") units &times; ₦@item.UnitCostPrice.ToString("N0")
+            <p class="text-[11px] opacity-60 mt-1 font-mono">
+                @item.QuantityInStock.ToString("N3") @item.Unit × ₦@item.UnitCostPrice.ToString("N2")
             </p>
         </div>
 
@@ -145,7 +157,7 @@
                 </div>
             </div>
             <div class="text-2xl font-black font-mono @(isLow ? "text-error" : "text-base-content")">
-                @item.ReorderThreshold.ToString("N0") <span class="text-xs font-normal opacity-60">@item.Unit</span>
+                @item.ReorderThreshold.ToString("N3") <span class="text-xs font-normal opacity-60">@item.Unit</span>
             </div>
             <p class="text-[11px] @(isLow ? "text-error font-bold" : "opacity-60") mt-1">
                 @(isLow ? "⚠️ Stock below threshold! Restock needed." : "Safe inventory buffer maintained.")
@@ -178,7 +190,42 @@
                     <div class="p-3.5 rounded-xl bg-base-200/50 border border-base-300">
                         <span class="text-[10px] uppercase font-bold opacity-60">Storage Classification</span>
                         <div class="font-bold text-sm text-base-content mt-0.5">@item.Category</div>
-                        <div class="text-[11px] opacity-70 mt-0.5">Unit: @item.Unit</div>
+                        <div class="text-[11px] opacity-70 mt-0.5">Stock unit: @item.Unit</div>
+                        <div class="text-[11px] opacity-70 mt-0.5 font-mono">
+                            Package: @item.PackageSize.ToString("N3") @item.PackageUnitOfMeasure per @item.Unit
+                        </div>
+                    </div>
+
+                    <div class="p-3.5 rounded-xl @(hasDensity ? "bg-success/5 border-success/30" : "bg-warning/5 border-warning/30") border sm:col-span-2">
+                        <div class="flex items-center justify-between gap-2">
+                            <span class="text-[10px] uppercase font-bold opacity-60 flex items-center gap-1.5">
+                                <i class="fa-solid fa-scale-balanced @(hasDensity ? "text-success" : "text-warning")"></i> Measurement Density
+                            </span>
+                            @if (hasDensity)
+                            {
+                                <span class="badge badge-success badge-soft badge-xs font-bold">Volume requests enabled</span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-warning badge-soft badge-xs font-bold">No density assigned</span>
+                            }
+                        </div>
+                        @if (hasDensity)
+                        {
+                            <div class="font-bold text-sm text-base-content mt-1 font-mono">
+                                @item.DensityKgPerLitre!.Value.ToString("0.####") kg/L
+                            </div>
+                            <div class="text-[11px] opacity-70 mt-0.5">
+                                @(string.IsNullOrWhiteSpace(item.MeasurementDensityName) ? "Assigned density" : item.MeasurementDensityName) &bull;
+                                1 litre = @item.DensityKgPerLitre!.Value.ToString("0.####") kg
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-[11px] text-warning font-semibold mt-1">
+                                This item will not be requested using litres or millilitres. Only weight or count units are available.
+                            </div>
+                        }
                     </div>
 
                     <div class="p-3.5 rounded-xl bg-base-200/50 border border-base-300 sm:col-span-2">
@@ -186,7 +233,7 @@
                             <span class="text-[10px] uppercase font-bold opacity-60 flex items-center gap-1.5">
                                 <i class="fa-solid fa-truck-field text-primary"></i> Preferred Vendor / Supplier
                             </span>
-                            @if (item.PreferredSupplierId.HasValue)
+                            @if (item.PreferredSupplierId.HasValue && !string.Equals(Model.UserRole, "StoreManager", StringComparison.OrdinalIgnoreCase))
                             {
                                 <a asp-page="/Inventory/Suppliers/Index" class="text-[10px] text-primary hover:underline font-bold">
                                     View Supplier Directory &gt;
@@ -205,55 +252,62 @@
                 </div>
             </div>
 
-            <!-- Floor Consumption & Store Requests History -->
+            <!-- Requisition History -->
             <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
                 <div class="flex items-center justify-between border-b border-base-200 pb-3">
                     <div>
                         <h2 class="font-black text-sm text-base-content flex items-center gap-2">
-                            <i class="fa-solid fa-clock-rotate-left text-primary"></i> Floor Requisition History
+                            <i class="fa-solid fa-clock-rotate-left text-primary"></i> Requisition History
                         </h2>
                         <p class="text-[11px] opacity-60 mt-0.5">
-                            Recent store releases for batch mixing and production runs
+                            Every store request for this material, showing the quantity requested by the production floor and the converted warehouse quantity.
                         </p>
                     </div>
-                    <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.ItemRequests.Count Records</span>
+                    <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.RequisitionHistory.Count Records</span>
                 </div>
 
-                @if (Model.ItemRequests.Any())
+                @if (Model.RequisitionHistory.Any())
                 {
                     <div class="overflow-x-auto">
                         <table class="table table-sm w-full text-xs">
                             <thead>
                                 <tr class="opacity-60 uppercase text-[10px] border-b border-base-200 bg-base-200/40">
                                     <th>Req #</th>
-                                    <th>Department / Purpose</th>
+                                    <th>Requested By / Purpose</th>
                                     <th>Date</th>
-                                    <th class="text-right">Quantity</th>
+                                    <th class="text-right">Requested Quantity</th>
+                                    <th class="text-right">Warehouse Conversion</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-base-200">
-                                @foreach (var req in Model.ItemRequests)
+                                @foreach (var row in Model.RequisitionHistory)
                                 {
-                                    var lineItem = req.Items.FirstOrDefault(i => i.InventoryItemId == item.Id);
                                     <tr class="hover:bg-base-200/50">
-                                        <td class="font-mono font-bold text-primary">
-                                            <a asp-page="/Inventory/Requests/Index" class="hover:underline">
-                                                @req.RequestNumber
-                                            </a>
+                                        <td class="font-mono font-bold text-primary whitespace-nowrap">
+                                            <a asp-page="/Inventory/Requests/Index" class="hover:underline">@row.RequestNumber</a>
                                         </td>
-                                        <td>
-                                            <div class="font-semibold text-base-content">@req.Department</div>
-                                            <span class="text-[10px] opacity-60 truncate block max-w-xs" title="@req.Purpose">@req.Purpose</span>
+                                        <td class="min-w-40">
+                                            <div class="font-semibold text-base-content">@row.RequestedBy</div>
+                                            <div class="text-[10px] opacity-60">@row.Department</div>
+                                            <div class="text-[10px] opacity-60 truncate max-w-xs" title="@row.Purpose">@row.Purpose</div>
                                         </td>
-                                        <td class="font-mono text-[11px] opacity-70">
-                                            @req.RequestedAt.ToString("MMM dd, HH:mm")
+                                        <td class="font-mono text-[11px] opacity-70 whitespace-nowrap">
+                                            @row.RequestedAt.ToString("MMM dd, yyyy HH:mm")
                                         </td>
-                                        <td class="font-mono font-bold text-right text-base-content">
-                                            @(lineItem?.IssuedQuantity > 0 ? lineItem.IssuedQuantity.ToString("N0") : lineItem?.RequestedQuantity.ToString("N0") ?? "0") @item.Unit
+                                        <td class="font-mono font-bold text-right text-base-content whitespace-nowrap">
+                                            @row.RequestedQuantity.ToString("N3") @row.RequestedUnit
+                                        </td>
+                                        <td class="font-mono text-right text-[11px] leading-tight whitespace-nowrap">
+                                            <div class="font-bold text-base-content">
+                                                @row.BaseQuantity.ToString("N3") @row.BaseUnit
+                                            </div>
+                                            <div class="opacity-70">
+                                                = @row.StockQuantity.ToString("0.######") @row.StockUnit
+                                            </div>
                                         </td>
                                         <td class="whitespace-nowrap">
-                                            @switch (req.Status)
+                                            @switch (row.Status)
                                             {
                                                 case StoreRequestStatus.Issued:
                                                     <span class="badge badge-success badge-sm font-bold whitespace-nowrap px-2 py-0.5 h-auto text-[11px] inline-flex items-center">Issued</span>
@@ -279,23 +333,25 @@
                 {
                     <div class="text-center py-8 opacity-60">
                         <i class="fa-solid fa-clipboard-list text-3xl mb-2"></i>
-                        <p class="text-xs font-semibold">No store requisitions recorded for this item yet.</p>
-                        <p class="text-[10px]">Requests made from the bakery floor will show here automatically.</p>
+                        <p class="text-xs font-semibold">No requisitions recorded for this material yet.</p>
+                        <p class="text-[10px]">Requests made from the production floor will appear here with both the requested and warehouse-converted quantities.</p>
                     </div>
                 }
             </div>
 
         </div>
 
-        <!-- Right Side: Quick Restock & Recipe Utilization (5 Cols) -->
+        <!-- Right Side: Recipe Utilization & Reorder Guidance (5 Cols) -->
         <div class="lg:col-span-5 space-y-6">
             
-            <!-- Quick Restock Action Card -->
-            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
-                <div class="flex items-center justify-between border-b border-base-200 pb-3">
-                    <h3 class="font-black text-sm text-base-content flex items-center gap-2">
-                        <i class="fa-solid fa-dolly text-primary"></i> Stock Replenishment
-                    </h3>
+            @if (Model.CanManageStock)
+            {
+                <!-- Quick Restock Action Card -->
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <h3 class="font-black text-sm text-base-content flex items-center gap-2">
+                            <i class="fa-solid fa-dolly text-primary"></i> Stock Replenishment
+                        </h3>
                     <span class="badge badge-success badge-xs font-bold">Instant Update</span>
                 </div>
 
@@ -319,7 +375,8 @@
                         <i class="fa-solid fa-floppy-disk text-success"></i> Record Received Stock
                     </button>
                 </form>
-            </div>
+                </div>
+            }
 
             <!-- Associated Product Formulations Card -->
             <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
@@ -335,14 +392,30 @@
                     <div class="space-y-2.5">
                         @foreach (var rec in Model.AssociatedRecipes)
                         {
-                            <div class="p-3 rounded-xl bg-base-200/50 border border-base-300 flex items-center justify-between gap-3 text-xs">
-                                <div>
-                                    <div class="font-bold text-base-content">@rec.Name</div>
-                                    <div class="text-[10px] opacity-60 font-mono">@rec.Code &bull; Yield: @rec.ExpectedYield @rec.OutputUnit</div>
+                            <div class="p-3 rounded-xl bg-base-200/50 border border-base-300 text-xs space-y-2">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div>
+                                        <div class="font-bold text-base-content">@rec.Name</div>
+                                        <div class="text-[10px] opacity-60 font-mono">@rec.Code</div>
+                                    </div>
+                                    <a asp-page="/Production/Recipes/Details" asp-route-id="@rec.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg text-[10px] font-bold whitespace-nowrap">
+                                        Open Recipe
+                                    </a>
                                 </div>
-                                <a asp-page="/Production/Recipes/Index" class="btn btn-xs btn-outline border-base-300 rounded-lg text-[10px] font-bold">
-                                    View
-                                </a>
+                                <div class="grid grid-cols-2 gap-2 text-[10px] font-mono">
+                                    <div class="rounded-lg bg-base-100 border border-base-200 px-2.5 py-1.5">
+                                        <span class="opacity-60 block font-sans">Quantity used</span>
+                                        <span class="font-bold text-base-content">@rec.QuantityPerBatch.ToString("N3") @rec.Unit</span>
+                                    </div>
+                                    <div class="rounded-lg bg-base-100 border border-base-200 px-2.5 py-1.5">
+                                        <span class="opacity-60 block font-sans">Recipe yield</span>
+                                        <span class="font-bold text-base-content">@rec.ExpectedYield.ToString("N3") @rec.OutputUnit</span>
+                                    </div>
+                                    <div class="rounded-lg bg-base-100 border border-base-200 px-2.5 py-1.5 col-span-2">
+                                        <span class="opacity-60 block font-sans">Material cost in this recipe</span>
+                                        <span class="font-bold text-primary">₦@rec.BatchLineCost.ToString("N2") per batch</span>
+                                    </div>
+                                </div>
                             </div>
                         }
                     </div>
@@ -361,7 +434,7 @@
                     <i class="fa-solid fa-shield-halved text-amber-600"></i> Warehouse Reorder Standard
                 </div>
                 <p class="text-[11px] text-amber-900/80 leading-relaxed">
-                    Lead time for standard deliveries from <strong>@(item.PreferredSupplierName ?? "assigned vendor")</strong> is approximately 24 - 48 hours. Ensure restock purchase orders are raised before falling below <strong>@item.ReorderThreshold.ToString("N0") @item.Unit</strong>.
+                    Lead time for standard deliveries from <strong>@(item.PreferredSupplierName ?? "assigned vendor")</strong> is approximately 24 - 48 hours. Ensure restock purchase orders are raised before falling below <strong>@item.ReorderThreshold.ToString("N3") @item.Unit</strong>.
                 </p>
             </div>
 
@@ -369,8 +442,10 @@
     </div>
 </div>
 
-<!-- Quick Restock Modal -->
-<dialog id="restockModal" class="modal">
+@if (Model.CanManageStock)
+{
+    <!-- Quick Restock Modal -->
+    <dialog id="restockModal" class="modal">
     <div class="modal-box rounded-2xl border border-base-300 p-6 max-w-md">
         <h3 class="font-black text-base text-base-content flex items-center gap-2">
             <i class="fa-solid fa-dolly text-primary"></i> Restock @item.Name
@@ -407,4 +482,5 @@
     <form method="dialog" class="modal-backdrop">
         <button type="submit">close</button>
     </form>
-</dialog>
+    </dialog>
+}

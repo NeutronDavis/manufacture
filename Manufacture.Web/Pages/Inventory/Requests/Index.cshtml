@@ -81,7 +81,7 @@
             var statusStr = req.Status.ToString().ToLower();
             var materialsStr = string.Join(" ", req.Items.Select(i => i.ItemName.ToLower()));
 
-            <div class="card bg-base-100 border border-base-300 shadow-xs hover:shadow-md transition-all rounded-2xl overflow-hidden request-card"
+            <div id="req-@req.Id" class="card bg-base-100 border border-base-300 shadow-xs hover:shadow-md transition-all rounded-2xl overflow-hidden request-card @(Model.FocusId == req.Id ? "ring-2 ring-primary/60 shadow-md" : "")"
                  data-number="@req.RequestNumber.ToLower()"
                  data-purpose="@req.Purpose.ToLower()"
                  data-requester="@req.RequestedBy.ToLower()"
@@ -134,9 +134,9 @@
                             <thead>
                                 <tr class="bg-base-200/60 uppercase text-[10px] tracking-wider opacity-60 border-b border-base-200">
                                     <th class="py-2.5 pl-4">Material / Raw Item</th>
-                                    <th>Unit</th>
-                                    <th class="text-center">Requested Quantity</th>
-                                    <th class="text-right pr-4">Issued Quantity</th>
+                                    <th>Requested</th>
+                                    <th>Converted to Stock</th>
+                                    <th class="text-right pr-4">Issued</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-base-200">
@@ -146,10 +146,10 @@
                                         <td class="font-bold text-xs py-2.5 pl-4 text-base-content">
                                             <i class="fa-solid fa-cube text-primary text-[10px] mr-1.5 opacity-60"></i> @item.ItemName
                                         </td>
-                                        <td class="text-xs opacity-70 font-mono">@item.Unit</td>
-                                        <td class="font-mono font-bold text-xs text-center">@item.RequestedQuantity</td>
+                                        <td class="text-xs opacity-80 font-mono">@item.RequestedQuantity @item.Unit</td>
+                                        <td class="text-xs opacity-70 font-mono">@item.BaseQuantity @item.BaseUnit = @item.StockQuantity @item.StockUnit</td>
                                         <td class="font-mono font-bold text-xs text-right pr-4 @(req.Status == StoreRequestStatus.Issued ? "text-success font-black" : "opacity-40")">
-                                            @(req.Status == StoreRequestStatus.Issued ? item.IssuedQuantity.ToString() : "—")
+                                            @(req.Status == StoreRequestStatus.Issued ? item.IssuedQuantity.ToString("0.###") : "-")
                                         </td>
                                     </tr>
                                 }
@@ -180,7 +180,7 @@
                             }
                         </div>
 
-                        @if (req.Status == StoreRequestStatus.Pending)
+                        @if (Model.CanApproveRequests && req.Status == StoreRequestStatus.Pending)
                         {
                             <div class="flex items-center gap-2">
                                 <form method="post" asp-page-handler="Approve" asp-route-id="@req.Id">
@@ -260,5 +260,15 @@
             noResults.classList.add('hidden');
         }
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const focusId = @(Model.FocusId.HasValue ? Model.FocusId.Value.ToString() : "null");
+        if (focusId) {
+            const target = document.getElementById(`req-${focusId}`);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+    });
 </script>
 }

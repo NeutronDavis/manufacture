@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Manufacture.Library.Interfaces;
+using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
 using Manufacture.Services;
 
@@ -11,22 +13,28 @@ namespace Manufacture.Pages.Production.Recipes
     /// </summary>
     public class IndexModel : PageModel
     {
-        private readonly MockProductionService _productionService;
+        private readonly IProductionService _productionService;
         private readonly RecipeCostingEngine _engine;
 
-        public IndexModel(MockProductionService productionService, RecipeCostingEngine engine)
+        public IndexModel(IProductionService productionService, RecipeCostingEngine engine)
         {
             _productionService = productionService;
             _engine = engine;
         }
 
         public List<RecipeCostingResultDto> Recipes { get; set; } = new();
+        public List<ProductionCategory> Categories { get; set; } = new();
         public string UserRole { get; set; } = string.Empty;
 
         public void OnGet()
         {
             UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
             Recipes = _engine.CostAll(includeInactive: true);
+            Categories = _productionService.GetCategories(includeInactive: true)
+                .Where(category => category.IsActive
+                    || Recipes.Any(recipe => recipe.ProductionCategoryId == category.Id))
+                .OrderBy(category => category.Name)
+                .ToList();
         }
 
         public IActionResult OnPostToggleStatus(int id)

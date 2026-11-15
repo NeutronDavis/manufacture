@@ -29,6 +29,10 @@ namespace Manufacture.Models.DTOs
         [Required]
         public int VehicleId { get; set; }
         public string VehicleRegNumber { get; set; } = string.Empty;
+        public int? CharterBookingId { get; set; }
+        public string CharterBookingRef { get; set; } = string.Empty;
+        public int? FleetDispatchId { get; set; }
+        public string FleetDispatchRef { get; set; } = string.Empty;
         public int? EmployeeId { get; set; }
         public string DriverName { get; set; } = string.Empty;
         public DateTime Date { get; set; } = DateTime.UtcNow;

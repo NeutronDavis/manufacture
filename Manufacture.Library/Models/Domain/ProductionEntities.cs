@@ -32,6 +32,34 @@ namespace Manufacture.Models.Domain
         PopcornPot = 2
     }
 
+    public class ProductionCategory
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public bool IsActive { get; set; } = true;
+    }
+
+    public class ProductionProductType
+    {
+        public int Id { get; set; }
+        public int ProductionCategoryId { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Baseline { get; set; } = string.Empty;
+        public string OutputUnitNoun { get; set; } = string.Empty;
+        public bool IsActive { get; set; } = true;
+    }
+
+    public class ProductionShift
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public TimeSpan? StartTime { get; set; }
+        public TimeSpan? EndTime { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+
     /// <summary>
     /// Master raw-material record. <see cref="Unit"/> is the unit the material is
     /// PRICED in (kg, litres, pcs, ...) and <see cref="UnitCost"/> is the cost of
@@ -50,6 +78,9 @@ namespace Manufacture.Models.Domain
         public string? PackageUnit { get; set; }
         public decimal PackageCostPrice { get; set; }
         public decimal PackageStockOnHand { get; set; }
+        public decimal PackageSize { get; set; } = 1m;
+        public string PackageUnitOfMeasure { get; set; } = "kg";
+        public decimal? DensityKgPerLitre { get; set; }
         public string? SupplierName { get; set; }
 
         /// <summary>Tracks the last vendor price change so the costing admin
@@ -128,6 +159,12 @@ namespace Manufacture.Models.Domain
         public string Code { get; set; } = string.Empty; // e.g. "BRD-JMB"
         public string Description { get; set; } = string.Empty;
 
+        public int? ProductionProductTypeId { get; set; }
+        public string ProductTypeName { get; set; } = string.Empty;
+        public int? ProductionCategoryId { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
+        public string Baseline { get; set; } = string.Empty;
+
         public ProductType ProductType { get; set; } = ProductType.Bread;
 
         /// <summary>The baseline unit that all ingredient batch quantities refer to.</summary>
@@ -162,7 +199,7 @@ namespace Manufacture.Models.Domain
         /// </summary>
         public decimal IngredientsCost => IngredientsCostPerUnit;
 
-        public decimal TotalUnitCost => IngredientsCostPerUnit + PackagingCost + LaborAndOverheadPerUnit;
+        public decimal TotalUnitCost => IngredientsCostPerUnit;
 
         public decimal MarginAmount => SellingPrice - TotalUnitCost;
 
@@ -171,7 +208,7 @@ namespace Manufacture.Models.Domain
 
         /// <summary>Unit production cost at an actual (rather than expected) yield.</summary>
         public decimal UnitCostAtYield(decimal actualYield) =>
-            actualYield > 0 ? TotalBatchCost / actualYield + PackagingCost + LaborAndOverheadPerUnit : 0m;
+            actualYield > 0 ? TotalBatchCost / actualYield : 0m;
 
         /// <summary>
         /// Pushes this recipe's expected yield down onto every ingredient line so
@@ -207,6 +244,10 @@ namespace Manufacture.Models.Domain
         public string BatchNumber { get; set; } = string.Empty;
         public int RecipeId { get; set; }
         public string RecipeName { get; set; } = string.Empty;
+        public int? ProductionProductTypeId { get; set; }
+        public string ProductTypeName { get; set; } = string.Empty;
+        public int? ProductionCategoryId { get; set; }
+        public string CategoryName { get; set; } = string.Empty;
         public int TargetQuantity { get; set; } // expected yield from the recipe
         public int ActualQuantity { get; set; } // completed loaves/bags
         public int Variance => ActualQuantity - TargetQuantity;

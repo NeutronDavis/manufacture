@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = $"Order {Model.Order.OrderNumber}";
     var order = Model.Order;
+    var contentClass = Model.CanManageSales ? "lg:col-span-8" : "lg:col-span-12";
 }
 
 <div class="space-y-6 w-full">
@@ -19,9 +20,12 @@
             <p class="text-xs opacity-70 mt-0.5">Order-tied debt, payment history, and settlement status.</p>
         </div>
         <div class="flex items-center gap-2 flex-wrap">
-            <a asp-page="/Sales/Orders/Receipt" asp-route-id="@order.Id" class="btn btn-sm btn-outline rounded-xl text-xs font-semibold gap-1.5">
-                <i class="fa-solid fa-print text-xs"></i> Receipt / Loading Slip
-            </a>
+            @if (Model.CanManageSales)
+            {
+                <a asp-page="/Sales/Orders/Receipt" asp-route-id="@order.Id" class="btn btn-sm btn-outline rounded-xl text-xs font-semibold gap-1.5">
+                    <i class="fa-solid fa-print text-xs"></i> Receipt / Loading Slip
+                </a>
+            }
             <a asp-page="/Sales/Orders/Index" class="btn btn-sm btn-ghost rounded-xl text-xs font-semibold">Back to Orders</a>
         </div>
     </div>
@@ -36,7 +40,7 @@
     }
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div class="lg:col-span-8 space-y-6">
+        <div class="@contentClass space-y-6">
             <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div><span class="opacity-60">Customer:</span> <strong>@order.CustomerName</strong></div>
@@ -122,11 +126,13 @@
             </div>
         </div>
 
-        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
-            <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">
-                <h2 class="font-black text-sm flex items-center gap-2">
-                    <i class="fa-solid fa-user-tie text-primary"></i> Sales Rep Assignment
-                </h2>
+        @if (Model.CanManageSales)
+        {
+            <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+                <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">
+                    <h2 class="font-black text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-user-tie text-primary"></i> Sales Rep Assignment
+                    </h2>
                 <form method="post" asp-page-handler="AssignRep" asp-route-id="@order.Id" class="space-y-3">
                     <div class="form-control">
                         <label class="label pb-1"><span class="label-text text-[10px] font-bold">Assigned Sales Rep</span></label>
@@ -186,7 +192,8 @@
                 {
                     <div class="alert alert-success text-xs py-2"><span>This order is fully settled.</span></div>
                 }
+                </div>
             </div>
-        </div>
+        }
     </div>
 </div>

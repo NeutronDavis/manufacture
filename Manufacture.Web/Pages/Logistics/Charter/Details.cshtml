@@ -11,14 +11,6 @@
     <!-- Breadcrumbs & Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
         <div>
-            <div class="text-xs breadcrumbs p-0 mb-1">
-                <ul>
-                    <li><a asp-page="/Dashboard/Index" class="opacity-60">Dashboard</a></li>
-                    <li><a asp-page="/Logistics/Index" class="opacity-60">Fleet & Logistics</a></li>
-                    <li><a asp-page="/Logistics/Charter/Index" class="opacity-60">Charter Bookings</a></li>
-                    <li class="font-bold text-base-content">@b.BookingRef</li>
-                </ul>
-            </div>
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-2xl bg-neutral text-neutral-content flex items-center justify-center font-bold text-lg">
                     <i class="fa-solid fa-truck-ramp-box"></i>
@@ -111,6 +103,12 @@
                     </div>
 
                     <div class="space-y-1">
+                        <div class="text-[11px] font-semibold text-base-content/50">Approved Client Quote</div>
+                        <div class="text-sm font-black text-primary">@(string.IsNullOrWhiteSpace(b.QuoteRef) ? "Legacy booking" : b.QuoteRef)</div>
+                        <div class="text-[11px] text-base-content/60">@b.TotalDistanceKm.ToString("N0") km total quoted distance</div>
+                    </div>
+
+                    <div class="space-y-1">
                         <div class="text-[11px] font-semibold text-base-content/50">Transit Schedule</div>
                         <div class="text-xs font-bold text-base-content">
                             Dep: @b.DepartureDate.ToString("ddd, dd MMM yyyy")
@@ -136,7 +134,8 @@
                         <thead>
                             <tr class="bg-base-200/60 text-base-content font-bold border-b border-base-300">
                                 <th class="py-2.5 px-3">Leg</th>
-                                <th class="py-2.5 px-3">Corridor Origin & Destination</th>
+                                <th class="py-2.5 px-3">Address & Route</th>
+                                <th class="py-2.5 px-3 text-right">Distance</th>
                                 <th class="py-2.5 px-3 text-center">Fuel Arrangement</th>
                                 <th class="py-2.5 px-3 text-right">Leg Rate (₦)</th>
                             </tr>
@@ -156,6 +155,14 @@
                                             <i class="fa-solid fa-arrow-right text-[10px] text-base-content/40"></i>
                                             <span class="text-primary font-black">@leg.DestinationState</span>
                                         </div>
+                                        <div class="text-[10px] text-base-content/50 mt-1">
+                                            @(string.IsNullOrWhiteSpace(leg.OriginAddress) ? "Legacy route" : leg.OriginAddress)
+                                            <span class="mx-1">→</span>
+                                            @(string.IsNullOrWhiteSpace(leg.DestinationAddress) ? "" : leg.DestinationAddress)
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-3 text-right font-mono text-[11px]">
+                                        @(leg.DistanceKm.HasValue ? $"{leg.DistanceKm.Value:N0} km" : "—")
                                     </td>
                                     <td class="py-3 px-3 text-center">
                                         @if (leg.FuelOption == FuelOption.WithFuel)
@@ -179,7 +186,7 @@
                         </tbody>
                         <tfoot>
                             <tr class="border-t border-base-300 font-bold bg-base-200/40">
-                                <td colspan="3" class="text-right py-2 px-3 text-xs">Total Gross Charter Freight Fee:</td>
+                                <td colspan="4" class="text-right py-2 px-3 text-xs">Total Gross Charter Freight Fee:</td>
                                 <td class="text-right py-2 px-3 text-sm font-black text-base-content">₦@b.GrossCharterFee.ToString("N0")</td>
                             </tr>
                         </tfoot>
@@ -197,6 +204,48 @@
                     </p>
                 </div>
             }
+
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 space-y-3">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <div>
+                        <h3 class="text-sm font-black text-base-content">Fuel Records</h3>
+                        <p class="text-[11px] text-base-content/60">Fuel mapped to vehicle @b.VehicleRegNumber for this charter.</p>
+                    </div>
+                    <a asp-page="/Logistics/FuelLogs/Create"
+                       asp-route-charterBookingId="@b.Id"
+                       asp-route-returnUrl="@($"/Fleet/Charter/Details/{b.Id}")"
+                       class="btn btn-xs btn-neutral rounded-lg font-bold gap-1.5 no-print">
+                        <i class="fa-solid fa-gas-pump text-[10px]"></i> Record Fuel
+                    </a>
+                </div>
+                @if (Model.FuelLogs.Count == 0)
+                {
+                    <div class="text-xs opacity-50 py-4 text-center">No fuel recorded for this charter yet.</div>
+                }
+                else
+                {
+                    <div class="overflow-x-auto">
+                        <table class="table table-xs text-xs">
+                            <thead><tr class="bg-base-200/60"><th>Date</th><th>Station</th><th>Type</th><th class="text-right">Litres</th><th class="text-right">Price</th><th class="text-right">Total</th><th>By</th></tr></thead>
+                            <tbody class="divide-y divide-base-200">
+                            @foreach (var fuel in Model.FuelLogs)
+                            {
+                                <tr>
+                                    <td class="font-mono">@fuel.Date.ToString("dd MMM yyyy")</td>
+                                    <td>@fuel.PetrolStation</td>
+                                    <td><span class="badge badge-ghost badge-xs">@fuel.FuelType</span></td>
+                                    <td class="text-right font-mono">@fuel.LitresDispensed.ToString("N2")</td>
+                                    <td class="text-right font-mono">₦@fuel.PricePerLitre.ToString("N0")</td>
+                                    <td class="text-right font-mono font-black">₦@fuel.TotalCost.ToString("N0")</td>
+                                    <td class="text-[10px]">@fuel.DriverName</td>
+                                </tr>
+                            }
+                            </tbody>
+                            <tfoot><tr class="font-bold border-t border-base-300"><td colspan="5" class="text-right">Total Fuel Cost</td><td class="text-right font-mono">₦@Model.TotalFuelCost.ToString("N0")</td><td></td></tr></tfoot>
+                        </table>
+                    </div>
+                }
+            </div>
         </div>
 
         <!-- Right 1 Col: Financial Profitability Card -->

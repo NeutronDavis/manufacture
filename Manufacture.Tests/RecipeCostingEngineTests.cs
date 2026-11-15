@@ -67,8 +67,6 @@ namespace Manufacture.Tests
                 BaselineUnit = nameof(BaselineUnit.FlourBag50Kg),
                 ExpectedYield = ExpectedYield,
                 OutputUnit = "loaves",
-                PackagingCost = 3m,
-                LaborAndOverheadPerUnit = 5m,
                 SellingPrice = SellingPrice,
                 Ingredients = new List<RecipeIngredientInputDto>
                 {
@@ -76,6 +74,10 @@ namespace Manufacture.Tests
                     new() { IngredientId = _sugar.Id, QuantityUnit = "kg", QuantityPerBatch = 4m }
                 }
             });
+
+            // Legacy mock-service fields remain available for mock analytics tests.
+            _recipe.PackagingCost = 3m;
+            _recipe.LaborAndOverheadPerUnit = 5m;
         }
 
         // =============================================================

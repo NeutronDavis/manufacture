@@ -1,389 +1,280 @@
 @page
 @model Manufacture.Pages.Reports.IndexModel
 @using Manufacture.Models.DTOs
-@using Manufacture.Models.Domain
+@using Manufacture.Services.Reports
 @{
-    ViewData["Title"] = Model.Result.ModuleLabel;
-    var query = Model.Result.Query;
-    var selectedLines = query.Lines.ToHashSet();
-    var selectedProducts = query.ProductIds.ToHashSet();
-    var selectedReps = query.RepIds.ToHashSet();
-    var selectedCategory = query.Lines.Count == 1 ? query.Lines[0].ToString() : "";
-    var selectedRepId = query.RepIds.Count == 1 ? query.RepIds[0].ToString() : "";
-    var startDateStr = query.StartDate == default ? DateTime.UtcNow.ToString("yyyy-MM-dd") : query.StartDate.ToString("yyyy-MM-dd");
-    var endDateStr = query.EndDate == default ? DateTime.UtcNow.ToString("yyyy-MM-dd") : query.EndDate.ToString("yyyy-MM-dd");
+    ViewData["Title"] = Model.SelectedReport?.Title ?? "Reports";
+    var report = Model.SelectedReport;
+    var result = Model.Result;
 }
 
 <div class="space-y-6 w-full">
-
-    <!-- ============ Header & View Switcher ============ -->
-    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
-                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
-                <span>&gt;</span>
-                <span class="text-primary font-bold">Reports</span>
-            </div>
-            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
-                <i class="fa-solid fa-chart-column text-primary"></i> @Model.Result.ModuleLabel
-            </h1>
-            <p class="text-xs opacity-70 mt-0.5 max-w-3xl">@Model.Result.ModuleDescription</p>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-3">
-            <!-- View Mode Switcher (Charts Default) -->
-            <div role="tablist" aria-label="Report view" class="tabs-box tabs bg-base-100 border border-base-300 shadow-xs rounded-2xl p-1">
-                @foreach (var option in Model.ViewOptions)
-                {
-                    var isActive = string.Equals(option.Value, Model.View, StringComparison.OrdinalIgnoreCase);
-                    <a role="tab"
-                       aria-selected="@isActive"
-                       href="@Model.ViewUrl(option.Value)"
-                       class="tab gap-2 rounded-xl font-bold text-xs px-4 py-2 @(isActive ? "tab-active !bg-primary !text-primary-content shadow-xs" : "opacity-70 hover:opacity-100")">
-                        <i class="@option.Icon text-xs"></i> @option.Label
-                    </a>
-                }
-            </div>
-
-            <!-- Export Actions -->
-            <div class="flex items-center gap-2">
-                <a href="@Model.ExportCsvUrl" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-bold px-3.5 text-xs shadow-xs" title="Export current dataset to CSV">
-                    <i class="fa-solid fa-file-csv text-success text-xs"></i> CSV
-                </a>
-                <a href="@Model.ExportPdfUrl" class="btn btn-sm btn-primary rounded-xl gap-2 font-bold px-4 text-xs shadow-xs" title="Export current dataset to PDF">
-                    <i class="fa-solid fa-file-pdf text-xs"></i> PDF
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- ============ Simple Unified Filter Bar ============ -->
-    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
-        <div class="card-body p-4 space-y-4">
-
-            <!-- 1. Module Tabs & Current Window Label -->
-            <div class="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-base-200">
-                <div role="tablist" class="tabs-box tabs tabs-sm bg-base-200/70 p-1 rounded-xl">
-                    @foreach (var option in Model.ModuleOptions)
-                    {
-                        var isActive = option.Selected;
-                        <a role="tab"
-                           aria-selected="@isActive"
-                           href="@Model.BuildModuleUrl(option.Value)"
-                           class="tab gap-2 rounded-lg font-bold text-xs px-3.5 py-1.5 @(isActive ? "tab-active !bg-base-100 !text-base-content shadow-xs" : "opacity-70 hover:opacity-100")">
-                            <i class="@option.Icon text-[11px]"></i> <span>@option.Label</span>
-                        </a>
-                    }
-                </div>
-                <div class="flex items-center gap-2">
-                    <span class="badge badge-soft badge-primary badge-sm font-bold gap-1.5 py-2 px-3">
-                        <i class="fa-solid fa-calendar-day text-[10px]"></i> @query.RangeLabel
-                    </span>
-                    <a asp-page="/Reports/Index" asp-route-view="@Model.View" class="btn btn-xs btn-ghost text-xs font-semibold gap-1 opacity-70 hover:opacity-100" title="Reset all filters">
-                        <i class="fa-solid fa-rotate-left text-[10px]"></i> Reset All
-                    </a>
-                </div>
-            </div>
-
-            <!-- Filter Form -->
-            <form id="report-filter-form" method="get" asp-page="/Reports/Index" class="space-y-4">
-                <input type="hidden" name="view" value="@Model.View" />
-                <input type="hidden" name="module" value="@Model.Result.Module" />
-                <input type="hidden" id="filter-timeframe" name="timeframe" value="@(Model.IsCustomRange ? "Custom" : query.Timeframe.ToString())" />
-
-                <!-- 2. Primary Date Range Selection (From Date to To Date) -->
-                <div class="p-3.5 rounded-2xl bg-base-200/50 border border-base-300 space-y-3">
-                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                        <span class="text-xs font-bold text-base-content flex items-center gap-2">
-                            <i class="fa-solid fa-calendar-range text-primary"></i> Date Range
-                        </span>
-
-                        <!-- Presets / Quick Shortcuts -->
-                        <div class="flex flex-wrap items-center gap-1.5">
-                            <span class="text-[10px] font-bold uppercase opacity-50 mr-1">Presets:</span>
-                            <button type="button" onclick="applyPreset('Daily')"
-                                    class="btn btn-xs rounded-lg font-bold text-[11px] border-base-300 @(query.Timeframe == ReportTimeframe.Daily ? "btn-neutral" : "btn-ghost bg-base-100")">
-                                Daily (Today)
-                            </button>
-                            <button type="button" onclick="applyPreset('Week')"
-                                    class="btn btn-xs rounded-lg font-bold text-[11px] border-base-300 @(query.Timeframe == ReportTimeframe.Week ? "btn-neutral" : "btn-ghost bg-base-100")">
-                                Weekly (Sun–Sat)
-                            </button>
-                            <button type="button" onclick="applyPreset('Monthly')"
-                                    class="btn btn-xs rounded-lg font-bold text-[11px] border-base-300 @(query.Timeframe == ReportTimeframe.Monthly ? "btn-neutral" : "btn-ghost bg-base-100")">
-                                Monthly
-                            </button>
-                            <button type="button" onclick="applyPreset('Yearly')"
-                                    class="btn btn-xs rounded-lg font-bold text-[11px] border-base-300 @(query.Timeframe == ReportTimeframe.Yearly ? "btn-neutral" : "btn-ghost bg-base-100")">
-                                Yearly
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Direct From/To Date Pickers -->
-                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
-                        <div class="sm:col-span-5">
-                            <label class="label-text text-[10px] font-bold uppercase opacity-60 mb-1 block">From (Start Date)</label>
-                            <div class="relative">
-                                <input type="date" id="input-start-date" name="start_date" value="@startDateStr"
-                                       class="input input-sm input-bordered w-full font-mono text-xs rounded-xl pr-2"
-                                       onchange="onDateChanged()" />
-                            </div>
-                        </div>
-
-                        <div class="sm:col-span-5">
-                            <label class="label-text text-[10px] font-bold uppercase opacity-60 mb-1 block">To (End Date)</label>
-                            <div class="relative">
-                                <input type="date" id="input-end-date" name="end_date" value="@endDateStr"
-                                       class="input input-sm input-bordered w-full font-mono text-xs rounded-xl pr-2"
-                                       onchange="onDateChanged()" />
-                            </div>
-                        </div>
-
-                        <div class="sm:col-span-2">
-                            <button type="submit" onclick="document.getElementById('filter-timeframe').value='Custom'"
-                                    class="btn btn-sm btn-primary rounded-xl font-bold text-xs w-full gap-2 shadow-xs">
-                                <i class="fa-solid fa-arrows-rotate text-[10px]"></i> Apply Dates
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3. Dimension Filters (Dropdowns) -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 items-end">
-                    
-                    <!-- Product Line -->
-                    <div>
-                        <label class="label-text text-[10px] font-bold uppercase opacity-60 mb-1 block">Product Line</label>
-                        <select name="category" class="select select-sm select-bordered w-full text-xs font-medium rounded-xl" onchange="this.form.submit()">
-                            <option value="">All Product Lines</option>
-                            @foreach (var line in Enum.GetValues<ProductType>())
-                            {
-                                <option value="@line" selected="@(selectedCategory == line.ToString())">@line</option>
-                            }
-                        </select>
-                    </div>
-
-                    <!-- Route -->
-                    <div>
-                        <label class="label-text text-[10px] font-bold uppercase opacity-60 mb-1 block">Route</label>
-                        <select name="route" class="select select-sm select-bordered w-full text-xs font-medium rounded-xl" onchange="this.form.submit()">
-                            <option value="">All Routes</option>
-                            @foreach (var route in Model.Result.Routes)
-                            {
-                                <option value="@route" selected="@(string.Equals(route, query.Route, StringComparison.OrdinalIgnoreCase))">@route</option>
-                            }
-                        </select>
-                    </div>
-
-                    <!-- Sales Rep -->
-                    <div>
-                        <label class="label-text text-[10px] font-bold uppercase opacity-60 mb-1 block">Sales Rep</label>
-                        <select name="rep_id" class="select select-sm select-bordered w-full text-xs font-medium rounded-xl" onchange="this.form.submit()">
-                            <option value="">All Sales Reps</option>
-                            @foreach (var rep in Model.Result.Reps)
-                            {
-                                <option value="@rep.Id" selected="@(selectedRepId == rep.Id.ToString())">@rep.FullName</option>
-                            }
-                        </select>
-                    </div>
-
-                    <!-- Group Rows By -->
-                    <div>
-                        <label class="label-text text-[10px] font-bold uppercase opacity-60 mb-1 block">Group By</label>
-                        <select name="group_by" class="select select-sm select-bordered w-full text-xs font-medium rounded-xl" onchange="this.form.submit()">
-                            @foreach (var option in Model.GroupByOptions)
-                            {
-                                <option value="@option.Value" selected="@option.Selected">@option.Label</option>
-                            }
-                        </select>
-                    </div>
-                </div>
-
-                <!-- 4. Collapsible Advanced SKU Filter (Cleanly tucked away) -->
-                <details class="group rounded-xl border border-base-200 bg-base-200/30">
-                    <summary class="cursor-pointer text-[11px] font-bold uppercase tracking-wider text-base-content/70 hover:text-primary py-2 px-3 flex items-center justify-between select-none">
-                        <span class="flex items-center gap-2">
-                            <i class="fa-solid fa-sliders text-[10px]"></i> Advanced: Filter Individual SKUs (@Model.Result.Catalog.Count available)
-                        </span>
-                        <i class="fa-solid fa-chevron-down text-[10px] transition-transform group-open:rotate-180"></i>
-                    </summary>
-                    <div class="p-3 pt-1 border-t border-base-200 space-y-2">
-                        <div class="max-h-40 overflow-y-auto rounded-xl p-2 space-y-2 bg-base-100 border border-base-300">
-                            @foreach (var group in Model.CatalogByLine)
-                            {
-                                <div>
-                                    <div class="text-[9px] font-bold uppercase opacity-50 px-1 mb-1">@group.Key</div>
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1">
-                                        @foreach (var sku in group)
-                                        {
-                                            var isOn = selectedProducts.Contains(sku.Id);
-                                            <label class="flex items-center gap-2 px-1.5 py-1 rounded-lg hover:bg-base-200 cursor-pointer text-[11px]">
-                                                <input type="checkbox" name="product_id" value="@sku.Id" class="checkbox checkbox-xs checkbox-primary" @(isOn ? "checked" : "") onchange="this.form.submit()" />
-                                                <span class="font-semibold truncate">@sku.Name</span>
-                                                <span class="text-[9px] opacity-50 font-mono ml-auto shrink-0">@ReportColumnCatalog.FormatMoney(sku.SellingPrice)</span>
-                                            </label>
-                                        }
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    </div>
-                </details>
-
-                <!-- Active Filter Tags Strip -->
-                @if (Model.Result.ActiveFilterLabels.Count > 0)
-                {
-                    <div class="flex flex-wrap items-center gap-1.5 pt-1">
-                        <span class="text-[10px] uppercase font-bold opacity-50 mr-1">Active:</span>
-                        @foreach (var label in Model.Result.ActiveFilterLabels)
-                        {
-                            <span class="badge badge-soft badge-primary badge-xs font-semibold">@label</span>
-                        }
-                    </div>
-                }
-            </form>
-        </div>
-    </div>
-
-    @if (!Model.HasData)
+    @if (TempData["ErrorMessage"] != null)
     {
-        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
-            <div class="card-body items-center text-center py-16">
-                <i class="fa-solid fa-folder-open text-4xl opacity-25"></i>
-                <h3 class="font-bold text-sm mt-3">No rows match these filters</h3>
-                <p class="text-xs opacity-60 max-w-sm">
-                    Widen the date range or clear a SKU, rep or route filter to bring data back into the report.
-                </p>
-                <a asp-page="/Reports/Index" class="btn btn-sm btn-neutral rounded-xl font-bold text-xs mt-3 gap-2">
-                    <i class="fa-solid fa-rotate-left text-[10px]"></i> Reset filters
-                </a>
-            </div>
-        </div>
+        <div class="alert alert-error rounded-xl text-xs"><span>@TempData["ErrorMessage"]</span></div>
     }
-    else
+
+    @if (report is null)
     {
-        <!-- ============ Grand Totals ============ -->
-        <div class="stats stats-vertical sm:stats-horizontal xl:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
-            @if (Model.Result.Module == Manufacture.Models.Domain.AnalyticsModule.Logistics)
-            {
-                var fleet = Model.Result.LogisticsSummary.Rows;
-                <div class="stat p-4">
-                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Vehicles</div>
-                    <div class="stat-value text-xl font-black font-mono text-base-content">@fleet.Count</div>
-                    <div class="stat-desc opacity-70">On the filtered routes</div>
+        <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+            <div>
+                <div class="breadcrumbs text-xs opacity-60 mb-1">
+                    <ul><li><a asp-page="/Dashboard/Index">Dashboard</a></li><li class="font-bold text-base-content">Reports</li></ul>
                 </div>
-                <div class="stat p-4">
-                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Trips</div>
-                    <div class="stat-value text-xl font-black font-mono text-primary">@fleet.Sum(f => f.Trips).ToString("N0")</div>
-                    <div class="stat-desc opacity-70">@fleet.Sum(f => f.DistanceKm).ToString("N0") km covered</div>
-                </div>
-                <div class="stat p-4">
-                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Fuel</div>
-                    <div class="stat-value text-xl font-black font-mono text-warning">@ReportColumnCatalog.FormatMoney(fleet.Sum(f => f.FuelCost))</div>
-                    <div class="stat-desc opacity-70">@fleet.Sum(f => f.Litres).ToString("N0") litres</div>
-                </div>
-                <div class="stat p-4">
-                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Maintenance</div>
-                    <div class="stat-value text-xl font-black font-mono text-error">@ReportColumnCatalog.FormatMoney(fleet.Sum(f => f.MaintenanceCost))</div>
-                    <div class="stat-desc opacity-70">Breakdown spend</div>
-                </div>
-                <div class="stat p-4">
-                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">On-Time</div>
-                    <div class="stat-value text-xl font-black font-mono text-success">
-                        @(fleet.Count == 0 ? "0%" : fleet.Average(f => f.OnTimePercent).ToString("0.#") + "%")
-                    </div>
-                    <div class="stat-desc opacity-70">Fleet average</div>
-                </div>
-            }
-            else
-            {
-                var totals = Model.Result.GrandTotals;
-                <div class="stat p-4">
-                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Requested</div>
-                    <div class="stat-value text-xl font-black font-mono text-info">@totals.OrdersPlaced.ToString("N0")</div>
-                    <div class="stat-desc opacity-70">Placed by reps</div>
-                </div>
-                <div class="stat p-4">
-                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Produced</div>
-                    <div class="stat-value text-xl font-black font-mono text-primary">@totals.Produced.ToString("N0")</div>
-                    <div class="stat-desc opacity-70">@totals.FillRatePercent.ToString("0.#")% fill rate</div>
-                </div>
-                <div class="stat p-4">
-                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Loaded</div>
-                    <div class="stat-value text-xl font-black font-mono text-secondary">@totals.Loaded.ToString("N0")</div>
-                    <div class="stat-desc opacity-70">Released at the bay</div>
-                </div>
-                <div class="stat p-4">
-                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Sold</div>
-                    <div class="stat-value text-xl font-black font-mono text-success">@totals.Sold.ToString("N0")</div>
-                    <div class="stat-desc opacity-70">@totals.SellThroughPercent.ToString("0.#")% sell-through</div>
-                </div>
-                <div class="stat p-4">
-                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Returned</div>
-                    <div class="stat-value text-xl font-black font-mono text-warning">@totals.Returned.ToString("N0")</div>
-                    <div class="stat-desc opacity-70">@totals.Damaged.ToString("N0") damaged</div>
-                </div>
-                <div class="stat p-4">
-                    <div class="stat-title text-[10px] font-bold uppercase opacity-60">Revenue</div>
-                    <div class="stat-value text-xl font-black font-mono text-base-content">@ReportColumnCatalog.FormatMoney(totals.ExpectedRevenue)</div>
-                    <div class="stat-desc @(totals.CollectionRatePercent < 92m ? "text-error font-bold" : "opacity-70")">
-                        @totals.CollectionRatePercent.ToString("0.#")% collected
-                    </div>
-                </div>
-            }
+                <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                    <i class="fa-solid fa-chart-column text-primary"></i> Report Catalogue
+                </h1>
+                <p class="text-xs opacity-70 mt-0.5">Reports available to <strong>@Model.ActiveRole</strong>. Open a report to apply its filters, view the table and export.</p>
+            </div>
+            <div class="join w-full lg:w-80">
+                <input id="report-search" type="search" class="input input-sm input-bordered join-item w-full rounded-l-xl text-xs" placeholder="Search reports..." />
+                <span class="join-item btn btn-sm btn-neutral rounded-r-xl"><i class="fa-solid fa-magnifying-glass text-xs"></i></span>
+            </div>
         </div>
 
-        @if (Model.IsChartsView)
+        @if (Model.VisibleReports.Count == 0)
         {
-            @await Html.PartialAsync("_Charts", Model)
+            <div class="card bg-base-100 border border-base-300 rounded-2xl p-10 text-center">
+                <i class="fa-solid fa-chart-column text-3xl opacity-30"></i>
+                <h2 class="font-black text-base-content mt-3">No reports are available for your role yet</h2>
+                <p class="text-xs opacity-60 mt-1">HR/Payroll and other module report families are part of the next delivery phase.</p>
+            </div>
         }
         else
         {
-            @await Html.PartialAsync("_Table", Model)
+            @foreach (var group in Model.VisibleReports.GroupBy(report => report.Group))
+            {
+                <section class="space-y-3 report-group" data-group="@group.Key.ToLowerInvariant()">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-2">
+                        <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                            <i class="fa-solid fa-folder-open text-primary"></i> @group.Key
+                        </h2>
+                        <span class="badge badge-neutral badge-xs font-mono font-bold">@group.Count()</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        @foreach (var item in group)
+                        {
+                            <a href="@Model.ReportUrl(item.Key)"
+                               class="report-card card bg-base-100 border border-base-300 rounded-2xl p-5 hover:border-primary/60 hover:shadow-md transition-all group"
+                               data-search="@($"{item.Title} {item.Description} {item.Group}".ToLowerInvariant())">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-base shrink-0">
+                                        <i class="@item.IconClass"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <h3 class="font-black text-sm text-base-content group-hover:text-primary transition-colors">@item.Title</h3>
+                                        <p class="text-[11px] opacity-65 leading-relaxed mt-1">@item.Description</p>
+                                        <div class="flex items-center gap-2 mt-3">
+                                            <span class="badge badge-ghost border border-base-300 badge-xs font-bold">@item.Group</span>
+                                            @if (item.SupportsCsv || item.SupportsPdf)
+                                            {
+                                                <span class="text-[9px] uppercase tracking-wider opacity-40 font-bold">CSV / PDF</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        }
+                    </div>
+                </section>
+            }
+            <div id="report-empty" class="hidden card bg-base-100 border border-base-300 rounded-2xl p-10 text-center text-xs opacity-60">
+                No reports match your search.
+            </div>
+        }
+    }
+    else
+    {
+        <div class="flex flex-col xl:flex-row xl:items-end justify-between gap-4">
+            <div>
+                <div class="breadcrumbs text-xs opacity-60 mb-1">
+                    <ul>
+                        <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
+                        <li><a asp-page="/Reports/Index">Reports</a></li>
+                        <li class="font-bold text-base-content">@report.Title</li>
+                    </ul>
+                </div>
+                <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                    <i class="@report.IconClass text-primary"></i> @report.Title
+                </h1>
+                <p class="text-xs opacity-70 mt-0.5 max-w-4xl">@report.Description</p>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <a asp-page="/Reports/Index" class="btn btn-sm btn-ghost rounded-xl text-xs font-bold gap-1.5">
+                    <i class="fa-solid fa-arrow-left text-xs"></i> All Reports
+                </a>
+                <a href="@Url.Page("/Reports/Index", "ExportCsv", new { report = report.Key, from = Model.Filters.StartDate.ToString("yyyy-MM-dd"), to = Model.Filters.EndDate.ToString("yyyy-MM-dd"), categoryId = Model.Filters.CategoryId, salesRepId = Model.Filters.SalesRepId, status = Model.Filters.Status, search = Model.Filters.Search })"
+                   class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs font-bold gap-1.5">
+                    <i class="fa-solid fa-file-csv text-success"></i> CSV
+                </a>
+                <a href="@Url.Page("/Reports/Index", "ExportPdf", new { report = report.Key, from = Model.Filters.StartDate.ToString("yyyy-MM-dd"), to = Model.Filters.EndDate.ToString("yyyy-MM-dd"), categoryId = Model.Filters.CategoryId, salesRepId = Model.Filters.SalesRepId, status = Model.Filters.Status, search = Model.Filters.Search })"
+                   class="btn btn-sm btn-primary rounded-xl text-xs font-bold gap-1.5">
+                    <i class="fa-solid fa-file-pdf"></i> PDF
+                </a>
+            </div>
+        </div>
+
+        <form method="get" asp-page="/Reports/Index" class="card bg-base-100 border border-base-300 rounded-2xl p-4 space-y-3">
+            <input type="hidden" name="report" value="@report.Key" />
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <label class="form-control">
+                    <span class="label-text text-[10px] font-bold pb-1">From</span>
+                    <input type="date" name="from" value="@Model.Filters.StartDate.ToString("yyyy-MM-dd")" class="input input-sm input-bordered rounded-xl text-xs" />
+                </label>
+                <label class="form-control">
+                    <span class="label-text text-[10px] font-bold pb-1">To</span>
+                    <input type="date" name="to" value="@Model.Filters.EndDate.ToString("yyyy-MM-dd")" class="input input-sm input-bordered rounded-xl text-xs" />
+                </label>
+                @if (report.SupportsCategoryFilter)
+                {
+                    <label class="form-control">
+                        <span class="label-text text-[10px] font-bold pb-1">Product Category</span>
+                        <select name="categoryId" class="select select-sm select-bordered rounded-xl text-xs">
+                            <option value="">All categories</option>
+                            @foreach (var category in Model.Categories)
+                            {
+                                <option value="@category.Id" selected="@(Model.Filters.CategoryId == category.Id)">@category.Name</option>
+                            }
+                        </select>
+                    </label>
+                }
+                @if (report.SupportsRepFilter)
+                {
+                    <label class="form-control">
+                        <span class="label-text text-[10px] font-bold pb-1">Sales Rep</span>
+                        <select name="salesRepId" class="select select-sm select-bordered rounded-xl text-xs">
+                            <option value="">All reps</option>
+                            @foreach (var rep in Model.SalesReps)
+                            {
+                                <option value="@rep.Id" selected="@(Model.Filters.SalesRepId == rep.Id)">@rep.FullName</option>
+                            }
+                        </select>
+                    </label>
+                }
+                @if (report.SupportsStatusFilter)
+                {
+                    <label class="form-control">
+                        <span class="label-text text-[10px] font-bold pb-1">Status</span>
+                        <input type="text" name="status" value="@Model.Filters.Status" class="input input-sm input-bordered rounded-xl text-xs" placeholder="Any status" />
+                    </label>
+                }
+                @if (report.SupportsSearch)
+                {
+                    <label class="form-control">
+                        <span class="label-text text-[10px] font-bold pb-1">Search</span>
+                        <input type="text" name="search" value="@Model.Filters.Search" class="input input-sm input-bordered rounded-xl text-xs" placeholder="Order, item, rep..." />
+                    </label>
+                }
+                <div class="flex items-end gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary rounded-xl text-xs font-bold gap-1.5">
+                        <i class="fa-solid fa-filter"></i> Apply
+                    </button>
+                    <a asp-page="/Reports/Index" asp-route-report="@report.Key" class="btn btn-sm btn-ghost rounded-xl text-xs font-bold">Reset</a>
+                </div>
+            </div>
+        </form>
+
+        @if (result is null)
+        {
+            <div class="alert alert-info rounded-xl text-xs"><span>Run the report to see results.</span></div>
+        }
+        else
+        {
+            <div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden">
+                <div class="p-4 border-b border-base-200 flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="badge badge-primary badge-soft badge-sm font-bold">@result.Group</span>
+                        <span class="text-xs opacity-60">@result.DateRangeLabel</span>
+                    </div>
+                    <span class="badge badge-ghost border border-base-300 badge-sm font-mono font-bold">@result.TotalRows.ToString("N0") rows</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table table-sm w-full text-xs">
+                        <thead>
+                            <tr class="bg-base-200/60 uppercase text-[10px] tracking-wider border-b border-base-300">
+                                @foreach (var column in result.Columns)
+                                {
+                                    <th class="whitespace-nowrap @(column.Align == "right" ? "text-right" : "text-left")">@column.Label</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-base-200">
+                            @if (Model.PagedRows.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="@result.Columns.Count" class="text-center py-10 opacity-50">No data found for the selected filters.</td>
+                                </tr>
+                            }
+                            @foreach (var row in Model.PagedRows)
+                            {
+                                <tr class="hover:bg-base-200/50 transition-colors">
+                                    @foreach (var column in result.Columns)
+                                    {
+                                        row.TryGetValue(column.Key, out var value);
+                                        <td class="whitespace-nowrap @(column.Align == "right" ? "text-right font-mono" : "text-left")">@ReportFormatter.Format(value, column.Type)</td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                        @if (result.Totals.Count > 0)
+                        {
+                            <tfoot class="bg-base-200/70 border-t-2 border-base-300 font-bold">
+                                <tr>
+                                    @foreach (var column in result.Columns)
+                                    {
+                                        result.Totals.TryGetValue(column.Key, out var total);
+                                        <td class="whitespace-nowrap @(column.Align == "right" ? "text-right font-mono" : "text-left")">@(total is null ? "" : ReportFormatter.Format(total, column.Type))</td>
+                                    }
+                                </tr>
+                            </tfoot>
+                        }
+                    </table>
+                </div>
+
+                @if (result.TotalPages > 1)
+                {
+                    <div class="p-4 border-t border-base-200 flex items-center justify-between">
+                        <span class="text-[11px] opacity-60">Page @Model.PageNumber of @result.TotalPages</span>
+                        <div class="join">
+                            @if (Model.PageNumber > 1)
+                            {
+                                <a href="@Model.PageUrl(Model.PageNumber - 1)" class="btn btn-xs join-item">Previous</a>
+                            }
+                            @if (Model.PageNumber < result.TotalPages)
+                            {
+                                <a href="@Model.PageUrl(Model.PageNumber + 1)" class="btn btn-xs join-item">Next</a>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
         }
     }
 </div>
 
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-    <script src="~/js/erp-charts.js"></script>
-
-    <script>
-        function applyPreset(tf) {
-            const form = document.getElementById('report-filter-form');
-            document.getElementById('filter-timeframe').value = tf;
-            // Clear start/end so backend cleanly resolves the full preset window
-            document.getElementById('input-start-date').value = '';
-            document.getElementById('input-end-date').value = '';
-            form.submit();
-        }
-
-        function onDateChanged() {
-            document.getElementById('filter-timeframe').value = 'Custom';
-        }
-    </script>
-
-    @if (Model.IsChartsView && Model.HasData)
-    {
-        <script>
-            (function () {
-                // Serialised from the same DTO the table renders, so charts and
-                // numbers can never disagree.
-                const payload = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Result.Charts, new System.Text.Json.JsonSerializerOptions {
-                    PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
-                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-                }));
-
-                window.ErpCharts.render('chart-lifecycle', window.ErpCharts.builders.lifecycleBar, payload.lifecycle);
-                window.ErpCharts.render('chart-revenue', window.ErpCharts.builders.revenueLine, payload.revenue);
-                window.ErpCharts.render('chart-volume', window.ErpCharts.builders.volumeDonut, payload.volume);
-                window.ErpCharts.render('chart-reps', window.ErpCharts.builders.repPerformance, payload.repPerformance);
-
-                if (document.getElementById('chart-logistics')) {
-                    window.ErpCharts.render('chart-logistics', window.ErpCharts.builders.logisticsStack, payload.logistics);
-                }
-            })();
-        </script>
-    }
+<script>
+    (() => {
+        const input = document.getElementById('report-search');
+        if (!input) return;
+        const cards = Array.from(document.querySelectorAll('.report-card'));
+        const groups = Array.from(document.querySelectorAll('.report-group'));
+        const empty = document.getElementById('report-empty');
+        input.addEventListener('input', () => {
+            const term = input.value.trim().toLowerCase();
+            let visible = 0;
+            cards.forEach(card => {
+                const match = !term || (card.dataset.search || '').includes(term);
+                card.classList.toggle('hidden', !match);
+                if (match) visible++;
+            });
+            groups.forEach(group => {
+                const hasVisible = Array.from(group.querySelectorAll('.report-card')).some(card => !card.classList.contains('hidden'));
+                group.classList.toggle('hidden', !hasVisible);
+            });
+            empty?.classList.toggle('hidden', visible > 0);
+        });
+    })();
+</script>
 }

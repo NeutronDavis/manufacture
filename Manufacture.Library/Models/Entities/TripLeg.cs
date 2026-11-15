@@ -13,7 +13,13 @@ public partial class TripLeg
 
     public string OriginState { get; set; } = null!;
 
+    public string? OriginAddress { get; set; }
+
     public string DestinationState { get; set; } = null!;
+
+    public string? DestinationAddress { get; set; }
+
+    public decimal? DistanceKm { get; set; }
 
     public int FuelOption { get; set; }
 

@@ -115,6 +115,39 @@ namespace Manufacture.Tests
         }
 
         [Fact]
+        public void Convert_DensityBridge_NonLiquidBulkSolid_LitresToKg()
+        {
+            // Popcorn maize is not a liquid, but a measured bulk density of
+            // 0.72 kg/L must still allow volume-to-mass conversion.
+            var result = _converter.Convert(5, "litres", "kg", "Popcorn Maize", 0.72m);
+            Assert.Equal(3.6m, result);
+        }
+
+        [Fact]
+        public void CanConvert_DensityBridge_AllowsBulkSolidVolumeToMass()
+        {
+            Assert.True(_converter.CanConvert("litres", "kg", "Popcorn Maize", 0.72m));
+            Assert.True(_converter.CanConvert("kg", "litres", "Popcorn Maize", 0.72m));
+            Assert.False(_converter.CanConvert("litres", "kg", "Popcorn Maize"));
+        }
+
+        [Fact]
+        public void GetCompatibleUnits_WithDensity_IncludesVolumeForMassItem()
+        {
+            var units = _converter.GetCompatibleUnits("kg", "Popcorn Maize", 0.72m);
+            Assert.Contains("kg", units);
+            Assert.Contains("litres", units);
+            Assert.Contains("ml", units);
+        }
+
+        [Fact]
+        public void GetCompatibleUnits_WithoutDensity_DoesNotIncludeVolumeForSolid()
+        {
+            var units = _converter.GetCompatibleUnits("kg", "Popcorn Maize");
+            Assert.DoesNotContain("litres", units);
+        }
+
+        [Fact]
         public void GetCompatibleUnits_MassReturnsGramsAndKg()
         {
             var units = _converter.GetCompatibleUnits("kg", "Instant Dry Yeast");

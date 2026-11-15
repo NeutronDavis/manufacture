@@ -119,7 +119,7 @@ namespace Manufacture.Services
             return MeasurementKind.Unknown;
         }
 
-        public bool CanConvert(string? fromUnit, string? toUnit, string? materialName = null)
+        public bool CanConvert(string? fromUnit, string? toUnit, string? materialName = null, decimal? densityKgPerLitre = null)
         {
             if (string.IsNullOrWhiteSpace(fromUnit) || string.IsNullOrWhiteSpace(toUnit))
                 return false;
@@ -133,13 +133,19 @@ namespace Manufacture.Services
             if (fromKind != MeasurementKind.Unknown && fromKind == toKind)
                 return true;
 
-            // Liquid / water bridge between mass and volume
-            if (IsLiquidMaterial(materialName)
-                && ((fromKind == MeasurementKind.Mass && toKind == MeasurementKind.Volume) ||
-                    (fromKind == MeasurementKind.Volume && toKind == MeasurementKind.Mass)))
-            {
+            var hasDensity = densityKgPerLitre.GetValueOrDefault() > 0m;
+            var isCrossMassVolume =
+                (fromKind == MeasurementKind.Mass && toKind == MeasurementKind.Volume) ||
+                (fromKind == MeasurementKind.Volume && toKind == MeasurementKind.Mass);
+
+            // Density is the primary bridge between mass and volume. This applies
+            // to bulk solids (e.g. maize measured in litres) as well as liquids.
+            if (hasDensity && isCrossMassVolume)
                 return true;
-            }
+
+            // Liquid / water fallback when no density has been configured.
+            if (!hasDensity && IsLiquidMaterial(materialName) && isCrossMassVolume)
+                return true;
 
             // Container / item bridge from material name (e.g. "18.9L Dispenser Water Bottle" in pcs vs litres)
             if (CanBridgeItemVolumeOrMass(materialName, fromUnit, toUnit))
@@ -169,12 +175,16 @@ namespace Manufacture.Services
                 return FromBaseUnits(inBase, toUnit, toKind);
             }
 
-            // 2. Liquid bridge between Mass and Volume (e.g. Water 1L = 1kg)
-            if (IsLiquidMaterial(materialName) &&
+            // 2. Density bridge between Mass and Volume. A configured bulk
+            // density also supports solids such as maize measured in litres.
+            var hasDensity = densityKgPerLitre.GetValueOrDefault() > 0m;
+            if ((hasDensity || IsLiquidMaterial(materialName)) &&
                 ((fromKind == MeasurementKind.Mass && toKind == MeasurementKind.Volume) ||
                  (fromKind == MeasurementKind.Volume && toKind == MeasurementKind.Mass)))
             {
-                var density = densityKgPerLitre.GetValueOrDefault(GetDefaultDensity(materialName));
+                var density = hasDensity
+                    ? densityKgPerLitre!.Value
+                    : GetDefaultDensity(materialName);
 
                 if (fromKind == MeasurementKind.Volume && toKind == MeasurementKind.Mass)
                 {
@@ -207,7 +217,7 @@ namespace Manufacture.Services
 
         public bool TryConvert(decimal quantity, string fromUnit, string toUnit, out decimal result, string? materialName = null, decimal? densityKgPerLitre = null)
         {
-            if (CanConvert(fromUnit, toUnit, materialName))
+            if (CanConvert(fromUnit, toUnit, materialName, densityKgPerLitre))
             {
                 result = Convert(quantity, fromUnit, toUnit, materialName, densityKgPerLitre);
                 return true;
@@ -287,15 +297,16 @@ namespace Manufacture.Services
             return unitPrice;
         }
 
-        public IReadOnlyList<string> GetCompatibleUnits(string? baseUnit, string? materialName = null)
+        public IReadOnlyList<string> GetCompatibleUnits(string? baseUnit, string? materialName = null, decimal? densityKgPerLitre = null)
         {
             var kind = Classify(baseUnit);
             var result = new List<string>();
+            var hasDensity = densityKgPerLitre.GetValueOrDefault() > 0m;
 
             if (kind == MeasurementKind.Mass)
             {
                 result.AddRange(new[] { "kg", "g", "mg", "ton", "lb", "oz", "Bags (50kg)", "Bags (25kg)" });
-                if (IsLiquidMaterial(materialName))
+                if (hasDensity || IsLiquidMaterial(materialName))
                 {
                     result.AddRange(new[] { "litres", "ml", "cl" });
                 }
@@ -303,7 +314,7 @@ namespace Manufacture.Services
             else if (kind == MeasurementKind.Volume)
             {
                 result.AddRange(new[] { "litres", "ml", "cl", "dl", "gal", "cup", "tbsp", "tsp", "m3" });
-                if (IsLiquidMaterial(materialName))
+                if (hasDensity || IsLiquidMaterial(materialName))
                 {
                     result.AddRange(new[] { "kg", "g" });
                 }
@@ -311,7 +322,7 @@ namespace Manufacture.Services
             else // Count or Unknown
             {
                 result.AddRange(new[] { "pcs", "dozen", "pack", "carton", "box", "crate", "bundle" });
-                if (HasItemVolume(materialName))
+                if (hasDensity || HasItemVolume(materialName))
                 {
                     result.AddRange(new[] { "litres", "ml" });
                 }

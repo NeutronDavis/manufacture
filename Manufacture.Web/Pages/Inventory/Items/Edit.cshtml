@@ -133,6 +133,43 @@
                         <div class="form-control w-full">
                             <label class="label pb-1.5">
                                 <span class="label-text font-bold text-xs text-base-content">
+                                    Package Size <span class="text-error">*</span>
+                                </span>
+                            </label>
+                            <input type="number" step="0.001" min="0.001" asp-for="ItemInput.PackageSize" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" required />
+                            <span class="text-[10px] opacity-60 mt-1">Quantity contained in one purchased package.</span>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Package Unit of Measure <span class="text-error">*</span></span>
+                            </label>
+                            <select asp-for="ItemInput.PackageUnitOfMeasure" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary">
+                                <option value="kg">kg</option>
+                                <option value="g">g</option>
+                                <option value="L">L</option>
+                                <option value="ml">ml</option>
+                                <option value="pcs">pcs</option>
+                            </select>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Density Measurement</span>
+                            </label>
+                            <select asp-for="ItemInput.MeasurementDensityId" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold focus:bg-base-100 focus:border-primary">
+                                <option value="">Not applicable (0 kg/L)</option>
+                                @foreach (var density in Model.MeasurementDensities)
+                                {
+                                    <option value="@density.Id">@density.MaterialName (@density.DensityKgPerLitre.ToString("0.####") kg/L)</option>
+                                }
+                            </select>
+                            <span class="text-[10px] opacity-60 mt-1">Select a measured density to allow litre/ml requests to convert to kg. Leave as 0 when the item is never requested by volume.</span>
+                        </div>
+
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">
                                     Warehouse Stock On Hand
                                 </span>
                             </label>

@@ -1,18 +1,16 @@
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using Manufacture.Services;
+using Manufacture.Library.Interfaces;
 using Manufacture.Models.Domain;
 
 namespace Manufacture.Pages.Production
 {
     public class IndexModel : PageModel
     {
-        private readonly MockProductionService _productionService;
-        private readonly MockSalesService _salesService;
+        private readonly IProductionService _productionService;
 
-        public IndexModel(MockProductionService productionService, MockSalesService salesService)
+        public IndexModel(IProductionService productionService)
         {
             _productionService = productionService;
-            _salesService = salesService;
         }
 
         public List<Recipe> Recipes { get; set; } = new();
@@ -30,16 +28,8 @@ namespace Manufacture.Pages.Production
             Recipes = _productionService.GetAllRecipes();
             Batches = _productionService.GetAllBatches();
 
-            // Calculate demand from pre-orders
-            var preOrders = _salesService.GetPreOrders();
-            var demandMap = new Dictionary<string, int>();
-
-            foreach (var r in Recipes)
-            {
-                demandMap[r.Name] = 0;
-            }
-
-            foreach (var order in preOrders)
+            var demandMap = Recipes.ToDictionary(r => r.Name, _ => 0);
+            foreach (var order in _productionService.GetPreOrders())
             {
                 foreach (var item in order.Items)
                 {

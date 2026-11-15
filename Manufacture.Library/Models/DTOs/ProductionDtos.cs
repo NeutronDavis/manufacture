@@ -65,8 +65,7 @@ namespace Manufacture.Models.DTOs
         [Required, Range(1, 100000)]
         public int TargetQuantity { get; set; }
 
-        [Range(0, 100000)]
-        public int ActualQuantity { get; set; }
+        public int? ActualQuantity { get; set; }
 
         public string Shift { get; set; } = "Morning Shift";
 
@@ -97,5 +96,52 @@ namespace Manufacture.Models.DTOs
         public DateTime ProductionDate { get; set; } = DateTime.UtcNow;
 
         public string Notes { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Production-wide dashboard snapshot for a single day. Designed for the
+    /// Production Manager and deliberately groups output by unit so unlike
+    /// products are never added together.
+    /// </summary>
+    public class ProductionDashboardDto
+    {
+        public DateTime Date { get; set; } = DateTime.UtcNow.Date;
+        public int TotalBatches { get; set; }
+        public int CompletedBatches { get; set; }
+        public int ActiveBatches { get; set; }
+        public int PlannedBatches { get; set; }
+        public int DefectQuantity { get; set; }
+        public decimal ProductionCost { get; set; }
+        public decimal TotalTargetUnits { get; set; }
+        public decimal TotalActualUnits { get; set; }
+        public decimal YieldAchievementPercent { get; set; }
+        public List<ProductionOutputGroupDto> OutputGroups { get; set; } = new();
+        public List<ProductionBatch> Batches { get; set; } = new();
+    }
+
+    /// <summary>Output totals for one product line and finished-unit label.</summary>
+    public class ProductionOutputGroupDto
+    {
+        public string CategoryName { get; set; } = "Uncategorised";
+        public string ProductTypeName { get; set; } = "Uncategorised";
+        public string OutputUnit { get; set; } = "units";
+        public int BatchCount { get; set; }
+        public decimal TargetQuantity { get; set; }
+        public decimal ActualQuantity { get; set; }
+        public decimal Variance => ActualQuantity - TargetQuantity;
+        public decimal YieldPercent => TargetQuantity > 0
+            ? Math.Round((ActualQuantity / TargetQuantity) * 100m, 1)
+            : 0m;
+    }
+
+    /// <summary>Defective finished units recorded against a production batch.</summary>
+    public class ProductionDefectDto
+    {
+        public int Id { get; set; }
+        public int BatchId { get; set; }
+        public int Quantity { get; set; }
+        public string DefectReason { get; set; } = string.Empty;
+        public DateTime RecordedAt { get; set; }
+        public string RecordedBy { get; set; } = string.Empty;
     }
 }

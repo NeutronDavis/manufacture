@@ -29,10 +29,10 @@
 
         <div class="flex items-center gap-2">
             <a asp-page="/Logistics/Rates/Index" class="btn btn-outline btn-sm rounded-xl font-bold text-xs gap-1.5">
-                <i class="fa-solid fa-map-location-dot"></i> Route Pricing Matrix
+                <i class="fa-solid fa-file-invoice-dollar"></i> Client Quotes
             </a>
             <a asp-page="/Logistics/Charter/Create" class="btn btn-neutral btn-sm rounded-xl font-bold text-xs gap-1.5 shadow-xs">
-                <i class="fa-solid fa-plus"></i> New Charter Booking
+                <i class="fa-solid fa-plus"></i> Book from Approved Quote
             </a>
         </div>
     </div>
@@ -184,6 +184,10 @@
                                     <div class="text-[10px] text-base-content/50">
                                         Dep: @b.DepartureDate.ToString("dd MMM yyyy")
                                     </div>
+                                    @if (!string.IsNullOrWhiteSpace(b.QuoteRef))
+                                    {
+                                        <div class="text-[10px] text-info font-bold">Quote: @b.QuoteRef</div>
+                                    }
                                 </td>
                                 <td class="py-3 px-4">
                                     <div class="font-bold text-base-content">@b.CustomerName</div>

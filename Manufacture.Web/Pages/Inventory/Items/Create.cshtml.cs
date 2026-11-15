@@ -8,27 +8,30 @@ namespace Manufacture.Pages.Inventory.Items
     public class CreateModel : PageModel
     {
         private readonly IInventoryService _inventoryService;
+        private readonly IMeasurementDensityService _measurementService;
 
-        public CreateModel(IInventoryService inventoryService)
+        public CreateModel(IInventoryService inventoryService, IMeasurementDensityService measurementService)
         {
             _inventoryService = inventoryService;
+            _measurementService = measurementService;
         }
 
         [BindProperty]
         public InventoryItemDto ItemInput { get; set; } = new();
 
         public List<SupplierDto> Suppliers { get; set; } = new();
+        public List<MeasurementDensityDto> MeasurementDensities { get; set; } = new();
 
         public async Task OnGetAsync(CancellationToken cancellationToken = default)
         {
-            await LoadSuppliersAsync(cancellationToken);
+            await LoadFormDataAsync(cancellationToken);
         }
 
         public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken = default)
         {
             if (!ModelState.IsValid)
             {
-                await LoadSuppliersAsync(cancellationToken);
+                await LoadFormDataAsync(cancellationToken);
                 return Page();
             }
 
@@ -42,14 +45,15 @@ namespace Manufacture.Pages.Inventory.Items
             catch (InvalidOperationException ex)
             {
                 ModelState.AddModelError(string.Empty, ex.Message);
-                await LoadSuppliersAsync(cancellationToken);
+                await LoadFormDataAsync(cancellationToken);
                 return Page();
             }
         }
 
-        private async Task LoadSuppliersAsync(CancellationToken cancellationToken)
+        private async Task LoadFormDataAsync(CancellationToken cancellationToken)
         {
             Suppliers = await _inventoryService.GetSuppliersAsync(cancellationToken: cancellationToken);
+            MeasurementDensities = await _measurementService.GetAllAsync(includeInactive: false, cancellationToken);
         }
     }
 }

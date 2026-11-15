@@ -8,7 +8,6 @@ using CharterBooking = Manufacture.Models.Entities.CharterBooking;
 using Employee = Manufacture.Models.Entities.Employee;
 using FuelLog = Manufacture.Models.Entities.FuelLog;
 using MaintenanceLog = Manufacture.Models.Entities.MaintenanceLog;
-using RouteRate = Manufacture.Models.Entities.RouteRate;
 using TripLeg = Manufacture.Models.Entities.TripLeg;
 using Vehicle = Manufacture.Models.Entities.Vehicle;
 
@@ -125,6 +124,40 @@ namespace Manufacture.Services
                 .AsNoTracking()
                 .Include(l => l.Vehicle)
                 .Include(l => l.Employee)
+                .Include(l => l.CharterBooking)
+                .Include(l => l.FleetDispatch)
+                .OrderByDescending(l => l.FuelDate)
+                .ThenByDescending(l => l.Id)
+                .ToListAsync(cancellationToken);
+
+            return logs.Select(MapFuelLog).ToList();
+        }
+
+        public async Task<List<FuelLogDto>> GetFuelLogsForCharterAsync(int charterBookingId, CancellationToken cancellationToken = default)
+        {
+            var logs = await _db.FuelLogs
+                .AsNoTracking()
+                .Include(l => l.Vehicle)
+                .Include(l => l.Employee)
+                .Include(l => l.CharterBooking)
+                .Include(l => l.FleetDispatch)
+                .Where(l => l.CharterBookingId == charterBookingId)
+                .OrderByDescending(l => l.FuelDate)
+                .ThenByDescending(l => l.Id)
+                .ToListAsync(cancellationToken);
+
+            return logs.Select(MapFuelLog).ToList();
+        }
+
+        public async Task<List<FuelLogDto>> GetFuelLogsForDispatchAsync(int fleetDispatchId, CancellationToken cancellationToken = default)
+        {
+            var logs = await _db.FuelLogs
+                .AsNoTracking()
+                .Include(l => l.Vehicle)
+                .Include(l => l.Employee)
+                .Include(l => l.CharterBooking)
+                .Include(l => l.FleetDispatch)
+                .Where(l => l.FleetDispatchId == fleetDispatchId)
                 .OrderByDescending(l => l.FuelDate)
                 .ThenByDescending(l => l.Id)
                 .ToListAsync(cancellationToken);
@@ -138,11 +171,40 @@ namespace Manufacture.Services
                 .FirstOrDefaultAsync(v => v.Id == dto.VehicleId, cancellationToken)
                 ?? throw new InvalidOperationException("Select a valid vehicle.");
 
+            if (dto.CharterBookingId.HasValue && dto.FleetDispatchId.HasValue)
+            {
+                throw new InvalidOperationException("A fuel record cannot belong to both a charter and a dispatch.");
+            }
+
+            CharterBooking? charter = null;
+            if (dto.CharterBookingId.HasValue)
+            {
+                charter = await _db.CharterBookings.FirstOrDefaultAsync(b => b.Id == dto.CharterBookingId.Value, cancellationToken)
+                    ?? throw new InvalidOperationException("Charter booking not found.");
+                if (charter.VehicleId != vehicle.Id)
+                {
+                    throw new InvalidOperationException("The fuel vehicle must match the charter vehicle.");
+                }
+            }
+
+            FleetDispatch? dispatch = null;
+            if (dto.FleetDispatchId.HasValue)
+            {
+                dispatch = await _db.FleetDispatches.FirstOrDefaultAsync(d => d.Id == dto.FleetDispatchId.Value, cancellationToken)
+                    ?? throw new InvalidOperationException("Fleet dispatch not found.");
+                if (dispatch.VehicleId != vehicle.Id)
+                {
+                    throw new InvalidOperationException("The fuel vehicle must match the dispatch vehicle.");
+                }
+            }
+
             var fuelType = NormalizeFuelType(string.IsNullOrWhiteSpace(dto.FuelType) ? vehicle.FuelType : dto.FuelType);
 
             var log = new FuelLog
             {
                 VehicleId = vehicle.Id,
+                CharterBookingId = charter?.Id,
+                FleetDispatchId = dispatch?.Id,
                 EmployeeId = dto.EmployeeId ?? vehicle.AssignedEmployeeId,
                 FuelDate = dto.Date == default ? DateTime.UtcNow : dto.Date,
                 FuelType = fuelType,
@@ -157,6 +219,8 @@ namespace Manufacture.Services
             await _db.SaveChangesAsync(cancellationToken);
 
             log.Vehicle = vehicle;
+            log.CharterBooking = charter;
+            log.FleetDispatch = dispatch;
             return MapFuelLog(log);
         }
 
@@ -222,121 +286,6 @@ namespace Manufacture.Services
             return log == null ? null : MapMaintenance(log, log.Vehicle?.RegistrationNumber ?? string.Empty);
         }
 
-        public async Task<List<RouteRateDto>> GetRouteRatesAsync(
-            string? search = null,
-            string? vehicleType = null,
-            CancellationToken cancellationToken = default)
-        {
-            var query = _db.RouteRates.AsNoTracking().AsQueryable();
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var term = search.Trim().ToLowerInvariant();
-                query = query.Where(r =>
-                    r.OriginState.ToLower().Contains(term) ||
-                    r.DestinationState.ToLower().Contains(term) ||
-                    r.VehicleTypeRequired.ToLower().Contains(term));
-            }
-
-            if (!string.IsNullOrWhiteSpace(vehicleType))
-            {
-                query = query.Where(r => r.VehicleTypeRequired == vehicleType);
-            }
-
-            var rates = await query
-                .OrderBy(r => r.OriginState)
-                .ThenBy(r => r.DestinationState)
-                .ToListAsync(cancellationToken);
-
-            return rates.Select(MapRouteRate).ToList();
-        }
-
-        public async Task<RouteRateDto?> GetRouteRateAsync(int id, CancellationToken cancellationToken = default)
-        {
-            var rate = await _db.RouteRates.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
-            return rate == null ? null : MapRouteRate(rate);
-        }
-
-        public async Task<RouteRateDto> CreateRouteRateAsync(RouteRateDto dto, CancellationToken cancellationToken = default)
-        {
-            var rate = new RouteRate
-            {
-                OriginState = dto.OriginState.Trim(),
-                DestinationState = dto.DestinationState.Trim(),
-                VehicleTypeRequired = dto.VehicleTypeRequired.Trim(),
-                RateWithFuel = dto.RateWithFuel,
-                RateWithoutFuel = dto.RateWithoutFuel,
-                EstimatedHours = dto.EstimatedHours,
-                IsActive = dto.IsActive,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            _db.RouteRates.Add(rate);
-            await _db.SaveChangesAsync(cancellationToken);
-            return MapRouteRate(rate);
-        }
-
-        public async Task<bool> UpdateRouteRateAsync(RouteRateDto dto, CancellationToken cancellationToken = default)
-        {
-            var rate = await _db.RouteRates.FirstOrDefaultAsync(r => r.Id == dto.Id, cancellationToken);
-            if (rate == null)
-            {
-                return false;
-            }
-
-            rate.OriginState = dto.OriginState.Trim();
-            rate.DestinationState = dto.DestinationState.Trim();
-            rate.VehicleTypeRequired = dto.VehicleTypeRequired.Trim();
-            rate.RateWithFuel = dto.RateWithFuel;
-            rate.RateWithoutFuel = dto.RateWithoutFuel;
-            rate.EstimatedHours = dto.EstimatedHours;
-            rate.IsActive = dto.IsActive;
-            rate.UpdatedAt = DateTime.UtcNow;
-
-            await _db.SaveChangesAsync(cancellationToken);
-            return true;
-        }
-
-        public async Task<bool> DeleteRouteRateAsync(int id, CancellationToken cancellationToken = default)
-        {
-            var rate = await _db.RouteRates.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
-            if (rate == null)
-            {
-                return false;
-            }
-
-            _db.RouteRates.Remove(rate);
-            await _db.SaveChangesAsync(cancellationToken);
-            return true;
-        }
-
-        public async Task<bool> SetRouteRateActiveAsync(int id, bool isActive, CancellationToken cancellationToken = default)
-        {
-            var rate = await _db.RouteRates.FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
-            if (rate == null)
-            {
-                return false;
-            }
-
-            rate.IsActive = isActive;
-            rate.UpdatedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync(cancellationToken);
-            return true;
-        }
-
-        public async Task<List<RouteRateDto>> GetActiveRouteRatesAsync(CancellationToken cancellationToken = default)
-        {
-            var rates = await _db.RouteRates
-                .AsNoTracking()
-                .Where(r => r.IsActive)
-                .OrderBy(r => r.OriginState)
-                .ThenBy(r => r.DestinationState)
-                .ToListAsync(cancellationToken);
-
-            return rates.Select(MapRouteRate).ToList();
-        }
-
         public async Task<List<CharterBookingDto>> GetCharterBookingsAsync(
             string? status = null,
             string? search = null,
@@ -345,6 +294,7 @@ namespace Manufacture.Services
             var query = _db.CharterBookings
                 .AsNoTracking()
                 .Include(b => b.Vehicle)
+                .Include(b => b.QuoteRequest)
                 .Include(b => b.TripLegs)
                 .AsQueryable();
 
@@ -378,6 +328,7 @@ namespace Manufacture.Services
             var booking = await _db.CharterBookings
                 .AsNoTracking()
                 .Include(b => b.Vehicle)
+                .Include(b => b.QuoteRequest)
                 .Include(b => b.TripLegs)
                 .FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
 
@@ -388,6 +339,11 @@ namespace Manufacture.Services
             CharterBookingDto dto,
             CancellationToken cancellationToken = default)
         {
+            if (!dto.QuoteRequestId.HasValue)
+            {
+                throw new InvalidOperationException("An approved client quote is required before booking a charter.");
+            }
+
             var vehicle = await _db.Vehicles
                 .Include(v => v.AssignedEmployee)
                 .FirstOrDefaultAsync(v => v.Id == dto.VehicleId, cancellationToken)
@@ -401,45 +357,51 @@ namespace Manufacture.Services
 
             var assignedDriver = driverEmployee ?? vehicle.AssignedEmployee;
 
-            if (dto.Legs.Count == 0)
+            var quote = await _db.CharterQuoteRequests
+                .Include(q => q.CharterQuoteLegs)
+                .FirstOrDefaultAsync(q => q.Id == dto.QuoteRequestId.Value, cancellationToken)
+                ?? throw new InvalidOperationException("The selected quote was not found.");
+
+            if (quote.Status != (int)CharterQuoteStatus.Approved)
             {
-                throw new InvalidOperationException("At least one trip leg is required.");
+                throw new InvalidOperationException("Only approved quotes can be converted to a booking.");
             }
 
-            var legs = new List<TripLeg>();
-            var gross = 0m;
-            for (var i = 0; i < dto.Legs.Count; i++)
+            if (quote.ValidUntil.HasValue && quote.ValidUntil.Value < DateOnly.FromDateTime(DateTime.UtcNow.Date))
             {
-                var input = dto.Legs[i];
-                var rate = await _db.RouteRates
-                    .AsNoTracking()
-                    .Where(r => r.IsActive
-                        && r.OriginState == input.OriginState
-                        && r.DestinationState == input.DestinationState)
-                    .OrderByDescending(r => r.Id)
-                    .FirstOrDefaultAsync(cancellationToken);
+                throw new InvalidOperationException("This quote has expired. Create a new quote or clone the expired quote.");
+            }
 
-                var legCost = rate == null
-                    ? input.LegCost
-                    : input.FuelOption == FuelOption.WithFuel ? rate.RateWithFuel : rate.RateWithoutFuel;
+            if (await _db.CharterBookings.AnyAsync(b => b.QuoteRequestId == quote.Id, cancellationToken))
+            {
+                throw new InvalidOperationException("This quote has already been converted to a booking.");
+            }
 
-                if (legCost <= 0)
+            if (quote.CharterQuoteLegs.Count == 0)
+            {
+                throw new InvalidOperationException("The selected quote has no trip legs.");
+            }
+
+            var gross = quote.QuotedAmount;
+            if (gross <= 0)
+            {
+                throw new InvalidOperationException("The selected quote has no billable amount.");
+            }
+
+            var legs = quote.CharterQuoteLegs
+                .OrderBy(l => l.LegNumber)
+                .Select(l => new TripLeg
                 {
-                    throw new InvalidOperationException(
-                        $"No active route price was found for {input.OriginState} to {input.DestinationState}.");
-                }
-
-                gross += legCost;
-                legs.Add(new TripLeg
-                {
-                    LegNumber = i + 1,
-                    OriginState = input.OriginState.Trim(),
-                    DestinationState = input.DestinationState.Trim(),
-                    FuelOption = (int)input.FuelOption,
-                    LegCost = legCost,
+                    LegNumber = l.LegNumber,
+                    OriginState = l.OriginCityState.Trim(),
+                    OriginAddress = l.OriginAddress.Trim(),
+                    DestinationState = l.DestinationCityState.Trim(),
+                    DestinationAddress = l.DestinationAddress.Trim(),
+                    DistanceKm = l.DistanceKm,
+                    FuelOption = l.FuelOption,
+                    LegCost = l.QuotedLegAmount,
                     CreatedAt = DateTime.UtcNow
-                });
-            }
+                }).ToList();
 
             var year = dto.DepartureDate.Year;
             var nextNumber = await _db.CharterBookings.CountAsync(cancellationToken) + 1;
@@ -453,26 +415,39 @@ namespace Manufacture.Services
             var booking = new CharterBooking
             {
                 BookingRef = bookingRef,
-                CustomerName = dto.CustomerName.Trim(),
-                CustomerPhone = dto.CustomerPhone.Trim(),
+                CustomerName = quote.CustomerName,
+                CustomerPhone = quote.CustomerPhone,
                 VehicleId = vehicle.Id,
+                QuoteRequestId = quote.Id,
                 DriverEmployeeId = assignedDriver?.Id,
                 DriverName = assignedDriver?.FullName ?? string.Empty,
-                DriverAllowance = dto.DriverAllowance,
-                SecurityEscortFee = dto.SecurityEscortFee,
-                TollsAndRoadLevies = dto.TollsAndRoadLevies,
+                DriverAllowance = quote.DriverAllowance,
+                SecurityEscortFee = quote.SecurityEscortFee,
+                TollsAndRoadLevies = quote.TollsAndRoadLevies,
                 GrossCharterFee = gross,
-                TripStatus = (int)dto.TripStatus,
+                TripStatus = (int)CharterTripStatus.Booked,
                 DepartureDate = DateOnly.FromDateTime(dto.DepartureDate),
                 ReturnDate = dto.ReturnDate.HasValue ? DateOnly.FromDateTime(dto.ReturnDate.Value) : null,
-                Notes = dto.Notes.Trim(),
+                Notes = dto.Notes?.Trim() ?? string.Empty,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 TripLegs = legs
             };
 
+            await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
             _db.CharterBookings.Add(booking);
+            quote.Status = (int)CharterQuoteStatus.Converted;
+            quote.UpdatedAt = DateTime.UtcNow;
+            _db.AuditLogs.Add(new Manufacture.Models.Entities.AuditLog
+            {
+                Action = "CharterQuoteConverted",
+                EntityName = "CharterQuoteRequest",
+                EntityId = quote.Id.ToString(),
+                NewValues = $"Quote {quote.QuoteRef} converted to booking {bookingRef}.",
+                OccurredAt = DateTime.UtcNow
+            });
             await _db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
 
             booking.Vehicle = vehicle;
             return MapCharterBooking(booking);
@@ -615,6 +590,10 @@ namespace Manufacture.Services
                 Id = log.Id,
                 VehicleId = log.VehicleId,
                 VehicleRegNumber = log.Vehicle?.RegistrationNumber ?? string.Empty,
+                CharterBookingId = log.CharterBookingId,
+                CharterBookingRef = log.CharterBooking?.BookingRef ?? string.Empty,
+                FleetDispatchId = log.FleetDispatchId,
+                FleetDispatchRef = log.FleetDispatch?.DispatchRef ?? string.Empty,
                 EmployeeId = log.EmployeeId,
                 DriverName = log.Employee?.FullName ?? string.Empty,
                 Date = log.FuelDate,
@@ -644,21 +623,6 @@ namespace Manufacture.Services
             };
         }
 
-        private static RouteRateDto MapRouteRate(RouteRate rate)
-        {
-            return new RouteRateDto
-            {
-                Id = rate.Id,
-                OriginState = rate.OriginState,
-                DestinationState = rate.DestinationState,
-                VehicleTypeRequired = rate.VehicleTypeRequired,
-                RateWithFuel = rate.RateWithFuel,
-                RateWithoutFuel = rate.RateWithoutFuel,
-                EstimatedHours = rate.EstimatedHours,
-                IsActive = rate.IsActive
-            };
-        }
-
         private static CharterBookingDto MapCharterBooking(CharterBooking booking)
         {
             return new CharterBookingDto
@@ -669,6 +633,9 @@ namespace Manufacture.Services
                 CustomerPhone = booking.CustomerPhone,
                 VehicleId = booking.VehicleId,
                 VehicleRegNumber = booking.Vehicle?.RegistrationNumber ?? string.Empty,
+                QuoteRequestId = booking.QuoteRequestId,
+                QuoteRef = booking.QuoteRequest?.QuoteRef ?? string.Empty,
+                TotalDistanceKm = booking.TripLegs.Where(l => l.DistanceKm.HasValue).Sum(l => l.DistanceKm!.Value),
                 DriverEmployeeId = booking.DriverEmployeeId,
                 DriverName = booking.DriverName,
                 IsMultiLeg = booking.TripLegs.Count > 1,
@@ -678,7 +645,10 @@ namespace Manufacture.Services
                     {
                         LegNumber = l.LegNumber,
                         OriginState = l.OriginState,
+                        OriginAddress = l.OriginAddress,
                         DestinationState = l.DestinationState,
+                        DestinationAddress = l.DestinationAddress,
+                        DistanceKm = l.DistanceKm,
                         FuelOption = (FuelOption)l.FuelOption,
                         LegCost = l.LegCost
                     })

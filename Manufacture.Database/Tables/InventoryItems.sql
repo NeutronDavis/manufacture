@@ -8,6 +8,10 @@ CREATE TABLE [dbo].[InventoryItems]
     [QuantityInStock]     DECIMAL (18, 3) NOT NULL CONSTRAINT [DF_InventoryItems_QuantityInStock] DEFAULT (0),
     [ReorderThreshold]    DECIMAL (18, 3) NOT NULL CONSTRAINT [DF_InventoryItems_ReorderThreshold] DEFAULT (0),
     [UnitCostPrice]       DECIMAL (18, 4) NOT NULL CONSTRAINT [DF_InventoryItems_UnitCostPrice] DEFAULT (0),
+    [PackageSize]         DECIMAL (18, 3) NOT NULL CONSTRAINT [DF_InventoryItems_PackageSize] DEFAULT (1),
+    [PackageUnitOfMeasure] NVARCHAR (20) NOT NULL CONSTRAINT [DF_InventoryItems_PackageUnitOfMeasure] DEFAULT (N'kg'),
+    [DensityKgPerLitre]   DECIMAL (18, 4) NULL,
+    [MeasurementDensityId] INT          NULL,
     [PreferredSupplierId] INT            NULL,
     [LastRestockedDate]   DATE           NOT NULL CONSTRAINT [DF_InventoryItems_LastRestockedDate] DEFAULT (CONVERT(DATE, SYSUTCDATETIME())),
     [IsActive]            BIT            NOT NULL CONSTRAINT [DF_InventoryItems_IsActive] DEFAULT (1),
@@ -17,7 +21,8 @@ CREATE TABLE [dbo].[InventoryItems]
     CONSTRAINT [PK_InventoryItems] PRIMARY KEY CLUSTERED ([Id] ASC),
     CONSTRAINT [UQ_InventoryItems_ItemCode] UNIQUE ([ItemCode]),
     CONSTRAINT [FK_InventoryItems_Suppliers] FOREIGN KEY ([PreferredSupplierId]) REFERENCES [dbo].[Suppliers] ([Id]),
-    CONSTRAINT [CK_InventoryItems_Quantities] CHECK ([QuantityInStock] >= 0 AND [ReorderThreshold] >= 0 AND [UnitCostPrice] >= 0)
+    CONSTRAINT [FK_InventoryItems_MeasurementDensities] FOREIGN KEY ([MeasurementDensityId]) REFERENCES [dbo].[MeasurementDensities] ([Id]),
+    CONSTRAINT [CK_InventoryItems_Quantities] CHECK ([QuantityInStock] >= 0 AND [ReorderThreshold] >= 0 AND [UnitCostPrice] >= 0 AND [PackageSize] > 0 AND ([DensityKgPerLitre] IS NULL OR [DensityKgPerLitre] > 0))
 );
 GO
 
@@ -28,4 +33,9 @@ GO
 CREATE NONCLUSTERED INDEX [IX_InventoryItems_PreferredSupplierId]
     ON [dbo].[InventoryItems] ([PreferredSupplierId] ASC)
     WHERE [PreferredSupplierId] IS NOT NULL;
+GO
+
+CREATE NONCLUSTERED INDEX [IX_InventoryItems_MeasurementDensityId]
+    ON [dbo].[InventoryItems] ([MeasurementDensityId] ASC)
+    WHERE [MeasurementDensityId] IS NOT NULL;
 GO

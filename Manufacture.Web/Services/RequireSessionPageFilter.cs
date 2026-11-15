@@ -46,6 +46,47 @@ namespace Manufacture.Services
                 return;
             }
 
+            if (string.Equals(role, "StoreManager", StringComparison.OrdinalIgnoreCase))
+            {
+                if (path.StartsWithSegments("/Inventory/Suppliers", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Result = new RedirectToPageResult("/Inventory/Index");
+                    return;
+                }
+
+                if (path.StartsWithSegments("/Production", StringComparison.OrdinalIgnoreCase)
+                    || path.StartsWithSegments("/Recipes", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Result = new RedirectToPageResult("/Dashboard/Index");
+                }
+
+                return;
+            }
+
+            if (string.Equals(role, "ProductionManager", StringComparison.OrdinalIgnoreCase))
+            {
+                if (path.StartsWithSegments("/Logistics", StringComparison.OrdinalIgnoreCase)
+                    || path.StartsWithSegments("/Fleet", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Result = new RedirectToPageResult("/Dashboard/Index");
+                    return;
+                }
+
+                if (path.StartsWithSegments("/Sales/Orders/Create", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Result = new RedirectToPageResult("/Sales/Orders/Index");
+                    return;
+                }
+
+                if (path.StartsWithSegments("/Inventory/Items/Create", StringComparison.OrdinalIgnoreCase)
+                    || path.StartsWithSegments("/Inventory/Items/Edit", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Result = new RedirectToPageResult("/Inventory/Index");
+                }
+
+                return;
+            }
+
             if (!string.Equals(role, "Customer", StringComparison.OrdinalIgnoreCase))
             {
                 return;

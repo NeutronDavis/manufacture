@@ -1,12 +1,13 @@
 @page
 @model Manufacture.Pages.Logistics.IndexModel
+@using Manufacture.Models.Domain
+@using Manufacture.Models.DTOs
 @{
     ViewData["Title"] = "Logistics & Fleet Management";
 }
 
 <div class="space-y-6 w-full">
-    <!-- Breadcrumb & Header Bar -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
             <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
                 <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
@@ -14,263 +15,155 @@
                 <span class="text-primary font-bold">Fleet Logistics</span>
             </div>
             <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
-                <i class="fa-solid fa-truck-moving text-primary"></i> Fleet & Delivery Logistics
+                <i class="fa-solid fa-truck-moving text-primary"></i> Fleet Operations Overview
             </h1>
-            <p class="text-xs opacity-70 mt-0.5">
-                Delivery vehicles, charter bookings, fuel consumption logs, and maintenance tracking.
-            </p>
+            <p class="text-xs opacity-70 mt-0.5">Vehicles, charters, client quotes, delivery dispatches and fleet activity.</p>
         </div>
         <div class="flex items-center gap-2 flex-wrap justify-end">
-            <a asp-page="/Logistics/Rates/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
-                <i class="fa-solid fa-map-location-dot text-xs"></i> Route Rates
-            </a>
-            <a asp-page="/Logistics/WeeklyRunningCosts/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
-                <i class="fa-solid fa-calendar-week text-xs"></i> Weekly Running Costs
-            </a>
-            <a asp-page="/Logistics/Charter/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 text-xs shadow-xs">
-                <i class="fa-solid fa-truck-fast text-xs"></i> Book Charter
-            </a>
+            <a asp-page="/Logistics/Vehicles/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold"><i class="fa-solid fa-van-shuttle"></i> Vehicles</a>
+            <a asp-page="/Logistics/Rates/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold"><i class="fa-solid fa-file-invoice-dollar"></i> Client Quotes</a>
+            <a asp-page="/Logistics/Dispatches/Create" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold"><i class="fa-solid fa-truck-ramp-box"></i> New Dispatch</a>
+            <a asp-page="/Logistics/Charter/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 text-xs shadow-xs"><i class="fa-solid fa-truck-fast"></i> Book Charter</a>
         </div>
     </div>
 
-    <!-- Dual-Role Fleet Division Showcase Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Division 1: Charter & Vehicle Hire -->
-        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 relative overflow-hidden">
-            <div class="flex items-start justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-neutral text-neutral-content flex items-center justify-center font-bold">
-                        <i class="fa-solid fa-truck-moving"></i>
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <h2 class="text-sm font-black text-base-content">Charter & Vehicle Hire</h2>
-                            <span class="badge badge-xs badge-primary font-bold text-[9px]">Revenue Unit</span>
-                        </div>
-                        <p class="text-[11px] text-base-content/60">Interstate vehicle charters across Nigerian routes</p>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-base-200 text-center">
-                <div class="bg-base-200/50 p-2 rounded-xl">
-                    <div class="text-[10px] text-base-content/60 font-semibold">Bookings</div>
-                    <div class="text-base font-black text-base-content">@Model.CharterBookings.Count</div>
-                </div>
-                <div class="bg-base-200/50 p-2 rounded-xl">
-                    <div class="text-[10px] text-base-content/60 font-semibold">Route Lanes</div>
-                    <div class="text-base font-black text-primary">@Model.RouteRates.Count</div>
-                </div>
-                <div class="bg-base-200/50 p-2 rounded-xl">
-                    <div class="text-[10px] text-base-content/60 font-semibold">Net Profit</div>
-                    <div class="text-base font-black text-emerald-600">₦@Model.CharterBookings.Sum(b => b.NetCharterRevenue).ToString("N0")</div>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-2 mt-4">
-                <a asp-page="/Logistics/Charter/Index" class="btn btn-xs btn-outline rounded-lg flex-1 font-bold text-[11px]">
-                    View Bookings Ledger
-                </a>
-                <a asp-page="/Logistics/Charter/Create" class="btn btn-xs btn-neutral rounded-lg flex-1 font-bold text-[11px]">
-                    + New Charter Run
-                </a>
-            </div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="card bg-base-100 border border-base-300 p-4 rounded-2xl">
+            <div class="flex items-center justify-between"><span class="text-[10px] uppercase font-bold opacity-60">Total Vehicles</span><i class="fa-solid fa-van-shuttle text-primary"></i></div>
+            <div class="text-2xl font-black font-mono mt-2">@Model.Vehicles.Count</div>
+            <div class="text-[10px] opacity-50 mt-1">Registered fleet assets</div>
         </div>
-
-        <!-- Division 2: Weekly Fleet Running Costs Reconciliation -->
-        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 relative overflow-hidden">
-            <div class="flex items-start justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
-                        <i class="fa-solid fa-calendar-check"></i>
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <h2 class="text-sm font-black text-base-content">Weekly Running Costs Ledger</h2>
-                            <span class="badge badge-xs badge-neutral font-bold text-[9px]">Sunday - Saturday</span>
-                        </div>
-                        <p class="text-[11px] text-base-content/60">Aggregated fuel, EV charging, servicing and incidentals</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-base-200 text-center">
-                <div class="bg-base-200/50 p-2 rounded-xl">
-                    <div class="text-[10px] text-base-content/60 font-semibold">Weekly Fuel</div>
-                    <div class="text-base font-black text-emerald-600">₦@Model.CurrentWeekExpenses.Sum(e => e.FuelExpenseTotal).ToString("N0")</div>
-                </div>
-                <div class="bg-base-200/50 p-2 rounded-xl">
-                    <div class="text-[10px] text-base-content/60 font-semibold">Repairs & Parts</div>
-                    <div class="text-base font-black text-blue-600">₦@Model.CurrentWeekExpenses.Sum(e => e.MaintenanceExpenseTotal).ToString("N0")</div>
-                </div>
-                <div class="bg-base-200/50 p-2 rounded-xl">
-                    <div class="text-[10px] text-base-content/60 font-semibold">Weekly Overhead</div>
-                    <div class="text-base font-black text-base-content">₦@Model.CurrentWeekExpenses.Sum(e => e.TotalWeeklyRunningCost).ToString("N0")</div>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-2 mt-4">
-                <a asp-page="/Logistics/WeeklyRunningCosts/Index" class="btn btn-xs btn-neutral w-full rounded-lg font-bold text-[11px]">
-                    Open Weekly Operating Cost Matrix &rarr;
-                </a>
-            </div>
+        <div class="card bg-base-100 border border-base-300 p-4 rounded-2xl">
+            <div class="flex items-center justify-between"><span class="text-[10px] uppercase font-bold opacity-60">Active</span><i class="fa-solid fa-circle-check text-success"></i></div>
+            <div class="text-2xl font-black font-mono text-success mt-2">@Model.ActiveVehicleCount</div>
+            <div class="text-[10px] opacity-50 mt-1">Available for assignment</div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 p-4 rounded-2xl">
+            <div class="flex items-center justify-between"><span class="text-[10px] uppercase font-bold opacity-60">In Transit</span><i class="fa-solid fa-truck-fast text-info"></i></div>
+            <div class="text-2xl font-black font-mono text-info mt-2">@Model.InTransitVehicleCount</div>
+            <div class="text-[10px] opacity-50 mt-1">Currently on dispatch</div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 p-4 rounded-2xl">
+            <div class="flex items-center justify-between"><span class="text-[10px] uppercase font-bold opacity-60">Unavailable</span><i class="fa-solid fa-triangle-exclamation text-warning"></i></div>
+            <div class="text-2xl font-black font-mono text-warning mt-2">@(Model.InMaintenanceVehicleCount + Model.GroundedVehicleCount)</div>
+            <div class="text-[10px] opacity-50 mt-1">Maintenance + grounded</div>
         </div>
     </div>
 
-    <!-- Fleet Status KPI Stats Bar -->
-    <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
-        <div class="stat p-5">
-            <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-van-shuttle"></i></div>
-            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Fleet Vehicles</div>
-            <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.Vehicles.Count</div>
-            <div class="stat-desc opacity-70">Active vans & trucks</div>
-        </div>
-
-        <div class="stat p-5">
-            <div class="stat-figure text-base-content text-2xl"><i class="fa-solid fa-gas-pump"></i></div>
-            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Fuel Dispensed</div>
-            <div class="stat-value text-2xl font-black font-mono text-base-content">
-                @Model.FuelLogs.Sum(f => f.LitresDispensed).ToString("N0") <span class="text-xs font-sans opacity-70 font-normal">Litres</span>
-            </div>
-            <div class="stat-desc opacity-70">PMS & AGO volume logged</div>
-        </div>
-
-        <div class="stat p-5">
-            <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-wallet"></i></div>
-            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Fleet Fuel Spend</div>
-            <div class="stat-value text-2xl font-black font-mono text-success">
-                ₦@Model.FuelLogs.Sum(f => f.TotalCost).ToString("N0")
-            </div>
-            <div class="stat-desc opacity-70">Cumulative fuel expense</div>
-        </div>
-
-        <div class="stat p-5">
-            <div class="stat-figure text-info text-2xl"><i class="fa-solid fa-shield-halved"></i></div>
-            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Fleet Operational Status</div>
-            <div class="stat-value text-2xl font-black font-mono text-info">100%</div>
-            <div class="stat-desc font-semibold text-success">All vehicles active on road</div>
-        </div>
-    </div>
-
-    <!-- Vehicles List Card -->
-    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
-        <div class="card-body p-6 space-y-4">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-base-200 pb-3">
-                <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
-                    <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
-                        <i class="fa-solid fa-van-shuttle"></i>
-                    </div>
-                    <span>Company Delivery Vehicles & Routes</span>
-                </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-5 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
                 <div class="flex items-center gap-2">
-                    <a asp-page="/Logistics/Vehicles/Index" class="btn btn-xs btn-outline border-base-300 rounded-lg text-xs font-semibold">
-                        View Vehicle Cards &rarr;
-                    </a>
+                    <div class="w-8 h-8 rounded-xl bg-neutral text-neutral-content flex items-center justify-center"><i class="fa-solid fa-truck-moving"></i></div>
+                    <div><h2 class="text-sm font-black">Charter Bookings</h2><p class="text-[10px] opacity-60">Commercial and VIP movements</p></div>
                 </div>
+                <a asp-page="/Logistics/Charter/Index" class="btn btn-xs btn-outline rounded-lg">Open Ledger</a>
             </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-base-200/50 rounded-xl p-3"><div class="text-[10px] opacity-60">Total</div><div class="font-black text-lg">@Model.CharterBookings.Count</div></div>
+                <div class="bg-warning/10 rounded-xl p-3"><div class="text-[10px] opacity-60">Booked</div><div class="font-black text-lg text-warning">@Model.OpenCharterCount</div></div>
+                <div class="bg-info/10 rounded-xl p-3"><div class="text-[10px] opacity-60">In Transit</div><div class="font-black text-lg text-info">@Model.CharterInTransitCount</div></div>
+            </div>
+        </div>
 
-            <!-- Vehicles Table -->
-            <div class="overflow-x-auto">
-                <table class="table table-sm w-full text-xs">
-                    <thead>
-                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
-                            <th class="py-3 pl-4">Plate Number</th>
-                            <th>Make & Model</th>
-                            <th>Vehicle Type</th>
-                            <th>Vehicle Function</th>
-                            <th>Assigned Driver</th>
-                            <th>Phone Number</th>
-                            <th>Status</th>
-                            <th class="text-right pr-4">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-base-200">
-                        @foreach (var v in Model.Vehicles)
-                        {
-                            <tr class="hover:bg-base-200/60 transition-colors">
-                                <td class="font-mono text-xs font-bold pl-4 text-base-content">
-                                    <span class="badge badge-neutral badge-xs font-mono font-bold">@v.RegistrationNumber</span>
-                                </td>
-                                <td class="font-bold text-base-content py-3">@v.MakeAndModel</td>
-                                <td>
-                                    <span class="badge badge-ghost border border-base-300 text-[10px] font-semibold">@v.Type</span>
-                                </td>
-                                <td>
-                                    <span class="badge badge-primary badge-xs font-bold">@v.Function</span>
-                                </td>
-                                <td class="font-semibold text-base-content py-3">@v.AssignedDriverName</td>
-                                <td class="font-mono opacity-70 py-3">@v.DriverPhoneNumber</td>
-                                <td>
-                                    <span class="badge badge-success badge-xs font-bold">● @v.Status</span>
-                                </td>
-                                <td class="text-right pr-4 py-3">
-                                    <a asp-page="/Logistics/FuelLogs/Create" asp-route-vehicleId="@v.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg gap-1 text-[11px] font-semibold hover:border-primary">
-                                        <i class="fa-solid fa-gas-pump text-[10px]"></i> Log Fuel
-                                    </a>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-5 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                    <div><h2 class="text-sm font-black">Client Quotes</h2><p class="text-[10px] opacity-60">Request-based charter pricing</p></div>
+                </div>
+                <a asp-page="/Logistics/Rates/Index" class="btn btn-xs btn-outline rounded-lg">Open Quotes</a>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-base-200/50 rounded-xl p-3"><div class="text-[10px] opacity-60">Total</div><div class="font-black text-lg">@Model.Quotes.Count</div></div>
+                <div class="bg-warning/10 rounded-xl p-3"><div class="text-[10px] opacity-60">Pending</div><div class="font-black text-lg text-warning">@Model.PendingQuoteCount</div></div>
+                <div class="bg-success/10 rounded-xl p-3"><div class="text-[10px] opacity-60">Approved</div><div class="font-black text-lg text-success">@Model.ApprovedQuoteCount</div></div>
+            </div>
+        </div>
+
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-5 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-info/10 text-info flex items-center justify-center"><i class="fa-solid fa-truck-ramp-box"></i></div>
+                    <div><h2 class="text-sm font-black">Delivery Dispatches</h2><p class="text-[10px] opacity-60">Production and PreOrder deliveries</p></div>
+                </div>
+                <a asp-page="/Logistics/Dispatches/Index" class="btn btn-xs btn-outline rounded-lg">Open Dispatches</a>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-warning/10 rounded-xl p-3"><div class="text-[10px] opacity-60">Planned</div><div class="font-black text-lg text-warning">@Model.PlannedDispatchCount</div></div>
+                <div class="bg-info/10 rounded-xl p-3"><div class="text-[10px] opacity-60">In Transit</div><div class="font-black text-lg text-info">@Model.DispatchInTransitCount</div></div>
+                <div class="bg-success/10 rounded-xl p-3"><div class="text-[10px] opacity-60">Completed</div><div class="font-black text-lg text-success">@Model.CompletedDispatchCount</div></div>
+            </div>
+        </div>
+
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-5 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-warning/10 text-warning flex items-center justify-center"><i class="fa-solid fa-gas-pump"></i></div>
+                    <div><h2 class="text-sm font-black">Fuel &amp; Maintenance</h2><p class="text-[10px] opacity-60">Usage and service activity</p></div>
+                </div>
+                <a asp-page="/Logistics/FuelLogs/Index" class="btn btn-xs btn-outline rounded-lg">Fuel Logs</a>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-base-200/50 rounded-xl p-3"><div class="text-[10px] opacity-60">Fuel Records</div><div class="font-black text-lg">@Model.FuelRecordCount</div></div>
+                <div class="bg-base-200/50 rounded-xl p-3"><div class="text-[10px] opacity-60">Litres Logged</div><div class="font-black text-lg">@Model.TotalFuelLitres.ToString("N0")</div></div>
+                <div class="bg-base-200/50 rounded-xl p-3"><div class="text-[10px] opacity-60">Service Events</div><div class="font-black text-lg">@Model.MaintenanceEventCount</div></div>
             </div>
         </div>
     </div>
 
-    <!-- Recent Fuel Logs Card -->
-    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
-        <div class="card-body p-6 space-y-4">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-base-200 pb-3">
-                <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
-                    <div class="w-7 h-7 rounded-lg bg-warning text-warning-content flex items-center justify-center text-xs font-bold shadow-xs">
-                        <i class="fa-solid fa-gas-pump"></i>
-                    </div>
-                    <span>Recent Fuel Dispensation Logs</span>
-                </div>
-                <div>
-                    <a asp-page="/Logistics/FuelLogs/Index" class="btn btn-xs btn-outline border-base-300 rounded-lg text-xs font-semibold">
-                        View All Fuel Logs &rarr;
-                    </a>
-                </div>
-            </div>
-
-            <!-- Fuel Logs Table -->
-            <div class="overflow-x-auto">
-                <table class="table table-sm w-full text-xs">
-                    <thead>
-                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
-                            <th class="py-3 pl-4">Date</th>
-                            <th>Vehicle Plate</th>
-                            <th>Driver</th>
-                            <th>Litres Dispensed</th>
-                            <th>Rate / L</th>
-                            <th>Total Cost</th>
-                            <th>Petrol Station</th>
-                            <th class="text-right pr-4">Delivery Route</th>
+    <div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden">
+        <div class="p-5 border-b border-base-200 flex items-center justify-between">
+            <div class="flex items-center gap-2"><i class="fa-solid fa-van-shuttle text-primary"></i><h2 class="text-sm font-black">Fleet Vehicles</h2></div>
+            <a asp-page="/Logistics/Vehicles/Index" class="btn btn-xs btn-outline rounded-lg">Vehicle Directory</a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table table-sm text-xs">
+                <thead><tr class="bg-base-200/60 border-b border-base-300"><th class="pl-4">Plate</th><th>Vehicle</th><th>Function</th><th>Driver</th><th>Status</th><th class="text-right pr-4">Action</th></tr></thead>
+                <tbody class="divide-y divide-base-200">
+                    @foreach (var v in Model.Vehicles)
+                    {
+                        var statusClass = v.Status == "Active" ? "badge-success" : v.Status == "InTransit" ? "badge-info" : v.Status == "InMaintenance" ? "badge-warning" : "badge-error";
+                        <tr class="hover:bg-base-200/40">
+                            <td class="pl-4 py-3"><span class="badge badge-neutral badge-xs font-mono font-bold">@v.RegistrationNumber</span></td>
+                            <td class="py-3"><div class="font-bold">@v.MakeAndModel</div><div class="text-[10px] opacity-50">@v.Type</div></td>
+                            <td class="py-3"><span class="badge badge-ghost badge-xs">@v.Function</span></td>
+                            <td class="py-3">@v.AssignedDriverName</td>
+                            <td class="py-3"><span class="badge badge-xs @statusClass font-bold">@v.Status</span></td>
+                            <td class="text-right pr-4 py-3"><a asp-page="/Logistics/Vehicles/Details" asp-route-id="@v.Id" class="btn btn-ghost btn-xs rounded-lg"><i class="fa-solid fa-eye"></i></a></td>
                         </tr>
-                    </thead>
-                    <tbody class="divide-y divide-base-200">
-                        @foreach (var log in Model.FuelLogs.Take(5))
-                        {
-                            <tr class="hover:bg-base-200/60 transition-colors">
-                                <td class="font-mono text-xs opacity-70 pl-4 py-3">@log.Date.ToString("yyyy-MM-dd")</td>
-                                <td class="font-mono text-xs font-bold text-primary py-3">
-                                    <span class="badge badge-neutral badge-xs font-mono font-bold">@log.VehicleRegNumber</span>
-                                </td>
-                                <td class="font-semibold text-base-content py-3">@log.DriverName</td>
-                                <td class="font-mono text-base-content font-bold py-3">@log.LitresDispensed.ToString("N1") L</td>
-                                <td class="font-mono opacity-70 py-3">₦@log.PricePerLitre.ToString("N0")</td>
-                                <td class="font-mono font-black text-success py-3">₦@log.TotalCost.ToString("N0")</td>
-                                <td class="py-3">
-                                    <div class="font-bold text-base-content">@log.PetrolStation</div>
-                                </td>
-                                <td class="text-right pr-4 text-[11px] opacity-70 py-3 truncate max-w-xs">
-                                    @log.RouteDescription
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden">
+        <div class="p-5 border-b border-base-200 flex items-center justify-between">
+            <div class="flex items-center gap-2"><i class="fa-solid fa-gas-pump text-warning"></i><h2 class="text-sm font-black">Recent Fuel Activity</h2></div>
+            <a asp-page="/Logistics/FuelLogs/Index" class="btn btn-xs btn-outline rounded-lg">All Fuel Logs</a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table table-sm text-xs">
+                <thead><tr class="bg-base-200/60 border-b border-base-300"><th class="pl-4">Date</th><th>Vehicle</th><th>Fuel For</th><th>Driver</th><th>Fuel Type</th><th class="text-right">Litres</th><th class="pr-4">Station</th></tr></thead>
+                <tbody class="divide-y divide-base-200">
+                    @foreach (var log in Model.FuelLogs.Take(8))
+                    {
+                        var source = log.CharterBookingId.HasValue ? "Charter" : log.FleetDispatchId.HasValue ? "Dispatch" : "General";
+                        var refText = log.CharterBookingId.HasValue ? log.CharterBookingRef : log.FleetDispatchId.HasValue ? log.FleetDispatchRef : string.Empty;
+                        var sourceClass = source == "Charter" ? "badge-info" : source == "Dispatch" ? "badge-primary" : "badge-ghost";
+                        <tr class="hover:bg-base-200/40">
+                            <td class="pl-4 py-3 font-mono">@log.Date.ToString("dd MMM yyyy")</td>
+                            <td class="py-3"><span class="badge badge-neutral badge-xs font-mono">@log.VehicleRegNumber</span></td>
+                            <td class="py-3"><span class="badge badge-xs @sourceClass font-bold">@source</span>@if (!string.IsNullOrWhiteSpace(refText)) { <div class="text-[10px] opacity-50 font-mono mt-0.5">@refText</div> }</td>
+                            <td class="py-3">@log.DriverName</td>
+                            <td class="py-3"><span class="badge badge-ghost badge-xs">@log.FuelType</span></td>
+                            <td class="py-3 text-right font-mono">@log.LitresDispensed.ToString("N1")</td>
+                            <td class="py-3 pr-4">@log.PetrolStation</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

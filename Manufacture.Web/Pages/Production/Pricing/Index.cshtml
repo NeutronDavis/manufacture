@@ -25,7 +25,7 @@
                 <i class="fa-solid fa-tags text-primary"></i> Admin Price &amp; Margin Dashboard
             </h1>
             <p class="text-xs opacity-70 mt-0.5">
-                Update vendor prices once — every recipe that consumes the material re-costs instantly.
+                Submit raw-material price proposals from the store inventory. A SuperAdmin must approve each change before it affects costing.
             </p>
         </div>
         <a asp-page="/Production/Recipes/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-bold px-4 text-xs">
@@ -43,10 +43,17 @@
         </div>
 
         <div class="stat p-5">
+            <div class="stat-figure text-warning text-2xl"><i class="fa-solid fa-clock-rotate-left"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Awaiting Approval</div>
+            <div class="stat-value text-2xl font-black font-mono text-warning">@Model.PendingRequests.Count</div>
+            <div class="stat-desc opacity-70">Price proposals in the review queue</div>
+        </div>
+
+        <div class="stat p-5">
             <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-percent"></i></div>
             <div class="stat-title text-[10px] uppercase font-bold opacity-60">Weighted Margin</div>
             <div class="stat-value text-2xl font-black font-mono text-success">@Model.Report.WeightedMarginPercentage%</div>
-            <div class="stat-desc opacity-70">Across the whole product portfolio</div>
+            <div class="stat-desc opacity-70">Uses approved prices only</div>
         </div>
 
         <div class="stat p-5">
@@ -72,74 +79,182 @@
         </div>
     </div>
 
-    <form method="post" asp-page-handler="UpdatePrices">
-        <div class="space-y-6">
+    @if (TempData["SuccessMessage"] != null || TempData["ErrorMessage"] != null)
+    {
+        <div class="space-y-2">
+            @if (TempData["SuccessMessage"] != null)
+            {
+                <div class="alert alert-success rounded-xl py-2.5 text-xs">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>@TempData["SuccessMessage"]</span>
+                </div>
+            }
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-error rounded-xl py-2.5 text-xs">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <span>@TempData["ErrorMessage"]</span>
+                </div>
+            }
+        </div>
+    }
 
-            <!-- Card 1: Master Ingredient Price List (editable) -->
-            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
-                <div class="card-body p-6 space-y-4">
-                    <div class="flex items-center justify-between border-b border-base-200 pb-3 flex-wrap gap-2">
-                        <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
-                            <i class="fa-solid fa-list-check text-primary"></i> Master Ingredient Price List
-                        </h2>
-                        <div class="flex items-center gap-2">
-                            <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.PriceMaster.Count Materials</span>
-                            <button type="submit" class="btn btn-xs btn-primary rounded-xl font-bold px-3 gap-1.5">
-                                <i class="fa-solid fa-arrows-rotate text-[10px]"></i> Recalculate All Costs
-                            </button>
-                        </div>
+    <!-- Pending Price Approvals -->
+    @if (Model.CanApprovePriceChanges || Model.PendingRequests.Count > 0)
+    {
+        <div class="card bg-base-100 border border-warning/40 shadow-xs rounded-2xl overflow-hidden">
+            <div class="card-body p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3 flex-wrap gap-2">
+                    <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-stamp text-warning"></i> Pending Price Approvals
+                    </h2>
+                    <span class="badge badge-warning badge-xs font-mono font-bold">@Model.PendingRequests.Count Waiting</span>
+                </div>
+
+                @if (Model.PendingRequests.Count == 0)
+                {
+                    <div class="alert alert-success rounded-xl text-xs py-2.5">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>No price change requests are waiting for review.</span>
                     </div>
-
-                    <div class="alert alert-info rounded-xl text-[11px] py-2.5">
-                        <i class="fa-solid fa-circle-info"></i>
-                        <span>
-                            Prices are entered per <strong>@("unit")</strong> exactly as the vendor quotes them
-                            (e.g. per kg, per litre, per piece). Changing a price here immediately
-                            re-derives every recipe's batch cost, unit cost, and margin below.
-                        </span>
-                    </div>
-
+                }
+                else
+                {
                     <div class="overflow-x-auto">
                         <table class="table table-sm w-full text-xs">
                             <thead>
                                 <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
-                                    <th class="py-3 pl-4">Material</th>
-                                    <th>Category</th>
-                                    <th class="text-right">Stock on Hand</th>
-                                    <th class="text-right">Used By</th>
-                                    <th class="text-right w-44">Current Price</th>
-                                    <th class="text-right w-48">New Price (₦)</th>
-                                    <th class="pr-4 text-right">Last Updated</th>
+                                    <th class="py-3 pl-4">Request</th>
+                                    <th>Material</th>
+                                    <th class="text-right">Current</th>
+                                    <th class="text-right">Proposed</th>
+                                    <th>Requested By</th>
+                                    <th class="text-right pr-4">Decision</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-base-200">
-                                @for (int i = 0; i < Model.PriceMaster.Count; i++)
+                                @foreach (var request in Model.PendingRequests)
                                 {
-                                    var row = Model.PriceMaster[i];
-                                    <tr class="hover:bg-base-200/60 transition-colors">
-                                        <td class="py-2 pl-4">
-                                            <input type="hidden" name="Edits[@i].IngredientId" value="@row.Id" />
-                                            <div class="font-bold text-base-content">@row.Name</div>
-                                            <div class="text-[10px] opacity-50 font-mono">per @row.Unit</div>
+                                    <tr class="hover:bg-base-200/60 transition-colors align-top">
+                                        <td class="py-3 pl-4 font-mono font-bold text-base-content">
+                                            @request.RequestNumber
+                                            <div class="text-[10px] font-normal opacity-60">@request.RequestedAt.ToString("yyyy-MM-dd HH:mm")</div>
                                         </td>
-                                        <td>
-                                            <span class="badge badge-soft badge-xs font-semibold">@row.Category</span>
+                                        <td class="py-3">
+                                            <div class="font-bold text-base-content">@request.InventoryItemName</div>
+                                            <div class="text-[10px] opacity-60 font-mono">@request.ItemCode &bull; per @request.Unit</div>
                                         </td>
-                                        <td class="font-mono opacity-70 text-right">@row.CurrentStock.ToString("N0") @row.Unit</td>
-                                        <td class="font-mono text-right">
-                                            @if (row.UsedByRecipeCount > 0)
+                                        <td class="text-right font-mono text-base-content">₦@request.PreviousUnitCost.ToString("N2")</td>
+                                        <td class="text-right font-mono font-black text-warning">₦@request.RequestedUnitCost.ToString("N2")</td>
+                                        <td class="py-3">
+                                            <div class="font-semibold">@request.RequestedByName</div>
+                                            <div class="text-[10px] opacity-60">Awaiting SuperAdmin</div>
+                                        </td>
+                                        <td class="text-right pr-4">
+                                            @if (Model.CanApprovePriceChanges)
                                             {
-                                                <span class="badge badge-neutral badge-xs font-bold">@row.UsedByRecipeCount</span>
+                                                <div class="flex flex-col items-end gap-2">
+                                                    <form method="post" asp-page-handler="ApprovePriceRequest" class="inline">
+                                                        <input type="hidden" name="id" value="@request.Id" />
+                                                        <button type="submit" class="btn btn-xs btn-success rounded-lg font-bold gap-1">
+                                                            <i class="fa-solid fa-check text-[10px]"></i> Approve
+                                                        </button>
+                                                    </form>
+                                                    <form method="post" asp-page-handler="RejectPriceRequest" class="flex items-center gap-1">
+                                                        <input type="hidden" name="id" value="@request.Id" />
+                                                        <input type="text" name="reason" required maxlength="500"
+                                                               class="input input-xs input-bordered rounded-lg w-44 text-[11px]"
+                                                               placeholder="Reason required" />
+                                                        <button type="submit" class="btn btn-xs btn-outline btn-error rounded-lg font-bold gap-1">
+                                                            <i class="fa-solid fa-xmark text-[10px]"></i> Reject
+                                                        </button>
+                                                    </form>
+                                                </div>
                                             }
                                             else
                                             {
-                                                <span class="opacity-30 text-xs">unused</span>
+                                                <span class="badge badge-warning badge-xs font-bold">Awaiting SuperAdmin</span>
                                             }
                                         </td>
-                                        <td class="font-mono font-bold text-right text-base-content">
-                                            ₦@row.CurrentUnitCost.ToString("N2")
-                                        </td>
-                                        <td class="py-1.5 pr-1">
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <!-- Card 1: Master Ingredient Price List (editable proposal) -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+        <div class="card-body p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3 flex-wrap gap-2">
+                <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-primary"></i> Master Ingredient Price List
+                </h2>
+                <div class="flex items-center gap-2">
+                    <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.PriceMaster.Count Store Materials</span>
+                    <a asp-page="/Production/Pricing/Index" class="btn btn-xs btn-ghost border border-base-300 rounded-xl font-bold px-3 gap-1.5">
+                        <i class="fa-solid fa-arrows-rotate text-[10px]"></i> Refresh
+                    </a>
+                </div>
+            </div>
+
+            <div class="alert alert-info rounded-xl text-[11px] py-2.5">
+                <i class="fa-solid fa-circle-info"></i>
+                <span>
+                    This list is read from the store's <strong>InventoryItems</strong> raw materials (Fuel and Utilities excluded).
+                    Enter the vendor price per <strong>kg, litre, or piece</strong>; the proposal is queued until a SuperAdmin approves it.
+                    Only approved prices change recipe costing and margins.
+                </span>
+            </div>
+
+            <form method="post" asp-page-handler="SubmitPriceChanges">
+                <div class="overflow-x-auto">
+                    <table class="table table-sm w-full text-xs">
+                        <thead>
+                            <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                                <th class="py-3 pl-4">Material</th>
+                                <th>Category</th>
+                                <th class="text-right">Stock on Hand</th>
+                                <th class="text-right">Used By</th>
+                                <th class="text-right w-40">Approved Price</th>
+                                <th class="text-right w-48">Proposed Price (₦)</th>
+                                <th class="pr-4 text-right">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-base-200">
+                            @for (int i = 0; i < Model.PriceMaster.Count; i++)
+                            {
+                                var row = Model.PriceMaster[i];
+                                Model.PendingByItemId.TryGetValue(row.Id, out var pending);
+                                <tr class="hover:bg-base-200/60 transition-colors">
+                                    <td class="py-2 pl-4">
+                                        <input type="hidden" name="Edits[@i].IngredientId" value="@row.Id" />
+                                        <div class="font-bold text-base-content">@row.Name</div>
+                                        <div class="text-[10px] opacity-50 font-mono">per @row.Unit</div>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-soft badge-xs font-semibold">@row.Category</span>
+                                    </td>
+                                    <td class="font-mono opacity-70 text-right">@row.CurrentStock.ToString("N0") @row.Unit</td>
+                                    <td class="font-mono text-right">
+                                        @if (row.UsedByRecipeCount > 0)
+                                        {
+                                            <span class="badge badge-neutral badge-xs font-bold">@row.UsedByRecipeCount</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="opacity-30 text-xs">unused</span>
+                                        }
+                                    </td>
+                                    <td class="font-mono font-bold text-right text-base-content">
+                                        ₦@row.CurrentUnitCost.ToString("N2")
+                                    </td>
+                                    <td class="py-1.5 pr-1">
+                                        @if (Model.CanSubmitPriceChanges && pending == null)
+                                        {
                                             <label class="input input-xs input-bordered w-full rounded-lg flex items-center gap-1 bg-base-100">
                                                 <span class="text-[10px] opacity-50 font-mono">₦</span>
                                                 <input type="number" step="0.01" min="0"
@@ -149,130 +264,268 @@
                                                        data-original="@row.CurrentUnitCost.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)"
                                                        oninput="markPriceChange(this)" />
                                             </label>
-                                        </td>
-                                        <td class="pr-4 text-right">
-                                            @if (row.IsPriceStale)
+                                        }
+                                        else
+                                        {
+                                            <input type="hidden" name="Edits[@i].NewUnitCost"
+                                                   value="@row.CurrentUnitCost.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)" />
+                                            @if (pending != null)
                                             {
-                                                <span class="badge badge-warning badge-xs font-bold gap-1">
-                                                    <i class="fa-solid fa-clock"></i> Stale
-                                                </span>
-                                                <div class="text-[10px] opacity-50 mt-0.5">@row.UpdatedAt.ToString("yyyy-MM-dd")</div>
+                                                <div class="text-right font-mono font-black text-warning">
+                                                    ₦@pending.RequestedUnitCost.ToString("N2")
+                                                </div>
+                                                <div class="text-[10px] text-right text-warning/80">Pending approval</div>
                                             }
                                             else
                                             {
-                                                <span class="badge badge-success badge-xs font-bold gap-1">
-                                                    <i class="fa-solid fa-check"></i> Current
-                                                </span>
-                                                <div class="text-[10px] opacity-50 mt-0.5">@row.UpdatedAt.ToString("yyyy-MM-dd")</div>
+                                                <div class="text-right font-mono opacity-60">Read-only</div>
                                             }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                                        }
+                                    </td>
+                                    <td class="pr-4 text-right">
+                                        @if (pending != null)
+                                        {
+                                            <span class="badge badge-warning badge-xs font-bold gap-1">
+                                                <i class="fa-solid fa-clock"></i> Pending
+                                            </span>
+                                            <div class="text-[10px] opacity-50 mt-0.5">@pending.RequestNumber</div>
+                                        }
+                                        else if (row.IsPriceStale)
+                                        {
+                                            <span class="badge badge-warning badge-xs font-bold gap-1">
+                                                <i class="fa-solid fa-clock"></i> Stale
+                                            </span>
+                                            <div class="text-[10px] opacity-50 mt-0.5">@row.UpdatedAt.ToString("yyyy-MM-dd")</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge badge-success badge-xs font-bold gap-1">
+                                                <i class="fa-solid fa-check"></i> Current
+                                            </span>
+                                            <div class="text-[10px] opacity-50 mt-0.5">@row.UpdatedAt.ToString("yyyy-MM-dd")</div>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (Model.CanSubmitPriceChanges)
+                {
+                    <div class="flex items-center justify-between gap-3 border-t border-base-200 pt-4 mt-4">
+                        <p class="text-[11px] opacity-60">
+                            Only changed rows are submitted. Each material can have one pending request at a time.
+                        </p>
+                        <button type="submit" class="btn btn-sm btn-primary rounded-xl font-bold px-4 gap-1.5 shadow-xs">
+                            <i class="fa-solid fa-paper-plane text-xs"></i> Submit Price Changes for Approval
+                        </button>
                     </div>
+                }
+            </form>
+        </div>
+    </div>
+
+    <!-- Card 2: Price Change History -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+        <div class="card-body p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3 flex-wrap gap-2">
+                <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-primary"></i> Price Change History
+                </h2>
+                <div class="flex items-center gap-2">
+                    <input id="priceHistorySearch" type="search" placeholder="Search material or request #"
+                           class="input input-xs input-bordered rounded-lg w-56 text-[11px]" />
+                    <select id="priceHistoryStatus" class="select select-xs select-bordered rounded-lg text-[11px] bg-base-200 font-medium">
+                        <option value="ALL">All Status</option>
+                        <option value="Pending">Pending</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
                 </div>
             </div>
 
-            <!-- Card 2: Profitability Report -->
-            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
-                <div class="card-body p-6 space-y-4">
-                    <div class="flex items-center justify-between border-b border-base-200 pb-3 flex-wrap gap-2">
-                        <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
-                            <i class="fa-solid fa-chart-line text-primary"></i> Profitability: Actual Unit Production Cost vs Selling Price
-                        </h2>
-                        <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.Report.Rows.Count Products</span>
-                    </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="table table-sm w-full text-xs">
-                            <thead>
-                                <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
-                                    <th class="py-3 pl-4">Product</th>
-                                    <th>Baseline Batch</th>
-                                    <th class="text-right">Batch Cost</th>
-                                    <th class="text-right">Unit Cost</th>
-                                    <th class="text-right">Selling Price</th>
-                                    <th class="text-right">Margin / Unit</th>
-                                    <th class="pr-4">Margin Health</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-base-200">
-                                @foreach (var row in Model.Report.Rows)
-                                {
-                                    var badgeClass = row.HasNegativeMargin ? "badge-error"
-                                                   : row.HasThinMargin ? "badge-warning"
-                                                   : "badge-success";
-                                    var healthText = row.HasNegativeMargin ? "Below Cost"
-                                                   : row.HasThinMargin ? "Thin"
-                                                   : "Healthy";
-                                    <tr class="hover:bg-base-200/60 transition-colors">
-                                        <td class="py-3 pl-4">
-                                            <div class="font-bold text-base-content">@row.RecipeName</div>
-                                            <div class="text-[10px] opacity-50 font-mono">@row.RecipeCode · @row.ProductType</div>
-                                        </td>
-                                        <td class="opacity-80">
-                                            <div class="font-mono text-[10px] leading-snug">@row.BaselineUnitName</div>
-                                            <div class="font-mono text-[10px] opacity-60">@row.ExpectedYield.ToString("N0") @row.OutputUnit</div>
-                                        </td>
-                                        <td class="font-mono text-right text-base-content">₦@row.TotalBatchCost.ToString("N0")</td>
-                                        <td class="font-mono font-bold text-right text-amber-700">₦@row.TotalUnitCost.ToString("N2")</td>
-                                        <td class="font-mono font-bold text-right text-primary">₦@row.SellingPrice.ToString("N2")</td>
-                                        <td class="font-mono font-bold text-right @(row.HasNegativeMargin ? "text-error" : "text-success")">
-                                            @(row.MarginAmount >= 0 ? "+" : "")₦@row.MarginAmount.ToString("N2")
-                                            <div class="text-[10px] opacity-60 font-normal">@row.MarginPercentage%</div>
-                                        </td>
-                                        <td class="pr-4">
-                                            <span class="badge @badgeClass badge-xs font-bold">@healthText</span>
-                                            @if (row.HasMissingPrice)
-                                            {
-                                                <div class="text-[10px] text-warning mt-0.5">
-                                                    <i class="fa-solid fa-triangle-exclamation"></i> missing price
-                                                </div>
-                                            }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                            <tfoot class="bg-base-200/60 font-mono text-xs border-t border-base-300">
-                                <tr class="font-bold">
-                                    <td colspan="2" class="py-3 pl-4 uppercase text-[10px] tracking-wider opacity-70">
-                                        Portfolio Total (at plan)
-                                    </td>
-                                    <td class="text-right py-3 text-base-content">₦@Model.Report.TotalBatchCost.ToString("N0")</td>
-                                    <td colspan="2" class="text-right py-3 opacity-60 text-[10px]">
-                                        revenue ₦@Model.Report.TotalExpectedRevenue.ToString("N0")
-                                    </td>
-                                    <td class="text-right py-3 @(Model.Report.WeightedMarginPercentage < 0 ? "text-error" : "text-success")">
-                                        +₦@Model.Report.TotalExpectedMargin.ToString("N0")
-                                        <div class="text-[10px] opacity-60 font-normal">@Model.Report.WeightedMarginPercentage%</div>
-                                    </td>
-                                    <td class="pr-4"></td>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                </div>
+            <div class="overflow-x-auto">
+                <table class="table table-sm w-full text-xs">
+                    <thead>
+                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                            <th class="py-3 pl-4">Request</th>
+                            <th>Material</th>
+                            <th class="text-right">Old Price</th>
+                            <th class="text-right">New Price</th>
+                            <th class="text-right">Change</th>
+                            <th>Status</th>
+                            <th>Requested</th>
+                            <th>Reviewed</th>
+                            <th class="pr-4">Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="priceHistoryBody" class="divide-y divide-base-200">
+                        @if (Model.PriceHistory.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="9" class="text-center py-6 opacity-60">No price changes have been submitted yet.</td>
+                            </tr>
+                        }
+                        @foreach (var request in Model.PriceHistory)
+                        {
+                            var statusClass = request.Status == IngredientPriceChangeStatus.Approved ? "badge-success"
+                                            : request.Status == IngredientPriceChangeStatus.Rejected ? "badge-error"
+                                            : "badge-warning";
+                            <tr class="hover:bg-base-200/60 transition-colors price-history-row"
+                                data-search="@($"{request.InventoryItemName} {request.RequestNumber} {request.ItemCode}".ToLowerInvariant())"
+                                data-status="@request.Status">
+                                <td class="py-3 pl-4 font-mono font-bold text-base-content">@request.RequestNumber</td>
+                                <td class="py-3">
+                                    <div class="font-bold text-base-content">@request.InventoryItemName</div>
+                                    <div class="text-[10px] opacity-60 font-mono">per @request.Unit</div>
+                                </td>
+                                <td class="text-right font-mono text-base-content">₦@request.PreviousUnitCost.ToString("N2")</td>
+                                <td class="text-right font-mono font-bold text-base-content">₦@request.RequestedUnitCost.ToString("N2")</td>
+                                <td class="text-right font-mono font-bold @(request.Difference >= 0 ? "text-error" : "text-success")">
+                                    @(request.Difference >= 0 ? "+" : "")₦@request.Difference.ToString("N2")
+                                </td>
+                                <td>
+                                    <span class="badge @statusClass badge-xs font-bold">@request.StatusLabel</span>
+                                </td>
+                                <td class="py-3">
+                                    <div class="font-semibold">@request.RequestedByName</div>
+                                    <div class="text-[10px] opacity-60">@request.RequestedAt.ToString("yyyy-MM-dd HH:mm")</div>
+                                </td>
+                                <td class="py-3">
+                                    @if (!string.IsNullOrWhiteSpace(request.ReviewedByName))
+                                    {
+                                        <div class="font-semibold">@request.ReviewedByName</div>
+                                        <div class="text-[10px] opacity-60">@request.ReviewedAt?.ToString("yyyy-MM-dd HH:mm")</div>
+                                    }
+                                    else
+                                    {
+                                        <span class="opacity-40">—</span>
+                                    }
+                                </td>
+                                <td class="pr-4 max-w-xs text-[11px] opacity-70" title="@request.ReviewNotes">
+                                    @(string.IsNullOrWhiteSpace(request.ReviewNotes) ? "—" : request.ReviewNotes)
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             </div>
         </div>
-    </form>
+    </div>
+
+    <!-- Card 3: Profitability Report -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+        <div class="card-body p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3 flex-wrap gap-2">
+                <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-primary"></i> Profitability: Actual Unit Production Cost vs Selling Price
+                </h2>
+                <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.Report.Rows.Count Products</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="table table-sm w-full text-xs">
+                    <thead>
+                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                            <th class="py-3 pl-4">Product</th>
+                            <th>Baseline Batch</th>
+                            <th class="text-right">Batch Cost</th>
+                            <th class="text-right">Unit Cost</th>
+                            <th class="text-right">Selling Price</th>
+                            <th class="text-right">Margin / Unit</th>
+                            <th class="pr-4">Margin Health</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-base-200">
+                        @foreach (var row in Model.Report.Rows)
+                        {
+                            var badgeClass = row.HasNegativeMargin ? "badge-error"
+                                           : row.HasThinMargin ? "badge-warning"
+                                           : "badge-success";
+                            var healthText = row.HasNegativeMargin ? "Below Cost"
+                                           : row.HasThinMargin ? "Thin"
+                                           : "Healthy";
+                            <tr class="hover:bg-base-200/60 transition-colors">
+                                <td class="py-3 pl-4">
+                                    <div class="font-bold text-base-content">@row.RecipeName</div>
+                                    <div class="text-[10px] opacity-50 font-mono">@row.RecipeCode · @row.ProductType</div>
+                                </td>
+                                <td class="opacity-80">
+                                    <div class="font-mono text-[10px] leading-snug">@row.BaselineUnitName</div>
+                                    <div class="font-mono text-[10px] opacity-60">@row.ExpectedYield.ToString("N0") @row.OutputUnit</div>
+                                </td>
+                                <td class="font-mono text-right text-base-content">₦@row.TotalBatchCost.ToString("N0")</td>
+                                <td class="font-mono font-bold text-right text-amber-700">₦@row.TotalUnitCost.ToString("N2")</td>
+                                <td class="font-mono font-bold text-right text-primary">₦@row.SellingPrice.ToString("N2")</td>
+                                <td class="font-mono font-bold text-right @(row.HasNegativeMargin ? "text-error" : "text-success")">
+                                    @(row.MarginAmount >= 0 ? "+" : "")₦@row.MarginAmount.ToString("N2")
+                                    <div class="text-[10px] opacity-60 font-normal">@row.MarginPercentage%</div>
+                                </td>
+                                <td class="pr-4">
+                                    <span class="badge @badgeClass badge-xs font-bold">@healthText</span>
+                                    @if (row.HasMissingPrice)
+                                    {
+                                        <div class="text-[10px] text-warning mt-0.5">
+                                            <i class="fa-solid fa-triangle-exclamation"></i> missing price
+                                        </div>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot class="bg-base-200/60 font-mono text-xs border-t border-base-300">
+                        <tr class="font-bold">
+                            <td colspan="2" class="py-3 pl-4 uppercase text-[10px] tracking-wider opacity-70">
+                                Portfolio Total (at plan)
+                            </td>
+                            <td class="text-right py-3 text-base-content">₦@Model.Report.TotalBatchCost.ToString("N0")</td>
+                            <td colspan="2" class="text-right py-3 opacity-60 text-[10px]">
+                                revenue ₦@Model.Report.TotalExpectedRevenue.ToString("N0")
+                            </td>
+                            <td class="text-right py-3 @(Model.Report.WeightedMarginPercentage < 0 ? "text-error" : "text-success")">
+                                +₦@Model.Report.TotalExpectedMargin.ToString("N0")
+                                <div class="text-[10px] opacity-60 font-normal">@Model.Report.WeightedMarginPercentage%</div>
+                            </td>
+                            <td class="pr-4"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
 <script>
-    // Highlight edited price cells and enable the recalculate button only
-    // when something actually changed.
+    // Highlight edited price cells.
     function markPriceChange(input) {
         const original = input.getAttribute('data-original');
         const changed = parseFloat(input.value || 0) !== parseFloat(original);
         const wrapper = input.closest('label');
+        if (!wrapper) return;
         wrapper.classList.toggle('input-warning', changed);
         wrapper.classList.toggle('input-primary', !changed);
         wrapper.classList.toggle('font-bold', changed);
     }
 
+    function filterPriceHistory() {
+        const query = (document.getElementById('priceHistorySearch')?.value || '').trim().toLowerCase();
+        const status = document.getElementById('priceHistoryStatus')?.value || 'ALL';
+
+        document.querySelectorAll('.price-history-row').forEach(row => {
+            const searchData = row.getAttribute('data-search') || '';
+            const rowStatus = row.getAttribute('data-status') || '';
+            const matchesQuery = !query || searchData.includes(query);
+            const matchesStatus = status === 'ALL' || rowStatus === status;
+            row.style.display = matchesQuery && matchesStatus ? '' : 'none';
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('input[name$=".NewUnitCost"]').forEach(markPriceChange);
+        document.getElementById('priceHistorySearch')?.addEventListener('input', filterPriceHistory);
+        document.getElementById('priceHistoryStatus')?.addEventListener('change', filterPriceHistory);
     });
 </script>
 }

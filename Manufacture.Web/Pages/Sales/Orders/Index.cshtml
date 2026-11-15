@@ -22,11 +22,14 @@
                 Complete audit trail of POS checkout sales, pre-orders, and loading slip verifications.
             </p>
         </div>
-        <div class="flex items-center gap-2">
-            <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
-                <i class="fa-solid fa-cart-plus text-xs"></i> New POS Order
-            </a>
-        </div>
+        @if (Model.CanCreatePosOrder)
+        {
+            <div class="flex items-center gap-2">
+                <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
+                    <i class="fa-solid fa-cart-plus text-xs"></i> New POS Order
+                </a>
+            </div>
+        }
     </div>
 
     <!-- Search & Filter Toolbar -->
@@ -185,9 +188,12 @@
                                         <a asp-page="/Sales/Orders/Details" asp-route-id="@o.Id" class="btn btn-xs btn-ghost rounded-lg gap-1 font-semibold" title="Open order and apply payment">
                                             <i class="fa-solid fa-eye text-[10px]"></i> Details
                                         </a>
-                                        <a asp-page="/Sales/Orders/Receipt" asp-route-id="@o.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg gap-1 font-semibold hover:border-primary" title="Print Loading Slip / Receipt">
-                                            <i class="fa-solid fa-print text-[10px]"></i> Slip
-                                        </a>
+                                        @if (Model.CanPrintSlip)
+                                        {
+                                            <a asp-page="/Sales/Orders/Receipt" asp-route-id="@o.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg gap-1 font-semibold hover:border-primary" title="Print Loading Slip / Receipt">
+                                                <i class="fa-solid fa-print text-[10px]"></i> Slip
+                                            </a>
+                                        }
                                     </div>
                                 </td>
                             </tr>

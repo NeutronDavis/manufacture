@@ -16,7 +16,14 @@ namespace Manufacture.Models.DTOs
         public int Id { get; set; }
         public string Code { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
+        public int ProductionCategoryId { get; set; }
+        public string ProductionCategoryName { get; set; } = string.Empty;
+        public string ScopeKey { get; set; } = "all";
+
+        /// <summary>Legacy ProductType projection. Dashboard identity uses ProductionCategoryId/Name.</summary>
         public ProductType Line { get; set; }
+
+        /// <summary>Legacy line label. Dashboard cards use ProductionCategoryName.</summary>
         public string LineLabel { get; set; } = string.Empty;
         public string OutputUnit { get; set; } = string.Empty;
         public decimal SellingPrice { get; set; }
@@ -52,6 +59,9 @@ namespace Manufacture.Models.DTOs
 
         /// <summary>Unsold, good stock returned by reps (closing stock).</summary>
         public int Returned { get; set; }
+
+        /// <summary>Readable alias for the Closing Stock stage. Keeps <see cref="Returned"/> for compatibility.</summary>
+        public int ClosingStock => Returned;
 
         /// <summary>Stock damaged in transit or on route and written off.</summary>
         public int Damaged { get; set; }
@@ -108,7 +118,14 @@ namespace Manufacture.Models.DTOs
     /// <summary>Bread / Water / Popcorn roll-up used for the product rows.</summary>
     public class ProductLineBreakdownDto
     {
+        public int ProductionCategoryId { get; set; }
+        public string ProductionCategoryName { get; set; } = string.Empty;
+        public string ScopeKey { get; set; } = "all";
+
+        /// <summary>Legacy ProductType projection. Dashboard identity uses ProductionCategoryId/Name.</summary>
         public ProductType Line { get; set; }
+
+        /// <summary>Legacy line label. Dashboard cards use ProductionCategoryName.</summary>
         public string LineLabel { get; set; } = string.Empty;
         public string IconClass { get; set; } = "fa-solid fa-box";
         public decimal ShareOfVolumePercent { get; set; }
@@ -188,6 +205,8 @@ namespace Manufacture.Models.DTOs
         public int ProductId { get; set; }
         public string ProductCode { get; set; } = string.Empty;
         public string ProductName { get; set; } = string.Empty;
+        public int ProductionCategoryId { get; set; }
+        public string ProductionCategoryName { get; set; } = string.Empty;
         public ProductType Line { get; set; }
         public string LineLabel { get; set; } = string.Empty;
         public string OutputUnit { get; set; } = "units";

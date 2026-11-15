@@ -4,8 +4,8 @@ using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
 using InventoryItemEntity = Manufacture.Models.Entities.InventoryItem;
+using MeasurementDensityEntity = Manufacture.Models.Entities.MeasurementDensity;
 using RecipeEntity = Manufacture.Models.Entities.Recipe;
-using RecipeIngredientEntity = Manufacture.Models.Entities.RecipeIngredient;
 using StockMovementEntity = Manufacture.Models.Entities.StockMovement;
 using StoreRequestEntity = Manufacture.Models.Entities.StoreRequest;
 using StoreRequestItemEntity = Manufacture.Models.Entities.StoreRequestItem;
@@ -25,10 +25,12 @@ namespace Manufacture.Services
         };
 
         private readonly ManufactureDbContext _db;
+        private readonly IUnitConversionService _unitConversion;
 
-        public InventoryService(ManufactureDbContext db)
+        public InventoryService(ManufactureDbContext db, IUnitConversionService unitConversion)
         {
             _db = db;
+            _unitConversion = unitConversion;
         }
 
         public async Task<List<InventoryItemDto>> GetItemsAsync(
@@ -38,6 +40,7 @@ namespace Manufacture.Services
             var query = _db.InventoryItems
                 .AsNoTracking()
                 .Include(i => i.PreferredSupplier)
+                .Include(i => i.MeasurementDensity)
                 .AsQueryable();
 
             if (!includeInactive)
@@ -57,9 +60,34 @@ namespace Manufacture.Services
             var item = await _db.InventoryItems
                 .AsNoTracking()
                 .Include(i => i.PreferredSupplier)
+                .Include(i => i.MeasurementDensity)
                 .FirstOrDefaultAsync(i => i.Id == id, cancellationToken);
 
             return item == null ? null : MapItem(item);
+        }
+
+        public async Task<StoreRequestConversionDto> ConvertRequestQuantityAsync(
+            int inventoryItemId,
+            decimal requestedQuantity,
+            string requestedUnit,
+            CancellationToken cancellationToken = default)
+        {
+            var item = await _db.InventoryItems
+                .AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == inventoryItemId && i.IsActive, cancellationToken);
+
+            if (item == null)
+            {
+                return new StoreRequestConversionDto
+                {
+                    InventoryItemId = inventoryItemId,
+                    RequestedQuantity = requestedQuantity,
+                    RequestedUnit = requestedUnit,
+                    ErrorMessage = "The selected inventory item is no longer available."
+                };
+            }
+
+            return ConvertRequestQuantity(item, requestedQuantity, requestedUnit);
         }
 
         public async Task<InventoryItemDto> CreateItemAsync(
@@ -71,6 +99,7 @@ namespace Manufacture.Services
             var category = NormalizeCategory(dto.Category);
             var unit = NormalizeRequired(dto.Unit, "Unit of measurement");
             var supplier = await ResolveSupplierAsync(dto.PreferredSupplierId, cancellationToken);
+            var measurementDensity = await ResolveMeasurementDensityAsync(dto.MeasurementDensityId, cancellationToken);
             var itemCode = await GenerateItemCodeAsync(category, name, cancellationToken);
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
@@ -83,6 +112,10 @@ namespace Manufacture.Services
                 QuantityInStock = Math.Max(0m, dto.QuantityInStock),
                 ReorderThreshold = Math.Max(0m, dto.ReorderThreshold),
                 UnitCostPrice = Math.Max(0m, dto.UnitCostPrice),
+                PackageSize = dto.PackageSize > 0m ? dto.PackageSize : 1m,
+                PackageUnitOfMeasure = string.IsNullOrWhiteSpace(dto.PackageUnitOfMeasure) ? "kg" : dto.PackageUnitOfMeasure.Trim(),
+                DensityKgPerLitre = measurementDensity?.DensityKgPerLitre,
+                MeasurementDensityId = measurementDensity?.Id,
                 PreferredSupplierId = supplier?.Id,
                 LastRestockedDate = today,
                 IsActive = true,
@@ -115,6 +148,7 @@ namespace Manufacture.Services
             await transaction.CommitAsync(cancellationToken);
 
             item.PreferredSupplier = supplier;
+            item.MeasurementDensity = measurementDensity;
             return MapItem(item);
         }
 
@@ -132,12 +166,17 @@ namespace Manufacture.Services
             }
 
             var supplier = await ResolveSupplierAsync(dto.PreferredSupplierId, cancellationToken);
+            var measurementDensity = await ResolveMeasurementDensityAsync(dto.MeasurementDensityId, cancellationToken);
 
             item.Name = NormalizeRequired(dto.Name, "Item name");
             item.Category = NormalizeCategory(dto.Category);
             item.Unit = NormalizeRequired(dto.Unit, "Unit of measurement");
             item.ReorderThreshold = Math.Max(0m, dto.ReorderThreshold);
             item.UnitCostPrice = Math.Max(0m, dto.UnitCostPrice);
+            item.PackageSize = dto.PackageSize > 0m ? dto.PackageSize : 1m;
+            item.PackageUnitOfMeasure = string.IsNullOrWhiteSpace(dto.PackageUnitOfMeasure) ? "kg" : dto.PackageUnitOfMeasure.Trim();
+            item.DensityKgPerLitre = measurementDensity?.DensityKgPerLitre;
+            item.MeasurementDensityId = measurementDensity?.Id;
             item.PreferredSupplierId = supplier?.Id;
             item.UpdatedAt = DateTime.UtcNow;
 
@@ -147,6 +186,7 @@ namespace Manufacture.Services
             await _db.SaveChangesAsync(cancellationToken);
 
             item.PreferredSupplier = supplier;
+            item.MeasurementDensity = measurementDensity;
             return MapItem(item);
         }
 
@@ -200,11 +240,16 @@ namespace Manufacture.Services
             int? inventoryItemId = null,
             string? movementType = null,
             int take = 200,
+            DateOnly? fromDate = null,
+            DateOnly? toDate = null,
+            string? search = null,
             CancellationToken cancellationToken = default)
         {
             var query = _db.StockMovements
                 .AsNoTracking()
                 .Include(m => m.InventoryItem)
+                .Include(m => m.StoreRequestItem)
+                .Include(m => m.StoreRequest)
                 .AsQueryable();
 
             if (inventoryItemId.HasValue)
@@ -216,6 +261,29 @@ namespace Manufacture.Services
             {
                 var normalizedType = movementType.Trim();
                 query = query.Where(m => m.MovementType == normalizedType);
+            }
+
+            if (fromDate.HasValue)
+            {
+                var from = fromDate.Value.ToDateTime(TimeOnly.MinValue);
+                query = query.Where(m => m.CreatedAt >= from);
+            }
+
+            if (toDate.HasValue)
+            {
+                var toExclusive = toDate.Value.AddDays(1).ToDateTime(TimeOnly.MinValue);
+                query = query.Where(m => m.CreatedAt < toExclusive);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim();
+                query = query.Where(m =>
+                    m.InventoryItem.Name.Contains(term)
+                    || m.InventoryItem.ItemCode.Contains(term)
+                    || (m.ReferenceNumber != null && m.ReferenceNumber.Contains(term))
+                    || (m.Notes != null && m.Notes.Contains(term))
+                    || m.PerformedBy.Contains(term));
             }
 
             var movements = await query
@@ -243,48 +311,25 @@ namespace Manufacture.Services
             var recipes = await _db.Recipes
                 .AsNoTracking()
                 .Include(r => r.RecipeIngredients)
-                .ThenInclude(ri => ri.Ingredient)
                 .ToListAsync(cancellationToken);
 
-            var itemName = item.Name.Trim().ToLowerInvariant();
-            var itemCode = item.ItemCode.ToUpperInvariant();
-
-            bool UsesItem(RecipeIngredientEntity line)
-            {
-                var ingredientName = line.Ingredient?.Name?.Trim().ToLowerInvariant() ?? string.Empty;
-                if (ingredientName.Length == 0)
-                {
-                    return false;
-                }
-
-                return ingredientName.Contains(itemName)
-                    || itemName.Contains(ingredientName)
-                    || (itemCode.Contains("FLR") && ingredientName.Contains("flour"))
-                    || (itemCode.Contains("SGR") && ingredientName.Contains("sugar"))
-                    || (itemCode.Contains("YST") && ingredientName.Contains("yeast"))
-                    || (itemCode.Contains("SFT") && ingredientName.Contains("softener"))
-                    || (itemCode.Contains("FLV") && ingredientName.Contains("flavour"))
-                    || (itemCode.Contains("FLV") && ingredientName.Contains("flavor"))
-                    || (itemCode.Contains("FAT") && ingredientName.Contains("shortening"))
-                    || (itemCode.Contains("SHT") && ingredientName.Contains("shortening"))
-                    || (itemCode.Contains("SLT") && ingredientName.Contains("salt"))
-                    || (itemCode.Contains("JMB") && ingredientName.Contains("jumbo"))
-                    || (itemCode.Contains("MED") && ingredientName.Contains("medium"))
-                    || (itemCode.Contains("BTL") && ingredientName.Contains("bottle"))
-                    || (itemCode.Contains("POP") && ingredientName.Contains("popcorn"))
-                    || (itemCode.Contains("CRN") && ingredientName.Contains("maize"))
-                    || (itemCode.Contains("OIL") && ingredientName.Contains("oil"));
-            }
-
             return recipes
-                .Where(recipe => recipe.RecipeIngredients.Any(UsesItem))
-                .Select(recipe => new InventoryRecipeUsageDto
+                .Where(recipe => recipe.RecipeIngredients.Any(line => line.InventoryItemId == itemId))
+                .Select(recipe =>
                 {
-                    Id = recipe.Id,
-                    Name = recipe.Name,
-                    Code = recipe.Code,
-                    ExpectedYield = recipe.ExpectedYield,
-                    OutputUnit = recipe.OutputUnit
+                    var line = recipe.RecipeIngredients.First(i => i.InventoryItemId == itemId);
+                    return new InventoryRecipeUsageDto
+                    {
+                        Id = recipe.Id,
+                        Name = recipe.Name,
+                        Code = recipe.Code,
+                        ExpectedYield = recipe.ExpectedYield,
+                        OutputUnit = recipe.OutputUnit,
+                        QuantityPerBatch = line.QuantityPerBatch,
+                        Unit = line.Unit,
+                        BaselineYield = line.BaselineYield,
+                        BatchLineCost = line.BatchLineCost ?? 0m
+                    };
                 })
                 .OrderBy(recipe => recipe.Name)
                 .ToList();
@@ -374,10 +419,11 @@ namespace Manufacture.Services
             var purpose = NormalizeRequired(dto.Purpose, "Purpose");
             var requestedItems = dto.Items
                 .Where(i => i.RequestedQuantity > 0)
-                .GroupBy(i => i.InventoryItemId)
+                .GroupBy(i => new { i.InventoryItemId, Unit = (i.Unit ?? string.Empty).Trim() })
                 .Select(group => new
                 {
-                    InventoryItemId = group.Key,
+                    InventoryItemId = group.Key.InventoryItemId,
+                    Unit = group.Key.Unit,
                     RequestedQuantity = group.Sum(i => i.RequestedQuantity)
                 })
                 .ToList();
@@ -414,12 +460,26 @@ namespace Manufacture.Services
             foreach (var requested in requestedItems)
             {
                 var inventoryItem = inventoryItems[requested.InventoryItemId];
+                var conversion = ConvertRequestQuantity(
+                    inventoryItem,
+                    requested.RequestedQuantity,
+                    string.IsNullOrWhiteSpace(requested.Unit) ? NormalizeBaseUnit(inventoryItem.PackageUnitOfMeasure) : requested.Unit);
+
+                if (!string.IsNullOrWhiteSpace(conversion.ErrorMessage))
+                {
+                    throw new InvalidOperationException(conversion.ErrorMessage);
+                }
+
                 request.StoreRequestItems.Add(new StoreRequestItemEntity
                 {
                     InventoryItemId = inventoryItem.Id,
                     ItemName = inventoryItem.Name,
-                    Unit = inventoryItem.Unit,
-                    RequestedQuantity = requested.RequestedQuantity,
+                    Unit = conversion.RequestedUnit,
+                    RequestedQuantity = conversion.RequestedQuantity,
+                    BaseQuantity = conversion.BaseQuantity,
+                    BaseUnit = conversion.BaseUnit,
+                    StockQuantity = conversion.StockQuantity,
+                    StockUnit = conversion.StockUnit,
                     IssuedQuantity = 0m,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -455,11 +515,11 @@ namespace Manufacture.Services
                 .Select(group => new
                 {
                     Line = group.First(),
-                    Requested = group.Sum(line => line.RequestedQuantity),
+                    RequestedStock = group.Sum(line => line.StockQuantity),
                     Available = group.First().InventoryItem?.QuantityInStock ?? 0m
                 })
-                .Where(item => item.Available < item.Requested)
-                .Select(item => $"Insufficient stock for {item.Line.ItemName} — available {item.Available:N1} {item.Line.Unit}, requested {item.Requested:N1} {item.Line.Unit}.")
+                .Where(item => item.Available < item.RequestedStock)
+                .Select(item => $"Insufficient stock for {item.Line.ItemName} - available {item.Available:N3} {item.Line.StockUnit}, required {item.RequestedStock:N3} {item.Line.StockUnit}.")
                 .ToList();
 
             if (shortages.Count > 0)
@@ -479,23 +539,28 @@ namespace Manufacture.Services
                 line.IssuedQuantity = line.RequestedQuantity;
                 line.UpdatedAt = DateTime.UtcNow;
 
-                if (line.InventoryItem == null || line.IssuedQuantity <= 0)
+                var stockQuantity = line.StockQuantity > 0m
+                    ? line.StockQuantity
+                    : line.RequestedQuantity;
+
+                if (line.InventoryItem == null || stockQuantity <= 0m)
                 {
                     continue;
                 }
 
-                line.InventoryItem.QuantityInStock -= line.IssuedQuantity;
+                line.InventoryItem.QuantityInStock -= stockQuantity;
                 line.InventoryItem.UpdatedAt = DateTime.UtcNow;
 
                 _db.StockMovements.Add(new StockMovementEntity
                 {
                     InventoryItemId = line.InventoryItem.Id,
                     MovementType = "Issue",
-                    Quantity = line.IssuedQuantity,
+                    Quantity = stockQuantity,
                     BalanceAfter = line.InventoryItem.QuantityInStock,
                     StoreRequestId = request.Id,
+                    StoreRequestItemId = line.Id,
                     ReferenceNumber = request.RequestNumber,
-                    Notes = "Approved store release",
+                    Notes = $"Approved store release: {line.RequestedQuantity:N3} {line.Unit} = {line.BaseQuantity:N3} {line.BaseUnit} = {stockQuantity:N6} {line.StockUnit}",
                     PerformedBy = approver,
                     CreatedAt = DateTime.UtcNow
                 });
@@ -559,6 +624,26 @@ namespace Manufacture.Services
             }
 
             return supplier;
+        }
+
+        private async Task<MeasurementDensityEntity?> ResolveMeasurementDensityAsync(
+            int? densityId,
+            CancellationToken cancellationToken)
+        {
+            if (!densityId.HasValue)
+            {
+                return null;
+            }
+
+            var density = await _db.MeasurementDensities
+                .FirstOrDefaultAsync(d => d.Id == densityId.Value && d.IsActive, cancellationToken);
+
+            if (density == null)
+            {
+                throw new InvalidOperationException("Select a valid active density measurement.");
+            }
+
+            return density;
         }
 
         private async Task<string> GenerateItemCodeAsync(
@@ -720,6 +805,71 @@ namespace Manufacture.Services
                 : performedBy.Trim();
         }
 
+        private StoreRequestConversionDto ConvertRequestQuantity(
+            InventoryItemEntity item,
+            decimal requestedQuantity,
+            string requestedUnit)
+        {
+            var result = new StoreRequestConversionDto
+            {
+                InventoryItemId = item.Id,
+                ItemName = item.Name,
+                RequestedQuantity = requestedQuantity,
+                RequestedUnit = requestedUnit?.Trim() ?? string.Empty,
+                AvailableStock = item.QuantityInStock,
+                StockUnit = item.Unit
+            };
+
+            if (requestedQuantity <= 0m)
+            {
+                result.ErrorMessage = "Requested quantity must be greater than zero.";
+                return result;
+            }
+
+            var baseUnit = NormalizeBaseUnit(item.PackageUnitOfMeasure);
+            var unit = string.IsNullOrWhiteSpace(requestedUnit) ? baseUnit : requestedUnit.Trim();
+
+            decimal baseQuantity;
+            if (string.Equals(unit, baseUnit, StringComparison.OrdinalIgnoreCase))
+            {
+                baseQuantity = requestedQuantity;
+            }
+            else if (!_unitConversion.TryConvert(
+                         requestedQuantity,
+                         unit,
+                         baseUnit,
+                         out baseQuantity,
+                         item.Name,
+                         item.DensityKgPerLitre) || baseQuantity <= 0m)
+            {
+                result.ErrorMessage =
+                    $"Could not convert {requestedQuantity:N2} {unit} of {item.Name} to {baseUnit}. " +
+                    "Configure a density for this material or choose a compatible unit.";
+                return result;
+            }
+
+            var packageSize = item.PackageSize > 0m ? item.PackageSize : 1m;
+            var stockQuantity = baseQuantity / packageSize;
+
+            result.BaseQuantity = Math.Round(baseQuantity, 3);
+            result.BaseUnit = baseUnit;
+            result.StockQuantity = Math.Round(stockQuantity, 6);
+            result.IsEnoughStock = stockQuantity <= item.QuantityInStock;
+            return result;
+        }
+
+        private static string NormalizeBaseUnit(string? unit)
+        {
+            if (string.IsNullOrWhiteSpace(unit)) return "kg";
+            var value = unit.Trim().ToLowerInvariant();
+            if (value is "l" or "litre" or "litres" or "liter" or "liters") return "litres";
+            if (value is "kg" or "kgs" or "kilogram" or "kilograms") return "kg";
+            if (value is "g" or "gm" or "gram" or "grams") return "g";
+            if (value is "ml" or "millilitre" or "millilitres" or "milliliter" or "milliliters") return "ml";
+            if (value is "pcs" or "pc" or "piece" or "pieces" or "each") return "pcs";
+            return unit.Trim();
+        }
+
         private static InventoryItemDto MapItem(InventoryItemEntity item)
         {
             return new InventoryItemDto
@@ -732,6 +882,11 @@ namespace Manufacture.Services
                 QuantityInStock = item.QuantityInStock,
                 ReorderThreshold = item.ReorderThreshold,
                 UnitCostPrice = item.UnitCostPrice,
+                PackageSize = item.PackageSize,
+                PackageUnitOfMeasure = item.PackageUnitOfMeasure,
+                DensityKgPerLitre = item.DensityKgPerLitre,
+                MeasurementDensityId = item.MeasurementDensityId,
+                MeasurementDensityName = item.MeasurementDensity?.MaterialName,
                 PreferredSupplierId = item.PreferredSupplierId,
                 PreferredSupplierName = item.PreferredSupplier?.Name,
                 LastRestockedDate = item.LastRestockedDate.ToDateTime(TimeOnly.MinValue),
@@ -752,6 +907,14 @@ namespace Manufacture.Services
                 Quantity = movement.Quantity,
                 BalanceAfter = movement.BalanceAfter,
                 StoreRequestId = movement.StoreRequestId,
+                StoreRequestItemId = movement.StoreRequestItemId,
+                RequestNumber = movement.StoreRequest?.RequestNumber,
+                RequestedQuantity = movement.StoreRequestItem?.RequestedQuantity,
+                RequestedUnit = movement.StoreRequestItem?.Unit,
+                BaseQuantity = movement.StoreRequestItem?.BaseQuantity,
+                BaseUnit = movement.StoreRequestItem?.BaseUnit,
+                StockQuantity = movement.StoreRequestItem?.StockQuantity,
+                StockUnit = movement.StoreRequestItem?.StockUnit,
                 ReferenceNumber = movement.ReferenceNumber,
                 Notes = movement.Notes,
                 PerformedBy = movement.PerformedBy,
@@ -798,6 +961,10 @@ namespace Manufacture.Services
                         ItemName = i.ItemName,
                         Unit = i.Unit,
                         RequestedQuantity = i.RequestedQuantity,
+                        BaseQuantity = i.BaseQuantity,
+                        BaseUnit = i.BaseUnit,
+                        StockQuantity = i.StockQuantity,
+                        StockUnit = i.StockUnit,
                         IssuedQuantity = i.IssuedQuantity
                     })
                     .ToList()

@@ -10,23 +10,23 @@ namespace Manufacture.Pages.Dashboard
     {
         private readonly MockDashboardService _dashboardService;
         private readonly MockSalesService _salesService;
-        private readonly MockProductionService _productionService;
+        private readonly IProductionService _productionService;
         private readonly MockInventoryService _inventoryService;
         private readonly MockEmployeeService _employeeService;
         private readonly MockPayrollService _payrollService;
         private readonly MockLogisticsService _logisticsService;
-        private readonly MockAnalyticsService _analytics;
+        private readonly ISuperAdminDashboardService _analytics;
         private readonly ISalesService _dbSalesService;
 
         public IndexModel(
             MockDashboardService dashboardService,
             MockSalesService salesService,
-            MockProductionService productionService,
+            IProductionService productionService,
             MockInventoryService inventoryService,
             MockEmployeeService employeeService,
             MockPayrollService payrollService,
             MockLogisticsService logisticsService,
-            MockAnalyticsService analytics,
+            ISuperAdminDashboardService analytics,
             ISalesService dbSalesService)
         {
             _dashboardService = dashboardService;
@@ -65,6 +65,7 @@ namespace Manufacture.Pages.Dashboard
         public DashboardSummaryDto Summary { get; set; } = new();
         public List<Order> RecentOrders { get; set; } = new();
         public List<ProductionBatch> TodayBatches { get; set; } = new();
+        public ProductionDashboardDto ProductionDashboard { get; set; } = new();
         public List<InventoryItem> StockAlertItems { get; set; } = new();
         public List<Recipe> TopRecipes { get; set; } = new();
 
@@ -120,7 +121,13 @@ namespace Manufacture.Pages.Dashboard
 
             Summary = _dashboardService.GetSummary();
             RecentOrders = _salesService.GetAllOrders().Take(8).ToList();
-            TodayBatches = _productionService.GetAllBatches();
+
+            if (ActiveRole == "ProductionManager")
+            {
+                ProductionDashboard = _productionService.GetProductionDashboard(DateTime.UtcNow);
+                TodayBatches = ProductionDashboard.Batches;
+            }
+
             StockAlertItems = _inventoryService.GetAllItems().OrderBy(i => i.QuantityInStock / (i.ReorderThreshold == 0 ? 1 : i.ReorderThreshold)).Take(5).ToList();
             TopRecipes = _productionService.GetAllRecipes();
 
@@ -209,7 +216,7 @@ namespace Manufacture.Pages.Dashboard
             // every other role keeps its existing operational layout.
             if (ActiveRole == "SuperAdmin")
             {
-                Overview = _analytics.GetDashboardOverview();
+                Overview = _analytics.GetOverview();
             }
         }
     }

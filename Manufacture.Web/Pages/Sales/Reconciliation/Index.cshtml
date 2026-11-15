@@ -135,7 +135,6 @@
                 <form method="post" asp-page-handler="Reconcile" id="reconcileForm" class="space-y-6">
                     <input type="hidden" name="RouteSheetId" value="@sheet.Id" />
                     <input type="hidden" id="prevBalanceHidden" value="@sheet.PreviousAccountBalance" />
-                    <input type="hidden" id="plannedCashPctHidden" value="@Model.PlannedCashPercent" />
 
                     <!-- Sheet Header Details -->
                     <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
@@ -450,23 +449,6 @@
                                 </div>
                             </div>
 
-                            <!-- Treasury Benchmark Live Indicator -->
-                            <div class="p-3 bg-base-200/40 rounded-xl border border-base-300 flex items-center justify-between text-xs flex-wrap gap-2">
-                                <div class="flex items-center gap-2">
-                                    <i class="fa-solid fa-coins text-amber-500"></i>
-                                    <span>
-                                        <strong>Corporate Treasury Benchmark:</strong> @Model.PlannedCashPercent.ToString("0.#")% cash policy
-                                    </span>
-                                </div>
-                                <div class="font-mono text-[11px]" id="treasuryVarianceBadge">
-                                    @{
-                                        var targetCash = Math.Round(sheet.TotalExpectedSalesRevenue * (Model.PlannedCashPercent / 100m));
-                                        var cashVar = sheet.CashCollected - targetCash;
-                                    }
-                                    Cash Target: ₦<span id="targetCashDisplay">@targetCash.ToString("N0")</span> &bull; 
-                                    Variance: <span class="font-bold @(cashVar >= 0 ? "text-warning" : "text-success")" id="cashVarDisplay">₦@cashVar.ToString("N0")</span>
-                                </div>
-                            </div>
                         </div>
 
                         <!-- Reconcile & Close Form Actions -->
@@ -623,7 +605,6 @@
 
     function recalcReconciliation() {
         var prevBalance = parseFloat(document.getElementById('prevBalanceHidden').value) || 0;
-        var plannedCashPct = parseFloat(document.getElementById('plannedCashPctHidden').value) || 32;
 
         var totalExpected = 0;
         var totalSold = 0;
@@ -710,14 +691,6 @@
             balanceStatus.textContent = "Debt Reduced / Settled ✔️";
         }
 
-        // Treasury benchmark comparison
-        var targetCash = Math.round(totalExpected * (plannedCashPct / 100));
-        var cashVar = cash - targetCash;
-
-        document.getElementById('targetCashDisplay').textContent = targetCash.toLocaleString('en-US');
-        var varDisplay = document.getElementById('cashVarDisplay');
-        varDisplay.textContent = formatMoney(cashVar);
-        varDisplay.className = "font-bold " + (cashVar >= 0 ? "text-warning" : "text-success");
     }
 </script>
 }

@@ -17,6 +17,10 @@ namespace Manufacture.Pages.Sales.Orders
 
         public Order Order { get; set; } = new();
         public List<SalesRepProfile> SalesReps { get; set; } = new();
+        public string UserRole { get; set; } = string.Empty;
+        public bool IsProductionManager =>
+            string.Equals(UserRole, "ProductionManager", StringComparison.OrdinalIgnoreCase);
+        public bool CanManageSales => !IsProductionManager;
 
         [BindProperty]
         public OrderPaymentInputDto PaymentInput { get; set; } = new() { PaymentMethod = "Cash" };
@@ -26,6 +30,8 @@ namespace Manufacture.Pages.Sales.Orders
 
         public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancellationToken = default)
         {
+            LoadRole();
+
             var order = await _salesService.GetOrderAsync(id, cancellationToken);
             if (order == null)
             {
@@ -36,13 +42,23 @@ namespace Manufacture.Pages.Sales.Orders
             Order = order;
             PaymentInput.OrderId = order.Id;
             PaymentInput.Amount = Math.Max(0m, order.BalanceDue);
-            SalesReps = await _salesService.GetSalesRepsAsync(cancellationToken: cancellationToken);
+            SalesReps = CanManageSales
+                ? await _salesService.GetSalesRepsAsync(cancellationToken: cancellationToken)
+                : new List<SalesRepProfile>();
             SelectedSalesRepId = order.SalesRepId;
             return Page();
         }
 
         public async Task<IActionResult> OnPostAssignRepAsync(int id, int? selectedSalesRepId, CancellationToken cancellationToken = default)
         {
+            LoadRole();
+
+            if (!CanManageSales)
+            {
+                TempData["ErrorMessage"] = "Production Managers cannot assign sales representatives.";
+                return RedirectToPage(new { id });
+            }
+
             try
             {
                 var assigned = await _salesService.AssignOrderSalesRepAsync(id, selectedSalesRepId, cancellationToken);
@@ -65,6 +81,14 @@ namespace Manufacture.Pages.Sales.Orders
 
         public async Task<IActionResult> OnPostApplyPaymentAsync(CancellationToken cancellationToken = default)
         {
+            LoadRole();
+
+            if (!CanManageSales)
+            {
+                TempData["ErrorMessage"] = "Production Managers cannot apply order payments or settlements.";
+                return RedirectToPage(new { id = PaymentInput.OrderId });
+            }
+
             PaymentInput.ReceivedBy = HttpContext.Session.GetString("UserName") ?? "Sales";
 
             try
@@ -80,6 +104,11 @@ namespace Manufacture.Pages.Sales.Orders
             }
 
             return RedirectToPage(new { id = PaymentInput.OrderId });
+        }
+
+        private void LoadRole()
+        {
+            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
         }
     }
 }

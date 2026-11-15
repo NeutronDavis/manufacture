@@ -15,14 +15,29 @@ namespace Manufacture.Pages.Inventory.Requests
         }
 
         public List<StoreRequestDto> Requests { get; set; } = new();
+        public string UserRole { get; set; } = string.Empty;
+        public bool CanApproveRequests =>
+            string.Equals(UserRole, "StoreManager", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(UserRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase);
+
+        [BindProperty(SupportsGet = true)]
+        public int? FocusId { get; set; }
 
         public async Task OnGetAsync(CancellationToken cancellationToken = default)
         {
+            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
             Requests = await _inventoryService.GetRequestsAsync(cancellationToken);
         }
 
         public async Task<IActionResult> OnPostApproveAsync(int id, CancellationToken cancellationToken = default)
         {
+            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
+            if (!CanApproveRequests)
+            {
+                TempData["ErrorMessage"] = "Only a Store Manager or Super Admin can approve and issue stock.";
+                return RedirectToPage();
+            }
+
             var userName = HttpContext.Session.GetString("UserName") ?? "Musa Ibrahim (Store Mgr)";
 
             try
@@ -42,6 +57,13 @@ namespace Manufacture.Pages.Inventory.Requests
 
         public async Task<IActionResult> OnPostRejectAsync(int id, CancellationToken cancellationToken = default)
         {
+            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
+            if (!CanApproveRequests)
+            {
+                TempData["ErrorMessage"] = "Only a Store Manager or Super Admin can reject requisitions.";
+                return RedirectToPage();
+            }
+
             var userName = HttpContext.Session.GetString("UserName") ?? "Musa Ibrahim (Store Mgr)";
             var rejected = await _inventoryService.RejectRequestAsync(
                 id,

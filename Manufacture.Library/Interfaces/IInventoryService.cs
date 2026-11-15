@@ -20,6 +20,9 @@ namespace Manufacture.Library.Interfaces
             int? inventoryItemId = null,
             string? movementType = null,
             int take = 200,
+            DateOnly? fromDate = null,
+            DateOnly? toDate = null,
+            string? search = null,
             CancellationToken cancellationToken = default);
 
         Task<List<InventoryRecipeUsageDto>> GetRecipeUsageAsync(int itemId, CancellationToken cancellationToken = default);
@@ -33,6 +36,12 @@ namespace Manufacture.Library.Interfaces
         Task<List<StoreRequestDto>> GetRequestsByItemAsync(int itemId, CancellationToken cancellationToken = default);
 
         Task<StoreRequestDto> CreateRequestAsync(StoreRequestDto dto, CancellationToken cancellationToken = default);
+
+        Task<StoreRequestConversionDto> ConvertRequestQuantityAsync(
+            int inventoryItemId,
+            decimal requestedQuantity,
+            string requestedUnit,
+            CancellationToken cancellationToken = default);
 
         Task<bool> ApproveAndIssueRequestAsync(int id, string approverName, CancellationToken cancellationToken = default);
 

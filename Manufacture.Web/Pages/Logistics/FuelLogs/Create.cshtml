@@ -32,6 +32,8 @@
     <!-- Standard 2-Column Full-Width Form Layout -->
     <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
         <input type="hidden" asp-for="ReturnUrl" />
+        <input type="hidden" asp-for="LogInput.CharterBookingId" />
+        <input type="hidden" asp-for="LogInput.FleetDispatchId" />
         
         <!-- Left Section (~70% width, 8 Cols) -->
         <div class="lg:col-span-8 space-y-6">
@@ -54,13 +56,31 @@
                                     Select Delivery Vehicle <span class="text-error">*</span>
                                 </span>
                             </label>
-                            <select asp-for="LogInput.VehicleId" id="vehicleSelect" onchange="syncFuelType()" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary" required>
-                                <option value="">-- Choose Vehicle --</option>
-                                @foreach (var v in Model.Vehicles)
-                                {
-                                    <option value="@v.Id" data-fueltype="@v.FuelType">@v.RegistrationNumber - @v.MakeAndModel (@(string.IsNullOrWhiteSpace(v.AssignedDriverName) ? "Unassigned" : v.AssignedDriverName))</option>
-                                }
-                            </select>
+                            @if (Model.IsVehicleLocked && Model.LockedVehicle != null)
+                            {
+                                <input type="hidden" asp-for="LogInput.VehicleId" />
+                                <div class="input input-bordered input-sm w-full rounded-xl text-xs bg-base-200/70 flex items-center font-bold">
+                                    @Model.LockedVehicle.RegistrationNumber - @Model.LockedVehicle.MakeAndModel
+                                    @if (!string.IsNullOrWhiteSpace(Model.CharterBookingRef))
+                                    {
+                                        <span class="badge badge-xs badge-info ml-2">Charter @Model.CharterBookingRef</span>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(Model.FleetDispatchRef))
+                                    {
+                                        <span class="badge badge-xs badge-info ml-2">Dispatch @Model.FleetDispatchRef</span>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <select asp-for="LogInput.VehicleId" id="vehicleSelect" onchange="syncFuelType()" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary" required>
+                                    <option value="">-- Choose Vehicle --</option>
+                                    @foreach (var v in Model.Vehicles)
+                                    {
+                                        <option value="@v.Id" data-fueltype="@v.FuelType">@v.RegistrationNumber - @v.MakeAndModel (@(string.IsNullOrWhiteSpace(v.AssignedDriverName) ? "Unassigned" : v.AssignedDriverName))</option>
+                                    }
+                                </select>
+                            }
                         </div>
 
                         <div class="form-control w-full">

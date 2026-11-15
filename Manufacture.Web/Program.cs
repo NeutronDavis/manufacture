@@ -3,6 +3,7 @@ using Manufacture.Library.Data;
 using Manufacture.Library.Interfaces;
 using Manufacture.Models.Entities;
 using Manufacture.Services;
+using Manufacture.Services.Reports;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -35,9 +36,15 @@ builder.Services.AddRazorPages(options =>
     options.Conventions.AddPageRoute("/Logistics/Rates/Create", "Fleet/Rates/Create");
     options.Conventions.AddPageRoute("/Logistics/Rates/Create", "Fleet/Rates/New");
     options.Conventions.AddPageRoute("/Logistics/Rates/Edit", "Fleet/Rates/Edit/{id:int}");
+    options.Conventions.AddPageRoute("/Logistics/Rates/Index", "Fleet/Quotes");
+    options.Conventions.AddPageRoute("/Logistics/Rates/Create", "Fleet/Quotes/New");
+    options.Conventions.AddPageRoute("/Logistics/Rates/Edit", "Fleet/Quotes/Edit/{id:int}");
     options.Conventions.AddPageRoute("/Logistics/Charter/Index", "Fleet/Charter");
     options.Conventions.AddPageRoute("/Logistics/Charter/Create", "Fleet/Charter/New");
     options.Conventions.AddPageRoute("/Logistics/Charter/Details", "Fleet/Charter/Details/{id:int}");
+    options.Conventions.AddPageRoute("/Logistics/Dispatches/Index", "Fleet/Dispatches");
+    options.Conventions.AddPageRoute("/Logistics/Dispatches/Create", "Fleet/Dispatches/New");
+    options.Conventions.AddPageRoute("/Logistics/Dispatches/Details", "Fleet/Dispatches/Details/{id:int}");
     options.Conventions.AddPageRoute("/Logistics/WeeklyRunningCosts/Index", "Fleet/Weekly-Running-Costs");
     options.Conventions.AddPageRoute("/Logistics/WeeklyRunningCosts/Index", "Fleet/WeeklyRunningCosts");
     options.Conventions.AddPageRoute("/Logistics/Maintenance/Index", "Fleet/Maintenance");
@@ -87,15 +94,23 @@ builder.Services.AddScoped<ISettingsService, SettingsService>();
 builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IPayrollService, PayrollService>();
 builder.Services.AddScoped<IFleetService, FleetService>();
+builder.Services.AddScoped<ICharterQuoteService, CharterQuoteService>();
+builder.Services.AddScoped<IFleetDispatchService, FleetDispatchService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<IMeasurementDensityService, MeasurementDensityService>();
 builder.Services.AddScoped<ISalesService, SalesService>();
+builder.Services.AddScoped<IProductionService, ProductionService>();
+builder.Services.AddScoped<ISuperAdminDashboardService, SuperAdminDashboardService>();
+builder.Services.AddScoped<ReportAuthorizationService>();
+builder.Services.AddScoped<ReportQueryService>();
 builder.Services.AddScoped<IOrganizationService, OrganizationService>();
 builder.Services.AddScoped<IImageUploadService, ImageUploadService>();
 
 // Production Recipe Builder & Cost Engine (doc/recipe-costing.md).
 // Resolves live ingredient prices, so it must be registered AFTER the
 // production service it depends on.
-builder.Services.AddSingleton<RecipeCostingEngine>();
+builder.Services.AddScoped<RecipeCostingEngine>(sp =>
+    new RecipeCostingEngine(sp.GetRequiredService<IProductionService>()));
 
 // Executive dashboard & reports engine (doc/dashboard-reports.md).
 // Projects the product catalog from the recipe master and the fleet from the

@@ -1,231 +1,253 @@
 @page "{id:int}"
 @model Manufacture.Pages.Logistics.Rates.EditModel
+@using System.Text.Json
+@using Manufacture.Models.DTOs
 @{
-    ViewData["Title"] = "Edit Route Rate";
+    ViewData["Title"] = "Client Quote Review";
+    var q = Model.Quote!;
+    var editable = q.IsEditable;
+    var initialLegs = JsonSerializer.Serialize(q.Legs.Select(l => new
+    {
+        l.LegNumber,
+        l.OriginAddress,
+        l.OriginCityState,
+        l.DestinationAddress,
+        l.DestinationCityState,
+        l.DistanceKm,
+        FuelOption = l.FuelOption.ToString(),
+        l.QuotedLegAmount,
+        l.Notes
+    }), new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+    var statusClass = q.Status switch
+    {
+        CharterQuoteStatus.Draft => "badge-ghost",
+        CharterQuoteStatus.PendingApproval => "badge-warning",
+        CharterQuoteStatus.Approved => "badge-success",
+        CharterQuoteStatus.Rejected => "badge-error",
+        CharterQuoteStatus.Expired => "badge-neutral",
+        CharterQuoteStatus.Converted => "badge-info",
+        _ => "badge-ghost"
+    };
 }
 
 <div class="space-y-6 w-full">
-    <!-- Breadcrumb & Header Bar -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
             <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
                 <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
                 <span>&gt;</span>
-                <a asp-page="/Logistics/Index" class="hover:underline">Fleet Logistics</a>
+                <a asp-page="/Logistics/Rates/Index" class="hover:underline">Client Quotes</a>
                 <span>&gt;</span>
-                <a asp-page="/Logistics/Rates/Index" class="hover:underline">Route Rates</a>
-                <span>&gt;</span>
-                <span class="text-primary font-bold">Edit Rate</span>
+                <span class="text-primary font-bold">@q.QuoteRef</span>
             </div>
             <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
-                <i class="fa-solid fa-pen-to-square text-primary"></i> Edit Route Rate: @Model.RateInput.OriginState → @Model.RateInput.DestinationState
+                <i class="fa-solid fa-file-invoice-dollar text-primary"></i> @q.QuoteRef
+                <span class="badge badge-sm @statusClass font-bold">@q.Status</span>
             </h1>
-            <p class="text-xs opacity-70 mt-0.5">
-                Update corridor pricing tariffs, transit duration, or vehicle class requirements for Lane #@Model.Id.
-            </p>
+            <p class="text-xs opacity-70 mt-0.5">@q.CustomerName · @q.CustomerPhone · @q.VehicleTypeRequired</p>
         </div>
-        <div class="flex items-center gap-2">
-            <a asp-page="/Logistics/Rates/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
-                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Rates Matrix
+        <div class="flex items-center gap-2 flex-wrap">
+            <a asp-page="/Logistics/Rates/Index" class="btn btn-sm btn-ghost rounded-xl text-xs font-bold gap-1.5">
+                <i class="fa-solid fa-arrow-left"></i> Client Quotes
             </a>
+            @if (q.IsApproved)
+            {
+                <a asp-page="/Logistics/Charter/Create" asp-route-quoteId="@q.Id" class="btn btn-sm btn-success rounded-xl text-xs font-bold gap-1.5">
+                    <i class="fa-solid fa-truck-moving"></i> Book Charter
+                </a>
+            }
+            <form method="post" asp-page-handler="Clone" asp-route-id="@q.Id" class="inline">
+                <button type="submit" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs font-bold gap-1.5">
+                    <i class="fa-solid fa-copy"></i> Clone Quote
+                </button>
+            </form>
         </div>
     </div>
 
-    <!-- Standard 2-Column Full-Width Form Layout -->
-    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
-        <!-- Left Section (~70% width, 8 Cols) -->
-        <div class="lg:col-span-8 space-y-6">
-            <!-- Route Corridor Details Card -->
-            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
-                <div class="card-body p-6 space-y-5">
-                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
-                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
-                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
-                                <i class="fa-solid fa-route"></i>
-                            </div>
-                            <span>Corridor Origin & Destination</span>
-                        </div>
-                        <span class="badge badge-neutral badge-xs font-bold font-mono">Lane #@Model.Id</span>
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-error rounded-xl text-xs"><span>@TempData["ErrorMessage"]</span></div>
+    }
+    @if (Model.CanApprove && q.Status == CharterQuoteStatus.PendingApproval)
+    {
+        <div class="card bg-warning/10 border border-warning/30 rounded-2xl p-5 space-y-4">
+            <div class="flex items-center gap-2 text-sm font-black text-warning"><i class="fa-solid fa-user-shield"></i> Approval Required</div>
+            <p class="text-xs opacity-70">Review the addresses and manual amounts. Approve to make this quote bookable, or reject it back to the preparer.</p>
+            <div class="flex flex-col sm:flex-row gap-3">
+                <form method="post" asp-page-handler="Approve" asp-route-id="@q.Id">
+                    <button type="submit" class="btn btn-success btn-sm rounded-xl text-xs font-bold gap-1.5"><i class="fa-solid fa-check"></i> Approve Quote</button>
+                </form>
+                <form method="post" asp-page-handler="Reject" asp-route-id="@q.Id" class="flex flex-1 gap-2">
+                    <input name="reason" class="input input-sm input-bordered rounded-xl text-xs flex-1" placeholder="Rejection reason" required />
+                    <button type="submit" class="btn btn-error btn-sm rounded-xl text-xs font-bold text-white gap-1.5"><i class="fa-solid fa-xmark"></i> Reject</button>
+                </form>
+            </div>
+        </div>
+    }
+
+    @if (editable)
+    {
+        <form method="post" id="quoteForm" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <input type="hidden" asp-for="QuoteInput.Id" />
+            <div class="lg:col-span-8 space-y-6">
+                <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-5">
+                    <div class="flex items-center justify-between pb-3 border-b border-base-200">
+                        <h2 class="text-sm font-black text-base-content">Client &amp; Vehicle Request</h2>
+                        <span class="badge badge-ghost badge-xs font-bold">Draft / Rejected</span>
                     </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                        <div class="form-control w-full">
-                            <label class="label pb-1.5">
-                                <span class="label-text font-bold text-xs text-base-content">
-                                    Origin State <span class="text-error">*</span>
-                                </span>
-                            </label>
-                            <input list="statesList" asp-for="RateInput.OriginState" id="inputOrigin" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" required oninput="updateSummary()" />
-                        </div>
-
-                        <div class="form-control w-full">
-                            <label class="label pb-1.5">
-                                <span class="label-text font-bold text-xs text-base-content">
-                                    Destination State <span class="text-error">*</span>
-                                </span>
-                            </label>
-                            <input list="statesList" asp-for="RateInput.DestinationState" id="inputDest" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" required oninput="updateSummary()" />
-                        </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="form-control w-full sm:col-span-2"><label class="label pb-1"><span class="label-text text-xs font-bold">Client / Company Name</span></label><input asp-for="QuoteInput.CustomerName" class="input input-sm input-bordered rounded-xl text-xs" required /></div>
+                        <div class="form-control w-full"><label class="label pb-1"><span class="label-text text-xs font-bold">Phone</span></label><input asp-for="QuoteInput.CustomerPhone" class="input input-sm input-bordered rounded-xl text-xs" required /></div>
                     </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="form-control w-full"><label class="label pb-1"><span class="label-text text-xs font-bold">Email</span></label><input asp-for="QuoteInput.CustomerEmail" type="email" class="input input-sm input-bordered rounded-xl text-xs" /></div>
+                        <div class="form-control w-full"><label class="label pb-1"><span class="label-text text-xs font-bold">Trip Type</span></label><select asp-for="QuoteInput.TripType" class="select select-sm select-bordered rounded-xl text-xs"><option value="@CharterQuoteTripType.OneWay">One Way</option><option value="@CharterQuoteTripType.Return">Return</option><option value="@CharterQuoteTripType.MultiStop">Multi-Stop</option></select></div>
+                        <div class="form-control w-full"><label class="label pb-1"><span class="label-text text-xs font-bold">Valid Until</span></label><input asp-for="QuoteInput.ValidUntil" type="date" class="input input-sm input-bordered rounded-xl text-xs font-mono" /></div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="form-control w-full"><label class="label pb-1"><span class="label-text text-xs font-bold">Vehicle Class</span></label><select asp-for="QuoteInput.VehicleTypeRequired" class="select select-sm select-bordered rounded-xl text-xs">@foreach (var type in Model.VehicleTypes) { <option value="@type">@type</option> }</select></div>
+                        <div class="form-control w-full"><label class="label pb-1"><span class="label-text text-xs font-bold">Preferred Vehicle</span></label><select asp-for="QuoteInput.VehicleId" class="select select-sm select-bordered rounded-xl text-xs"><option value="">Not assigned yet</option>@foreach (var v in Model.AvailableVehicles) { <option value="@v.Id">@v.RegistrationNumber - @v.MakeAndModel</option> }</select></div>
+                    </div>
+                </div>
 
-                    <datalist id="statesList">
-                        @foreach (var state in Model.NigerianStates)
-                        {
-                            <option value="@state"></option>
-                        }
-                    </datalist>
+                <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">
+                    <div class="flex items-center justify-between pb-3 border-b border-base-200">
+                        <h2 class="text-sm font-black text-base-content">Multi-Stop Route &amp; Manual Pricing</h2>
+                        <button type="button" onclick="addLeg()" class="btn btn-sm btn-neutral rounded-xl text-xs font-bold gap-1"><i class="fa-solid fa-plus text-[10px]"></i> Add Leg</button>
+                    </div>
+                    <div id="legsContainer" class="space-y-4"></div>
+                </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-2 border-t border-base-200">
-                        <div class="form-control w-full">
-                            <label class="label pb-1.5">
-                                <span class="label-text font-bold text-xs text-base-content">
-                                    Required Vehicle Class <span class="text-error">*</span>
-                                </span>
-                            </label>
-                            <select asp-for="RateInput.VehicleTypeRequired" id="inputVehicleType" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" required onchange="updateSummary()">
-                                @foreach (var vt in Model.AvailableVehicleTypes)
-                                {
-                                    <option value="@vt">@vt</option>
-                                }
-                            </select>
-                        </div>
+                <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">
+                    <h2 class="text-sm font-black text-base-content">Trip Incidentals &amp; Notes</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="form-control"><label class="label pb-1"><span class="label-text text-xs font-bold">Driver Allowance</span></label><input asp-for="QuoteInput.DriverAllowance" type="number" step="1000" id="driverAllowance" class="input input-sm input-bordered rounded-xl text-xs font-mono" oninput="recalculate()" /></div>
+                        <div class="form-control"><label class="label pb-1"><span class="label-text text-xs font-bold">Security / Escort</span></label><input asp-for="QuoteInput.SecurityEscortFee" type="number" step="1000" id="securityFee" class="input input-sm input-bordered rounded-xl text-xs font-mono" oninput="recalculate()" /></div>
+                        <div class="form-control"><label class="label pb-1"><span class="label-text text-xs font-bold">Tolls &amp; Levies</span></label><input asp-for="QuoteInput.TollsAndRoadLevies" type="number" step="1000" id="tollsFee" class="input input-sm input-bordered rounded-xl text-xs font-mono" oninput="recalculate()" /></div>
+                    </div>
+                    <div class="form-control"><label class="label pb-1"><span class="label-text text-xs font-bold">Notes <span class="text-error">*</span></span></label><textarea asp-for="QuoteInput.Notes" rows="3" class="textarea textarea-bordered rounded-xl text-xs" required></textarea><span asp-validation-for="QuoteInput.Notes" class="text-error text-[10px]"></span></div>
+                </div>
+            </div>
 
-                        <div class="form-control w-full">
-                            <label class="label pb-1.5">
-                                <span class="label-text font-bold text-xs text-base-content">
-                                    Est. Transit Duration (Hours) <span class="text-error">*</span>
-                                </span>
-                            </label>
-                            <input type="number" min="1" max="168" asp-for="RateInput.EstimatedHours" id="inputHours" class="input input-bordered input-sm w-full font-mono bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-bold" required oninput="updateSummary()" />
+            <div class="lg:col-span-4 sticky top-20 space-y-4">
+                <div class="card bg-base-100 border border-base-300 shadow-md rounded-2xl overflow-hidden">
+                    <div class="bg-neutral text-neutral-content p-5">
+                        <div class="text-[10px] uppercase font-bold tracking-wider opacity-70">Manual Client Quote</div>
+                        <div id="quotedDisplay" class="text-3xl font-black tracking-tight text-white font-mono mt-2">₦@q.QuotedAmount.ToString("N0")</div>
+                    </div>
+                    <div class="p-6 space-y-4 text-xs">
+                        <div class="flex justify-between"><span>Incidentals:</span><span id="incidentalsDisplay" class="font-mono font-bold text-error">₦@q.TotalTripIncidentals.ToString("N0")</span></div>
+                        <div class="flex justify-between pt-3 border-t border-base-200 font-bold"><span>Estimated Net:</span><span id="netDisplay" class="font-mono font-black text-success">₦@q.NetEstimate.ToString("N0")</span></div>
+                        <div class="space-y-2 pt-2">
+                            <button type="submit" asp-page-handler="Submit" class="btn btn-neutral w-full rounded-xl text-xs font-black py-3 gap-2"><i class="fa-solid fa-paper-plane"></i> Submit for Approval</button>
+                            <button type="submit" asp-page-handler="Save" class="btn btn-outline w-full rounded-xl text-xs font-bold py-2.5 gap-2 border-base-300"><i class="fa-solid fa-floppy-disk"></i> Save Draft</button>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Pricing Structure Card -->
-            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
-                <div class="card-body p-6 space-y-5">
-                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
-                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
-                            <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xs font-bold shadow-xs">
-                                <i class="fa-solid fa-naira-sign"></i>
-                            </div>
-                            <span>Dual Tariff Structure (With / Without Fuel)</span>
-                        </div>
-                        <span class="badge badge-success badge-xs font-bold uppercase tracking-wider">Tariff</span>
+        </form>
+    }
+    else
+    {
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <div class="lg:col-span-8 space-y-6">
+                <div class="card bg-base-100 border border-base-300 rounded-2xl p-6">
+                    <h2 class="text-sm font-black text-base-content border-b border-base-200 pb-3">Client &amp; Vehicle Request</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 text-xs">
+                        <div><div class="opacity-50">Client</div><div class="font-black">@q.CustomerName</div></div>
+                        <div><div class="opacity-50">Phone</div><div class="font-bold">@q.CustomerPhone</div></div>
+                        <div><div class="opacity-50">Email</div><div class="font-bold">@(q.CustomerEmail ?? "—")</div></div>
+                        <div><div class="opacity-50">Vehicle Class</div><div class="font-bold">@q.VehicleTypeRequired</div></div>
+                        <div><div class="opacity-50">Trip Type</div><div class="font-bold">@q.TripType</div></div>
+                        <div><div class="opacity-50">Valid Until</div><div class="font-bold">@(q.ValidUntil?.ToString("dd MMM yyyy") ?? "No expiry")</div></div>
                     </div>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                        <div class="form-control w-full">
-                            <label class="label pb-1.5">
-                                <span class="label-text font-bold text-xs text-base-content">
-                                    Rate With Fuel (₦) <span class="text-error">*</span>
-                                </span>
-                            </label>
-                            <input type="number" step="1000" asp-for="RateInput.RateWithFuel" id="inputWithFuel" class="input input-bordered input-sm w-full font-mono text-emerald-600 bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-black" required oninput="updateSummary()" />
-                            <label class="label pt-1"><span class="label-text-alt text-[11px] opacity-60">Company supplies all diesel fuel & incidentals.</span></label>
-                        </div>
-
-                        <div class="form-control w-full">
-                            <label class="label pb-1.5">
-                                <span class="label-text font-bold text-xs text-base-content">
-                                    Rate Without Fuel (₦) <span class="text-error">*</span>
-                                </span>
-                            </label>
-                            <input type="number" step="1000" asp-for="RateInput.RateWithoutFuel" id="inputWithoutFuel" class="input input-bordered input-sm w-full font-mono text-base-content bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-black" required oninput="updateSummary()" />
-                            <label class="label pt-1"><span class="label-text-alt text-[11px] opacity-60">Client or broker provides fueling during haulage run.</span></label>
-                        </div>
+                </div>
+                <div class="card bg-base-100 border border-base-300 rounded-2xl p-6">
+                    <h2 class="text-sm font-black text-base-content border-b border-base-200 pb-3">Route Legs</h2>
+                    <div class="overflow-x-auto mt-4">
+                        <table class="table table-sm text-xs">
+                            <thead><tr class="bg-base-200/60"><th>Leg</th><th>Origin</th><th>Destination</th><th>Fuel</th><th class="text-right">Amount</th></tr></thead>
+                            <tbody class="divide-y divide-base-200">
+                            @foreach (var leg in q.Legs)
+                            {
+                                <tr>
+                                    <td class="font-black">@leg.LegNumber</td>
+                                    <td><div class="font-bold">@leg.OriginAddress</div><div class="text-[10px] opacity-50">@leg.OriginCityState</div></td>
+                                    <td><div class="font-bold">@leg.DestinationAddress</div><div class="text-[10px] opacity-50">@leg.DestinationCityState</div></td>
+                                    <td><span class="badge badge-xs @(leg.FuelOption == FuelOption.WithFuel ? "badge-success" : "badge-info")">@leg.FuelOption</span></td>
+                                    <td class="text-right font-black">₦@leg.QuotedLegAmount.ToString("N0")</td>
+                                </tr>
+                            }
+                            </tbody>
+                            <tfoot><tr class="border-t-2 border-base-300 font-bold"><td colspan="3" class="text-right">Total</td><td></td><td class="text-right font-black">₦@q.QuotedAmount.ToString("N0")</td></tr></tfoot>
+                        </table>
                     </div>
-
-                    <div class="pt-4 border-t border-base-200 flex items-center gap-3">
-                        <input type="checkbox" asp-for="RateInput.IsActive" id="inputIsActive" class="checkbox checkbox-sm checkbox-neutral rounded-md" />
-                        <div>
-                            <label for="inputIsActive" class="text-xs font-bold text-base-content cursor-pointer">
-                                Active Route Lane
-                            </label>
-                            <p class="text-[11px] text-base-content/60">
-                                Toggle whether this corridor is active and bookable in the Charter system.
-                            </p>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(q.Notes))
+                {
+                    <div class="card bg-base-100 border border-base-300 rounded-2xl p-6"><h2 class="text-sm font-black">Notes</h2><p class="text-xs opacity-70 mt-2">@q.Notes</p></div>
+                }
+            </div>
+            <div class="lg:col-span-4 space-y-4">
+                <div class="card bg-base-100 border border-base-300 shadow-md rounded-2xl overflow-hidden">
+                    <div class="bg-neutral text-neutral-content p-5">
+                        <div class="text-[10px] uppercase font-bold tracking-wider opacity-70">Approved Client Quote</div>
+                        <div class="text-3xl font-black tracking-tight text-white font-mono mt-2">₦@q.QuotedAmount.ToString("N0")</div>
+                    </div>
+                    <div class="p-6 space-y-3 text-xs">
+                        <div class="flex justify-between"><span>Incidentals:</span><span class="font-mono font-bold text-error">₦@q.TotalTripIncidentals.ToString("N0")</span></div>
+                        <div class="flex justify-between pt-3 border-t border-base-200 font-bold"><span>Estimated Net:</span><span class="font-mono font-black text-success">₦@q.NetEstimate.ToString("N0")</span></div>
+                        <div class="pt-3 border-t border-base-200 space-y-1 text-[11px] opacity-70">
+                            <div>Requested by: <strong>@(string.IsNullOrWhiteSpace(q.RequestedByName) ? "—" : q.RequestedByName)</strong></div>
+                            <div>Submitted: <strong>@(q.SubmittedAt?.ToString("dd MMM yyyy HH:mm") ?? "—")</strong></div>
+                            <div>Approved by: <strong>@(string.IsNullOrWhiteSpace(q.ApprovedByName) ? "—" : q.ApprovedByName)</strong></div>
+                            <div>Approved at: <strong>@(q.ApprovedAt?.ToString("dd MMM yyyy HH:mm") ?? "—")</strong></div>
+                            @if (!string.IsNullOrWhiteSpace(q.RejectionReason)) { <div class="text-error">Reason: <strong>@q.RejectionReason</strong></div> }
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <!-- Right Section (~30% width, 4 Cols) -->
-        <div class="lg:col-span-4 space-y-6">
-            <!-- Corridor Summary Card -->
-            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl sticky top-20">
-                <div class="card-body p-6 space-y-4">
-                    <div class="flex items-center gap-2 font-bold text-base-content text-sm border-b border-base-200 pb-3">
-                        <i class="fa-solid fa-clipboard-check text-primary"></i>
-                        <span>Lane Tariff Preview</span>
-                    </div>
-
-                    <div class="bg-base-200/50 p-4 rounded-xl space-y-3">
-                        <div class="text-center pb-2 border-b border-base-300">
-                            <div class="text-[10px] uppercase font-bold text-base-content/60">Corridor Lane</div>
-                            <div class="font-black text-sm text-base-content mt-0.5" id="summaryRoute">
-                                @Model.RateInput.OriginState → @Model.RateInput.DestinationState
-                            </div>
-                        </div>
-
-                        <div class="flex justify-between items-center text-xs">
-                            <span class="text-base-content/70">Vehicle Class:</span>
-                            <span class="font-semibold text-base-content" id="summaryVehicle">@Model.RateInput.VehicleTypeRequired</span>
-                        </div>
-
-                        <div class="flex justify-between items-center text-xs">
-                            <span class="text-base-content/70">Est. Duration:</span>
-                            <span class="font-mono font-bold text-base-content" id="summaryHours">@Model.RateInput.EstimatedHours hrs</span>
-                        </div>
-
-                        <div class="flex justify-between items-center text-xs pt-2 border-t border-base-300">
-                            <span class="text-base-content/70">With Diesel:</span>
-                            <span class="font-mono font-black text-emerald-600" id="summaryWithFuel">₦@Model.RateInput.RateWithFuel.ToString("N0")</span>
-                        </div>
-
-                        <div class="flex justify-between items-center text-xs">
-                            <span class="text-base-content/70">Without Diesel:</span>
-                            <span class="font-mono font-black text-base-content" id="summaryWithoutFuel">₦@Model.RateInput.RateWithoutFuel.ToString("N0")</span>
-                        </div>
-
-                        <div class="flex justify-between items-center text-xs pt-2 border-t border-base-300 bg-primary/5 p-2 rounded-lg">
-                            <span class="text-primary font-bold">Fuel Allowance:</span>
-                            <span class="font-mono font-black text-primary" id="summaryFuelAllowance">₦@((Model.RateInput.RateWithFuel - Model.RateInput.RateWithoutFuel).ToString("N0"))</span>
-                        </div>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="pt-2 space-y-2">
-                        <button type="submit" class="btn btn-neutral w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
-                            <i class="fa-solid fa-check"></i> Update Route Rate
-                        </button>
-                        <a asp-page="/Logistics/Rates/Index" class="btn btn-ghost w-full rounded-xl font-semibold text-xs border border-base-300">
-                            Cancel
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </form>
+    }
 </div>
 
+@section Scripts {
+@if (editable)
+{
 <script>
-    function updateSummary() {
-        const origin = document.getElementById('inputOrigin').value || 'Origin';
-        const dest = document.getElementById('inputDest').value || 'Destination';
-        const vehicle = document.getElementById('inputVehicleType').value || '';
-        const hours = document.getElementById('inputHours').value || '0';
-        const withFuel = parseFloat(document.getElementById('inputWithFuel').value) || 0;
-        const withoutFuel = parseFloat(document.getElementById('inputWithoutFuel').value) || 0;
-        const diff = Math.max(0, withFuel - withoutFuel);
-
-        document.getElementById('summaryRoute').textContent = origin + ' → ' + dest;
-        document.getElementById('summaryVehicle').textContent = vehicle;
-        document.getElementById('summaryHours').textContent = hours + ' hrs';
-        document.getElementById('summaryWithFuel').textContent = '₦' + withFuel.toLocaleString('en-US');
-        document.getElementById('summaryWithoutFuel').textContent = '₦' + withoutFuel.toLocaleString('en-US');
-        document.getElementById('summaryFuelAllowance').textContent = '₦' + diff.toLocaleString('en-US');
+    const initialLegs = @Html.Raw(initialLegs);
+    let legs = Array.isArray(initialLegs) && initialLegs.length > 0 ? initialLegs : [];
+    function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]); }
+    function money(value) { return '₦' + (Number(value) || 0).toLocaleString('en-US'); }
+    function addLeg() { legs.push({ legNumber: legs.length + 1, originAddress: '', originCityState: '', destinationAddress: '', destinationCityState: '', distanceKm: 0, fuelOption: 'WithFuel', quotedLegAmount: 0, notes: '' }); renderLegs(); recalculate(); }
+    function removeLeg(index) { if (legs.length <= 1) { alert('A quote must have at least one leg.'); return; } legs.splice(index, 1); legs.forEach((l, i) => l.legNumber = i + 1); renderLegs(); recalculate(); }
+    function updateLeg(index, field, value) { legs[index][field] = value; recalculate(); }
+    function renderLegs() {
+        document.getElementById('legsContainer').innerHTML = legs.map((leg, index) => `
+            <div class="card bg-base-200/50 border border-base-300 p-4 rounded-2xl space-y-3">
+                <div class="flex items-center justify-between"><span class="badge badge-neutral badge-sm font-black text-[10px]">Leg ${index + 1}</span>${legs.length > 1 ? `<button type="button" onclick="removeLeg(${index})" class="btn btn-ghost btn-xs text-error rounded-lg"><i class="fa-solid fa-trash text-[10px]"></i> Remove</button>` : ''}</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input name="QuoteInput.Legs[${index}].OriginAddress" value="${escapeHtml(leg.originAddress)}" class="input input-sm input-bordered rounded-xl text-xs" placeholder="Origin address" required oninput="updateLeg(${index},'originAddress',this.value)" />
+                    <input name="QuoteInput.Legs[${index}].OriginCityState" value="${escapeHtml(leg.originCityState)}" class="input input-sm input-bordered rounded-xl text-xs" placeholder="Origin city/state" required oninput="updateLeg(${index},'originCityState',this.value)" />
+                    <input name="QuoteInput.Legs[${index}].DestinationAddress" value="${escapeHtml(leg.destinationAddress)}" class="input input-sm input-bordered rounded-xl text-xs" placeholder="Destination address" required oninput="updateLeg(${index},'destinationAddress',this.value)" />
+                    <input name="QuoteInput.Legs[${index}].DestinationCityState" value="${escapeHtml(leg.destinationCityState)}" class="input input-sm input-bordered rounded-xl text-xs" placeholder="Destination city/state" required oninput="updateLeg(${index},'destinationCityState',this.value)" />
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <select name="QuoteInput.Legs[${index}].FuelOption" class="select select-sm select-bordered rounded-xl text-xs" onchange="updateLeg(${index},'fuelOption',this.value)"><option value="WithFuel" ${leg.fuelOption === 'WithFuel' ? 'selected' : ''}>Company Fuel</option><option value="WithoutFuel" ${leg.fuelOption === 'WithoutFuel' ? 'selected' : ''}>Client Fuels</option></select>
+                    <input type="number" min="0" step="any" name="QuoteInput.Legs[${index}].QuotedLegAmount" value="${leg.quotedLegAmount || ''}" class="input input-sm input-bordered rounded-xl text-xs font-mono font-black text-success sm:col-span-2" placeholder="Quoted amount" oninput="updateLeg(${index},'quotedLegAmount',parseFloat(this.value)||0)" />
+                </div>
+                <input name="QuoteInput.Legs[${index}].Notes" value="${escapeHtml(leg.notes)}" class="input input-sm input-bordered rounded-xl text-xs" placeholder="Leg notes" oninput="updateLeg(${index},'notes',this.value)" />
+                <input type="hidden" name="QuoteInput.Legs[${index}].LegNumber" value="${index + 1}" />
+            </div>`).join('');
     }
+    function recalculate() {
+        const quoted = legs.reduce((s, l) => s + (parseFloat(l.quotedLegAmount) || 0), 0);
+        const incidentals = (parseFloat(document.getElementById('driverAllowance').value) || 0) + (parseFloat(document.getElementById('securityFee').value) || 0) + (parseFloat(document.getElementById('tollsFee').value) || 0);
+        document.getElementById('quotedDisplay').textContent = money(quoted);
+        document.getElementById('incidentalsDisplay').textContent = money(incidentals);
+        document.getElementById('netDisplay').textContent = money(quoted - incidentals);
+    }
+    document.addEventListener('DOMContentLoaded', () => { renderLegs(); recalculate(); });
 </script>
+}
+}

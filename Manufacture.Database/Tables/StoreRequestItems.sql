@@ -6,6 +6,10 @@ CREATE TABLE [dbo].[StoreRequestItems]
     [ItemName]          NVARCHAR (150) NOT NULL,
     [Unit]              NVARCHAR (40)  NOT NULL,
     [RequestedQuantity] DECIMAL (18, 3) NOT NULL,
+    [BaseQuantity]      DECIMAL (18, 3) NOT NULL CONSTRAINT [DF_StoreRequestItems_BaseQuantity] DEFAULT (0),
+    [BaseUnit]          NVARCHAR (40)  NOT NULL CONSTRAINT [DF_StoreRequestItems_BaseUnit] DEFAULT (N''),
+    [StockQuantity]     DECIMAL (18, 6) NOT NULL CONSTRAINT [DF_StoreRequestItems_StockQuantity] DEFAULT (0),
+    [StockUnit]         NVARCHAR (40)  NOT NULL CONSTRAINT [DF_StoreRequestItems_StockUnit] DEFAULT (N''),
     [IssuedQuantity]    DECIMAL (18, 3) NOT NULL CONSTRAINT [DF_StoreRequestItems_IssuedQuantity] DEFAULT (0),
     [CreatedAt]         DATETIME2 (3)  NOT NULL CONSTRAINT [DF_StoreRequestItems_CreatedAt] DEFAULT (SYSUTCDATETIME()),
     [UpdatedAt]         DATETIME2 (3)  NOT NULL CONSTRAINT [DF_StoreRequestItems_UpdatedAt] DEFAULT (SYSUTCDATETIME()),
@@ -13,7 +17,7 @@ CREATE TABLE [dbo].[StoreRequestItems]
     CONSTRAINT [PK_StoreRequestItems] PRIMARY KEY CLUSTERED ([Id] ASC),
     CONSTRAINT [FK_StoreRequestItems_StoreRequests] FOREIGN KEY ([StoreRequestId]) REFERENCES [dbo].[StoreRequests] ([Id]) ON DELETE CASCADE,
     CONSTRAINT [FK_StoreRequestItems_InventoryItems] FOREIGN KEY ([InventoryItemId]) REFERENCES [dbo].[InventoryItems] ([Id]),
-    CONSTRAINT [CK_StoreRequestItems_Quantities] CHECK ([RequestedQuantity] >= 0 AND [IssuedQuantity] >= 0)
+    CONSTRAINT [CK_StoreRequestItems_Quantities] CHECK ([RequestedQuantity] >= 0 AND [BaseQuantity] >= 0 AND [StockQuantity] >= 0 AND [IssuedQuantity] >= 0)
 );
 GO
 

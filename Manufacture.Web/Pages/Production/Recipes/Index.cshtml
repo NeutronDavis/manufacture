@@ -2,12 +2,6 @@
 @model Manufacture.Pages.Production.Recipes.IndexModel
 @{
     ViewData["Title"] = "Product Recipes & Costing";
-    var categories = RecipeCatalog.ProductTypes
-        .Select(p => p.ToString())
-        .Union(Model.Recipes.Select(r => r.ProductType))
-        .Where(pt => !string.IsNullOrWhiteSpace(pt))
-        .Distinct(StringComparer.OrdinalIgnoreCase)
-        .ToList();
 }
 
 <div class="space-y-6 w-full">
@@ -64,21 +58,21 @@
                     All Categories
                     <span class="badge badge-xs font-mono font-bold count-badge bg-neutral-content text-neutral border-0">@Model.Recipes.Count</span>
                 </button>
-                @foreach (var cat in categories)
+                @foreach (var category in Model.Categories)
                 {
-                    var catCount = Model.Recipes.Count(r => string.Equals(r.ProductType, cat, StringComparison.OrdinalIgnoreCase));
-                    var icon = cat.ToLower() switch {
+                    var catCount = Model.Recipes.Count(r => r.ProductionCategoryId == category.Id);
+                    var icon = category.Name.ToLower() switch {
                         "bread" => "fa-bread-slice",
                         "water" => "fa-bottle-water",
-                        "popcorn" => "fa-bowl-food",
+                        "snacks" => "fa-bowl-food",
                         _ => "fa-tag"
                     };
                     <button type="button" 
-                            onclick="setCategoryFilter('@cat.ToLower()', this)" 
-                            data-category="@cat.ToLower()"
+                            onclick="setCategoryFilter('@category.Id', this)" 
+                            data-category="@category.Id"
                             class="btn btn-xs btn-ghost border border-base-300 hover:border-primary/40 rounded-lg filter-pill font-medium transition-all gap-1.5">
                         <i class="fa-solid @icon text-[10px] opacity-70"></i>
-                        @cat
+                        @category.Name
                         <span class="badge badge-xs font-mono count-badge bg-base-200 text-base-content/70 border-0">@catCount</span>
                     </button>
                 }
@@ -103,10 +97,13 @@
             var marginTextColor = recipe.HasNegativeMargin ? "text-error"
                                  : recipe.HasThinMargin ? "text-warning"
                                  : "text-success";
-            var catIcon = (recipe.ProductType?.ToLower()) switch {
+            var cardCategory = string.IsNullOrWhiteSpace(recipe.CategoryName)
+                ? recipe.ProductType
+                : recipe.CategoryName;
+            var catIcon = cardCategory?.ToLower() switch {
                 "bread" => "fa-bread-slice",
                 "water" => "fa-bottle-water",
-                "popcorn" => "fa-bowl-food",
+                "snacks" => "fa-bowl-food",
                 _ => "fa-tag"
             };
 
@@ -115,7 +112,7 @@
                data-name="@recipe.RecipeName.ToLower()" 
                data-code="@recipe.RecipeCode.ToLower()" 
                data-desc="@(recipe.BaselineUnitName.ToLower())"
-               data-category="@(recipe.ProductType?.ToLower() ?? "")">
+               data-category="@(recipe.ProductionCategoryId?.ToString() ?? "")">
                 
                 <div class="card-body p-6 space-y-4">
                     <!-- Top Row: Code Badge, Margin Badge & Hover Arrow -->
@@ -127,7 +124,7 @@
                             </span>
                             <span class="badge badge-soft badge-xs font-semibold gap-1">
                                 <i class="fa-solid @catIcon text-[9px] opacity-70"></i>
-                                @recipe.ProductType
+                                @cardCategory
                             </span>
                         </div>
                         <div class="w-6 h-6 rounded-full bg-base-200 group-hover:bg-primary group-hover:text-primary-content flex items-center justify-center text-xs transition-colors shadow-2xs">
@@ -151,14 +148,6 @@
                         <div class="flex justify-between opacity-70">
                             <span class="font-sans">Raw Ingredients:</span>
                             <span class="font-bold text-base-content">₦@recipe.IngredientsCostPerUnit.ToString("N2")</span>
-                        </div>
-                        <div class="flex justify-between opacity-70">
-                            <span class="font-sans">Handling &amp; Label:</span>
-                            <span class="font-bold text-base-content">₦@recipe.PackagingCost.ToString("N2")</span>
-                        </div>
-                        <div class="flex justify-between opacity-70">
-                            <span class="font-sans">Labor &amp; Overhead:</span>
-                            <span class="font-bold text-base-content">₦@recipe.LaborAndOverheadPerUnit.ToString("N2")</span>
                         </div>
                         
                         <div class="divider my-1 border-base-300 opacity-60"></div>

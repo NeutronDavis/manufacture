@@ -17,6 +17,14 @@ public partial class StoreRequestItem
 
     public decimal RequestedQuantity { get; set; }
 
+    public decimal BaseQuantity { get; set; }
+
+    public string BaseUnit { get; set; } = null!;
+
+    public decimal StockQuantity { get; set; }
+
+    public string StockUnit { get; set; } = null!;
+
     public decimal IssuedQuantity { get; set; }
 
     public DateTime CreatedAt { get; set; }

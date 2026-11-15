@@ -25,7 +25,5 @@ public partial class Supplier
 
     public DateTime UpdatedAt { get; set; }
 
-    public virtual ICollection<Ingredient> Ingredients { get; set; } = new List<Ingredient>();
-
     public virtual ICollection<InventoryItem> InventoryItems { get; set; } = new List<InventoryItem>();
 }

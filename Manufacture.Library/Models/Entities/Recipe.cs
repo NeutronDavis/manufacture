@@ -13,17 +13,11 @@ public partial class Recipe
 
     public string Description { get; set; } = null!;
 
-    public int ProductType { get; set; }
-
-    public int BaselineUnit { get; set; }
+    public int? ProductionProductTypeId { get; set; }
 
     public decimal ExpectedYield { get; set; }
 
     public string OutputUnit { get; set; } = null!;
-
-    public decimal PackagingCost { get; set; }
-
-    public decimal LaborAndOverheadPerUnit { get; set; }
 
     public decimal SellingPrice { get; set; }
 
@@ -40,6 +34,8 @@ public partial class Recipe
     public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 
     public virtual ICollection<ProductionBatch> ProductionBatches { get; set; } = new List<ProductionBatch>();
+
+    public virtual ProductionProductType? ProductionProductType { get; set; }
 
     public virtual ICollection<ProductionDefect> ProductionDefects { get; set; } = new List<ProductionDefect>();
 

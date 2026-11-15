@@ -29,6 +29,39 @@
         </div>
     </div>
 
+    <!-- Fuel Log Filters -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4">
+        <form method="get" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+            <label class="form-control">
+                <span class="label-text text-[10px] font-bold uppercase opacity-60 pb-1">From Date</span>
+                <input type="date" name="FromDate" value="@Model.FromDate?.ToString("yyyy-MM-dd")" class="input input-sm input-bordered rounded-xl text-xs font-mono" />
+            </label>
+            <label class="form-control">
+                <span class="label-text text-[10px] font-bold uppercase opacity-60 pb-1">To Date</span>
+                <input type="date" name="ToDate" value="@Model.ToDate?.ToString("yyyy-MM-dd")" class="input input-sm input-bordered rounded-xl text-xs font-mono" />
+            </label>
+            <label class="form-control">
+                <span class="label-text text-[10px] font-bold uppercase opacity-60 pb-1">Fuel Log Type</span>
+                <select name="SourceFilter" class="select select-sm select-bordered rounded-xl text-xs">
+                    <option value="All" selected="@(Model.SourceFilter == "All")">All Fuel Logs</option>
+                    <option value="Charter" selected="@(Model.SourceFilter == "Charter")">Charter Fuel Logs</option>
+                    <option value="Dispatch" selected="@(Model.SourceFilter == "Dispatch")">Dispatch Fuel Logs</option>
+                    <option value="General" selected="@(Model.SourceFilter == "General")">General Vehicle Fuel Logs</option>
+                </select>
+            </label>
+            <div class="lg:col-span-2 flex items-center gap-2">
+                <button type="submit" class="btn btn-sm btn-neutral rounded-xl text-xs px-4">Apply Filters</button>
+                <a asp-page="/Logistics/FuelLogs/Index" class="btn btn-sm btn-ghost rounded-xl text-xs">Clear</a>
+            </div>
+        </form>
+        <div class="flex flex-wrap gap-2 mt-3 pt-3 border-t border-base-200">
+            <span class="badge badge-ghost badge-sm font-bold">All: @Model.FuelLogs.Count</span>
+            <span class="badge badge-info badge-sm font-bold">Charter: @Model.CharterCount</span>
+            <span class="badge badge-primary badge-sm font-bold">Dispatch: @Model.DispatchCount</span>
+            <span class="badge badge-neutral badge-sm font-bold">General: @Model.GeneralCount</span>
+        </div>
+    </div>
+
     <!-- Fuel Logs Table Card -->
     <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
         <div class="card-body p-6 space-y-4">
@@ -49,6 +82,7 @@
                         <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
                             <th class="py-3 pl-4">Date</th>
                             <th>Vehicle Plate</th>
+                            <th>Fuel For</th>
                             <th>Driver</th>
                             <th>Fuel Type</th>
                             <th>Litres / kWh</th>
@@ -65,6 +99,18 @@
                                 <td class="font-mono text-xs opacity-70 pl-4 py-3">@log.Date.ToString("yyyy-MM-dd")</td>
                                 <td class="font-mono text-xs font-bold text-primary py-3">
                                     <span class="badge badge-neutral badge-xs font-mono font-bold">@log.VehicleRegNumber</span>
+                                </td>
+                                <td class="py-3">
+                                    @{
+                                        var source = Manufacture.Pages.Logistics.FuelLogs.IndexModel.SourceLabel(log);
+                                        var reference = Manufacture.Pages.Logistics.FuelLogs.IndexModel.SourceReference(log);
+                                        var sourceClass = source == "Charter" ? "badge-info" : source == "Dispatch" ? "badge-primary" : "badge-ghost";
+                                    }
+                                    <span class="badge badge-xs @sourceClass font-bold">@source</span>
+                                    @if (!string.IsNullOrWhiteSpace(reference))
+                                    {
+                                        <div class="text-[10px] font-mono opacity-60 mt-0.5">@reference</div>
+                                    }
                                 </td>
                                 <td class="font-bold text-base-content py-3">@log.DriverName</td>
                                 <td><span class="badge badge-soft badge-xs font-bold">@log.FuelType</span></td>

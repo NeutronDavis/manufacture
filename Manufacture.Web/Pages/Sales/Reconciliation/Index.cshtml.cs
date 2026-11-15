@@ -11,16 +11,13 @@ namespace Manufacture.Pages.Sales.Reconciliation
     {
         private readonly ISalesService _salesService;
         private readonly RbacCache _rbacService;
-        private readonly SettingsCache _settingsCache;
 
         public IndexModel(
             ISalesService salesService,
-            RbacCache rbacService,
-            SettingsCache settingsCache)
+            RbacCache rbacService)
         {
             _salesService = salesService;
             _rbacService = rbacService;
-            _settingsCache = settingsCache;
         }
 
         public List<DailyRepRouteSheet> RouteSheets { get; set; } = new();
@@ -38,8 +35,6 @@ namespace Manufacture.Pages.Sales.Reconciliation
 
         [BindProperty]
         public CustomerReturnInputDto ReturnInput { get; set; } = new();
-
-        public decimal PlannedCashPercent => _settingsCache.PlannedCashPercent;
 
         public decimal GrossSales => SelectedSheet?.TotalExpectedSalesRevenue ?? 0m;
         public decimal CustomerReturnValue => CustomerReturns.Sum(r => r.RefundAmount);

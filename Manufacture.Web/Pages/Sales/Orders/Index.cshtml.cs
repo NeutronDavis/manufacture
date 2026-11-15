@@ -15,6 +15,9 @@ namespace Manufacture.Pages.Sales.Orders
 
         public List<Order> Orders { get; set; } = new();
         public bool IsSalesRep { get; set; }
+        public bool IsProductionManager { get; set; }
+        public bool CanCreatePosOrder => !IsProductionManager;
+        public bool CanPrintSlip => !IsProductionManager;
         public SalesRepProfile? CurrentSalesRep { get; set; }
         public string UserRole { get; set; } = string.Empty;
 
@@ -22,6 +25,7 @@ namespace Manufacture.Pages.Sales.Orders
         {
             UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
             IsSalesRep = string.Equals(UserRole, "SalesRep", StringComparison.OrdinalIgnoreCase);
+            IsProductionManager = string.Equals(UserRole, "ProductionManager", StringComparison.OrdinalIgnoreCase);
 
             if (IsSalesRep)
             {

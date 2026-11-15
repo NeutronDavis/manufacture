@@ -99,7 +99,7 @@
             <div class="stat-value text-2xl font-black font-mono text-base-content">
                 ₦@Model.Costing.TotalUnitCost.ToString("N2")
             </div>
-            <div class="stat-desc opacity-70">Materials + handling + overhead</div>
+            <div class="stat-desc opacity-70">Materials</div>
         </div>
 
         <div class="stat p-5">
@@ -203,22 +203,6 @@
                                 ₦@Model.Costing.IngredientsCostPerUnit.ToString("N2")
                             </td>
                         </tr>
-                        <tr>
-                            <td colspan="5" class="text-right py-2 opacity-70 text-[11px]">
-                                Handling &amp; Label per @Model.Costing.SingularOutputUnit:
-                            </td>
-                            <td colspan="2" class="text-right py-2 pr-4 text-base-content text-[11px]">
-                                ₦@Model.Costing.PackagingCost.ToString("N2")
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="5" class="text-right py-2 opacity-70 text-[11px]">
-                                Labor, Oven Gas/Fuel &amp; Factory Overhead per @Model.Costing.SingularOutputUnit:
-                            </td>
-                            <td colspan="2" class="text-right py-2 pr-4 text-base-content text-[11px]">
-                                ₦@Model.Costing.LaborAndOverheadPerUnit.ToString("N2")
-                            </td>
-                        </tr>
                         <tr class="font-bold text-sm bg-primary/10 border-t border-primary/20">
                             <td colspan="5" class="text-right py-3 text-primary font-black uppercase text-xs tracking-wider">
                                 Total Base Cost Price per @Model.Costing.SingularOutputUnit:
@@ -271,7 +255,7 @@
                             @foreach (var batch in Model.RecentBatches)
                             {
                                 var unitCost = batch.ActualQuantity > 0
-                                    ? batch.TotalBatchCost / batch.ActualQuantity + Model.Recipe.PackagingCost + Model.Recipe.LaborAndOverheadPerUnit
+                                    ? batch.TotalBatchCost / batch.ActualQuantity
                                     : 0m;
                                 <tr class="hover:bg-base-200/60 transition-colors">
                                     <td class="font-mono font-black text-primary py-2 pl-4">@batch.BatchNumber</td>
