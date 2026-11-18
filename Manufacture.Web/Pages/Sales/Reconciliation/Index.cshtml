@@ -37,28 +37,6 @@
         </div>
     </div>
 
-    <!-- Alert Notifications -->
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <div class="alert alert-success shadow-xs rounded-2xl text-xs py-3.5">
-            <i class="fa-solid fa-circle-check text-base"></i>
-            <div>
-                <div class="font-bold">Reconciliation Successful</div>
-                <div>@TempData["SuccessMessage"]</div>
-            </div>
-        </div>
-    }
-    @if (TempData["ErrorMessage"] != null)
-    {
-        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3.5">
-            <i class="fa-solid fa-circle-exclamation text-base"></i>
-            <div>
-                <div class="font-bold">Action Failed</div>
-                <div>@TempData["ErrorMessage"]</div>
-            </div>
-        </div>
-    }
-
     <!-- Main Workspace Layout: Rep Sheets List + Active Closing Sheet -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         

@@ -95,7 +95,7 @@ namespace Manufacture.Services
             var module = result.Module.ToString().ToLowerInvariant();
             var stamp = result.Query.AnchorDate.ToString("yyyyMMdd");
             var scope = result.Query.ChartGroupByRep ? "reps" : result.Query.GroupBy.ToString().ToLowerInvariant();
-            return $"bakeryflow-{module}-{scope}-{stamp}.pdf";
+            return $"maurecords-{module}-{scope}-{stamp}.pdf";
         }
 
         // =============================================================
@@ -107,7 +107,7 @@ namespace Manufacture.Services
             page.FillRect(0, 0, page.Width, HeaderHeight, Band);
             page.FillRect(0, HeaderHeight - 3, page.Width, 3, Accent);
 
-            page.DrawText("BakeryFlow ERP", PdfFont.Bold, 9, PdfColor.FromBytes(253, 186, 116),
+            page.DrawText("MauRecords", PdfFont.Bold, 9, PdfColor.FromBytes(253, 186, 116),
                 MarginX, 22);
 
             page.DrawText(result.ModuleLabel, PdfFont.Bold, 17, PdfColor.FromBytes(250, 250, 250),
@@ -302,7 +302,7 @@ namespace Manufacture.Services
             var y = page.Height - 22d;
             page.StrokeLine(MarginX, y - 12d, page.Width - MarginX, y - 12d, Hairline);
 
-            page.DrawText("BakeryFlow ERP  |  " + result.ModuleLabel + "  |  " + result.Query.RangeLabel,
+            page.DrawText("MauRecords  |  " + result.ModuleLabel + "  |  " + result.Query.RangeLabel,
                 PdfFont.Regular, 7, Muted, MarginX, y);
 
             page.DrawText("Page " + pageNumber.ToString(CultureInfo.InvariantCulture),

@@ -538,18 +538,32 @@ namespace Manufacture.Services
                 return false;
             }
 
-            SalesRepEntity? rep = null;
-            if (salesRepId.HasValue && salesRepId.Value > 0)
+            // Only an open, unassigned order can receive a rep. Dispatched and
+            // cancelled orders are closed, and reassignment is not part of this
+            // workflow (the UI only offers assignment while the order is unassigned).
+            if (order.SalesRepId.HasValue)
             {
-                rep = await _db.SalesReps.FirstOrDefaultAsync(r => r.Id == salesRepId.Value && r.IsActive, cancellationToken);
-                if (rep == null)
-                {
-                    throw new InvalidOperationException("Select a valid active sales representative.");
-                }
+                return false;
             }
 
-            order.SalesRepId = rep?.Id;
-            order.SalesRepName = rep?.FullName;
+            if (order.Status == (int)OrderStatus.Dispatched || order.Status == (int)OrderStatus.Cancelled)
+            {
+                return false;
+            }
+
+            if (!salesRepId.HasValue || salesRepId.Value <= 0)
+            {
+                return false;
+            }
+
+            var rep = await _db.SalesReps.FirstOrDefaultAsync(r => r.Id == salesRepId.Value && r.IsActive, cancellationToken);
+            if (rep == null)
+            {
+                throw new InvalidOperationException("Select a valid active sales representative.");
+            }
+
+            order.SalesRepId = rep.Id;
+            order.SalesRepName = rep.FullName;
             order.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync(cancellationToken);
             return true;
@@ -1074,6 +1088,15 @@ namespace Manufacture.Services
                 ?? throw new InvalidOperationException("Sales representative not found.");
 
             var routeDate = DateOnly.FromDateTime(date);
+
+            // Guard: reject duplicate before hitting the unique constraint.
+            var alreadyExists = await _db.DailyRepRouteSheets
+                .AnyAsync(s => s.SalesRepId == repId && s.RouteDate == routeDate, cancellationToken);
+            if (alreadyExists)
+                throw new InvalidOperationException(
+                    $"A route sheet for {rep.FullName} on {routeDate:dd MMM yyyy} already exists. " +
+                    "You cannot create two sheets for the same rep on the same day.");
+
             var previousSheet = await _db.DailyRepRouteSheets
                 .AsNoTracking()
                 .Include(s => s.RouteSheetItems)

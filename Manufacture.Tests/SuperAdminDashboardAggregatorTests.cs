@@ -199,6 +199,53 @@ public class SuperAdminDashboardAggregatorTests
         });
     }
 
+    [Fact]
+    public void ResolveWindow_UsesTheSameClampedWindowAsTheKpiCards()
+    {
+        var anchor = new DateTime(2026, 11, 16);
+        var futureInWeek = anchor.AddDays(4);
+
+        var facts = new List<DashboardFact>
+        {
+            new()
+            {
+                Date = futureInWeek,
+                RepId = 1,
+                RepName = "Rep One",
+                RecipeId = 10,
+                OrdersPlaced = 25,
+                ProductionCategoryId = 1,
+                ProductionCategoryName = "Bread"
+            }
+        };
+
+        var overview = SuperAdminDashboardAggregator.Build(anchor, anchor, facts, Categories, Skus);
+        var weekCard = overview.Periods.Single(period => period.Key == "This Week");
+        Assert.Equal(0, weekCard.Totals.OrdersPlaced);
+
+        foreach (var (timeframe, key) in new[]
+                 {
+                     ("today", "Today"),
+                     ("weekly", "This Week"),
+                     ("monthly", "This Month"),
+                     ("yearly", "This Year")
+                 })
+        {
+            var card = overview.Periods.Single(period => period.Key == key);
+            var window = SuperAdminDashboardAggregator.ResolveWindow(anchor, anchor, timeframe);
+
+            Assert.Equal(card.Key, window.Key);
+            Assert.Equal(card.Label, window.Label);
+            Assert.Equal(card.ReportsTimeframe, window.ReportsTimeframe);
+            Assert.True(window.Start >= new DateTime(anchor.Year, 1, 1));
+            Assert.True(window.EffectiveEnd <= anchor);
+        }
+
+        Assert.Equal(anchor, SuperAdminDashboardAggregator.ResolveWindow(anchor, anchor, "today").EffectiveEnd);
+        Assert.Equal(new DateTime(2026, 1, 1), SuperAdminDashboardAggregator.ResolveWindow(anchor, anchor, "yearly").Start);
+        Assert.Equal(anchor.AddDays(-(int)anchor.DayOfWeek), SuperAdminDashboardAggregator.ResolveWindow(anchor, anchor, "weekly").Start);
+    }
+
     private static ExecutiveOverviewDto BuildOverview(List<DashboardFact> facts) =>
         SuperAdminDashboardAggregator.Build(Anchor, Today, facts, Categories, Skus);
 

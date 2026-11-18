@@ -645,6 +645,8 @@
                 json));
 
             // Period metadata drives captions and deep links.
+            const anchorDate = '@overview.AnchorDate.ToString("yyyy-MM-dd")';
+
             const periods = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
                 overview.Periods.Select(p => new
                 {
@@ -740,10 +742,105 @@
             const money = (v) => '₦' + Number(v || 0).toLocaleString('en-NG', { maximumFractionDigits: 0 });
             const num = (v) => Number(v || 0).toLocaleString('en-NG');
 
+            // Escape every database-sourced label before it reaches innerHTML.
+            const esc = (v) => String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, ch => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[ch]));
+
+            // Columns for the source-record table. `key` is a property on
+            // KpiDetailRowDto; a null quantity deliberately renders blank.
+            const recordColumns = {
+                'OrdersPlaced': [
+                    { key: 'reference', label: 'Order #', type: 'ref' },
+                    { key: 'product', label: 'Items Ordered', type: 'product' },
+                    { key: 'quantity', label: 'Units', type: 'qty', highlight: true },
+                    { key: 'secondaryQuantity', label: 'Bonus', type: 'qty' },
+                    { key: 'amount', label: 'Order Value', type: 'money' },
+                    { key: 'status', label: 'Status', type: 'status' },
+                    { key: 'dateLabel', label: 'Booked', type: 'subtext' }
+                ],
+                'Produced': [
+                    { key: 'reference', label: 'Batch #', type: 'ref' },
+                    { key: 'product', label: 'Product', type: 'product' },
+                    { key: 'category', label: 'Category', type: 'badge' },
+                    { key: 'secondaryQuantity', label: 'Target', type: 'qty' },
+                    { key: 'quantity', label: 'Actual Produced', type: 'qty', highlight: true },
+                    { key: 'unitLabel', label: 'Unit', type: 'subtext' },
+                    { key: 'status', label: 'Status', type: 'status' }
+                ],
+                'Loaded': [
+                    { key: 'reference', label: 'Route Sheet', type: 'ref' },
+                    { key: 'product', label: 'Product', type: 'product' },
+                    { key: 'category', label: 'Category', type: 'badge' },
+                    { key: 'quantity', label: 'Loaded', type: 'qty', highlight: true },
+                    { key: 'secondaryQuantity', label: 'Requested', type: 'qty' },
+                    { key: 'amount', label: 'Stock Value', type: 'money' },
+                    { key: 'status', label: 'Dispatch', type: 'status' }
+                ],
+                'FactoryDefects': [
+                    { key: 'reference', label: 'Batch #', type: 'ref' },
+                    { key: 'product', label: 'Product', type: 'product' },
+                    { key: 'category', label: 'Category', type: 'badge' },
+                    { key: 'quantity', label: 'Defects', type: 'qty', highlight: true },
+                    { key: 'dateLabel', label: 'Recorded', type: 'subtext' }
+                ],
+                'Sold': [
+                    { key: 'reference', label: 'Route Sheet', type: 'ref' },
+                    { key: 'product', label: 'Product', type: 'product' },
+                    { key: 'category', label: 'Category', type: 'badge' },
+                    { key: 'quantity', label: 'Sold', type: 'qty', highlight: true },
+                    { key: 'unitPrice', label: 'Unit Price', type: 'money' },
+                    { key: 'amount', label: 'Value', type: 'money' },
+                    { key: 'status', label: 'Dispatch', type: 'status' }
+                ],
+                'Returned': [
+                    { key: 'reference', label: 'Route Sheet', type: 'ref' },
+                    { key: 'product', label: 'Product', type: 'product' },
+                    { key: 'category', label: 'Category', type: 'badge' },
+                    { key: 'quantity', label: 'Closing Stock', type: 'qty', highlight: true },
+                    { key: 'secondaryQuantity', label: 'Loaded', type: 'qty' },
+                    { key: 'status', label: 'Dispatch', type: 'status' }
+                ],
+                'Damaged': [
+                    { key: 'reference', label: 'Route Sheet', type: 'ref' },
+                    { key: 'product', label: 'Product', type: 'product' },
+                    { key: 'category', label: 'Category', type: 'badge' },
+                    { key: 'quantity', label: 'Damaged', type: 'qty', highlight: true },
+                    { key: 'secondaryQuantity', label: 'Loaded', type: 'qty' },
+                    { key: 'amount', label: 'Write-off Value', type: 'money' },
+                    { key: 'status', label: 'Dispatch', type: 'status' }
+                ],
+                'CustomerReturns': [
+                    { key: 'reference', label: 'Return #', type: 'ref' },
+                    { key: 'product', label: 'Product', type: 'product' },
+                    { key: 'quantity', label: 'Qty', type: 'qty', highlight: true },
+                    { key: 'secondaryQuantity', label: 'Replaced', type: 'qty' },
+                    { key: 'unitPrice', label: 'Unit Price', type: 'money' },
+                    { key: 'amount', label: 'Refund', type: 'money' },
+                    { key: 'status', label: 'Status', type: 'status' },
+                    { key: 'dateLabel', label: 'Returned', type: 'subtext' }
+                ]
+            };
+
             let scope = 'all';
             let period = periods[0].key; // Initially "Today"
             let metric = 'OrdersPlaced';
-            let viewMode = 'stage'; // The eight KPI cards land on the stage breakdown.
+            let viewMode = 'stage'; // The drawer opens on Records; initial page load stays aggregate.
+
+            // Source-record cache: one metric/window/scope at a time.
+            let detail = null;
+            let detailKeyValue = '';
+            let pendingDetailKey = '';
+            let recordRequestId = 0;
+
+            function currentDetailKey() {
+                return [metric, period, scope].join('|');
+            }
+
+            function drillDrawerIsOpen() {
+                const drawer = document.getElementById('drill-drawer');
+                return !!drawer && drawer.classList.contains('translate-x-0');
+            }
 
             const periodOf = (key) => periods.find(p => p.key === key) || periods[0];
 
@@ -793,6 +890,281 @@
                     );
                 }
                 return list.sort((a, b) => (b.metricValue || 0) - (a.metricValue || 0));
+            }
+
+            // ---------------- Source-record drawer (Records tab) ----------------
+
+            function setRecordsState(state, message) {
+                const loading = document.getElementById('drill-records-loading');
+                const error = document.getElementById('drill-records-error');
+                const empty = document.getElementById('drill-records-empty');
+                const groups = document.getElementById('drill-records-groups');
+                if (!loading || !error || !empty || !groups) return;
+
+                loading.classList.toggle('hidden', state !== 'loading');
+                loading.classList.toggle('flex', state === 'loading');
+                error.classList.toggle('hidden', state !== 'error');
+                empty.classList.toggle('hidden', state !== 'empty');
+                groups.classList.toggle('hidden', state !== 'ready');
+
+                if (state === 'error' && message) {
+                    const text = document.getElementById('drill-records-error-text');
+                    if (text) text.textContent = message;
+                }
+            }
+
+            function loadDetail(force) {
+                const key = currentDetailKey();
+                if (!force && detail && detailKeyValue === key) {
+                    renderRecordsView();
+                    return;
+                }
+
+                // A request for this exact key is already in flight.
+                if (!force && pendingDetailKey === key) return;
+
+                const requestId = ++recordRequestId;
+                pendingDetailKey = key;
+                setRecordsState('loading');
+
+                const params = new URLSearchParams({
+                    handler: 'Drill',
+                    metric: metric,
+                    timeframe: periodOf(period).timeframe,
+                    scope: scope,
+                    date: anchorDate
+                });
+
+                fetch('/Dashboard?' + params.toString(), {
+                    credentials: 'same-origin',
+                    headers: { 'Accept': 'application/json' }
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(response.status === 403
+                                ? 'You do not have access to these records.'
+                                : 'HTTP ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(payload => {
+                        if (requestId !== recordRequestId) return; // superseded
+                        pendingDetailKey = '';
+                        detail = payload;
+                        detailKeyValue = key;
+                        render();
+                    })
+                    .catch(err => {
+                        if (requestId !== recordRequestId) return;
+                        pendingDetailKey = '';
+                        detail = null;
+                        detailKeyValue = '';
+                        setRecordsState('error', 'Could not load records (' + (err && err.message ? err.message : 'network error') + ').');
+                    });
+            }
+
+            window.reloadDrillRecords = function () {
+                loadDetail(true);
+            };
+
+            function recordValueIsBlank(value) {
+                return value === null || value === undefined || value === '';
+            }
+
+            function recordCell(row, column) {
+                const value = row[column.key];
+
+                if (column.type === 'ref') {
+                    const label = recordValueIsBlank(value) ? '—' : esc(value);
+                    const href = row.referenceUrl && row.referenceUrl.charAt(0) === '/'
+                        ? row.referenceUrl
+                        : '';
+                    const body = href
+                        ? '<a href="' + esc(href) + '" class="text-primary hover:underline">' + label + '</a>'
+                        : label;
+                    return '<td class="py-2.5 font-mono font-bold text-xs text-base-content">' + body + '</td>';
+                }
+
+                if (column.type === 'product') {
+                    return '<td class="py-2.5">'
+                        + '<div class="font-bold text-base-content text-xs">' + (recordValueIsBlank(value) ? '—' : esc(value)) + '</div>'
+                        + (row.meta ? '<div class="text-[10px] opacity-60">' + esc(row.meta) + '</div>' : '')
+                        + '</td>';
+                }
+
+                if (column.type === 'badge') {
+                    return '<td><span class="badge badge-sm badge-ghost border border-base-300 font-bold text-[10px]">'
+                        + (recordValueIsBlank(value) ? '—' : esc(value)) + '</span></td>';
+                }
+
+                if (column.type === 'qty') {
+                    return '<td class="text-right font-mono '
+                        + (column.highlight ? 'font-black text-primary text-sm' : 'font-bold') + '">'
+                        + (recordValueIsBlank(value) ? '' : num(value)) + '</td>';
+                }
+
+                if (column.type === 'money') {
+                    return '<td class="text-right font-mono font-bold">'
+                        + (recordValueIsBlank(value) ? '' : money(value)) + '</td>';
+                }
+
+                if (column.type === 'status') {
+                    const tone = row.statusTone || 'ghost';
+                    return '<td><span class="badge badge-' + esc(tone) + ' badge-xs font-bold">'
+                        + (recordValueIsBlank(value) ? '—' : esc(value)) + '</span></td>';
+                }
+
+                if (column.type === 'subtext') {
+                    return '<td class="text-[10px] opacity-60 font-mono">'
+                        + (recordValueIsBlank(value) ? '—' : esc(value)) + '</td>';
+                }
+
+                return '<td class="text-xs font-medium">' + (recordValueIsBlank(value) ? '—' : esc(value)) + '</td>';
+            }
+
+            function recordRowMatches(row, term) {
+                return ['reference', 'product', 'category', 'meta', 'status', 'dateLabel']
+                    .some(key => String(row[key] || '').toLowerCase().indexOf(term) !== -1);
+            }
+
+            function renderRecordsView() {
+                if (!detail || detailKeyValue !== currentDetailKey()) {
+                    // Only fetch when the drawer is actually on screen; a period
+                    // switch behind a closed drawer must not hit the database.
+                    if (drillDrawerIsOpen()) loadDetail();
+                    return;
+                }
+
+                const columns = recordColumns[detail.metric] || recordColumns['OrdersPlaced'];
+                const unit = detail.unit || 'units';
+                const term = (document.getElementById('drill-search-input')?.value || '').trim().toLowerCase();
+
+                if (viewMode === 'records') {
+                    const titleEl = document.getElementById('drill-header-title');
+                    if (titleEl) {
+                        const viewPeriod = periodOf(period);
+                        titleEl.textContent = (period === 'Today' ? "Today's " : viewPeriod.label + " ")
+                            + (detail.metricLabel || metric) + ' — ' + (detail.groupingLabel || 'Records');
+                    }
+
+                    const captionEl = document.getElementById('drill-caption');
+                    if (captionEl) {
+                        const viewPeriod = periodOf(period);
+                        captionEl.textContent = (detail.scopeLabel || scopeLabels[scope] || 'All Product Lines')
+                            + ' · ' + (detail.periodLabel || viewPeriod.label)
+                            + ' (' + (detail.dateLabel || viewPeriod.dateLabel) + ')'
+                            + ' · ' + num(detail.recordCount) + ' source records';
+                    }
+                }
+
+                const groupingBadge = document.getElementById('drill-records-grouping-badge');
+                if (groupingBadge) groupingBadge.textContent = detail.groupingLabel || 'Grouped records';
+
+                const totalBadge = document.getElementById('drill-records-total-badge');
+                if (totalBadge) totalBadge.textContent = num(detail.total) + ' ' + unit;
+
+                const countBadge = document.getElementById('drill-records-count-badge');
+                if (countBadge) countBadge.textContent = num(detail.recordCount) + ' records';
+
+                const valueBadge = document.getElementById('drill-records-value-badge');
+                if (valueBadge) {
+                    const hasValue = Number(detail.totalValue || 0) > 0;
+                    valueBadge.classList.toggle('hidden', !hasValue);
+                    valueBadge.textContent = hasValue ? money(detail.totalValue) : '';
+                }
+
+                const noteEl = document.getElementById('drill-records-note');
+                if (noteEl) noteEl.textContent = detail.note || 'Source records for the selected stage.';
+
+                const groupIcon = String(detail.groupingLabel || '').toLowerCase().indexOf('category') !== -1
+                    ? 'fa-solid fa-boxes-stacked'
+                    : 'fa-solid fa-user-tie';
+
+                let visibleRows = 0;
+                let visibleGroups = 0;
+
+                const groupsHtml = (detail.groups || []).map(group => {
+                    const labelMatch = !term
+                        || String(group.label || '').toLowerCase().indexOf(term) !== -1
+                        || String(group.subLabel || '').toLowerCase().indexOf(term) !== -1;
+                    const rows = labelMatch ? group.rows : group.rows.filter(row => recordRowMatches(row, term));
+
+                    if (!rows.length) return '';
+                    visibleRows += rows.length;
+                    visibleGroups += 1;
+
+                    const groupValue = Number(group.totalValue || 0) > 0
+                        ? '<span class="badge badge-success badge-soft badge-sm font-mono font-bold text-[10px]">'
+                            + money(group.totalValue) + '</span>'
+                        : '';
+
+                    return '<div class="rounded-xl border border-base-200 bg-base-100 shadow-xs overflow-hidden">'
+                        + '<div class="flex flex-wrap items-center justify-between gap-2 bg-base-200/60 px-4 py-2.5 border-b border-base-200">'
+                        +   '<div>'
+                        +     '<div class="font-black text-xs text-base-content flex items-center gap-2">'
+                        +       '<i class="' + groupIcon + ' text-primary text-[11px]"></i>' + esc(group.label) + '</div>'
+                        +     (group.subLabel ? '<div class="text-[10px] opacity-60 font-mono">' + esc(group.subLabel) + '</div>' : '')
+                        +   '</div>'
+                        +   '<div class="flex items-center gap-1.5">'
+                        +     '<span class="badge badge-ghost border border-base-300 badge-sm font-mono font-bold text-[10px]">'
+                        +       num(group.recordCount) + ' records</span>'
+                        +     '<span class="badge badge-primary badge-soft badge-sm font-mono font-black text-[10px]">'
+                        +       num(group.total) + ' ' + esc(group.unit || unit) + '</span>'
+                        +     groupValue
+                        +   '</div>'
+                        + '</div>'
+                        + '<div class="overflow-x-auto"><table class="table table-sm w-full text-xs"><thead class="bg-base-100">'
+                        + '<tr class="uppercase text-[10px] tracking-wider border-b border-base-200 opacity-60">'
+                        + columns.map(column => {
+                            const align = column.type === 'qty' || column.type === 'money' ? 'text-right' : 'text-left';
+                            return '<th class="' + align + ' py-2">' + column.label + '</th>';
+                        }).join('')
+                        + '</tr></thead><tbody class="divide-y divide-base-200 font-medium">'
+                        + rows.map(row => '<tr class="hover:bg-base-200/50 transition-colors">'
+                            + columns.map(column => recordCell(row, column)).join('') + '</tr>').join('')
+                        + '</tbody></table></div>'
+                        + '</div>';
+                }).join('');
+
+                const container = document.getElementById('drill-records-groups');
+                if (visibleRows === 0) {
+                    const emptyText = document.getElementById('drill-records-empty-text');
+                    if (emptyText) {
+                        emptyText.textContent = term
+                            ? 'No records match \u201c' + term + '\u201d.'
+                            : 'No source records were found for this stage, scope and period.';
+                    }
+                    setRecordsState('empty');
+                } else {
+                    const truncation = detail.isTruncated
+                        ? '<p class="text-[10px] opacity-60 flex items-center gap-1.5">'
+                            + '<i class="fa-solid fa-circle-info"></i>'
+                            + 'Some rows were hidden to keep the drawer light. Open Full Reports for the complete list.</p>'
+                        : '';
+
+                    const grandTotal = '<div class="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 flex flex-wrap items-center justify-between gap-2">'
+                        + '<span class="text-xs font-black text-primary"><i class="fa-solid fa-sigma mr-1.5"></i>'
+                        +   'Grand total · ' + num(detail.recordCount) + ' records</span>'
+                        + '<span class="font-mono font-black text-sm text-primary">'
+                        +   num(detail.total) + ' ' + esc(unit)
+                        +   (Number(detail.totalValue || 0) > 0 ? ' · ' + money(detail.totalValue) : '')
+                        + '</span></div>';
+
+                    if (container) container.innerHTML = groupsHtml + grandTotal + truncation;
+                    setRecordsState('ready');
+                }
+
+                const footerEl = document.getElementById('drill-footer-summary');
+                if (footerEl) {
+                    footerEl.textContent = 'Showing ' + visibleGroups + ' group' + (visibleGroups === 1 ? '' : 's')
+                        + ' · ' + num(visibleRows) + ' row' + (visibleRows === 1 ? '' : 's')
+                        + ' · ' + num(detail.total) + ' total ' + String(detail.metricLabel || '').toLowerCase();
+                }
+
+                const drillLink = document.getElementById('drill-reports-link');
+                if (drillLink) drillLink.setAttribute('href', reportsUrl());
+                const execLink = document.getElementById('exec-reports-link');
+                if (execLink) execLink.setAttribute('href', reportsUrl());
             }
 
             function renderStageView() {
@@ -890,19 +1262,29 @@
                 if (stageBadge) stageBadge.textContent = 'Stage: ' + metricDisplay;
                 const scopeBadge = document.getElementById('drill-scope-badge');
                 if (scopeBadge) scopeBadge.textContent = scopeLabelText;
-                const viewTitle = viewMode === 'stage'
-                    ? (metricGrouping[currentMetric] || 'Stage Breakdown')
-                    : (viewMode === 'reps' ? 'Sales Rep Allocations' : 'Product Orders');
+                const viewTitle = viewMode === 'records'
+                    ? ((detail && detailKeyValue === currentDetailKey() && detail.groupingLabel) || 'Record List')
+                    : viewMode === 'stage'
+                        ? (metricGrouping[currentMetric] || 'Stage Breakdown')
+                        : (viewMode === 'reps' ? 'Sales Rep Allocations' : 'Product Orders');
                 const titleEl = document.getElementById('drill-header-title');
                 if (titleEl) {
                     titleEl.textContent = (period === 'Today' ? "Today's " : p.label + " ") + metricDisplay + " — " + viewTitle;
                 }
-                const viewCaption = viewMode === 'stage'
-                    ? (metricGrouping[currentMetric] || 'Grouped operational detail')
-                    : (viewMode === 'reps' ? 'Rep-by-rep allocation and settlement' : 'Product SKU lifecycle breakdown');
+                const viewCaption = viewMode === 'records'
+                    ? ((detail && detailKeyValue === currentDetailKey() && detail.note) || 'Source records behind this KPI')
+                    : viewMode === 'stage'
+                        ? (metricGrouping[currentMetric] || 'Grouped operational detail')
+                        : (viewMode === 'reps' ? 'Rep-by-rep allocation and settlement' : 'Product SKU lifecycle breakdown');
                 const captionEl = document.getElementById('drill-caption');
                 if (captionEl) {
                     captionEl.textContent = scopeLabelText + ' · ' + p.label + ' (' + p.dateLabel + ') · ' + viewCaption;
+                }
+
+                // Every view owns its own table. Records are loaded on demand.
+                if (viewMode === 'records') {
+                    renderRecordsView();
+                    return;
                 }
 
                 // The stage view has its own grouped table and summary.
@@ -1054,12 +1436,14 @@
                 if (execLink) execLink.setAttribute('href', reportsUrl());
             }
 
-            // Slide-Over Drawer Opening & Closing
-            window.openDrill = function (scopeKey, periodKey, stageMetric, targetView) {
+            // Slide-Over Drawer Opening & Closing.
+            // The lifecycle KPI cards are the only entry point: they always open
+            // the Records view. Product-line cards are read-only.
+            window.openDrill = function (scopeKey, periodKey, stageMetric) {
                 scope = scopeKey || 'all';
                 period = periodKey || 'Today'; // Initially Today!
                 metric = stageMetric || 'OrdersPlaced';
-                viewMode = targetView || (stageMetric ? 'stage' : 'products');
+                viewMode = 'records';
 
                 const drillScopeInput = document.getElementById('drill-scope');
                 if (drillScopeInput) drillScopeInput.value = scope;
@@ -1109,9 +1493,11 @@
 
             window.switchDrillTab = function (mode) {
                 viewMode = mode;
+                const recContainer = document.getElementById('drill-records-container');
                 const sContainer = document.getElementById('drill-stage-container');
                 const pContainer = document.getElementById('drill-product-container');
                 const rContainer = document.getElementById('drill-rep-container');
+                const recTab = document.getElementById('tab-btn-records');
                 const sTab = document.getElementById('tab-btn-stage');
                 const pTab = document.getElementById('tab-btn-products');
                 const rTab = document.getElementById('tab-btn-reps');
@@ -1127,9 +1513,11 @@
                     else el.classList.remove('tab-active');
                 };
 
+                show(recContainer, mode === 'records');
                 show(sContainer, mode === 'stage');
                 show(pContainer, mode === 'products');
                 show(rContainer, mode === 'reps');
+                active(recTab, mode === 'records');
                 active(sTab, mode === 'stage');
                 active(pTab, mode === 'products');
                 active(rTab, mode === 'reps');

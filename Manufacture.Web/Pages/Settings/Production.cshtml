@@ -26,19 +26,6 @@
         </a>
     </div>
 
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <div class="alert alert-success shadow-xs rounded-2xl text-xs py-3.5">
-            <i class="fa-solid fa-circle-check"></i><span>@TempData["SuccessMessage"]</span>
-        </div>
-    }
-    @if (TempData["ErrorMessage"] != null)
-    {
-        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3.5">
-            <i class="fa-solid fa-circle-exclamation"></i><span>@TempData["ErrorMessage"]</span>
-        </div>
-    }
-
     <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         <!-- Categories -->
         <div class="xl:col-span-5 card bg-base-100 border border-base-300 shadow-xs rounded-2xl">

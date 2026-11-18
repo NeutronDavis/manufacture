@@ -11,5 +11,11 @@ namespace Manufacture.Library.Interfaces
     {
         ExecutiveOverviewDto GetOverview(DateTime? date = null);
         DashboardOverviewApiResponse GetOverviewApi(string? timeframe = null, DateTime? date = null);
+
+        /// <summary>
+        /// Source records behind one lifecycle KPI for a timeframe, product scope
+        /// and anchor date. Powers the dashboard record drawer.
+        /// </summary>
+        KpiDetailDto GetKpiDetail(string? metric, string? timeframe, string? scopeKey, DateTime? date = null);
     }
 }

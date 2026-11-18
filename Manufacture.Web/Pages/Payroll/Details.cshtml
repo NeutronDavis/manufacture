@@ -31,21 +31,6 @@
         </div>
     </div>
 
-    @if (TempData["SuccessMessage"] is string successMessage)
-    {
-        <div class="alert alert-success shadow-xs rounded-2xl text-xs py-3">
-            <i class="fa-solid fa-circle-check text-base"></i>
-            <span>@successMessage</span>
-        </div>
-    }
-    @if (TempData["ErrorMessage"] is string errorMessage)
-    {
-        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3">
-            <i class="fa-solid fa-circle-exclamation text-base"></i>
-            <span>@errorMessage</span>
-        </div>
-    }
-
     <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
         <div class="card-body p-6 space-y-6">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-base-200 pb-4">

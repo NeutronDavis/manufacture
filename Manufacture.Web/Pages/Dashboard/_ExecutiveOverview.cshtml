@@ -17,7 +17,7 @@
     // All eight stages in strict pipeline order.
     var stageColumns = new (string Label, Func<LifecycleTotalsDto, int> Select, string Subtitle, string Tone, string BgTone, string BorderTone)[]
     {
-        ("Orders Placed",        t => t.OrdersPlaced,    "Requested by reps",       "text-info",      "bg-info/10",      "border-info/30"),
+        ("Orders Placed",        t => t.OrdersPlaced,    "Booked in the order register", "text-info",      "bg-info/10",      "border-info/30"),
         ("Produced",             t => t.Produced,        "Plant manufactured",      "text-primary",   "bg-primary/10",   "border-primary/30"),
         ("Loaded",               t => t.Loaded,          "Physical truck loading",  "text-secondary", "bg-secondary/10", "border-secondary/30"),
         ("Factory Defects",      t => t.FactoryDefects,  "Rejected before loading", "text-warning",   "bg-warning/10",   "border-warning/30"),
@@ -92,7 +92,7 @@
                 </summary>
                 <div class="collapse-content px-4 pb-3">
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-x-5 gap-y-2 text-[10px] leading-relaxed opacity-70">
-                        <div><strong>Orders Placed</strong> — rep request quantities before departure.</div>
+                        <div><strong>Orders Placed</strong> — sales orders booked in the register.</div>
                         <div><strong>Produced</strong> — actual factory output for the period.</div>
                         <div><strong>Loaded</strong> — stock physically released to the trucks.</div>
                         <div><strong>Factory Defects</strong> — production losses before loading.</div>
@@ -139,7 +139,7 @@
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="badge badge-primary badge-soft badge-sm font-bold">@period.RepCount Sales Reps Active</span>
-                            <span class="badge badge-ghost border border-base-300 badge-sm font-bold">8 Stages &bull; Click to drill</span>
+                            <span class="badge badge-ghost border border-base-300 badge-sm font-bold">8 Stages &bull; Click for records</span>
                         </div>
                     </div>
 
@@ -151,9 +151,6 @@
                             var stageCol = stageColumns[i];
                             var stageVal = StageValue(totals, stage.Metric);
                             var stageNum = i + 1;
-                            var drillView = stage.Metric is LifecycleMetric.Produced or LifecycleMetric.FactoryDefects
-                                ? "stage"
-                                : "reps";
                             var stageHint = i switch
                             {
                                 1 => $"{(totals.OrdersPlaced > 0 ? Math.Round(totals.Produced / (decimal)totals.OrdersPlaced * 100m, 1) : 0m):0.0}% of requests",
@@ -168,7 +165,7 @@
 
                             <div class="relative group cursor-pointer"
                                  title="@stageCol.Subtitle"
-                                 onclick="openDrill('all', '@period.Key', '@stage.Metric', '@drillView')">
+                                 onclick="openDrill('all', '@period.Key', '@stage.Metric')">
                                 <div class="card bg-base-100 border border-base-300 rounded-xl hover:border-primary hover:shadow-md transition-all duration-200 h-full p-3 space-y-2 flex flex-col justify-between group-hover:-translate-y-0.5">
                                     <div>
                                         <div class="text-[9px] font-bold uppercase tracking-wider opacity-60 leading-tight">@stageCol.Label</div>
@@ -202,7 +199,7 @@
                         var t = line.Totals;
                         var skus = line.SkuNames;
 
-                        <div class="card bg-base-100 border border-base-300 shadow-xs hover:border-primary/70 hover:shadow-md transition-all duration-200 rounded-2xl flex flex-col justify-between">
+                        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
                             <div class="card-body p-5 space-y-4">
                                 <!-- Card Header -->
                                 <div class="flex items-start justify-between gap-2">
@@ -218,20 +215,16 @@
                         
                                 </div>
 
-                                <!-- Sales highlights open the rep breakdown for this product line -->
+                                <!-- Sales highlights: read-only snapshot for this product line -->
                                 <div class="grid grid-cols-2 gap-2">
-                                    <button type="button"
-                                            onclick="openDrill('@line.ScopeKey', '@period.Key', 'Sold', 'reps')"
-                                            class="text-left p-3 rounded-xl bg-success/10 border border-success/20 hover:border-success/50 transition-colors">
+                                    <div class="text-left p-3 rounded-xl bg-success/10 border border-success/20">
                                         <div class="text-[9px] font-bold uppercase tracking-wider opacity-60">Units Sold</div>
                                         <div class="font-mono font-black text-xl text-success mt-0.5">@t.Sold.ToString("N0")</div>
-                                    </button>
-                                    <button type="button"
-                                            onclick="openDrill('@line.ScopeKey', '@period.Key', 'Sold', 'reps')"
-                                            class="text-left p-3 rounded-xl bg-base-200/60 border border-base-300 hover:border-primary/50 transition-colors">
+                                    </div>
+                                    <div class="text-left p-3 rounded-xl bg-base-200/60 border border-base-300">
                                         <div class="text-[9px] font-bold uppercase tracking-wider opacity-60">Gross Revenue</div>
                                         <div class="font-mono font-black text-sm text-base-content mt-1">@Money(t.ExpectedRevenue)</div>
-                                    </button>
+                                    </div>
                                 </div>
 
                                 <!-- Remaining reconciliation metrics -->
@@ -266,16 +259,6 @@
                                         }
                                     </div>
                                 </div>
-                            </div>
-
-                            <!-- Interactive Card Footer CTA -->
-                            <div class="px-5 py-3 bg-base-200/40 border-t border-base-200 rounded-b-2xl flex items-center justify-between">
-                                <span class="text-[10px] opacity-60 font-medium">Rep-grouped sales &amp; reconciliation</span>
-                                <button type="button"
-                                        onclick="openDrill('@line.ScopeKey', '@period.Key', 'Sold', 'reps')"
-                                        class="btn btn-xs btn-primary font-bold gap-1.5 rounded-lg shadow-xs hover:gap-2 transition-all">
-                                    Rep breakdown <i class="fa-solid fa-arrow-right text-[10px]"></i>
-                                </button>
                             </div>
                         </div>
                     }
@@ -335,8 +318,14 @@
         <div class="flex items-center justify-between border-b border-base-300 pb-2 flex-wrap gap-2">
             <div class="tabs tabs-boxed bg-base-200/60 p-1 rounded-xl">
                 <button type="button"
-                        id="tab-btn-stage"
+                        id="tab-btn-records"
                         class="tab tab-sm font-bold text-xs tab-active rounded-lg transition-all"
+                        onclick="switchDrillTab('records')">
+                    <i class="fa-solid fa-list-ul mr-1.5 text-xs"></i> Records
+                </button>
+                <button type="button"
+                        id="tab-btn-stage"
+                        class="tab tab-sm font-bold text-xs rounded-lg transition-all"
                         onclick="switchDrillTab('stage')">
                     <i class="fa-solid fa-diagram-project mr-1.5 text-xs"></i> Stage Breakdown
                 </button>
@@ -357,7 +346,7 @@
             <!-- Instant Search Bar -->
             <div class="relative">
                 <i class="fa-solid fa-magnifying-glass text-[10px] opacity-40 absolute left-2.5 top-2.5"></i>
-                <input type="text" id="drill-search-input" placeholder="Search stage group..."
+                <input type="text" id="drill-search-input" placeholder="Search records or groups..."
                        class="input input-xs input-bordered pl-7 rounded-xl text-xs w-44 sm:w-56 focus:w-64 transition-all" />
             </div>
         </div>
@@ -392,8 +381,48 @@
             </div>
         </div>
 
+        <!-- VIEW: Source records for the selected KPI (fetched on demand) -->
+        <div id="drill-records-container" class="space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-base-200 bg-base-200/40 px-4 py-2.5">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span id="drill-records-grouping-badge" class="badge badge-primary badge-sm font-bold text-[10px]">
+                        By Sales Rep
+                    </span>
+                    <span id="drill-records-total-badge" class="badge badge-ghost border border-base-300 badge-sm font-mono font-bold text-[10px]">
+                        0 units
+                    </span>
+                    <span id="drill-records-count-badge" class="badge badge-ghost border border-base-300 badge-sm font-mono text-[10px]">
+                        0 records
+                    </span>
+                    <span id="drill-records-value-badge" class="badge badge-success badge-soft badge-sm font-mono font-bold text-[10px] hidden">
+                        ₦0
+                    </span>
+                </div>
+                <span id="drill-records-note" class="text-[10px] opacity-60 max-w-xl text-right">
+                    Source records for the selected stage.
+                </span>
+            </div>
+
+            <div id="drill-records-loading" class="hidden rounded-xl border border-base-200 bg-base-100 px-4 py-12 flex-col items-center gap-3 shadow-xs">
+                <span class="loading loading-spinner loading-md text-primary"></span>
+                <span class="text-xs opacity-60 font-medium">Loading records…</span>
+            </div>
+
+            <div id="drill-records-error" class="hidden alert alert-error rounded-xl text-xs">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span id="drill-records-error-text">Could not load records.</span>
+                <button type="button" class="btn btn-xs btn-ghost font-bold" onclick="reloadDrillRecords()">Retry</button>
+            </div>
+
+            <div id="drill-records-empty" class="hidden rounded-xl border border-dashed border-base-300 bg-base-100 px-4 py-12 text-center text-xs opacity-60">
+                <span id="drill-records-empty-text">No source records were found for this stage, scope and period.</span>
+            </div>
+
+            <div id="drill-records-groups" class="space-y-4"></div>
+        </div>
+
         <!-- VIEW 0: Stage-specific grouped breakdown (the eight KPI cards) -->
-        <div id="drill-stage-container" class="space-y-3">
+        <div id="drill-stage-container" class="space-y-3 hidden">
             <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-base-200 bg-base-200/40 px-4 py-2.5">
                 <div class="flex items-center gap-2">
                     <span id="drill-stage-grouping-badge" class="badge badge-primary badge-sm font-bold text-[10px]">

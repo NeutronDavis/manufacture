@@ -38,9 +38,20 @@ namespace Manufacture.Services
             var role = context.HttpContext.Session.GetString("UserRole");
             if (string.Equals(role, "SalesRep", StringComparison.OrdinalIgnoreCase))
             {
+                // Sales reps do not see the Sales hub; the order workspace is their entry point.
                 if (path.StartsWithSegments("/Sales/Terminals", StringComparison.OrdinalIgnoreCase))
                 {
-                    context.Result = new RedirectToPageResult("/Sales/Index");
+                    context.Result = new RedirectToPageResult("/Sales/Orders/Index");
+                    return;
+                }
+
+                // Production is fully outside the SalesRep scope, regardless of any
+                // legacy Recipes view permission.
+                if (path.StartsWithSegments("/Production", StringComparison.OrdinalIgnoreCase)
+                    || path.StartsWithSegments("/Recipes", StringComparison.OrdinalIgnoreCase))
+                {
+                    context.Result = new RedirectToPageResult("/Dashboard/Index");
+                    return;
                 }
 
                 return;

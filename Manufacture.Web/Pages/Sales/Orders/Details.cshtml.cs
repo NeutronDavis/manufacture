@@ -21,6 +21,13 @@ namespace Manufacture.Pages.Sales.Orders
         public bool IsProductionManager =>
             string.Equals(UserRole, "ProductionManager", StringComparison.OrdinalIgnoreCase);
         public bool CanManageSales => !IsProductionManager;
+        public bool IsSalesRep =>
+            string.Equals(UserRole, "SalesRep", StringComparison.OrdinalIgnoreCase);
+        public bool IsSuperAdmin =>
+            string.Equals(UserRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase);
+        public bool IsOrderOpen => IsOpenStatus(Order.Status);
+        public bool CanAcceptOrder => IsSalesRep && IsOrderOpen && Order.SalesRepId is null;
+        public bool CanAssignRep => IsSuperAdmin && IsOrderOpen && Order.SalesRepId is null;
 
         [BindProperty]
         public OrderPaymentInputDto PaymentInput { get; set; } = new() { PaymentMethod = "Cash" };
@@ -42,7 +49,7 @@ namespace Manufacture.Pages.Sales.Orders
             Order = order;
             PaymentInput.OrderId = order.Id;
             PaymentInput.Amount = Math.Max(0m, order.BalanceDue);
-            SalesReps = CanManageSales
+            SalesReps = IsSuperAdmin
                 ? await _salesService.GetSalesRepsAsync(cancellationToken: cancellationToken)
                 : new List<SalesRepProfile>();
             SelectedSalesRepId = order.SalesRepId;
@@ -53,9 +60,34 @@ namespace Manufacture.Pages.Sales.Orders
         {
             LoadRole();
 
-            if (!CanManageSales)
+            if (!IsSuperAdmin)
             {
-                TempData["ErrorMessage"] = "Production Managers cannot assign sales representatives.";
+                TempData["ErrorMessage"] = "Only a Super Admin can assign a sales representative.";
+                return RedirectToPage(new { id });
+            }
+
+            var order = await _salesService.GetOrderAsync(id, cancellationToken);
+            if (order == null)
+            {
+                TempData["ErrorMessage"] = "Order not found.";
+                return RedirectToPage("/Sales/Orders/Index");
+            }
+
+            if (!IsOpenStatus(order.Status))
+            {
+                TempData["ErrorMessage"] = "This order is closed and can no longer be assigned.";
+                return RedirectToPage(new { id });
+            }
+
+            if (order.SalesRepId.HasValue)
+            {
+                TempData["ErrorMessage"] = "This order already has an assigned sales representative.";
+                return RedirectToPage(new { id });
+            }
+
+            if (!selectedSalesRepId.HasValue || selectedSalesRepId.Value <= 0)
+            {
+                TempData["ErrorMessage"] = "Select a sales representative to assign.";
                 return RedirectToPage(new { id });
             }
 
@@ -70,6 +102,52 @@ namespace Manufacture.Pages.Sales.Orders
             {
                 TempData["ErrorMessage"] = ex.Message;
             }
+
+            return RedirectToPage(new { id });
+        }
+
+        /// <summary>
+        /// A sales rep accepts an open, unassigned order, which assigns that rep
+        /// to it. The selected rep is always the signed-in rep, never posted data.
+        /// </summary>
+        public async Task<IActionResult> OnPostAcceptOrderAsync(int id, CancellationToken cancellationToken = default)
+        {
+            LoadRole();
+
+            if (!IsSalesRep)
+            {
+                TempData["ErrorMessage"] = "Only a sales representative can accept an order.";
+                return RedirectToPage(new { id });
+            }
+
+            var order = await _salesService.GetOrderAsync(id, cancellationToken);
+            if (order == null)
+            {
+                TempData["ErrorMessage"] = "Order not found.";
+                return RedirectToPage("/Sales/Orders/Index");
+            }
+
+            if (!IsOpenStatus(order.Status) || order.SalesRepId.HasValue)
+            {
+                TempData["ErrorMessage"] = "This order is no longer available to accept.";
+                return RedirectToPage(new { id });
+            }
+
+            var userId = HttpContext.Session.GetInt32("UserId");
+            var currentRep = userId.HasValue
+                ? await _salesService.GetSalesRepByUserIdAsync(userId.Value, cancellationToken)
+                : null;
+
+            if (currentRep == null)
+            {
+                TempData["ErrorMessage"] = "Your sales rep login is not linked to an active sales representative profile.";
+                return RedirectToPage(new { id });
+            }
+
+            var accepted = await _salesService.AssignOrderSalesRepAsync(id, currentRep.Id, cancellationToken);
+            TempData[accepted ? "SuccessMessage" : "ErrorMessage"] = accepted
+                ? $"Order {order.OrderNumber} accepted and assigned to you."
+                : "This order is no longer available to accept.";
 
             return RedirectToPage(new { id });
         }
@@ -105,6 +183,9 @@ namespace Manufacture.Pages.Sales.Orders
 
             return RedirectToPage(new { id = PaymentInput.OrderId });
         }
+
+        private static bool IsOpenStatus(OrderStatus status) =>
+            status is not (OrderStatus.Dispatched or OrderStatus.Cancelled);
 
         private void LoadRole()
         {

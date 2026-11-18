@@ -9,11 +9,6 @@
 }
 
 <div class="space-y-6 w-full">
-    @if (TempData["ErrorMessage"] != null)
-    {
-        <div class="alert alert-error rounded-xl text-xs"><span>@TempData["ErrorMessage"]</span></div>
-    }
-
     @if (report is null)
     {
         <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">

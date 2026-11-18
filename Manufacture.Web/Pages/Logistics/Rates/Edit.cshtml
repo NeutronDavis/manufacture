@@ -64,10 +64,6 @@
         </div>
     </div>
 
-    @if (TempData["ErrorMessage"] != null)
-    {
-        <div class="alert alert-error rounded-xl text-xs"><span>@TempData["ErrorMessage"]</span></div>
-    }
     @if (Model.CanApprove && q.Status == CharterQuoteStatus.PendingApproval)
     {
         <div class="card bg-warning/10 border border-warning/30 rounded-2xl p-5 space-y-4">

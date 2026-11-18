@@ -79,26 +79,6 @@
         </div>
     </div>
 
-    @if (TempData["SuccessMessage"] != null || TempData["ErrorMessage"] != null)
-    {
-        <div class="space-y-2">
-            @if (TempData["SuccessMessage"] != null)
-            {
-                <div class="alert alert-success rounded-xl py-2.5 text-xs">
-                    <i class="fa-solid fa-circle-check"></i>
-                    <span>@TempData["SuccessMessage"]</span>
-                </div>
-            }
-            @if (TempData["ErrorMessage"] != null)
-            {
-                <div class="alert alert-error rounded-xl py-2.5 text-xs">
-                    <i class="fa-solid fa-circle-exclamation"></i>
-                    <span>@TempData["ErrorMessage"]</span>
-                </div>
-            }
-        </div>
-    }
-
     <!-- Pending Price Approvals -->
     @if (Model.CanApprovePriceChanges || Model.PendingRequests.Count > 0)
     {

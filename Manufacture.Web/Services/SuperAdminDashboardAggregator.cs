@@ -63,6 +63,23 @@ namespace Manufacture.Services
     }
 
     /// <summary>
+    /// One resolved dashboard window. Shared by the KPI cards and the record
+    /// drawer so a card and its drill-down can never disagree about a period.
+    /// </summary>
+    public sealed record DashboardPeriodWindow(
+        string Key,
+        string Label,
+        DateTime Start,
+        DateTime End,
+        string DateLabel,
+        string ReportsTimeframe,
+        DateTime Today)
+    {
+        /// <summary>Actual last day: never books a shift that has not run yet.</summary>
+        public DateTime EffectiveEnd => End.Date > Today.Date ? Today.Date : End.Date;
+    }
+
+    /// <summary>
     /// Pure aggregation for the database-backed executive dashboard. Keeping
     /// this separate from EF makes the period, funnel, product and rep rules
     /// directly testable.
@@ -450,7 +467,7 @@ namespace Manufacture.Services
                     : "Operational quantities are grouped by the rep who carried the stock.",
                 Note = metric switch
                 {
-                    LifecycleMetric.OrdersPlaced => "Requested by reps before route departure.",
+                    LifecycleMetric.OrdersPlaced => "Booked in the Sales order register.",
                     LifecycleMetric.Produced => "Actual batch output recorded by production.",
                     LifecycleMetric.Loaded => "Physical stock released from the loading bay.",
                     LifecycleMetric.FactoryDefects => "Production losses identified before loading.",
@@ -652,31 +669,41 @@ namespace Manufacture.Services
             return ProductType.Bread;
         }
 
-        private static List<PeriodSpec> PeriodSpecs(DateTime anchor, DateTime today)
+        /// <summary>
+        /// Resolves the same window the KPI cards were built with. Accepts the
+        /// API timeframe spellings (today / weekly / monthly / yearly) and the
+        /// dashboard period keys (Today / This Week / This Month / This Year).
+        /// </summary>
+        public static DashboardPeriodWindow ResolveWindow(DateTime anchor, DateTime today, string? timeframe)
+        {
+            var anchorDate = anchor.Date;
+            var todayDate = today.Date;
+            if (anchorDate > todayDate) anchorDate = todayDate;
+
+            var key = (timeframe ?? "today").Trim().ToLowerInvariant() switch
+            {
+                "weekly" or "week" or "this week" or "this_week" => "This Week",
+                "monthly" or "month" or "this month" or "this_month" => "This Month",
+                "yearly" or "year" or "this year" or "this_year" => "This Year",
+                _ => "Today"
+            };
+
+            return PeriodSpecs(anchorDate, todayDate).First(spec => spec.Key == key);
+        }
+
+        private static List<DashboardPeriodWindow> PeriodSpecs(DateTime anchor, DateTime today)
         {
             var weekStart = anchor.AddDays(-(int)anchor.DayOfWeek);
             var monthStart = new DateTime(anchor.Year, anchor.Month, 1);
             var yearStart = new DateTime(anchor.Year, 1, 1);
 
-            return new List<PeriodSpec>
+            return new List<DashboardPeriodWindow>
             {
                 new("Today", "Today", anchor, anchor, anchor.ToString("ddd, dd MMM"), "Daily", today),
                 new("This Week", "This Week", weekStart, weekStart.AddDays(6), $"{weekStart:dd MMM} - {weekStart.AddDays(6):dd MMM yyyy}", "Week", today),
                 new("This Month", "This Month", monthStart, monthStart.AddMonths(1).AddDays(-1), monthStart.ToString("MMMM yyyy"), "Monthly", today),
                 new("This Year", "This Year", yearStart, new DateTime(anchor.Year, 12, 31), anchor.Year.ToString(), "Yearly", today)
             };
-        }
-
-        private sealed record PeriodSpec(
-            string Key,
-            string Label,
-            DateTime Start,
-            DateTime End,
-            string DateLabel,
-            string ReportsTimeframe,
-            DateTime Today)
-        {
-            public DateTime EffectiveEnd => End.Date > Today.Date ? Today.Date : End.Date;
         }
     }
 }

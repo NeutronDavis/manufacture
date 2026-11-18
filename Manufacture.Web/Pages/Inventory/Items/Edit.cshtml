@@ -36,14 +36,6 @@
         </div>
     </div>
 
-    @if (TempData["ErrorMessage"] != null)
-    {
-        <div class="alert alert-error text-xs rounded-xl shadow-xs">
-            <i class="fa-solid fa-triangle-exclamation"></i>
-            <span>@TempData["ErrorMessage"]</span>
-        </div>
-    }
-
     <!-- 2-Column Full-Width Form Layout -->
     <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
         <input type="hidden" asp-for="ItemInput.Id" />

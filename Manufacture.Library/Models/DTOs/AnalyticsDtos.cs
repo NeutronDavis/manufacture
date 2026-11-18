@@ -299,6 +299,74 @@ namespace Manufacture.Models.DTOs
         public Dictionary<string, Dictionary<string, StageDrillDownDto>> Metrics { get; set; } = new();
     }
 
+    /// <summary>
+    /// Source-record drill-down behind one lifecycle KPI. Unlike the aggregated
+    /// <see cref="StageDrillDownDto"/>, these rows are the underlying orders,
+    /// batches, route-sheet lines, defects and customer returns.
+    /// </summary>
+    public class KpiDetailDto
+    {
+        public string Metric { get; set; } = "OrdersPlaced";
+        public string MetricLabel { get; set; } = "Orders Placed";
+        public string PeriodKey { get; set; } = "Today";
+        public string PeriodLabel { get; set; } = "Today";
+        public string DateLabel { get; set; } = string.Empty;
+        public string ScopeKey { get; set; } = "all";
+        public string ScopeLabel { get; set; } = "All Product Lines";
+        public string GroupingLabel { get; set; } = "By Sales Rep";
+        public string Note { get; set; } = string.Empty;
+        public string Unit { get; set; } = "units";
+
+        /// <summary>Metric units across every group, computed before any row cap.</summary>
+        public int Total { get; set; }
+
+        /// <summary>Naira value of the listed records, where the metric carries money.</summary>
+        public decimal TotalValue { get; set; }
+
+        /// <summary>Number of source records across every group, computed before any row cap.</summary>
+        public int RecordCount { get; set; }
+
+        /// <summary>True when some rows were dropped from the payload to keep the drawer light.</summary>
+        public bool IsTruncated { get; set; }
+
+        public List<KpiDetailGroupDto> Groups { get; set; } = new();
+    }
+
+    /// <summary>One grouping bucket (a sales rep or a product category) of source records.</summary>
+    public class KpiDetailGroupDto
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
+        public string SubLabel { get; set; } = string.Empty;
+        public string Unit { get; set; } = "units";
+        public int Total { get; set; }
+        public decimal TotalValue { get; set; }
+        public int RecordCount { get; set; }
+        public List<KpiDetailRowDto> Rows { get; set; } = new();
+    }
+
+    /// <summary>
+    /// One source record. <see cref="Quantity"/> is nullable on purpose: a
+    /// production batch with no recorded output must render as an empty field
+    /// rather than a fabricated zero.
+    /// </summary>
+    public class KpiDetailRowDto
+    {
+        public string Reference { get; set; } = string.Empty;
+        public string ReferenceUrl { get; set; } = string.Empty;
+        public string Product { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public string UnitLabel { get; set; } = "units";
+        public int? Quantity { get; set; }
+        public int? SecondaryQuantity { get; set; }
+        public decimal? UnitPrice { get; set; }
+        public decimal? Amount { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public string StatusTone { get; set; } = "ghost";
+        public string Meta { get; set; } = string.Empty;
+        public string DateLabel { get; set; } = string.Empty;
+    }
+
     public class ExecutiveOverviewDto
     {
         public DateTime GeneratedAt { get; set; }

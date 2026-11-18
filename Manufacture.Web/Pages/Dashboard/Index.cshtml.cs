@@ -1,4 +1,5 @@
 using Manufacture.Library.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Manufacture.Services;
 using Manufacture.Models.DTOs;
@@ -112,6 +113,21 @@ namespace Manufacture.Pages.Dashboard
             if (repId.HasValue) values.Add("rep_id=" + repId.Value);
 
             return "/Reports?" + string.Join("&", values);
+        }
+
+        /// <summary>
+        /// Lazy source records for the KPI record drawer. Kept on the page (not a
+        /// minimal API route) so the session filter and the SuperAdmin guard apply.
+        /// </summary>
+        public IActionResult OnGetDrill(string? metric, string? timeframe, string? scope, DateTime? date)
+        {
+            var role = HttpContext.Session.GetString("UserRole");
+            if (!string.Equals(role, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
+            }
+
+            return new JsonResult(_analytics.GetKpiDetail(metric, timeframe, scope, date));
         }
 
         public async Task OnGetAsync(CancellationToken cancellationToken = default)

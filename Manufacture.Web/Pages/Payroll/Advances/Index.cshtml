@@ -27,21 +27,6 @@
         </a>
     </div>
 
-    @if (TempData["SuccessMessage"] is string successMessage)
-    {
-        <div class="alert alert-success shadow-xs rounded-2xl text-xs py-3">
-            <i class="fa-solid fa-circle-check text-base"></i>
-            <span>@successMessage</span>
-        </div>
-    }
-    @if (TempData["ErrorMessage"] is string errorMessage)
-    {
-        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3">
-            <i class="fa-solid fa-circle-exclamation text-base"></i>
-            <span>@errorMessage</span>
-        </div>
-    }
-
     <!-- Filters -->
     <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
         <form method="get" class="card-body p-4">

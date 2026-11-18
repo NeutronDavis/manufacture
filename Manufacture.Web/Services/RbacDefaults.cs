@@ -47,7 +47,7 @@ namespace Manufacture.Services
                 ("Recipes", "SuperAdmin", "Full Access"),
                 ("Recipes", "ProductionManager", "View, Edit"),
                 ("Recipes", "StoreManager", "View Only"),
-                ("Recipes", "SalesRep", "View Only"),
+                ("Recipes", "SalesRep", "None"),
                 ("Recipes", "Customer", "None"),
                 ("Recipes", "HrPayrollManager", "None"),
 

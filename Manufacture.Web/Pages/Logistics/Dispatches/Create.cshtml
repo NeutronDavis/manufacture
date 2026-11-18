@@ -21,8 +21,6 @@
         <a asp-page="/Logistics/Dispatches/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold"><i class="fa-solid fa-arrow-left"></i> Dispatch List</a>
     </div>
 
-    @if (TempData["ErrorMessage"] != null) { <div class="alert alert-error rounded-xl text-xs"><span>@TempData["ErrorMessage"]</span></div> }
-
     <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div class="lg:col-span-8 space-y-6">
             <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">

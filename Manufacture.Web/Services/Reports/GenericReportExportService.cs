@@ -8,7 +8,7 @@ namespace Manufacture.Services.Reports
         public static byte[] BuildCsv(ReportViewResultDto result)
         {
             var sb = new StringBuilder();
-            sb.AppendLine(CsvLine(["BakeryFlow ERP", result.Title, result.DateRangeLabel]));
+            sb.AppendLine(CsvLine(["MauRecords", result.Title, result.DateRangeLabel]));
             sb.AppendLine(CsvLine(["Generated (UTC)", result.GeneratedAt.ToString("yyyy-MM-dd HH:mm"), "Rows", result.TotalRows.ToString("N0")]));
             sb.AppendLine();
             sb.AppendLine(CsvLine(result.Columns.Select(c => c.Label)));
@@ -42,7 +42,7 @@ namespace Manufacture.Services.Reports
             var muted = PdfColor.FromBytes(100, 100, 108);
             var accent = PdfColor.FromBytes(180, 83, 9);
 
-            page.DrawText("BakeryFlow ERP", PdfFont.Bold, 9, accent, margin, y);
+            page.DrawText("MauRecords", PdfFont.Bold, 9, accent, margin, y);
             y += 18;
             page.DrawText(result.Title, PdfFont.Bold, 16, ink, margin, y);
             y += 20;

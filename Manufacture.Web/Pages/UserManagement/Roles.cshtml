@@ -22,15 +22,6 @@
         <a asp-page="/UserManagement/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs font-semibold">Back to Users</a>
     </div>
 
-    @if (TempData["SuccessMessage"] is string success)
-    {
-        <div class="alert alert-success text-xs rounded-xl"><span>@success</span></div>
-    }
-    @if (TempData["ErrorMessage"] is string error)
-    {
-        <div class="alert alert-error text-xs rounded-xl"><span>@error</span></div>
-    }
-
     <div class="card bg-base-100 border border-base-300 rounded-2xl p-5">
         <form method="post" asp-page-handler="Save" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
             <input type="hidden" asp-for="Input.Id" />

@@ -22,7 +22,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - Artisan ERP</title>
+    <title>@ViewData["Title"] - MauRecords</title>
     
     <!-- Google Fonts: Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -66,7 +66,7 @@
                 </div>
                 
                 <span class="font-black text-sm text-base-content tracking-tight">
-                    BakeryFlow ERP
+                    MauRecords
                 </span>
             </div>
 
@@ -197,7 +197,7 @@
                     </a>
 
                     <!-- 2. Production -->
-                    @if (userRole != "StoreManager" && (Rbac.HasAccess(userRole, "Production") || Rbac.HasAccess(userRole, "Recipes")))
+                    @if (userRole != "StoreManager" && userRole != "SalesRep" && (Rbac.HasAccess(userRole, "Production") || Rbac.HasAccess(userRole, "Recipes")))
                     {
                         <details class="erp-nav-dropdown" @(inProduction ? "open" : "")>
                             <summary class="@(inProduction ? "font-bold text-base-content" : "")">
@@ -283,7 +283,7 @@
                                 <i class="fa-solid fa-chevron-right erp-nav-arrow"></i>
                             </summary>
                             <div class="erp-nav-sub-menu">
-                                @if (Rbac.HasAccess(userRole, "Sales") && userRole != "Customer")
+                                @if (Rbac.HasAccess(userRole, "Sales") && userRole != "Customer" && userRole != "SalesRep")
                                 {
                                     <a asp-page="/Sales/Index" class="erp-nav-sub-item @(currentPath == "/Sales" || currentPath == "/Sales/Index" ? "erp-nav-active" : "")">
                                         <i class="fa-solid fa-chart-line text-[11px] w-3.5 text-center"></i>

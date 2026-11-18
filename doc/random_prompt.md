@@ -259,3 +259,19 @@ Don’t rely on a textbook figure, because bulk density depends on the product a
 - i also want to know if the setting in /Settings/Finance page at `Benchmark Configuration Form` and `Live Policy Visualizer` section including it's KPI is responsible for any action in this application ?
 
 - i want to include a column if the fuel purchase was for chater or dispatch or general in `Fuel Purchase & Cost` i.e  `/Reports?report=fleet-fuel` report page table. The same in this `Fuel Type / Station Comparison` page table `/Reports?report=fleet-fuel-comparison` 
+
+## Update on the superAdmin dashboard
+- the KPI `Orders Placed`, when clicked, it should open the side drawer showing the order placed, same from the `/Sales/Orders` page but each row under a sales rep maped to it ie grouping the order records under the salse rep that were tide to it. Note they will be few colum and it should be discriptive.
+- The `Produced` KPI, when cliked it opens a side drawer, showing the batch production that was done sorting them base on the category and listing out the actual product and the actual value that was produced. For those that has no actual value keep the fied empty.
+- the `Loaded` KPI, when cliked, it should show the side drawer showing the loded items grouping the rows by salse rep rom each dispatch that where reconciled
+- the `Sold` KPI, when it's being cliked , it should open the side drawer showing the sold quantity items grouping the rows by salse rep rom each dispatch that where reconciled
+- same with `Closing Stock`, `Damaged` and `Returns` KPI
+
+## Update on the superAdmin dashboard `Product Line Performance` section
+- For each category in the `Product Line Performance` section, remove the click to open side drawer action. The category cards and figure display should only be for a sight view and not for interactions
+
+## SalesRep Update
+- Take off Production enirly out for sales rep user
+- At the /Sales page, the sales rep should not see the `Dedicated Checkout Registers` section
+- At the /Sales/Orders/Details page, the `Sales Rep Assignment` section should have a botton saying `Accept order`, when the sales rep clik on it will assign the sign in sales rep to that order, Note: ths modification is only for sales rep it will remain a dropdown for superadmin only for order that is Open and not yet have a sales rep to assigned to it.
+when a sales rep is asign to an order, the dropdown should change to just the assigned sales rep name 

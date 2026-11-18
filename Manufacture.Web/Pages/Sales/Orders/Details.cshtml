@@ -30,21 +30,12 @@
         </div>
     </div>
 
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <div class="alert alert-success text-xs rounded-xl"><span>@TempData["SuccessMessage"]</span></div>
-    }
-    @if (TempData["ErrorMessage"] != null)
-    {
-        <div class="alert alert-error text-xs rounded-xl"><span>@TempData["ErrorMessage"]</span></div>
-    }
-
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div class="@contentClass space-y-6">
             <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                     <div><span class="opacity-60">Customer:</span> <strong>@order.CustomerName</strong></div>
-                    <div><span class="opacity-60">Sales Rep:</span> <strong>@order.SalesRepName</strong></div>
+                    <div><span class="opacity-60">Sales Rep:</span> <strong>@(string.IsNullOrWhiteSpace(order.SalesRepName) ? "Unassigned" : order.SalesRepName)</strong></div>
                     <div><span class="opacity-60">Order Date:</span> <strong class="font-mono">@order.OrderDate.ToString("yyyy-MM-dd HH:mm")</strong></div>
                     <div><span class="opacity-60">POS Terminal:</span> <strong class="font-mono">@order.PosTerminalCode</strong></div>
                     <div>
@@ -133,20 +124,48 @@
                     <h2 class="font-black text-sm flex items-center gap-2">
                         <i class="fa-solid fa-user-tie text-primary"></i> Sales Rep Assignment
                     </h2>
-                <form method="post" asp-page-handler="AssignRep" asp-route-id="@order.Id" class="space-y-3">
-                    <div class="form-control">
-                        <label class="label pb-1"><span class="label-text text-[10px] font-bold">Assigned Sales Rep</span></label>
-                        <select name="selectedSalesRepId" class="select select-sm select-bordered text-xs">
-                            <option value="">-- Unassigned --</option>
-                            @foreach (var rep in Model.SalesReps)
-                            {
-                                <option value="@rep.Id" selected="@(rep.Id == Model.SelectedSalesRepId)">@rep.FullName (@rep.EmployeeCode) - @rep.RouteName</option>
-                            }
-                        </select>
-                    </div>
-                    <button type="submit" class="btn btn-sm btn-outline rounded-xl text-xs font-bold w-full">Save Assignment</button>
-                </form>
-            </div>
+
+                    @if (Model.CanAcceptOrder)
+                    {
+                        <p class="text-[11px] opacity-70">
+                            This order has no sales representative yet. Accepting assigns it to you.
+                        </p>
+                        <form method="post" asp-page-handler="AcceptOrder" asp-route-id="@order.Id">
+                            <button type="submit" class="btn btn-sm btn-primary rounded-xl text-xs font-bold w-full gap-1.5">
+                                <i class="fa-solid fa-hand-holding-heart text-[11px]"></i> Accept order
+                            </button>
+                        </form>
+                    }
+                    else if (Model.CanAssignRep)
+                    {
+                        <form method="post" asp-page-handler="AssignRep" asp-route-id="@order.Id" class="space-y-3">
+                            <div class="form-control">
+                                <label class="label pb-1"><span class="label-text text-[10px] font-bold">Assigned Sales Rep</span></label>
+                                <select name="selectedSalesRepId" class="select select-sm select-bordered text-xs" required>
+                                    <option value="">Select a sales representative</option>
+                                    @foreach (var rep in Model.SalesReps)
+                                    {
+                                        <option value="@rep.Id" selected="@(rep.Id == Model.SelectedSalesRepId)">@rep.FullName (@rep.EmployeeCode) - @rep.RouteName</option>
+                                    }
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-outline rounded-xl text-xs font-bold w-full">Save Assignment</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <div class="p-3 rounded-xl bg-base-200 border border-base-300 text-xs">
+                            <div class="text-[10px] uppercase font-bold opacity-60">Assigned Sales Rep</div>
+                            <div class="font-bold text-base-content">
+                                @(string.IsNullOrWhiteSpace(order.SalesRepName) ? "Unassigned" : order.SalesRepName)
+                            </div>
+                        </div>
+                        @if (!Model.IsOrderOpen && order.SalesRepId == null)
+                        {
+                            <p class="text-[10px] opacity-60">This order is closed; no further assignment is possible.</p>
+                        }
+                    }
+                </div>
 
             <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">
                 <h2 class="font-black text-sm flex items-center gap-2">

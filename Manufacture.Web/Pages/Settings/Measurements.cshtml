@@ -28,19 +28,6 @@
         </div>
     </div>
 
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <div class="alert alert-success shadow-xs rounded-2xl text-xs py-3.5">
-            <i class="fa-solid fa-circle-check"></i><span>@TempData["SuccessMessage"]</span>
-        </div>
-    }
-    @if (TempData["ErrorMessage"] != null)
-    {
-        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3.5">
-            <i class="fa-solid fa-circle-exclamation"></i><span>@TempData["ErrorMessage"]</span>
-        </div>
-    }
-
     <div class="card bg-base-100 border border-info/30 shadow-xs rounded-2xl">
         <div class="card-body p-6 space-y-3">
             <h2 class="font-black text-sm text-base-content flex items-center gap-2">

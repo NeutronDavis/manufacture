@@ -23,7 +23,7 @@ namespace Manufacture.Services
 
             sb.AppendLine(Line(new[]
             {
-                "BakeryFlow ERP",
+                "MauRecords",
                 result.ModuleLabel,
                 query.Timeframe.ToString(),
                 query.RangeLabel
@@ -66,7 +66,7 @@ namespace Manufacture.Services
             var module = result.Module.ToString().ToLowerInvariant();
             var stamp = result.Query.AnchorDate.ToString("yyyyMMdd");
             var scope = result.Query.ChartGroupByRep ? "reps" : result.Query.GroupBy.ToString().ToLowerInvariant();
-            return $"bakeryflow-{module}-{scope}-{stamp}.csv";
+            return $"maurecords-{module}-{scope}-{stamp}.csv";
         }
 
         /// <summary>

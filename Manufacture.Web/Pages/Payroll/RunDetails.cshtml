@@ -44,21 +44,6 @@
         </div>
     </div>
 
-    @if (TempData["SuccessMessage"] is string successMessage)
-    {
-        <div class="alert alert-success shadow-xs rounded-2xl text-xs py-3">
-            <i class="fa-solid fa-circle-check text-base"></i>
-            <span>@successMessage</span>
-        </div>
-    }
-    @if (TempData["ErrorMessage"] is string errorMessage)
-    {
-        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3">
-            <i class="fa-solid fa-circle-exclamation text-base"></i>
-            <span>@errorMessage</span>
-        </div>
-    }
-
     <!-- KPI cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <div class="card bg-base-100 border border-base-300 rounded-2xl p-4">

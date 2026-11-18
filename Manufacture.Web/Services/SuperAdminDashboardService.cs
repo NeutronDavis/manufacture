@@ -126,6 +126,308 @@ namespace Manufacture.Services
             };
         }
 
+        public KpiDetailDto GetKpiDetail(string? metric, string? timeframe, string? scopeKey, DateTime? date = null)
+        {
+            var today = DateTime.UtcNow.Date;
+            var anchor = (date ?? today).Date;
+            if (anchor > today) anchor = today;
+
+            var window = SuperAdminDashboardAggregator.ResolveWindow(anchor, today, timeframe);
+            var (categoryId, scopeLabel) = ResolveDetailScope(scopeKey);
+            var scope = string.IsNullOrWhiteSpace(scopeKey) ? "all" : scopeKey.Trim();
+
+            var resolvedMetric = Enum.TryParse<LifecycleMetric>(metric, ignoreCase: true, out var parsed)
+                ? parsed
+                : LifecycleMetric.OrdersPlaced;
+
+            var detail = resolvedMetric switch
+            {
+                LifecycleMetric.OrdersPlaced => BuildOrderDetail(window, categoryId, scopeLabel),
+                LifecycleMetric.Produced => BuildProducedDetail(window, categoryId, scopeLabel),
+                LifecycleMetric.FactoryDefects => BuildDefectDetail(window, categoryId, scopeLabel),
+                LifecycleMetric.CustomerReturns => BuildReturnDetail(window, categoryId, scopeLabel),
+                _ => BuildDispatchDetail(window, resolvedMetric, categoryId, scopeLabel)
+            };
+
+            detail.ScopeKey = scope;
+            detail.ScopeLabel = scopeLabel;
+            detail.PeriodKey = window.Key;
+            detail.PeriodLabel = window.Label;
+            detail.DateLabel = window.DateLabel;
+            return detail;
+        }
+
+        private (int? CategoryId, string Label) ResolveDetailScope(string? scopeKey)
+        {
+            var key = (scopeKey ?? "all").Trim();
+            const string prefix = "category-";
+            if (key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                && int.TryParse(key[prefix.Length..], out var categoryId))
+            {
+                var name = _db.ProductionCategories
+                    .AsNoTracking()
+                    .Where(category => category.Id == categoryId)
+                    .Select(category => category.Name)
+                    .FirstOrDefault();
+
+                return (categoryId, name ?? (categoryId == 0 ? "Uncategorised" : key));
+            }
+
+            return (null, "All Product Lines");
+        }
+
+        private KpiDetailDto BuildOrderDetail(DashboardPeriodWindow window, int? categoryId, string scopeLabel)
+        {
+            var endExclusive = window.EffectiveEnd.AddDays(1);
+            var orders = _db.Orders
+                .AsNoTracking()
+                .Include(order => order.SalesRep)
+                .Include(order => order.OrderItems)
+                    .ThenInclude(item => item.Recipe)
+                        .ThenInclude(recipe => recipe.ProductionProductType)
+                            .ThenInclude(productType => productType!.ProductionCategory)
+                .Where(order => order.OrderDate >= window.Start
+                    && order.OrderDate < endExclusive
+                    && order.Status != (int)OrderStatus.Cancelled)
+                .ToList();
+
+            var lines = new List<OrderDetailSource>();
+            foreach (var order in orders)
+            {
+                foreach (var item in order.OrderItems)
+                {
+                    var category = item.Recipe?.ProductionProductType?.ProductionCategory;
+                    var itemCategoryId = category?.Id ?? 0;
+                    if (categoryId.HasValue && itemCategoryId != categoryId.Value) continue;
+
+                    lines.Add(new OrderDetailSource
+                    {
+                        OrderId = order.Id,
+                        OrderNumber = order.OrderNumber,
+                        OrderDate = order.OrderDate,
+                        CustomerName = order.CustomerName,
+                        OrderType = ((OrderType)order.OrderType).ToString(),
+                        Status = ((OrderStatus)order.Status).ToString(),
+                        RepId = order.SalesRepId ?? 0,
+                        RepName = order.SalesRepName ?? "Unassigned Rep",
+                        Route = order.SalesRep?.RouteName ?? string.Empty,
+                        Terminal = order.PosTerminalCode ?? string.Empty,
+                        ProductName = item.ProductName,
+                        ProductCode = item.Recipe?.Code ?? string.Empty,
+                        CategoryId = itemCategoryId,
+                        Category = category?.Name ?? "Uncategorised",
+                        Unit = item.Recipe?.OutputUnit ?? "units",
+                        Quantity = item.Quantity,
+                        BonusQuantity = item.BonusQuantity,
+                        UnitPrice = item.UnitPrice
+                    });
+                }
+            }
+
+            return SuperAdminKpiDetailBuilder.BuildOrders(lines, window.Key, window.DateLabel, scopeLabel);
+        }
+
+        private KpiDetailDto BuildProducedDetail(DashboardPeriodWindow window, int? categoryId, string scopeLabel)
+        {
+            var endExclusive = window.EffectiveEnd.AddDays(1);
+            var batches = _db.ProductionBatches
+                .AsNoTracking()
+                .Include(batch => batch.Recipe)
+                    .ThenInclude(recipe => recipe.ProductionProductType)
+                        .ThenInclude(productType => productType!.ProductionCategory)
+                .Where(batch => batch.ProductionDate >= window.Start
+                    && batch.ProductionDate < endExclusive
+                    && batch.Status != (int)BatchStatus.Cancelled)
+                .ToList();
+
+            var sources = new List<BatchDetailSource>();
+            foreach (var batch in batches)
+            {
+                var category = batch.Recipe?.ProductionProductType?.ProductionCategory;
+                var itemCategoryId = category?.Id ?? 0;
+                if (categoryId.HasValue && itemCategoryId != categoryId.Value) continue;
+
+                sources.Add(new BatchDetailSource
+                {
+                    BatchId = batch.Id,
+                    BatchNumber = batch.BatchNumber,
+                    ProductName = batch.RecipeName,
+                    CategoryId = itemCategoryId,
+                    Category = category?.Name ?? "Uncategorised",
+                    Unit = string.IsNullOrWhiteSpace(batch.OutputUnitLabel)
+                        ? batch.Recipe?.OutputUnit ?? "units"
+                        : batch.OutputUnitLabel,
+                    TargetQuantity = batch.TargetQuantity,
+                    ActualQuantity = batch.ActualQuantity,
+                    Shift = batch.Shift,
+                    Baker = batch.BakerInCharge,
+                    Status = ((BatchStatus)batch.Status).ToString(),
+                    Date = batch.ProductionDate.Date,
+                    UnitPrice = batch.Recipe?.SellingPrice ?? 0m
+                });
+            }
+
+            return SuperAdminKpiDetailBuilder.BuildProduced(sources, window.Key, window.DateLabel, scopeLabel);
+        }
+
+        private KpiDetailDto BuildDispatchDetail(
+            DashboardPeriodWindow window,
+            LifecycleMetric metric,
+            int? categoryId,
+            string scopeLabel)
+        {
+            var minStatus = metric == LifecycleMetric.Loaded
+                ? (int)RouteSheetStatus.LoadedOnRoute
+                : (int)RouteSheetStatus.Reconciled;
+
+            var startDate = DateOnly.FromDateTime(window.Start);
+            var endDate = DateOnly.FromDateTime(window.EffectiveEnd);
+
+            var sheets = _db.DailyRepRouteSheets
+                .AsNoTracking()
+                .Include(sheet => sheet.SalesRep)
+                .Include(sheet => sheet.Vehicle)
+                .Include(sheet => sheet.RouteSheetItems)
+                    .ThenInclude(item => item.Recipe)
+                        .ThenInclude(recipe => recipe.ProductionProductType)
+                            .ThenInclude(productType => productType!.ProductionCategory)
+                .Where(sheet => sheet.RouteDate >= startDate
+                    && sheet.RouteDate <= endDate
+                    && sheet.Status >= minStatus)
+                .ToList();
+
+            var sources = new List<DispatchLineSource>();
+            foreach (var sheet in sheets)
+            {
+                var vehicle = sheet.VehicleRegistration ?? sheet.Vehicle?.RegistrationNumber ?? string.Empty;
+
+                foreach (var item in sheet.RouteSheetItems)
+                {
+                    var category = item.Recipe?.ProductionProductType?.ProductionCategory;
+                    var itemCategoryId = category?.Id ?? 0;
+                    if (categoryId.HasValue && itemCategoryId != categoryId.Value) continue;
+
+                    sources.Add(new DispatchLineSource
+                    {
+                        RouteSheetId = sheet.Id,
+                        RouteSheetRef = sheet.RouteSheetRef,
+                        RouteDate = sheet.RouteDate,
+                        Status = sheet.Status,
+                        RepId = sheet.SalesRepId,
+                        RepName = sheet.SalesRep?.FullName ?? "Unassigned Rep",
+                        Route = sheet.RouteName,
+                        Vehicle = vehicle,
+                        Terminal = sheet.PosTerminalCode ?? string.Empty,
+                        ProductName = item.ProductName,
+                        ProductCode = item.ProductCode,
+                        CategoryId = itemCategoryId,
+                        Category = category?.Name ?? "Uncategorised",
+                        Unit = item.Recipe?.OutputUnit ?? "units",
+                        RequestedQty = item.RepOrderRequestedQty,
+                        LoadedQty = item.TodayNewlyLoadedQty,
+                        SoldQty = item.QtySold,
+                        ClosingStockQty = item.ClosingStockQty,
+                        DamagedQty = item.QtyDamaged,
+                        UnitPrice = item.UnitSellingPrice
+                    });
+                }
+            }
+
+            return SuperAdminKpiDetailBuilder.BuildDispatch(
+                sources, metric, window.Key, window.DateLabel, scopeLabel);
+        }
+
+        private KpiDetailDto BuildDefectDetail(DashboardPeriodWindow window, int? categoryId, string scopeLabel)
+        {
+            var endExclusive = window.EffectiveEnd.AddDays(1);
+            var defects = _db.ProductionDefects
+                .AsNoTracking()
+                .Include(defect => defect.ProductionBatch)
+                    .ThenInclude(batch => batch.Recipe)
+                        .ThenInclude(recipe => recipe.ProductionProductType)
+                            .ThenInclude(productType => productType!.ProductionCategory)
+                .Where(defect => defect.ProductionBatch.ProductionDate >= window.Start
+                    && defect.ProductionBatch.ProductionDate < endExclusive
+                    && defect.ProductionBatch.Status != (int)BatchStatus.Cancelled)
+                .ToList();
+
+            var sources = new List<DefectDetailSource>();
+            foreach (var defect in defects)
+            {
+                var batch = defect.ProductionBatch;
+                var recipe = batch.Recipe;
+                var category = recipe?.ProductionProductType?.ProductionCategory;
+                var itemCategoryId = category?.Id ?? 0;
+                if (categoryId.HasValue && itemCategoryId != categoryId.Value) continue;
+
+                sources.Add(new DefectDetailSource
+                {
+                    DefectId = defect.Id,
+                    BatchId = batch.Id,
+                    BatchNumber = batch.BatchNumber,
+                    RecordedAt = defect.RecordedAt,
+                    ProductName = recipe?.Name ?? batch.RecipeName,
+                    CategoryId = itemCategoryId,
+                    Category = category?.Name ?? "Uncategorised",
+                    Unit = string.IsNullOrWhiteSpace(batch.OutputUnitLabel)
+                        ? recipe?.OutputUnit ?? "units"
+                        : batch.OutputUnitLabel,
+                    Quantity = defect.Quantity,
+                    Reason = defect.DefectReason,
+                    RecordedBy = defect.RecordedBy
+                });
+            }
+
+            return SuperAdminKpiDetailBuilder.BuildDefects(sources, window.Key, window.DateLabel, scopeLabel);
+        }
+
+        private KpiDetailDto BuildReturnDetail(DashboardPeriodWindow window, int? categoryId, string scopeLabel)
+        {
+            var endExclusive = window.EffectiveEnd.AddDays(1);
+            var returns = _db.CustomerReturns
+                .AsNoTracking()
+                .Include(customerReturn => customerReturn.Recipe)
+                    .ThenInclude(recipe => recipe.ProductionProductType)
+                        .ThenInclude(productType => productType!.ProductionCategory)
+                .Include(customerReturn => customerReturn.SalesRep)
+                .Include(customerReturn => customerReturn.Customer)
+                .Where(customerReturn => customerReturn.ReturnDate >= window.Start
+                    && customerReturn.ReturnDate < endExclusive)
+                .ToList();
+
+            var sources = new List<ReturnDetailSource>();
+            foreach (var customerReturn in returns)
+            {
+                var category = customerReturn.Recipe?.ProductionProductType?.ProductionCategory;
+                var itemCategoryId = category?.Id ?? 0;
+                if (categoryId.HasValue && itemCategoryId != categoryId.Value) continue;
+
+                sources.Add(new ReturnDetailSource
+                {
+                    ReturnId = customerReturn.Id,
+                    ReturnNumber = customerReturn.ReturnNumber,
+                    ReturnDate = customerReturn.ReturnDate,
+                    RepId = customerReturn.SalesRepId ?? 0,
+                    RepName = customerReturn.SalesRep?.FullName ?? "Unassigned Rep",
+                    Route = customerReturn.SalesRep?.RouteName ?? string.Empty,
+                    CustomerName = customerReturn.Customer?.Name ?? string.Empty,
+                    ProductName = customerReturn.Recipe?.Name ?? string.Empty,
+                    CategoryId = itemCategoryId,
+                    Category = category?.Name ?? "Uncategorised",
+                    Unit = customerReturn.Recipe?.OutputUnit ?? "units",
+                    Quantity = customerReturn.Quantity,
+                    ReplacementQuantity = customerReturn.ReplacementQuantity,
+                    UnitPrice = customerReturn.UnitPrice,
+                    RefundAmount = customerReturn.RefundAmount,
+                    Reason = customerReturn.Reason,
+                    ReplacementIssued = customerReturn.ReplacementIssued
+                });
+            }
+
+            return SuperAdminKpiDetailBuilder.BuildReturns(
+                sources, window.Key, window.DateLabel, scopeLabel);
+        }
+
         private List<DashboardFact> BuildFacts(DateTime start, DateTime endExclusive)
         {
             var facts = new List<DashboardFact>();
@@ -155,6 +457,12 @@ namespace Manufacture.Services
                 foreach (var item in sheet.RouteSheetItems)
                 {
                     var category = item.Recipe?.ProductionProductType?.ProductionCategory;
+
+                    // Verified quantities only exist after reconciliation. A sheet
+                    // still on the road must not book sales, closing stock, damage
+                    // or revenue; its loading quantities are already counted.
+                    var isReconciled = sheet.Status >= (int)RouteSheetStatus.Reconciled;
+
                     facts.Add(new DashboardFact
                     {
                         Date = date,
@@ -170,12 +478,11 @@ namespace Manufacture.Services
                         ProductionCategoryName = category?.Name ?? "Uncategorised",
                         OutputUnit = item.Recipe?.OutputUnit ?? "units",
                         UnitPrice = item.UnitSellingPrice,
-                        OrdersPlaced = item.RepOrderRequestedQty,
                         Loaded = item.TodayNewlyLoadedQty,
-                        Sold = item.QtySold,
-                        ClosingStock = item.ClosingStockQty,
-                        Damaged = item.QtyDamaged,
-                        ExpectedRevenue = item.QtySold * item.UnitSellingPrice
+                        Sold = isReconciled ? item.QtySold : 0,
+                        ClosingStock = isReconciled ? item.ClosingStockQty : 0,
+                        Damaged = isReconciled ? item.QtyDamaged : 0,
+                        ExpectedRevenue = isReconciled ? item.QtySold * item.UnitSellingPrice : 0m
                     });
                 }
 
@@ -195,6 +502,46 @@ namespace Manufacture.Services
                             - sheet.CashCollected - sheet.BankTransferCollected - sheet.PosTerminalCollected),
                     IsFinanceOnly = true
                 });
+            }
+
+            // Orders Placed is the order register, not the rep's route request.
+            // Cancelled orders never count, and order value is intentionally not
+            // booked as revenue: revenue stays driven by verified route sales.
+            var orders = _db.Orders
+                .AsNoTracking()
+                .Include(order => order.SalesRep)
+                .Include(order => order.OrderItems)
+                    .ThenInclude(item => item.Recipe)
+                        .ThenInclude(recipe => recipe.ProductionProductType)
+                            .ThenInclude(productType => productType!.ProductionCategory)
+                .Where(order => order.OrderDate >= start
+                    && order.OrderDate < endExclusive
+                    && order.Status != (int)OrderStatus.Cancelled)
+                .ToList();
+
+            foreach (var order in orders)
+            {
+                foreach (var item in order.OrderItems)
+                {
+                    var category = item.Recipe?.ProductionProductType?.ProductionCategory;
+                    facts.Add(new DashboardFact
+                    {
+                        Date = order.OrderDate.Date,
+                        RepId = order.SalesRepId ?? 0,
+                        RepName = order.SalesRepName ?? "Unassigned Rep",
+                        Route = order.SalesRep?.RouteName ?? string.Empty,
+                        Terminal = order.PosTerminalCode ?? string.Empty,
+                        RecipeId = item.RecipeId,
+                        ProductCode = item.Recipe?.Code ?? string.Empty,
+                        ProductName = item.ProductName,
+                        ProductionCategoryId = category?.Id ?? 0,
+                        ProductionCategoryName = category?.Name ?? "Uncategorised",
+                        OutputUnit = item.Recipe?.OutputUnit ?? "units",
+                        UnitPrice = item.UnitPrice,
+                        OrdersPlaced = item.Quantity,
+                        ExpectedRevenue = 0m
+                    });
+                }
             }
 
             var batches = _db.ProductionBatches

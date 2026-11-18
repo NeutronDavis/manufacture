@@ -29,21 +29,6 @@
         </div>
     </div>
 
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <div class="alert alert-success shadow-xs rounded-2xl text-xs py-3">
-            <i class="fa-solid fa-circle-check text-base"></i>
-            <span class="font-medium">@TempData["SuccessMessage"]</span>
-        </div>
-    }
-    @if (TempData["ErrorMessage"] != null)
-    {
-        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3">
-            <i class="fa-solid fa-circle-xmark text-base"></i>
-            <span class="font-medium">@TempData["ErrorMessage"]</span>
-        </div>
-    }
-
     <!-- Search & Status Filter Toolbar -->
     <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4 space-y-3">
         <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
