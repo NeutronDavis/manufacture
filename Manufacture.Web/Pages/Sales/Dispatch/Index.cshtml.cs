@@ -11,18 +11,26 @@ namespace Manufacture.Pages.Sales.Dispatch
     {
         private readonly ISalesService _salesService;
         private readonly IEmployeeService _employeeService;
+        private readonly IFleetDispatchService _fleetDispatchService;
         private readonly RbacCache _rbacService;
 
-        public IndexModel(ISalesService salesService, IEmployeeService employeeService, RbacCache rbacService)
+        public IndexModel(
+            ISalesService salesService,
+            IEmployeeService employeeService,
+            IFleetDispatchService fleetDispatchService,
+            RbacCache rbacService)
         {
             _salesService = salesService;
             _employeeService = employeeService;
+            _fleetDispatchService = fleetDispatchService;
             _rbacService = rbacService;
         }
 
         public List<DailyRepRouteSheet> RouteSheets { get; set; } = new();
         public DailyRepRouteSheet? SelectedSheet { get; set; }
         public List<SalesRepProfile> Reps { get; set; } = new();
+        public List<FleetDispatchDto> AvailableDispatches { get; set; } = new();
+        public List<SupermarketAccount> Supermarkets { get; set; } = new();
         public List<EmployeeDto> LogisticsEmployees { get; set; } = new();
 
         [BindProperty(SupportsGet = true)]
@@ -72,6 +80,8 @@ namespace Manufacture.Pages.Sales.Dispatch
                 || _rbacService.CanCreate(UserRole, "Dispatch");
 
             Reps = await _salesService.GetSalesRepsAsync(cancellationToken: cancellationToken);
+            Supermarkets = await _salesService.GetSupermarketAccountsAsync(cancellationToken: cancellationToken);
+            AvailableDispatches = await _fleetDispatchService.GetAvailableForSalesRouteAsync(cancellationToken);
             if (IsSalesRep && CurrentSalesRep != null)
             {
                 Reps = Reps.Where(r => r.Id == CurrentSalesRep.Id).ToList();
@@ -136,6 +146,8 @@ namespace Manufacture.Pages.Sales.Dispatch
             int newRepId,
             DateTime sheetDate,
             Dictionary<int, int> requested,
+            int[]? supermarketAccountIds,
+            int? fleetDispatchId,
             CancellationToken cancellationToken = default)
         {
             var role = HttpContext.Session.GetString("UserRole") ?? string.Empty;
@@ -153,7 +165,13 @@ namespace Manufacture.Pages.Sales.Dispatch
 
             try
             {
-                var sheet = await _salesService.CreateRouteSheetAsync(newRepId, sheetDate, requested, cancellationToken);
+                var sheet = await _salesService.CreateRouteSheetAsync(
+                    newRepId,
+                    sheetDate,
+                    requested,
+                    supermarketAccountIds ?? Array.Empty<int>(),
+                    fleetDispatchId,
+                    cancellationToken);
                 TempData["SuccessMessage"] = $"Created new route sheet {sheet.RouteSheetRef} for {sheet.RepName}.";
                 return RedirectToPage(new { sheetId = sheet.Id, FilterDate = sheetDate, repId = newRepId });
             }
@@ -162,6 +180,29 @@ namespace Manufacture.Pages.Sales.Dispatch
                 TempData["ErrorMessage"] = ex.Message;
                 return RedirectToPage();
             }
+        }
+
+        public async Task<IActionResult> OnPostUpdateSupermarketsAsync(
+            int sheetId,
+            int[]? supermarketAccountIds,
+            CancellationToken cancellationToken = default)
+        {
+            if (!await CanManageSheetAsync(sheetId, cancellationToken))
+            {
+                TempData["ErrorMessage"] = "You can only change supermarkets on your own daily route sheets.";
+                return RedirectToPage(new { FilterDate, RepId });
+            }
+
+            var success = await _salesService.UpdateRouteSheetSupermarketsAsync(
+                sheetId,
+                supermarketAccountIds ?? Array.Empty<int>(),
+                cancellationToken);
+
+            TempData[success ? "SuccessMessage" : "ErrorMessage"] = success
+                ? "Supermarkets on this dispatch route updated."
+                : "Supermarkets can only be changed while the route sheet is still awaiting dispatch.";
+
+            return RedirectToPage(new { sheetId, FilterDate, RepId });
         }
 
         public async Task<IActionResult> OnPostDeleteSheetAsync(int sheetId, CancellationToken cancellationToken = default)

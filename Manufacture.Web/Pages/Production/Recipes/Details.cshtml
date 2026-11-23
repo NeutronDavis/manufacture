@@ -50,6 +50,17 @@
                     <i class="fa-solid fa-layer-group text-xs"></i> Log Daily Output
                 </a>
             }
+
+            @if (Model.IsSuperAdmin)
+            {
+                <form method="post" asp-page-handler="Delete" asp-route-id="@Model.Recipe.Id"
+                      onsubmit="return confirm('Permanently delete this recipe? This cannot be undone.');"
+                      class="inline-flex">
+                    <button type="submit" class="btn btn-sm btn-outline btn-error rounded-xl gap-1.5 text-xs font-semibold">
+                        <i class="fa-solid fa-trash-can text-xs"></i> Delete Recipe
+                    </button>
+                </form>
+            }
         </div>
     </div>
 

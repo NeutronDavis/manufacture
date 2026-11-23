@@ -123,14 +123,6 @@ namespace Manufacture.Models.DTOs
             && Status is CharterQuoteStatus.PendingApproval or CharterQuoteStatus.Approved;
     }
 
-    public enum FleetDispatchPurpose
-    {
-        ProductionDelivery = 0,
-        PreOrderDelivery = 1,
-        InternalTransfer = 2,
-        Other = 3
-    }
-
     public enum FleetDispatchStatus
     {
         Planned = 0,
@@ -192,9 +184,11 @@ namespace Manufacture.Models.DTOs
         public int? DriverEmployeeId { get; set; }
         public string DriverName { get; set; } = string.Empty;
 
-        public FleetDispatchPurpose Purpose { get; set; } = FleetDispatchPurpose.ProductionDelivery;
+        [Required(ErrorMessage = "Enter the purpose of this dispatch.")]
+        [StringLength(200)]
+        public string Purpose { get; set; } = string.Empty;
+
         public FleetDispatchStatus Status { get; set; } = FleetDispatchStatus.Planned;
-        public decimal? OdometerStart { get; set; }
         public decimal? OdometerEnd { get; set; }
         [StringLength(1000)]
         public string Notes { get; set; } = string.Empty;

@@ -828,7 +828,7 @@ namespace Manufacture.Services
                 VehicleRegNumber = rep1.VehicleRegistration,
                 RouteName = rep1.RouteName,
                 PosTerminalCode = rep1.PosTerminalCode,
-                PreviousAccountBalance = 22000m,
+                PreviousAccountBalance = 0m,
                 Status = RouteSheetStatus.LoadedOnRoute,
                 SignedOffByDispatcher = "Kelechi Nnamdi (Dispatch Mgr)",
                 SignedOffAt = today.AddHours(7).AddMinutes(30),
@@ -864,7 +864,7 @@ namespace Manufacture.Services
                 VehicleRegNumber = rep2.VehicleRegistration,
                 RouteName = rep2.RouteName,
                 PosTerminalCode = rep2.PosTerminalCode,
-                PreviousAccountBalance = 10000m,
+                PreviousAccountBalance = 0m,
                 Status = RouteSheetStatus.Ordered,
                 Notes = "Island route: awaiting vehicle bay release.",
                 Items = skus.Select(sku =>
@@ -898,7 +898,7 @@ namespace Manufacture.Services
                 VehicleRegNumber = rep3.VehicleRegistration,
                 RouteName = rep3.RouteName,
                 PosTerminalCode = rep3.PosTerminalCode,
-                PreviousAccountBalance = 15000m,
+                PreviousAccountBalance = 0m,
                 CashCollected = 75000m,
                 BankTransferCollected = 60000m,
                 PosTerminalCollected = 14500m,
@@ -964,9 +964,6 @@ namespace Manufacture.Services
                 .OrderByDescending(s => s.Date)
                 .FirstOrDefault();
 
-            // Previous balance
-            decimal prevBalance = previousSheet?.NewOutstandingAccountBalance ?? 0m;
-
             var sheet = new DailyRepRouteSheet
             {
                 Id = _routeSheets.Any() ? _routeSheets.Max(s => s.Id) + 1 : 1,
@@ -978,7 +975,7 @@ namespace Manufacture.Services
                 VehicleRegNumber = rep.VehicleRegistration,
                 RouteName = rep.RouteName,
                 PosTerminalCode = rep.PosTerminalCode,
-                PreviousAccountBalance = prevBalance,
+                PreviousAccountBalance = 0m,
                 Status = RouteSheetStatus.Ordered,
                 Notes = $"Daily route order for {rep.FullName}"
             };
@@ -1083,7 +1080,6 @@ namespace Manufacture.Services
                         nextItem.YesterdayClosingStock = item.QtyReturned;
                     }
                 }
-                nextDaySheet.PreviousAccountBalance = sheet.NewOutstandingAccountBalance;
             }
 
             return true;

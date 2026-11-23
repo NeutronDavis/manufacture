@@ -152,9 +152,7 @@
                             <th>Target</th>
                             <th>Actual Output</th>
                             <th>Yield Variance</th>
-                            <th class="text-right">Unit Cost</th>
                             <th>Status</th>
-                            <th>Notes</th>
                             <th class="text-center pr-4">Action</th>
                         </tr>
                     </thead>
@@ -174,7 +172,7 @@
                                 data-cost="@batch.TotalBatchCost"
                                 data-actual="@batch.ActualQuantity"
                                 data-target="@batch.TargetQuantity"
-                                data-search="@batch.BatchNumber.ToLower() @batch.RecipeName.ToLower() @batch.BakerInCharge.ToLower() @batch.Shift.ToLower() @categoryName.ToLower() @batch.Status.ToString().ToLower() @(batch.Notes ?? "").ToLower()">
+                                data-search="@batch.BatchNumber.ToLower() @batch.RecipeName.ToLower() @batch.BakerInCharge.ToLower() @batch.Shift.ToLower() @categoryName.ToLower() @batch.Status.ToString().ToLower()">
                                 <td class="font-mono text-xs font-black py-3 pl-4">
                                     <a asp-page="/Production/Batches/Details" asp-route-id="@batch.Id" class="text-primary hover:underline flex items-center gap-1.5" title="View batch details">
                                         <i class="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-60"></i>
@@ -228,19 +226,7 @@
                                         <span class="badge badge-warning badge-soft badge-xs font-mono">Pending</span>
                                     }
                                 </td>
-                                <td class="font-mono text-right text-[10px] leading-tight">
-                                    @if (batch.CalculatedUnitCost > 0)
-                                    {
-                                        <div class="font-bold text-amber-700 text-xs">₦@batch.CalculatedUnitCost.ToString("N2") <span class="text-[9px] font-normal opacity-60">/ @unitLabel</span></div>
-                                        <div class="opacity-60 text-[10px]">batch ₦@batch.TotalBatchCost.ToString("N0")</div>
-                                    }
-                                    else
-                                    {
-                                        <span class="opacity-40">—</span>
-                                    }
-                                </td>
                                 <td><span class="badge badge-soft badge-xs font-semibold">@batch.Status</span></td>
-                                <td class="text-xs opacity-70 max-w-xs truncate" title="@batch.Notes">@batch.Notes</td>
                                 <td class="text-center pr-4 whitespace-nowrap">
                                     @if (batch.ActualQuantity == 0 || batch.Status != Manufacture.Models.Domain.BatchStatus.Completed)
                                     {

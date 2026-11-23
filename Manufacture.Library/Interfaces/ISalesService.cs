@@ -78,7 +78,13 @@ namespace Manufacture.Library.Interfaces
 
         Task<DailyRepRouteSheet?> GetRouteSheetAsync(int id, CancellationToken cancellationToken = default);
 
-        Task<DailyRepRouteSheet> CreateRouteSheetAsync(int repId, DateTime date, Dictionary<int, int>? requestedQuantities = null, CancellationToken cancellationToken = default);
+        Task<DailyRepRouteSheet> CreateRouteSheetAsync(int repId, DateTime date, Dictionary<int, int>? requestedQuantities = null, IReadOnlyCollection<int>? supermarketAccountIds = null, int? fleetDispatchId = null, CancellationToken cancellationToken = default);
+
+        Task<bool> UpdateRouteSheetSupermarketsAsync(int sheetId, IReadOnlyCollection<int> accountIds, CancellationToken cancellationToken = default);
+
+        Task<bool> SaveRouteSheetSupermarketDebtsAsync(int routeSheetId, IReadOnlyDictionary<int, decimal> debtAmounts, IReadOnlyCollection<int> settledAccountIds, string recordedBy, CancellationToken cancellationToken = default);
+
+        Task<List<SalesRepRouteDebtorDto>> GetSalesRepRouteDebtorsAsync(int salesRepId, CancellationToken cancellationToken = default);
 
         Task<bool> SignOffDispatchAsync(int sheetId, Dictionary<int, int> loadedQuantities, string dispatcherName, string notes, CancellationToken cancellationToken = default);
 

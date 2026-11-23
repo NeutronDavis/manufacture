@@ -431,6 +431,90 @@
                     <i class="fa-solid fa-clock-rotate-left"></i> Book Next-Day Pre-Order
                 </a>
             </div>
+
+            <!-- Supermarket debtors recorded on this rep's dispatch routes -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3 flex-wrap gap-2">
+                    <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-store text-error"></i> Supermarket Debtors by Route
+                    </h2>
+                    <div class="flex items-center gap-2">
+                        <span class="badge badge-error badge-soft badge-xs font-bold font-mono">₦@Model.MyRouteDebtors.Sum(d => d.TotalDebt).ToString("N0") owed</span>
+                        <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.MyRouteDebtors.Count dispatches</span>
+                    </div>
+                </div>
+
+                <p class="text-[11px] opacity-70">
+                    Debts recorded at reconciliation for dispatches you created. Settled stores are excluded; the account balance is the store's total running credit.
+                </p>
+
+                @if (Model.MyRouteDebtors.Any())
+                {
+                    @foreach (var routeGroup in Model.MyRouteDebtors.GroupBy(d => d.RouteName))
+                    {
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between gap-2 pt-1">
+                                <h3 class="text-[11px] font-black uppercase tracking-wider text-base-content flex items-center gap-1.5">
+                                    <i class="fa-solid fa-route text-primary text-[10px]"></i> @routeGroup.Key
+                                </h3>
+                                <span class="badge badge-ghost badge-xs font-mono font-bold">₦@routeGroup.Sum(d => d.TotalDebt).ToString("N0")</span>
+                            </div>
+
+                            @foreach (var dispatch in routeGroup)
+                            {
+                                <div class="rounded-xl border border-base-300 bg-base-200/40 p-3 space-y-2">
+                                    <div class="flex items-center justify-between gap-2 flex-wrap">
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <span class="font-mono font-bold text-xs text-base-content">@dispatch.RouteSheetRef</span>
+                                            <span class="text-[10px] opacity-60 font-mono">@dispatch.RouteDate.ToString("yyyy-MM-dd")</span>
+                                            <span class="badge badge-xs font-bold @(dispatch.Status == "Reconciled" ? "badge-success" : "badge-info")">@dispatch.Status</span>
+                                        </div>
+                                        <span class="font-mono font-bold text-xs text-error">₦@dispatch.TotalDebt.ToString("N0")</span>
+                                    </div>
+
+                                    <div class="overflow-x-auto">
+                                        <table class="table table-xs w-full text-[11px]">
+                                            <thead>
+                                                <tr class="opacity-60 uppercase text-[9px] tracking-wider">
+                                                    <th class="py-1.5 pl-2">Supermarket</th>
+                                                    <th>Contact</th>
+                                                    <th class="text-right">Dispatch Debt</th>
+                                                    <th class="text-right">Account Balance</th>
+                                                    <th class="text-right pr-2">Recorded</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-base-200">
+                                                @foreach (var line in dispatch.Debtors)
+                                                {
+                                                    <tr class="hover:bg-base-100/60">
+                                                        <td class="py-1.5 pl-2 font-semibold text-base-content">@line.AccountName</td>
+                                                        <td class="text-[10px] opacity-70">
+                                                            @(string.IsNullOrWhiteSpace(line.ContactPerson) ? "—" : line.ContactPerson)
+                                                            @if (!string.IsNullOrWhiteSpace(line.PhoneNumber))
+                                                            {
+                                                                <span> &bull; @line.PhoneNumber</span>
+                                                            }
+                                                        </td>
+                                                        <td class="text-right font-mono font-bold text-error">₦@line.DebtAmount.ToString("N0")</td>
+                                                        <td class="text-right font-mono">₦@line.CurrentOutstandingCredit.ToString("N0")</td>
+                                                        <td class="text-right pr-2 text-[10px] opacity-60 font-mono">@line.RecordedAt.ToString("MMM dd, HH:mm")</td>
+                                                    </tr>
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="p-4 rounded-xl bg-base-200/60 border border-base-300 text-xs opacity-70">
+                        No outstanding supermarket debts on your routes.
+                    </div>
+                }
+            </div>
         </div>
     }
 

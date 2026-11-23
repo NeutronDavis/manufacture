@@ -130,7 +130,7 @@ namespace Manufacture.Tests
         }
 
         [Fact]
-        public void ReconcileDailyRepAccount_CalculatesExpectedRevenueAndCarriesOverBalance()
+        public void ReconcileDailyRepAccount_IgnoresPriorDebt()
         {
             // Arrange
             var date = DateTime.UtcNow.Date.AddDays(15);
@@ -165,8 +165,8 @@ namespace Manufacture.Tests
             Assert.Equal(63000m, sheet.TotalExpectedSalesRevenue);
             Assert.Equal(63000m, sheet.TotalPaymentsCollectedToday);
 
-            // New Balance = Previous (20,000) + Expected (63,000) - Paid (63,000) = 20,000
-            Assert.Equal(20000m, sheet.NewOutstandingAccountBalance);
+            // New Balance = Gross Sales (63,000) - Paid (63,000) = 0; prior debt is ignored.
+            Assert.Equal(0m, sheet.NewOutstandingAccountBalance);
         }
 
         [Fact]

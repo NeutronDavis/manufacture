@@ -341,6 +341,54 @@ namespace Manufacture.Services
             return true;
         }
 
+        public string? GetRecipeDeleteBlocker(int id)
+        {
+            var recipeName = _db.Recipes
+                .Where(r => r.Id == id)
+                .Select(r => r.Name)
+                .FirstOrDefault();
+
+            if (recipeName == null) return "Recipe not found.";
+
+            var links = new List<string>();
+
+            var batches = _db.ProductionBatches.Count(b => b.RecipeId == id);
+            if (batches > 0) links.Add($"{batches} production batch{(batches == 1 ? string.Empty : "es")}");
+
+            var orderItems = _db.OrderItems.Count(i => i.RecipeId == id);
+            if (orderItems > 0) links.Add($"{orderItems} order line{(orderItems == 1 ? string.Empty : "s")}");
+
+            var defects = _db.ProductionDefects.Count(d => d.RecipeId == id);
+            if (defects > 0) links.Add($"{defects} defect record{(defects == 1 ? string.Empty : "s")}");
+
+            var returns = _db.CustomerReturns.Count(r => r.RecipeId == id);
+            if (returns > 0) links.Add($"{returns} customer return{(returns == 1 ? string.Empty : "s")}");
+
+            var routeSheetItems = _db.RouteSheetItems.Count(i => i.RecipeId == id);
+            if (routeSheetItems > 0) links.Add($"{routeSheetItems} route sheet line{(routeSheetItems == 1 ? string.Empty : "s")}");
+
+            var accountPrices = _db.SupermarketAccountPrices.Count(p => p.RecipeId == id);
+            if (accountPrices > 0) links.Add($"{accountPrices} supermarket price entr{(accountPrices == 1 ? "y" : "ies")}");
+
+            if (links.Count == 0) return null;
+
+            return $"'{recipeName}' cannot be permanently deleted because it is referenced by " +
+                   $"{string.Join(", ", links)}. Deactivate it instead to keep production history intact.";
+        }
+
+        public bool DeleteRecipe(int id)
+        {
+            var recipe = _db.Recipes
+                .Include(r => r.RecipeIngredients)
+                .FirstOrDefault(r => r.Id == id);
+
+            if (recipe == null) return false;
+
+            _db.Recipes.Remove(recipe);
+            _db.SaveChanges();
+            return true;
+        }
+
         private List<RecipeIngredientEntity> BuildRecipeLines(
             IEnumerable<RecipeIngredientInputDto>? inputs,
             int recipeId,

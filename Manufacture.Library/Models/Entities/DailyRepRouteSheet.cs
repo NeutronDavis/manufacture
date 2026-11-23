@@ -19,6 +19,8 @@ public partial class DailyRepRouteSheet
 
     public string? VehicleRegistration { get; set; }
 
+    public int? FleetDispatchId { get; set; }
+
     public int? PosTerminalId { get; set; }
 
     public string? PosTerminalCode { get; set; }
@@ -57,7 +59,13 @@ public partial class DailyRepRouteSheet
 
     public virtual PosTerminal? PosTerminal { get; set; }
 
+    public virtual FleetDispatch? FleetDispatch { get; set; }
+
     public virtual ICollection<RouteSheetItem> RouteSheetItems { get; set; } = new List<RouteSheetItem>();
+
+    public virtual ICollection<RouteSheetSupermarket> RouteSheetSupermarkets { get; set; } = new List<RouteSheetSupermarket>();
+
+    public virtual ICollection<RouteSheetSupermarketDebt> RouteSheetSupermarketDebts { get; set; } = new List<RouteSheetSupermarketDebt>();
 
     public virtual SalesRep SalesRep { get; set; } = null!;
 

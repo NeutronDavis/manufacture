@@ -1117,6 +1117,33 @@ END;
 GO
 
 /* -------------------------------------------------------------------------
+   Fleet dispatch purpose: one-time conversion from the old integer enum
+   (0 = ProductionDelivery, 1 = PreOrderDelivery, 2 = InternalTransfer,
+   3 = Other) to free text. Idempotent: only matches the legacy values.
+   ------------------------------------------------------------------------- */
+
+UPDATE [dbo].[FleetDispatches]
+SET [Purpose] = CASE [Purpose]
+    WHEN N'0' THEN N'Production Delivery'
+    WHEN N'1' THEN N'Pre-Order Delivery'
+    WHEN N'2' THEN N'Internal Transfer'
+    WHEN N'3' THEN N'Other'
+    ELSE [Purpose]
+END
+WHERE [Purpose] IN (N'0', N'1', N'2', N'3');
+GO
+
+/* -------------------------------------------------------------------------
+   Prior debt is no longer part of daily reconciliation. Zero the legacy
+   carried-forward balances so no stale amount can reappear in reports.
+   ------------------------------------------------------------------------- */
+
+UPDATE [dbo].[DailyRepRouteSheets]
+SET [PreviousAccountBalance] = 0
+WHERE [PreviousAccountBalance] <> 0;
+GO
+
+/* -------------------------------------------------------------------------
    Fleet seed data
    ------------------------------------------------------------------------- */
 

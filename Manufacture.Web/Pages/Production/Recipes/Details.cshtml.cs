@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Manufacture.Library.Interfaces;
 using Manufacture.Models.DTOs;
@@ -24,10 +25,12 @@ namespace Manufacture.Pages.Production.Recipes
         public RecipeCostingResultDto Costing { get; set; } = new();
         public List<ProductionBatch> RecentBatches { get; set; } = new();
         public string UserRole { get; set; } = string.Empty;
+        public bool IsSuperAdmin =>
+            string.Equals(UserRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase);
 
         public void OnGet(int id)
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
+            LoadRole();
             var recipe = _productionService.GetRecipeById(id);
             if (recipe == null)
             {
@@ -41,6 +44,45 @@ namespace Manufacture.Pages.Production.Recipes
                 .Where(b => b.RecipeId == recipe.Id)
                 .Take(5)
                 .ToList();
+        }
+
+        public IActionResult OnPostDelete(int id)
+        {
+            LoadRole();
+
+            if (!IsSuperAdmin)
+            {
+                TempData["ErrorMessage"] = "Only a Super Admin can delete a recipe.";
+                return RedirectToPage(new { id });
+            }
+
+            var recipe = _productionService.GetRecipeById(id);
+            if (recipe == null)
+            {
+                TempData["ErrorMessage"] = "Recipe not found.";
+                return RedirectToPage("/Production/Recipes/Index");
+            }
+
+            var blocker = _productionService.GetRecipeDeleteBlocker(id);
+            if (!string.IsNullOrWhiteSpace(blocker))
+            {
+                TempData["ErrorMessage"] = blocker;
+                return RedirectToPage(new { id });
+            }
+
+            if (!_productionService.DeleteRecipe(id))
+            {
+                TempData["ErrorMessage"] = $"Unable to delete recipe '{recipe.Name}'.";
+                return RedirectToPage(new { id });
+            }
+
+            TempData["SuccessMessage"] = $"Recipe '{recipe.Name}' was permanently deleted.";
+            return RedirectToPage("/Production/Recipes/Index");
+        }
+
+        private void LoadRole()
+        {
+            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
         }
     }
 }

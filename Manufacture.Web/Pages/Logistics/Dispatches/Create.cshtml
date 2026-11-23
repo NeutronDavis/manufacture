@@ -25,10 +25,14 @@
         <div class="lg:col-span-8 space-y-6">
             <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">
                 <h2 class="text-sm font-black text-base-content border-b border-base-200 pb-3">Dispatch Details</h2>
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="form-control"><label class="label pb-1"><span class="label-text text-xs font-bold">Dispatch Date</span></label><input asp-for="DispatchInput.DispatchDate" type="date" class="input input-sm input-bordered rounded-xl text-xs font-mono" required /></div>
-                    <div class="form-control"><label class="label pb-1"><span class="label-text text-xs font-bold">Purpose</span></label><select asp-for="DispatchInput.Purpose" class="select select-sm select-bordered rounded-xl text-xs">@foreach (var p in Enum.GetValues<FleetDispatchPurpose>()) { <option value="@p">@p</option> }</select></div>
-                    <div class="form-control"><label class="label pb-1"><span class="label-text text-xs font-bold">Odometer Start</span></label><input asp-for="DispatchInput.OdometerStart" type="number" step="0.01" min="0" class="input input-sm input-bordered rounded-xl text-xs font-mono" /></div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-xs font-bold">Purpose</span></label>
+                        <input asp-for="DispatchInput.Purpose" type="text" maxlength="200" class="input input-sm input-bordered rounded-xl text-xs" placeholder="e.g. Production delivery — Ikeja route" required />
+                        <span asp-validation-for="DispatchInput.Purpose" class="text-error text-[10px]"></span>
+                        <span class="text-[10px] opacity-60 mt-1">Describe this movement in your own words.</span>
+                    </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="form-control"><label class="label pb-1"><span class="label-text text-xs font-bold">Vehicle</span></label><select asp-for="DispatchInput.VehicleId" id="dispatchVehicle" class="select select-sm select-bordered rounded-xl text-xs" onchange="syncDispatchDriver()">@foreach (var v in Model.Vehicles) { <option value="@v.Id" data-driver-id="@v.AssignedEmployeeId">@v.RegistrationNumber - @v.MakeAndModel (@v.Status)</option> }</select></div>

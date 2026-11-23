@@ -498,8 +498,8 @@ namespace Manufacture.Services
                     Transfer = sheet.BankTransferCollected,
                     PosBank = sheet.PosTerminalCollected,
                     Outstanding = sheet.NewOutstandingAccountBalance
-                        ?? Math.Max(0m, sheet.PreviousAccountBalance + sheet.TotalExpectedSalesRevenue
-                            - sheet.CashCollected - sheet.BankTransferCollected - sheet.PosTerminalCollected),
+                        ?? sheet.TotalExpectedSalesRevenue
+                            - sheet.CashCollected - sheet.BankTransferCollected - sheet.PosTerminalCollected,
                     IsFinanceOnly = true
                 });
             }

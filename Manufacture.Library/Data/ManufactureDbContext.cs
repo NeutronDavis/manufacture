@@ -88,6 +88,10 @@ public partial class ManufactureDbContext : DbContext
 
     public virtual DbSet<RouteSheetItem> RouteSheetItems { get; set; }
 
+    public virtual DbSet<RouteSheetSupermarket> RouteSheetSupermarkets { get; set; }
+
+    public virtual DbSet<RouteSheetSupermarketDebt> RouteSheetSupermarketDebts { get; set; }
+
     public virtual DbSet<SalaryAdvance> SalaryAdvances { get; set; }
 
     public virtual DbSet<SalesBonusRule> SalesBonusRules { get; set; }
@@ -361,7 +365,11 @@ public partial class ManufactureDbContext : DbContext
 
             entity.HasIndex(e => e.RouteSheetRef, "UQ_DailyRepRouteSheets_Ref").IsUnique();
 
-            entity.HasIndex(e => new { e.SalesRepId, e.RouteDate }, "UQ_DailyRepRouteSheets_Rep_Date").IsUnique();
+            entity.HasIndex(e => new { e.SalesRepId, e.RouteDate }, "IX_DailyRepRouteSheets_Rep_Date").IsDescending(false, true);
+
+            entity.HasIndex(e => e.FleetDispatchId, "UQ_DailyRepRouteSheets_FleetDispatch")
+                .IsUnique()
+                .HasFilter("([FleetDispatchId] IS NOT NULL)");
 
             entity.Property(e => e.BankTransferCollected).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.CashCollected).HasColumnType("decimal(18, 2)");
@@ -369,7 +377,7 @@ public partial class ManufactureDbContext : DbContext
                 .HasPrecision(3)
                 .HasDefaultValueSql("(sysutcdatetime())", "DF_DailyRepRouteSheets_CreatedAt");
             entity.Property(e => e.NewOutstandingAccountBalance)
-                .HasComputedColumnSql("(([PreviousAccountBalance]+[TotalExpectedSalesRevenue])-(([CashCollected]+[BankTransferCollected])+[PosTerminalCollected]))", true)
+                .HasComputedColumnSql("([TotalExpectedSalesRevenue]-(([CashCollected]+[BankTransferCollected])+[PosTerminalCollected]))", true)
                 .HasColumnType("decimal(21, 2)");
             entity.Property(e => e.Notes)
                 .HasMaxLength(500)
@@ -407,6 +415,11 @@ public partial class ManufactureDbContext : DbContext
             entity.HasOne(d => d.Vehicle).WithMany(p => p.DailyRepRouteSheets)
                 .HasForeignKey(d => d.VehicleId)
                 .HasConstraintName("FK_DailyRepRouteSheets_Vehicles");
+
+            entity.HasOne(d => d.FleetDispatch).WithOne(p => p.DailyRepRouteSheet)
+                .HasForeignKey<DailyRepRouteSheet>(d => d.FleetDispatchId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_DailyRepRouteSheets_FleetDispatches");
         });
 
         modelBuilder.Entity<Department>(entity =>
@@ -522,9 +535,10 @@ public partial class ManufactureDbContext : DbContext
             entity.Property(e => e.DriverName)
                 .HasMaxLength(150)
                 .HasDefaultValue("", "DF_FleetDispatches_DriverName");
-            entity.Property(e => e.Purpose).HasDefaultValue(0, "DF_FleetDispatches_Purpose");
+            entity.Property(e => e.Purpose)
+                .HasMaxLength(200)
+                .HasDefaultValue("", "DF_FleetDispatches_Purpose");
             entity.Property(e => e.Status).HasDefaultValue(0, "DF_FleetDispatches_Status");
-            entity.Property(e => e.OdometerStart).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.OdometerEnd).HasColumnType("decimal(18, 2)");
             entity.Property(e => e.Notes)
                 .HasMaxLength(1000)
@@ -1479,6 +1493,54 @@ public partial class ManufactureDbContext : DbContext
             entity.HasOne(d => d.RouteSheet).WithMany(p => p.RouteSheetItems)
                 .HasForeignKey(d => d.RouteSheetId)
                 .HasConstraintName("FK_RouteSheetItems_DailyRepRouteSheets");
+        });
+
+        modelBuilder.Entity<RouteSheetSupermarket>(entity =>
+        {
+            entity.HasIndex(e => e.SupermarketAccountId, "IX_RouteSheetSupermarkets_SupermarketAccountId");
+
+            entity.HasIndex(e => new { e.RouteSheetId, e.SupermarketAccountId }, "UQ_RouteSheetSupermarkets_RouteSheet_Account").IsUnique();
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_RouteSheetSupermarkets_CreatedAt");
+
+            entity.HasOne(d => d.RouteSheet).WithMany(p => p.RouteSheetSupermarkets)
+                .HasForeignKey(d => d.RouteSheetId)
+                .HasConstraintName("FK_RouteSheetSupermarkets_DailyRepRouteSheets");
+
+            entity.HasOne(d => d.SupermarketAccount).WithMany(p => p.RouteSheetSupermarkets)
+                .HasForeignKey(d => d.SupermarketAccountId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_RouteSheetSupermarkets_SupermarketAccounts");
+        });
+
+        modelBuilder.Entity<RouteSheetSupermarketDebt>(entity =>
+        {
+            entity.HasIndex(e => e.SupermarketAccountId, "IX_RouteSheetSupermarketDebts_SupermarketAccountId");
+
+            entity.HasIndex(e => new { e.RouteSheetId, e.SupermarketAccountId }, "UQ_RouteSheetSupermarketDebts_RouteSheet_Account").IsUnique();
+
+            entity.Property(e => e.AppliedCredit).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.DebtAmount).HasColumnType("decimal(18, 2)");
+            entity.Property(e => e.RecordedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_RouteSheetSupermarketDebts_RecordedAt");
+            entity.Property(e => e.RecordedBy)
+                .HasMaxLength(150)
+                .HasDefaultValue("", "DF_RouteSheetSupermarketDebts_RecordedBy");
+            entity.Property(e => e.UpdatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_RouteSheetSupermarketDebts_UpdatedAt");
+
+            entity.HasOne(d => d.RouteSheet).WithMany(p => p.RouteSheetSupermarketDebts)
+                .HasForeignKey(d => d.RouteSheetId)
+                .HasConstraintName("FK_RouteSheetSupermarketDebts_DailyRepRouteSheets");
+
+            entity.HasOne(d => d.SupermarketAccount).WithMany(p => p.RouteSheetSupermarketDebts)
+                .HasForeignKey(d => d.SupermarketAccountId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_RouteSheetSupermarketDebts_SupermarketAccounts");
         });
 
         modelBuilder.Entity<SalaryAdvance>(entity =>

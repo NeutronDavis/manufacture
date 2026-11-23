@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using Manufacture.Library.Calculations;
 using Manufacture.Library.Data;
 using Manufacture.Library.Interfaces;
 using Manufacture.Models.Domain;
@@ -16,6 +17,8 @@ using ProductionProductTypeEntity = Manufacture.Models.Entities.ProductionProduc
 using RecipeEntity = Manufacture.Models.Entities.Recipe;
 using RouteSheetEntity = Manufacture.Models.Entities.DailyRepRouteSheet;
 using RouteSheetItemEntity = Manufacture.Models.Entities.RouteSheetItem;
+using RouteSheetSupermarketEntity = Manufacture.Models.Entities.RouteSheetSupermarket;
+using RouteSheetSupermarketDebtEntity = Manufacture.Models.Entities.RouteSheetSupermarketDebt;
 using SalesBonusRuleEntity = Manufacture.Models.Entities.SalesBonusRule;
 using SalesRepEntity = Manufacture.Models.Entities.SalesRep;
 using SupermarketAccountEntity = Manufacture.Models.Entities.SupermarketAccount;
@@ -1035,8 +1038,14 @@ namespace Manufacture.Services
             var query = _db.DailyRepRouteSheets
                 .AsNoTracking()
                 .Include(s => s.RouteSheetItems)
+                .Include(s => s.RouteSheetSupermarkets)
+                .ThenInclude(x => x.SupermarketAccount)
+                .Include(s => s.RouteSheetSupermarketDebts)
+                .ThenInclude(x => x.SupermarketAccount)
                 .Include(s => s.SalesRep)
                 .Include(s => s.Vehicle)
+                .Include(s => s.FleetDispatch)
+                .ThenInclude(f => f!.Vehicle)
                 .AsQueryable();
 
             if (date.HasValue)
@@ -1068,8 +1077,14 @@ namespace Manufacture.Services
             var sheet = await _db.DailyRepRouteSheets
                 .AsNoTracking()
                 .Include(s => s.RouteSheetItems)
+                .Include(s => s.RouteSheetSupermarkets)
+                .ThenInclude(x => x.SupermarketAccount)
+                .Include(s => s.RouteSheetSupermarketDebts)
+                .ThenInclude(x => x.SupermarketAccount)
                 .Include(s => s.SalesRep)
                 .Include(s => s.Vehicle)
+                .Include(s => s.FleetDispatch)
+                .ThenInclude(f => f!.Vehicle)
                 .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
 
             return sheet == null ? null : MapRouteSheet(sheet);
@@ -1079,6 +1094,8 @@ namespace Manufacture.Services
             int repId,
             DateTime date,
             Dictionary<int, int>? requestedQuantities = null,
+            IReadOnlyCollection<int>? supermarketAccountIds = null,
+            int? fleetDispatchId = null,
             CancellationToken cancellationToken = default)
         {
             var rep = await _db.SalesReps
@@ -1089,17 +1106,37 @@ namespace Manufacture.Services
 
             var routeDate = DateOnly.FromDateTime(date);
 
-            // Guard: reject duplicate before hitting the unique constraint.
-            var alreadyExists = await _db.DailyRepRouteSheets
-                .AnyAsync(s => s.SalesRepId == repId && s.RouteDate == routeDate, cancellationToken);
-            if (alreadyExists)
-                throw new InvalidOperationException(
-                    $"A route sheet for {rep.FullName} on {routeDate:dd MMM yyyy} already exists. " +
-                    "You cannot create two sheets for the same rep on the same day.");
+            // A sales rep may create more than one route sheet per day.
+
+            // A daily route must ride an existing, newly created delivery dispatch.
+            if (!fleetDispatchId.HasValue || fleetDispatchId.Value <= 0)
+            {
+                throw new InvalidOperationException("Select a delivery dispatch for this route sheet.");
+            }
+
+            var fleetDispatch = await _db.FleetDispatches
+                .Include(d => d.Vehicle)
+                .FirstOrDefaultAsync(d => d.Id == fleetDispatchId.Value, cancellationToken)
+                ?? throw new InvalidOperationException("The selected delivery dispatch was not found.");
+
+            if (fleetDispatch.Status != (int)FleetDispatchStatus.Planned)
+            {
+                throw new InvalidOperationException("Only planned delivery dispatches can be linked to a route sheet.");
+            }
+
+            var fleetDispatchAlreadyLinked = await _db.DailyRepRouteSheets
+                .AnyAsync(s => s.FleetDispatchId == fleetDispatch.Id, cancellationToken);
+            if (!FleetDispatchRules.IsAvailableForRouteSheet(
+                    (FleetDispatchStatus)fleetDispatch.Status,
+                    fleetDispatchAlreadyLinked))
+            {
+                throw new InvalidOperationException("That delivery dispatch is already linked to another route sheet.");
+            }
 
             var previousSheet = await _db.DailyRepRouteSheets
                 .AsNoTracking()
                 .Include(s => s.RouteSheetItems)
+                .Include(s => s.RouteSheetSupermarkets)
                 .Where(s => s.SalesRepId == repId && s.RouteDate < routeDate)
                 .OrderByDescending(s => s.RouteDate)
                 .FirstOrDefaultAsync(cancellationToken);
@@ -1118,13 +1155,14 @@ namespace Manufacture.Services
                 RouteDate = routeDate,
                 SalesRepId = rep.Id,
                 RouteName = rep.RouteName,
-                VehicleId = rep.VehicleId,
-                VehicleRegistration = rep.Vehicle?.RegistrationNumber,
+                VehicleId = fleetDispatch.VehicleId,
+                VehicleRegistration = fleetDispatch.Vehicle?.RegistrationNumber,
+                FleetDispatchId = fleetDispatch.Id,
                 PosTerminalId = rep.PosTerminalId,
                 PosTerminalCode = rep.PosTerminal?.TerminalCode,
-                PreviousAccountBalance = previousSheet?.NewOutstandingAccountBalance ?? 0m,
+                PreviousAccountBalance = 0m,
                 Status = (int)RouteSheetStatus.Ordered,
-                Notes = $"Daily route order for {rep.FullName}",
+                Notes = $"Daily route order for {rep.FullName} · {fleetDispatch.DispatchRef}",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -1152,10 +1190,236 @@ namespace Manufacture.Services
                 });
             }
 
+            // A null selection inherits the previous day's supermarket round, so the
+            // next-day sheet created by reconciliation keeps the same stops. An
+            // explicit (possibly empty) selection replaces it.
+            var participantIds = supermarketAccountIds == null
+                ? previousSheet?.RouteSheetSupermarkets.Select(x => x.SupermarketAccountId).Distinct().ToList()
+                  ?? new List<int>()
+                : supermarketAccountIds.Distinct().ToList();
+
+            if (participantIds.Count > 0)
+            {
+                var supermarkets = await _db.SupermarketAccounts
+                    .Where(a => participantIds.Contains(a.Id) && a.IsActive)
+                    .OrderBy(a => a.AccountName)
+                    .ToListAsync(cancellationToken);
+
+                foreach (var supermarket in supermarkets)
+                {
+                    sheet.RouteSheetSupermarkets.Add(new RouteSheetSupermarketEntity
+                    {
+                        SupermarketAccountId = supermarket.Id,
+                        SupermarketAccount = supermarket,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+
             _db.DailyRepRouteSheets.Add(sheet);
             await _db.SaveChangesAsync(cancellationToken);
             sheet.SalesRep = rep;
+            sheet.FleetDispatch = fleetDispatch;
             return MapRouteSheet(sheet);
+        }
+
+        public async Task<bool> UpdateRouteSheetSupermarketsAsync(
+            int sheetId,
+            IReadOnlyCollection<int> accountIds,
+            CancellationToken cancellationToken = default)
+        {
+            var sheet = await _db.DailyRepRouteSheets
+                .Include(s => s.RouteSheetSupermarkets)
+                .FirstOrDefaultAsync(s => s.Id == sheetId, cancellationToken);
+
+            if (sheet == null || sheet.Status != (int)RouteSheetStatus.Ordered)
+            {
+                return false;
+            }
+
+            var requestedIds = (accountIds ?? Array.Empty<int>()).Distinct().ToList();
+            var validIds = requestedIds.Count == 0
+                ? new List<int>()
+                : await _db.SupermarketAccounts
+                    .Where(a => requestedIds.Contains(a.Id) && a.IsActive)
+                    .Select(a => a.Id)
+                    .ToListAsync(cancellationToken);
+
+            var existingIds = sheet.RouteSheetSupermarkets
+                .Select(x => x.SupermarketAccountId)
+                .ToHashSet();
+
+            var toRemove = sheet.RouteSheetSupermarkets
+                .Where(x => !validIds.Contains(x.SupermarketAccountId))
+                .ToList();
+
+            if (toRemove.Count > 0)
+            {
+                _db.RouteSheetSupermarkets.RemoveRange(toRemove);
+            }
+
+            foreach (var id in validIds.Where(id => !existingIds.Contains(id)))
+            {
+                sheet.RouteSheetSupermarkets.Add(new RouteSheetSupermarketEntity
+                {
+                    RouteSheetId = sheet.Id,
+                    SupermarketAccountId = id,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            sheet.UpdatedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+
+        public async Task<bool> SaveRouteSheetSupermarketDebtsAsync(
+            int routeSheetId,
+            IReadOnlyDictionary<int, decimal> debtAmounts,
+            IReadOnlyCollection<int> settledAccountIds,
+            string recordedBy,
+            CancellationToken cancellationToken = default)
+        {
+            var sheet = await _db.DailyRepRouteSheets
+                .Include(s => s.RouteSheetSupermarkets)
+                .Include(s => s.RouteSheetSupermarketDebts)
+                .FirstOrDefaultAsync(s => s.Id == routeSheetId, cancellationToken);
+
+            // Debt is only written between gate sign-off and reconciliation.
+            if (sheet == null || sheet.Status != (int)RouteSheetStatus.LoadedOnRoute)
+            {
+                return false;
+            }
+
+            var participantIds = sheet.RouteSheetSupermarkets
+                .Select(x => x.SupermarketAccountId)
+                .ToHashSet();
+
+            if (participantIds.Count == 0)
+            {
+                return false;
+            }
+
+            var settled = (settledAccountIds ?? Array.Empty<int>()).ToHashSet();
+            var amounts = debtAmounts ?? new Dictionary<int, decimal>();
+
+            var accounts = await _db.SupermarketAccounts
+                .Include(a => a.Customer)
+                .Where(a => participantIds.Contains(a.Id))
+                .ToListAsync(cancellationToken);
+
+            await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+
+            var editor = string.IsNullOrWhiteSpace(recordedBy) ? "Sales Reconciliation" : recordedBy.Trim();
+
+            foreach (var account in accounts)
+            {
+                amounts.TryGetValue(account.Id, out var requested);
+                var isSettled = settled.Contains(account.Id);
+                var debt = isSettled ? 0m : Math.Max(0m, requested);
+
+                var existing = sheet.RouteSheetSupermarketDebts
+                    .FirstOrDefault(d => d.SupermarketAccountId == account.Id);
+
+                // Nothing owed and nothing recorded yet: leave no noise row.
+                if (existing == null && !isSettled && debt <= 0m)
+                {
+                    continue;
+                }
+
+                var delta = RouteSupermarketDebtCalculator.CalculateCreditDelta(
+                    existing?.AppliedCredit ?? 0m,
+                    isSettled,
+                    debt);
+
+                if (existing == null)
+                {
+                    existing = new RouteSheetSupermarketDebtEntity
+                    {
+                        RouteSheetId = sheet.Id,
+                        SupermarketAccountId = account.Id,
+                        IsSettled = isSettled,
+                        DebtAmount = debt,
+                        AppliedCredit = 0m,
+                        RecordedBy = editor,
+                        RecordedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    sheet.RouteSheetSupermarketDebts.Add(existing);
+                }
+                else
+                {
+                    existing.IsSettled = isSettled;
+                    existing.DebtAmount = debt;
+                    existing.RecordedBy = editor;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                }
+
+                existing.AppliedCredit = Math.Max(0m, existing.AppliedCredit + delta);
+
+                if (delta != 0m)
+                {
+                    account.CurrentOutstandingCredit = Math.Max(0m, account.CurrentOutstandingCredit + delta);
+                    account.Customer.OutstandingBalance = Math.Max(0m, account.Customer.OutstandingBalance + delta);
+                    account.UpdatedAt = DateTime.UtcNow;
+                    account.Customer.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            await _db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return true;
+        }
+
+        public async Task<List<SalesRepRouteDebtorDto>> GetSalesRepRouteDebtorsAsync(
+            int salesRepId,
+            CancellationToken cancellationToken = default)
+        {
+            if (salesRepId <= 0)
+            {
+                return new List<SalesRepRouteDebtorDto>();
+            }
+
+            var rows = await _db.RouteSheetSupermarketDebts
+                .AsNoTracking()
+                .Include(d => d.RouteSheet)
+                .ThenInclude(s => s.SalesRep)
+                .Include(d => d.SupermarketAccount)
+                .Where(d => !d.IsSettled
+                    && d.DebtAmount > 0
+                    && d.RouteSheet.SalesRepId == salesRepId)
+                .ToListAsync(cancellationToken);
+
+            return rows
+                .GroupBy(d => d.RouteSheet)
+                .Select(group => new SalesRepRouteDebtorDto
+                {
+                    RouteSheetId = group.Key.Id,
+                    RouteSheetRef = group.Key.RouteSheetRef,
+                    RouteDate = group.Key.RouteDate.ToDateTime(TimeOnly.MinValue),
+                    RouteName = group.Key.RouteName,
+                    SalesRepName = group.Key.SalesRep?.FullName ?? string.Empty,
+                    Status = ((RouteSheetStatus)group.Key.Status).ToString(),
+                    Debtors = group
+                        .OrderBy(d => d.SupermarketAccount.AccountName)
+                        .Select(d => new SalesRepRouteDebtorLineDto
+                        {
+                            SupermarketAccountId = d.SupermarketAccountId,
+                            AccountName = d.SupermarketAccount.AccountName,
+                            ContactPerson = d.SupermarketAccount.ContactPerson,
+                            PhoneNumber = d.SupermarketAccount.PhoneNumber,
+                            DebtAmount = d.DebtAmount,
+                            CurrentOutstandingCredit = d.SupermarketAccount.CurrentOutstandingCredit,
+                            CreditLimit = d.SupermarketAccount.CreditLimit,
+                            RecordedBy = d.RecordedBy,
+                            RecordedAt = d.RecordedAt
+                        })
+                        .ToList()
+                })
+                .OrderBy(dto => dto.RouteName)
+                .ThenByDescending(dto => dto.RouteDate)
+                .ThenByDescending(dto => dto.RouteSheetId)
+                .ToList();
         }
 
         public async Task<bool> SignOffDispatchAsync(
@@ -1232,10 +1496,6 @@ namespace Manufacture.Services
             sheet.Notes = string.IsNullOrWhiteSpace(input.Notes) ? sheet.Notes : input.Notes.Trim();
             sheet.UpdatedAt = DateTime.UtcNow;
 
-            var newBalance = sheet.PreviousAccountBalance
-                + sheet.TotalExpectedSalesRevenue
-                - (sheet.CashCollected + sheet.BankTransferCollected + sheet.PosTerminalCollected);
-
             await _db.SaveChangesAsync(cancellationToken);
 
             var nextDate = sheet.RouteDate.AddDays(1);
@@ -1245,22 +1505,11 @@ namespace Manufacture.Services
                     s => s.SalesRepId == sheet.SalesRepId && s.RouteDate == nextDate,
                     cancellationToken);
 
-            if (nextSheet == null)
-            {
-                var created = await CreateRouteSheetAsync(
-                    sheet.SalesRepId,
-                    nextDate.ToDateTime(TimeOnly.MinValue),
-                    null,
-                    cancellationToken);
-
-                nextSheet = await _db.DailyRepRouteSheets
-                    .Include(s => s.RouteSheetItems)
-                    .FirstOrDefaultAsync(s => s.Id == created.Id, cancellationToken);
-            }
-
+            // Do not auto-create the next day's sheet: every new route sheet must be
+            // linked to a freshly created delivery dispatch. Only closing stock rolls
+            // forward; prior debt never carries into another reconciliation.
             if (nextSheet != null)
             {
-                nextSheet.PreviousAccountBalance = newBalance;
                 nextSheet.UpdatedAt = DateTime.UtcNow;
                 foreach (var current in sheet.RouteSheetItems)
                 {
@@ -1976,6 +2225,12 @@ namespace Manufacture.Services
                 RouteName = sheet.RouteName,
                 VehicleRegNumber = sheet.VehicleRegistration ?? sheet.Vehicle?.RegistrationNumber ?? string.Empty,
                 PosTerminalCode = sheet.PosTerminalCode ?? string.Empty,
+                FleetDispatchId = sheet.FleetDispatchId,
+                FleetDispatchRef = sheet.FleetDispatch?.DispatchRef ?? string.Empty,
+                FleetDispatchStatus = sheet.FleetDispatch == null ? string.Empty : ((FleetDispatchStatus)sheet.FleetDispatch.Status).ToString(),
+                FleetDispatchVehicleRegNumber = sheet.FleetDispatch?.Vehicle?.RegistrationNumber ?? sheet.VehicleRegistration ?? string.Empty,
+                FleetDispatchDriverName = sheet.FleetDispatch?.DriverName ?? string.Empty,
+                FleetDispatchDate = sheet.FleetDispatch == null ? null : sheet.FleetDispatch.DispatchDate.ToDateTime(TimeOnly.MinValue),
                 PreviousAccountBalance = sheet.PreviousAccountBalance,
                 CashCollected = sheet.CashCollected,
                 BankTransferCollected = sheet.BankTransferCollected,
@@ -1986,6 +2241,34 @@ namespace Manufacture.Services
                 ReconciledBy = sheet.ReconciledBy,
                 ReconciledAt = sheet.ReconciledAt,
                 Notes = sheet.Notes,
+                Supermarkets = sheet.RouteSheetSupermarkets
+                    .OrderBy(x => x.SupermarketAccount.AccountName)
+                    .Select(x => new RouteSheetSupermarketLink
+                    {
+                        SupermarketAccountId = x.SupermarketAccountId,
+                        AccountName = x.SupermarketAccount.AccountName,
+                        ContactPerson = x.SupermarketAccount.ContactPerson,
+                        PhoneNumber = x.SupermarketAccount.PhoneNumber,
+                        CurrentOutstandingCredit = x.SupermarketAccount.CurrentOutstandingCredit,
+                        CreditLimit = x.SupermarketAccount.CreditLimit,
+                        IsActive = x.SupermarketAccount.IsActive
+                    })
+                    .ToList(),
+                SupermarketDebts = sheet.RouteSheetSupermarketDebts
+                    .OrderBy(d => d.SupermarketAccount.AccountName)
+                    .Select(d => new RouteSheetSupermarketDebt
+                    {
+                        Id = d.Id,
+                        RouteSheetId = d.RouteSheetId,
+                        SupermarketAccountId = d.SupermarketAccountId,
+                        AccountName = d.SupermarketAccount.AccountName,
+                        IsSettled = d.IsSettled,
+                        DebtAmount = d.DebtAmount,
+                        AppliedCredit = d.AppliedCredit,
+                        RecordedBy = d.RecordedBy,
+                        RecordedAt = d.RecordedAt
+                    })
+                    .ToList(),
                 Items = sheet.RouteSheetItems
                     .OrderBy(i => i.Id)
                     .Select(i => new RouteSKUItem

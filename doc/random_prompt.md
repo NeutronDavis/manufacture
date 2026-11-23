@@ -275,3 +275,28 @@ Don’t rely on a textbook figure, because bulk density depends on the product a
 - At the /Sales page, the sales rep should not see the `Dedicated Checkout Registers` section
 - At the /Sales/Orders/Details page, the `Sales Rep Assignment` section should have a botton saying `Accept order`, when the sales rep clik on it will assign the sign in sales rep to that order, Note: ths modification is only for sales rep it will remain a dropdown for superadmin only for order that is Open and not yet have a sales rep to assigned to it.
 when a sales rep is asign to an order, the dropdown should change to just the assigned sales rep name 
+
+
+## Update
+- update on the /Production/Batches page, remove the `Notes` column form the table including thr `Unit Cost` column
+- how dose the system know that a particuler supermarket is owing
+- i surgest that when creating a Dispatch Route at the /Sales/Dispatch page, the form should contain a dropdown list of supermarket and it can be multiple sellected. This is because a dispatch delivery from a factroy dosnot happen to be deliverd to a random shops out there 
+- Also at the reconsilation page add a section displaying all the invlove supermarkets and check box for each with a text box to register a dept amount for that dispatch if the checkbox is not checked . they should be a button to save that to increament the dept field in the supermarket table also they should be a table that will save the data for the supermarket section tying the dispatch route as the FK, then only display the deptors grouped by route in the sales rep dashboard for that specific sales rep that created dispatch
+
+- in the /Sales/Reconciliation page, at the right side, remove the `Route` and `Prior Debt`
+- remove the `Credit Limit field` at the `Supermarket Dispatch Debt Register` section
+- remove all the debt in the form the existing supermarket and make user the calculation at the `Lump-Sum Payment Collection Panel (No SKU Breakdown)` section should not consider any `Prior Debt` amount . `Prior Debt` field should not be considerd for another payment in any reconsilation payment, note the target for reconsilation should compare to the `Gross Sales`, remove the `Previous Account Debt` form the `Daily Account Ledger Reconciliation` section
+
+- at the /Fleet/Dispatchs/New page, remove the `Odometer Start` field and rearange the form. it's not looking good
+- the `Purpose` field should be a text field not a dropdown make sure to arange the form
+- i think it's proper for a Delivery Dispatch to be tide to a route dispatch in the /Sales/Dispatch page 
+in that case i like to include a dropdown of the newly created `Delivery dispatch` that are not been completed and not on transit 
+
+- in the Create Daily Route Sheet, the `Select Sales Rep` field should only list out employee that are sales rep  if the loged in user is the super admin else it should show the loged in sales rep only in the dropdown and not vehicle assigned to the rout so its just the sales rep
+- note the route sheet form will contain the daily dispatch which means that the vehicle assigned is already created in the daily dispatch
+
+### Update on the Production module
+- in the /Recipes/Details page, they shoild be a delete function and it should be only visible to the super admin
+
+
+- concerning the product category and the product type 

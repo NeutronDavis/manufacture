@@ -20,7 +20,7 @@ namespace Manufacture.Pages.Logistics.Dispatches
         public FleetDispatchDto DispatchInput { get; set; } = new()
         {
             DispatchDate = DateTime.UtcNow.Date,
-            Purpose = FleetDispatchPurpose.ProductionDelivery,
+            Purpose = "Production Delivery",
             Stops = new List<FleetDispatchStopDto>
             {
                 new() { StopNumber = 1 }

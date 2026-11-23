@@ -109,10 +109,11 @@
             else
             {
                 var isReadOnly = sheet.Status == Manufacture.Models.Domain.RouteSheetStatus.Reconciled || sheet.Status == Manufacture.Models.Domain.RouteSheetStatus.Closed || !Model.CanEdit;
-                
+                var dayOutstanding = sheet.TotalExpectedSalesRevenue - sheet.TotalPaymentsCollectedToday;
+                var isDaySettled = dayOutstanding <= 0;
+
                 <form method="post" asp-page-handler="Reconcile" id="reconcileForm" class="space-y-6">
                     <input type="hidden" name="RouteSheetId" value="@sheet.Id" />
-                    <input type="hidden" id="prevBalanceHidden" value="@sheet.PreviousAccountBalance" />
 
                     <!-- Sheet Header Details -->
                     <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
@@ -142,8 +143,6 @@
                                 <div class="text-xs opacity-70 mt-1 flex items-center gap-3 flex-wrap">
                                     <span><strong class="text-base-content">Rep:</strong> @sheet.RepName (@sheet.RepCode)</span>
                                     <span><strong class="text-base-content">Vehicle:</strong> <span class="font-mono font-bold">@sheet.VehicleRegNumber</span></span>
-                                    <span><strong class="text-base-content">Route:</strong> @sheet.RouteName</span>
-                                    <span><strong class="text-base-content">Prior Debt:</strong> <span class="font-mono font-bold text-error">₦@sheet.PreviousAccountBalance.ToString("N0")</span></span>
                                 </div>
                             </div>
                             <div class="flex items-center gap-2">
@@ -375,11 +374,11 @@
                                     <i class="fa-solid fa-scale-balanced text-primary"></i> Daily Account Ledger Reconciliation
                                 </h4>
                                 <span class="badge badge-outline border-base-300 font-mono text-xs">
-                                    Formula: Prev Debt + Gross Sales - Total Payments
+                                    Formula: Gross Sales - Total Payments
                                 </span>
                             </div>
 
-                            <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 pt-1">
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1">
                                 <!-- Today's Expected -->
                                 <div class="p-3 bg-base-200/60 rounded-xl border border-base-300">
                                     <div class="text-[10px] uppercase font-bold opacity-60">Gross Sales</div>
@@ -397,15 +396,6 @@
                                     <div class="text-[9px] opacity-60">Gross − returns − damages</div>
                                 </div>
 
-                                <!-- Previous Debt -->
-                                <div class="p-3 bg-base-200/60 rounded-xl border border-base-300">
-                                    <div class="text-[10px] uppercase font-bold opacity-60">Previous Account Debt</div>
-                                    <div class="text-lg font-black font-mono text-base-content mt-1">
-                                        ₦@sheet.PreviousAccountBalance.ToString("N0")
-                                    </div>
-                                    <div class="text-[9px] opacity-60">Balance brought forward</div>
-                                </div>
-
                                 <!-- Total Collected -->
                                 <div class="p-3 bg-base-200/60 rounded-xl border border-base-300">
                                     <div class="text-[10px] uppercase font-bold opacity-60">Total Payments Handed In</div>
@@ -415,14 +405,14 @@
                                     <div class="text-[9px] opacity-60">Cash + Transfer + POS</div>
                                 </div>
 
-                                <!-- Net Updated Running Balance -->
-                                <div class="p-3 rounded-xl border-2 @(sheet.NewOutstandingAccountBalance > sheet.PreviousAccountBalance ? "bg-error/10 border-error" : "bg-success/10 border-success")" id="calloutBalanceBox">
+                                <!-- Daily Balance -->
+                                <div class="p-3 rounded-xl border-2 @(isDaySettled ? "bg-success/10 border-success" : "bg-error/10 border-error")" id="calloutBalanceBox">
                                     <div class="text-[10px] uppercase font-bold opacity-75">Updated Running Balance</div>
-                                    <div class="text-lg font-black font-mono @(sheet.NewOutstandingAccountBalance > sheet.PreviousAccountBalance ? "text-error" : "text-success") mt-1" id="calloutBalance">
-                                        ₦@sheet.NewOutstandingAccountBalance.ToString("N0")
+                                    <div class="text-lg font-black font-mono @(isDaySettled ? "text-success" : "text-error") mt-1" id="calloutBalance">
+                                        @(dayOutstanding < 0 ? "-₦" : "₦")@Math.Abs(dayOutstanding).ToString("N0")
                                     </div>
-                                    <div class="text-[9px] font-bold @(sheet.NewOutstandingAccountBalance > sheet.PreviousAccountBalance ? "text-error" : "text-success")" id="calloutBalanceStatus">
-                                        @(sheet.NewOutstandingAccountBalance > sheet.PreviousAccountBalance ? "Debt Increased ⚠️" : "Debt Reduced / Settled ✔️")
+                                    <div class="text-[9px] font-bold @(isDaySettled ? "text-success" : "text-error")" id="calloutBalanceStatus">
+                                        @(isDaySettled ? "Settled / Over-collected ✔️" : "Outstanding ⚠️")
                                     </div>
                                 </div>
                             </div>
@@ -469,6 +459,129 @@
                         }
                     </div>
                 </form>
+
+                <!-- Supermarket Dispatch Debt Register -->
+                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                    <div class="flex items-center justify-between border-b border-base-300 pb-3 flex-wrap gap-2">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-base-content flex items-center gap-1.5">
+                            <i class="fa-solid fa-store text-primary"></i> Supermarket Dispatch Debt Register
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            <span class="badge badge-neutral badge-xs font-bold">@sheet.Supermarkets.Count Supermarkets</span>
+                            @if (sheet.TotalSupermarketDebt > 0)
+                            {
+                                <span class="badge badge-error badge-soft badge-xs font-bold font-mono">Outstanding ₦@sheet.TotalSupermarketDebt.ToString("N0")</span>
+                            }
+                        </div>
+                    </div>
+
+                    <p class="text-[11px] opacity-70">
+                        Check a supermarket when it paid in full for this dispatch. Leave it unchecked and enter what it still owes — the amount is added to that supermarket's running credit balance. Re-saving only applies the difference, so nothing is double-counted.
+                    </p>
+
+                    @if (!sheet.Supermarkets.Any())
+                    {
+                        <div class="p-4 rounded-xl bg-base-200/60 border border-base-300 text-xs opacity-70 flex items-center justify-between gap-3 flex-wrap">
+                            <span>No supermarkets were selected on this dispatch route, so there is nothing to settle here.</span>
+                            <a asp-page="/Sales/Dispatch/Index" asp-route-sheetId="@sheet.Id" class="btn btn-xs btn-outline border-base-300 rounded-xl font-bold gap-1">
+                                <i class="fa-solid fa-truck-ramp-box"></i> Manage Dispatch Stops
+                            </a>
+                        </div>
+                    }
+                    else
+                    {
+                        <form method="post" asp-page-handler="SaveSupermarketDebts" class="space-y-4">
+                            <input type="hidden" name="routeSheetId" value="@sheet.Id" />
+
+                            <div class="overflow-x-auto">
+                                <table class="table table-sm w-full text-xs">
+                                    <thead>
+                                        <tr class="opacity-60 uppercase text-[9px] tracking-wider border-b border-base-300 bg-base-200/50">
+                                            <th class="py-3 pl-3">Supermarket</th>
+                                            <th class="text-center">Settled?</th>
+                                            <th class="text-right font-bold text-primary">Debt Amount (₦)</th>
+                                            <th>Recorded By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-base-200">
+                                        @foreach (var stop in sheet.Supermarkets)
+                                        {
+                                            var existingDebt = sheet.SupermarketDebts.FirstOrDefault(d => d.SupermarketAccountId == stop.SupermarketAccountId);
+                                            var isSettled = existingDebt?.IsSettled ?? false;
+                                            var enteredAmount = existingDebt?.DebtAmount ?? 0m;
+
+                                            <tr class="debt-row hover:bg-base-200/40">
+                                                <td class="py-2.5 pl-3">
+                                                    <div class="font-bold text-base-content text-xs">@stop.AccountName</div>
+                                                    <div class="text-[10px] opacity-60">
+                                                        @(string.IsNullOrWhiteSpace(stop.ContactPerson) ? "No contact" : stop.ContactPerson)
+                                                        @if (!string.IsNullOrWhiteSpace(stop.PhoneNumber))
+                                                        {
+                                                            <span> &bull; @stop.PhoneNumber</span>
+                                                        }
+                                                    </div>
+                                                </td>
+                                                <td class="text-center">
+                                                    <input type="checkbox"
+                                                           name="settledSupermarketIds"
+                                                           value="@stop.SupermarketAccountId"
+                                                           checked="@isSettled"
+                                                           class="checkbox checkbox-xs checkbox-success debt-settled"
+                                                           onchange="toggleDebtSettled(this)"
+                                                           disabled="@(!Model.CanSaveDebts)"
+                                                           title="Check when paid in full for this dispatch" />
+                                                </td>
+                                                <td class="text-right">
+                                                    <input type="number"
+                                                           name="debtAmounts[@stop.SupermarketAccountId]"
+                                                           value="@(enteredAmount > 0 ? enteredAmount.ToString("0.##") : "")"
+                                                           min="0"
+                                                           step="500"
+                                                           placeholder="0"
+                                                           class="input input-xs input-bordered rounded-lg w-28 text-right font-mono font-bold text-primary debt-amount"
+                                                           oninput="recalcDebtTotal()"
+                                                           disabled="@(isSettled || !Model.CanSaveDebts)" />
+                                                </td>
+                                                <td class="text-[10px] opacity-60">
+                                                    @if (existingDebt != null)
+                                                    {
+                                                        <div class="font-semibold text-base-content">@existingDebt.RecordedBy</div>
+                                                        <div class="font-mono">@existingDebt.RecordedAt.ToString("MMM dd, HH:mm")</div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>—</span>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-3 flex-wrap pt-2 border-t border-base-200">
+                                <div class="text-[11px] opacity-70">
+                                    Entered debt total: <span id="debtEntryTotal" class="font-mono font-bold text-primary">₦0</span>
+                                    <span class="opacity-60"> &bull; settled stores are excluded</span>
+                                </div>
+                                @if (Model.CanSaveDebts)
+                                {
+                                    <button type="submit" class="btn btn-sm btn-primary rounded-xl font-bold gap-2 shadow-xs text-xs px-6">
+                                        <i class="fa-solid fa-floppy-disk"></i> Save Supermarket Debts
+                                    </button>
+                                }
+                                else if (isReadOnly)
+                                {
+                                    <span class="badge badge-neutral badge-sm font-bold">Reconciled &bull; read-only</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-warning badge-sm font-bold">Sign off the dispatch first</span>
+                                }
+                            </div>
+                        </form>
+                    }
+                </div>
 
                 <!-- Customer Returns / Replacements -->
                 <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
@@ -581,9 +694,11 @@
         return '₦' + Math.round(n).toLocaleString('en-US');
     }
 
-    function recalcReconciliation() {
-        var prevBalance = parseFloat(document.getElementById('prevBalanceHidden').value) || 0;
+    function formatSignedMoney(n) {
+        return (n < 0 ? '-₦' : '₦') + Math.round(Math.abs(n)).toLocaleString('en-US');
+    }
 
+    function recalcReconciliation() {
         var totalExpected = 0;
         var totalSold = 0;
         var totalReturned = 0;
@@ -646,29 +761,64 @@
         var pos = posInput ? (parseFloat(posInput.value) || 0) : 0;
 
         var totalCollected = cash + transfer + pos;
-        var newBalance = prevBalance + totalExpected - totalCollected;
+        var newBalance = totalExpected - totalCollected;
 
         // Update callout box
         document.getElementById('calloutExpected').textContent = formatMoney(totalExpected);
         document.getElementById('calloutCollected').textContent = formatMoney(totalCollected);
-        document.getElementById('calloutBalance').textContent = formatMoney(newBalance);
+        document.getElementById('calloutBalance').textContent = formatSignedMoney(newBalance);
 
         var balanceBox = document.getElementById('calloutBalanceBox');
         var balanceStatus = document.getElementById('calloutBalanceStatus');
         var calloutBalanceText = document.getElementById('calloutBalance');
 
-        if (newBalance > prevBalance) {
+        if (newBalance > 0) {
             balanceBox.className = "p-3 rounded-xl border-2 bg-error/10 border-error";
             calloutBalanceText.className = "text-lg font-black font-mono text-error mt-1";
             balanceStatus.className = "text-[9px] font-bold text-error";
-            balanceStatus.textContent = "Debt Increased ⚠️";
+            balanceStatus.textContent = "Outstanding ⚠️";
         } else {
             balanceBox.className = "p-3 rounded-xl border-2 bg-success/10 border-success";
             calloutBalanceText.className = "text-lg font-black font-mono text-success mt-1";
             balanceStatus.className = "text-[9px] font-bold text-success";
-            balanceStatus.textContent = "Debt Reduced / Settled ✔️";
+            balanceStatus.textContent = "Settled / Over-collected ✔️";
         }
 
     }
+
+    function toggleDebtSettled(checkbox) {
+        var row = checkbox.closest('.debt-row');
+        if (!row) return;
+        var amount = row.querySelector('.debt-amount');
+        if (!amount) return;
+
+        if (checkbox.checked) {
+            amount.value = '';
+            amount.disabled = true;
+        } else {
+            amount.disabled = false;
+            amount.focus();
+        }
+
+        recalcDebtTotal();
+    }
+
+    function recalcDebtTotal() {
+        var total = 0;
+        document.querySelectorAll('.debt-row').forEach(function (row) {
+            var checkbox = row.querySelector('.debt-settled');
+            var amount = row.querySelector('.debt-amount');
+
+            if (!amount) return;
+
+            var entered = checkbox && checkbox.checked ? 0 : (parseFloat(amount.value) || 0);
+            total += entered;
+        });
+
+        var totalEl = document.getElementById('debtEntryTotal');
+        if (totalEl) totalEl.textContent = formatMoney(total);
+    }
+
+    document.addEventListener('DOMContentLoaded', recalcDebtTotal);
 </script>
 }

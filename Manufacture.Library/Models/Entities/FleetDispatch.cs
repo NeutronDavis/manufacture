@@ -17,11 +17,9 @@ public partial class FleetDispatch
 
     public string DriverName { get; set; } = null!;
 
-    public int Purpose { get; set; }
+    public string Purpose { get; set; } = null!;
 
     public int Status { get; set; }
-
-    public decimal? OdometerStart { get; set; }
 
     public decimal? OdometerEnd { get; set; }
 
@@ -36,6 +34,8 @@ public partial class FleetDispatch
     public byte[] RowVersion { get; set; } = null!;
 
     public virtual User? CreatedByUser { get; set; }
+
+    public virtual DailyRepRouteSheet? DailyRepRouteSheet { get; set; }
 
     public virtual Employee? DriverEmployee { get; set; }
 

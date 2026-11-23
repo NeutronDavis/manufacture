@@ -56,6 +56,39 @@ namespace Manufacture.Models.Domain
     }
 
     /// <summary>
+    /// One supermarket and the debt recorded against a single dispatch route.
+    /// </summary>
+    public class RouteSheetSupermarketLink
+    {
+        public int SupermarketAccountId { get; set; }
+        public string AccountName { get; set; } = string.Empty;
+        public string ContactPerson { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public decimal CurrentOutstandingCredit { get; set; }
+        public decimal CreditLimit { get; set; }
+        public bool IsActive { get; set; } = true;
+    }
+
+    /// <summary>
+    /// Dispatch-level debt row tying a supermarket account to a daily route sheet.
+    /// </summary>
+    public class RouteSheetSupermarketDebt
+    {
+        public int Id { get; set; }
+        public int RouteSheetId { get; set; }
+        public int SupermarketAccountId { get; set; }
+        public string AccountName { get; set; } = string.Empty;
+        public bool IsSettled { get; set; }
+        public decimal DebtAmount { get; set; }
+
+        /// <summary>Amount this row has already pushed into the account's running credit balance.</summary>
+        public decimal AppliedCredit { get; set; }
+
+        public string RecordedBy { get; set; } = string.Empty;
+        public DateTime RecordedAt { get; set; }
+    }
+
+    /// <summary>
     /// Daily route ledger and financial reconciliation sheet for a field sales representative.
     /// Reconciles loaded stock, sales, returns, and aggregated lump-sum collections.
     /// </summary>
@@ -71,9 +104,29 @@ namespace Manufacture.Models.Domain
         public string VehicleRegNumber { get; set; } = string.Empty;
         public string PosTerminalCode { get; set; } = string.Empty;
 
+        // Daily delivery dispatch this route rides on (null for legacy sheets).
+        public int? FleetDispatchId { get; set; }
+        public string FleetDispatchRef { get; set; } = string.Empty;
+        public string FleetDispatchStatus { get; set; } = string.Empty;
+        public string FleetDispatchVehicleRegNumber { get; set; } = string.Empty;
+        public string FleetDispatchDriverName { get; set; } = string.Empty;
+        public DateTime? FleetDispatchDate { get; set; }
+
         public List<RouteSKUItem> Items { get; set; } = new();
 
+        /// <summary>Supermarkets this dispatch route delivers to.</summary>
+        public List<RouteSheetSupermarketLink> Supermarkets { get; set; } = new();
+
+        /// <summary>Dispatch-level supermarket debts recorded during reconciliation.</summary>
+        public List<RouteSheetSupermarketDebt> SupermarketDebts { get; set; } = new();
+
+        /// <summary>Total debt still outstanding for this dispatch (settled rows excluded).</summary>
+        public decimal TotalSupermarketDebt =>
+            SupermarketDebts.Where(d => !d.IsSettled).Sum(d => d.DebtAmount);
+
         // Financial Ledger
+
+        /// <summary>Legacy carried-over balance. Zeroed and never used in calculations.</summary>
         public decimal PreviousAccountBalance { get; set; }
 
         // Lump-sum payments collected on route (NO SKU breakdown)
@@ -85,11 +138,11 @@ namespace Manufacture.Models.Domain
         public decimal TotalPaymentsCollectedToday => CashCollected + BankTransferCollected + PosTerminalCollected;
 
         /// <summary>
-        /// Net updated running balance owed by the rep account:
-        /// Previous Balance + Expected Sales - Total Payments.
+        /// Daily balance owed: Gross Sales − payments collected today.
+        /// Prior debt is intentionally excluded; a negative value means over-collection.
         /// </summary>
         public decimal NewOutstandingAccountBalance =>
-            PreviousAccountBalance + TotalExpectedSalesRevenue - TotalPaymentsCollectedToday;
+            TotalExpectedSalesRevenue - TotalPaymentsCollectedToday;
 
         public RouteSheetStatus Status { get; set; } = RouteSheetStatus.Ordered;
 

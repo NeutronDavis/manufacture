@@ -92,6 +92,27 @@ namespace Manufacture.Services
             return dispatch == null ? null : MapDispatch(dispatch);
         }
 
+        public async Task<List<FleetDispatchDto>> GetAvailableForSalesRouteAsync(
+            CancellationToken cancellationToken = default)
+        {
+            // Only newly created (Planned) dispatch movements that have not already
+            // been claimed by a sales route sheet can be offered as a daily dispatch.
+            var dispatches = await _db.FleetDispatches
+                .AsNoTracking()
+                .Include(d => d.Vehicle)
+                .Include(d => d.DriverEmployee)
+                .Include(d => d.CreatedByUser)
+                .Include(d => d.FleetDispatchStops)
+                .Include(d => d.FuelLogs)
+                .Where(d => d.Status == (int)FleetDispatchStatus.Planned
+                    && !_db.DailyRepRouteSheets.Any(s => s.FleetDispatchId == d.Id))
+                .OrderByDescending(d => d.DispatchDate)
+                .ThenByDescending(d => d.Id)
+                .ToListAsync(cancellationToken);
+
+            return dispatches.Select(MapDispatch).ToList();
+        }
+
         public async Task<FleetDispatchDto> CreateDispatchAsync(
             FleetDispatchDto dto,
             int createdByUserId,
@@ -116,9 +137,8 @@ namespace Manufacture.Services
                 VehicleId = vehicle.Id,
                 DriverEmployeeId = driver?.Id,
                 DriverName = driver?.FullName ?? string.Empty,
-                Purpose = (int)dto.Purpose,
+                Purpose = dto.Purpose?.Trim() ?? string.Empty,
                 Status = (int)FleetDispatchStatus.Planned,
-                OdometerStart = dto.OdometerStart,
                 Notes = dto.Notes?.Trim() ?? string.Empty,
                 CreatedByUserId = createdByUserId > 0 ? createdByUserId : null,
                 CreatedAt = DateTime.UtcNow,
@@ -160,8 +180,7 @@ namespace Manufacture.Services
             dispatch.VehicleId = vehicle.Id;
             dispatch.DriverEmployeeId = driver?.Id;
             dispatch.DriverName = driver?.FullName ?? string.Empty;
-            dispatch.Purpose = (int)dto.Purpose;
-            dispatch.OdometerStart = dto.OdometerStart;
+            dispatch.Purpose = dto.Purpose?.Trim() ?? string.Empty;
             dispatch.Notes = dto.Notes?.Trim() ?? string.Empty;
             dispatch.UpdatedAt = DateTime.UtcNow;
 
@@ -338,9 +357,8 @@ namespace Manufacture.Services
             VehicleRegNumber = dispatch.Vehicle?.RegistrationNumber ?? string.Empty,
             DriverEmployeeId = dispatch.DriverEmployeeId,
             DriverName = dispatch.DriverName,
-            Purpose = (FleetDispatchPurpose)dispatch.Purpose,
+            Purpose = dispatch.Purpose,
             Status = (FleetDispatchStatus)dispatch.Status,
-            OdometerStart = dispatch.OdometerStart,
             OdometerEnd = dispatch.OdometerEnd,
             Notes = dispatch.Notes,
             CreatedByUserId = dispatch.CreatedByUserId,

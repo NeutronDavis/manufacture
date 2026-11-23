@@ -61,6 +61,8 @@
     <Build Include="Tables\Recipes.sql" />
     <Build Include="Tables\Roles.sql" />
     <Build Include="Tables\RouteSheetItems.sql" />
+    <Build Include="Tables\RouteSheetSupermarketDebts.sql" />
+    <Build Include="Tables\RouteSheetSupermarkets.sql" />
     <Build Include="Tables\SalaryAdvances.sql" />
     <Build Include="Tables\SalesBonusRules.sql" />
     <Build Include="Tables\SalesReps.sql" />

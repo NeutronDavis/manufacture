@@ -137,15 +137,30 @@
                             <div class="text-xs opacity-70 mt-1 flex items-center gap-3 flex-wrap">
                                 <span><strong class="text-base-content">Sales Rep:</strong> @sheet.RepName (@sheet.RepCode)</span>
                                 <span><strong class="text-base-content">Van Registration:</strong> <span class="font-mono font-bold">@sheet.VehicleRegNumber</span></span>
-                                <span><strong class="text-base-content">Route:</strong> @sheet.RouteName</span>
                                 <span><strong class="text-base-content">Date:</strong> @sheet.Date.ToString("yyyy-MM-dd")</span>
+                            </div>
+                            <div class="text-xs opacity-70 mt-1 flex items-center gap-2 flex-wrap">
+                                <span class="flex items-center gap-1.5 flex-wrap">
+                                    <strong class="text-base-content">Daily Dispatch:</strong>
+                                    @if (sheet.FleetDispatchId.HasValue)
+                                    {
+                                        <a asp-page="/Logistics/Dispatches/Details" asp-route-id="@sheet.FleetDispatchId" class="font-mono font-bold text-primary hover:underline">@sheet.FleetDispatchRef</a>
+                                        <span class="badge badge-success badge-xs font-bold">@sheet.FleetDispatchStatus</span>
+                                        <span class="opacity-70 font-mono">@sheet.FleetDispatchVehicleRegNumber</span>
+                                        <span class="opacity-60">@sheet.FleetDispatchDriverName</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-warning badge-xs font-bold">Not linked (legacy sheet)</span>
+                                    }
+                                </span>
                             </div>
                         </div>
 
                         <div class="flex items-center gap-2">
-                            <button type="button" onclick="window.print()" class="btn btn-xs btn-outline border-base-300 rounded-xl font-bold gap-1 text-[11px]">
+                            @* <button type="button" onclick="window.print()" class="btn btn-xs btn-outline border-base-300 rounded-xl font-bold gap-1 text-[11px]">
                                 <i class="fa-solid fa-print"></i> Print Gate Pass
-                            </button>
+                            </button> *@
                             @if (sheet.Status == Manufacture.Models.Domain.RouteSheetStatus.LoadedOnRoute)
                             {
                                 <a asp-page="/Sales/Reconciliation/Index" asp-route-sheetId="@sheet.Id" class="btn btn-xs btn-primary rounded-xl font-bold gap-1 text-[11px] shadow-xs">
@@ -162,6 +177,54 @@
                                 </form>
                             }
                         </div>
+                    </div>
+
+                    <!-- Supermarkets on This Dispatch -->
+                    <div class="rounded-xl bg-base-200/60 border border-base-300 p-3.5 space-y-2.5">
+                        <div class="flex items-center justify-between gap-2 flex-wrap">
+                            <div class="text-[11px] font-bold uppercase tracking-wider opacity-70 flex items-center gap-1.5">
+                                <i class="fa-solid fa-store text-primary"></i> Supermarkets On This Dispatch
+                            </div>
+                            <span class="badge badge-neutral badge-xs font-mono font-bold">@sheet.Supermarkets.Count stops</span>
+                        </div>
+
+                        @if (sheet.Supermarkets.Any())
+                        {
+                            <div class="flex flex-wrap gap-1.5">
+                                @foreach (var stop in sheet.Supermarkets)
+                                {
+                                    <span class="badge badge-primary badge-soft badge-sm font-semibold gap-1">
+                                        <i class="fa-solid fa-location-dot text-[9px]"></i> @stop.AccountName
+                                    </span>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <p class="text-[11px] opacity-60">
+                                No supermarkets selected for this dispatch. Use the picker below (or create the sheet with a selection).
+                            </p>
+                        }
+
+                        @if (sheet.Status == Manufacture.Models.Domain.RouteSheetStatus.Ordered && Model.CanEdit)
+                        {
+                            <form method="post" asp-page-handler="UpdateSupermarkets" class="flex flex-col sm:flex-row items-stretch sm:items-end gap-2 pt-1">
+                                <input type="hidden" name="sheetId" value="@sheet.Id" />
+                                <div class="flex-1 space-y-1">
+                                    <label class="text-[10px] font-bold opacity-70">Add / remove supermarket accounts (Ctrl-click for multiple)</label>
+                                    <select name="supermarketAccountIds" multiple size="4" class="select select-sm select-bordered w-full rounded-xl text-xs">
+                                        @foreach (var acct in Model.Supermarkets)
+                                        {
+                                            var isStop = sheet.Supermarkets.Any(s => s.SupermarketAccountId == acct.Id);
+                                            <option value="@acct.Id" selected="@isStop">@acct.AccountName — ₦@acct.CurrentOutstandingCredit.ToString("N0") owed</option>
+                                        }
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-xs btn-outline border-base-300 rounded-xl font-bold gap-1 text-[11px]">
+                                    <i class="fa-solid fa-floppy-disk"></i> Save Stops
+                                </button>
+                            </form>
+                        }
                     </div>
 
                     <!-- Dispatch Form -->
@@ -316,7 +379,7 @@
                 <select name="newRepId" class="select select-sm select-bordered w-full rounded-xl text-xs font-semibold" required>
                     @foreach (var rep in Model.Reps)
                     {
-                        <option value="@rep.Id">@rep.FullName (@rep.RouteName - @rep.VehicleRegistration)</option>
+                        <option value="@rep.Id">@rep.FullName</option>
                     }
                 </select>
             </div>
@@ -326,9 +389,50 @@
                 <input type="date" name="sheetDate" value="@DateTime.UtcNow.ToString("yyyy-MM-dd")" class="input input-sm input-bordered w-full rounded-xl text-xs font-mono font-bold" required />
             </div>
 
+            <div class="space-y-1">
+                <label class="text-xs font-bold">Delivery Dispatch: <span class="text-error">*</span></label>
+                @if (Model.AvailableDispatches.Any())
+                {
+                    <select name="fleetDispatchId" required class="select select-sm select-bordered w-full rounded-xl text-xs font-semibold">
+                        <option value="">-- Select Planned Delivery Dispatch --</option>
+                        @foreach (var dispatch in Model.AvailableDispatches)
+                        {
+                            <option value="@dispatch.Id">@dispatch.DispatchRef · @dispatch.DispatchDate.ToString("yyyy-MM-dd") · @dispatch.VehicleRegNumber — @dispatch.Purpose</option>
+                        }
+                    </select>
+                    <p class="text-[10px] opacity-60">
+                        Only newly created (Planned) dispatches that are not yet linked appear here. The route vehicle is taken from this dispatch.
+                    </p>
+                }
+                else
+                {
+                    <div class="p-3 rounded-xl bg-warning/10 border border-warning/30 text-[11px] space-y-1">
+                        <div class="font-bold text-warning">No planned delivery dispatches available.</div>
+                        <div class="opacity-70">
+                            Create one first, then come back to generate the route sheet.
+                            <a asp-page="/Logistics/Dispatches/Create" class="link font-bold">New Delivery Dispatch &rarr;</a>
+                        </div>
+                    </div>
+                    <input type="hidden" name="fleetDispatchId" value="" />
+                }
+            </div>
+
+            <div class="space-y-1">
+                <label class="text-xs font-bold">Supermarkets On This Route:</label>
+                <select name="supermarketAccountIds" multiple size="6" class="select select-sm select-bordered w-full rounded-xl text-xs">
+                    @foreach (var acct in Model.Supermarkets)
+                    {
+                        <option value="@acct.Id">@acct.AccountName — ₦@acct.CurrentOutstandingCredit.ToString("N0") owed</option>
+                    }
+                </select>
+                <p class="text-[10px] opacity-60">
+                    Ctrl-click (Cmd-click on Mac) to select multiple stores. Optional — you can add or remove stops until the vehicle is signed off.
+                </p>
+            </div>
+
             <div class="modal-action border-t border-base-300 pt-3">
                 <button type="button" onclick="document.getElementById('newSheetModal').close()" class="btn btn-sm btn-ghost rounded-xl text-xs">Cancel</button>
-                <button type="submit" class="btn btn-sm btn-primary rounded-xl text-xs font-bold px-5">Generate Sheet</button>
+                <button type="submit" class="btn btn-sm btn-primary rounded-xl text-xs font-bold px-5" disabled="@(!Model.AvailableDispatches.Any())">Generate Sheet</button>
             </div>
         </form>
     </div>

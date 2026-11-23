@@ -15,6 +15,8 @@ namespace Manufacture.Library.Interfaces
 
         Task<FleetDispatchDto?> GetDispatchAsync(int id, CancellationToken cancellationToken = default);
 
+        Task<List<FleetDispatchDto>> GetAvailableForSalesRouteAsync(CancellationToken cancellationToken = default);
+
         Task<FleetDispatchDto> CreateDispatchAsync(
             FleetDispatchDto dto,
             int createdByUserId,

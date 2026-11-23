@@ -78,6 +78,7 @@ namespace Manufacture.Pages.Dashboard
         public PosTerminal? AssignedTerminal { get; set; }
         public List<Order> UnprintedOrders { get; set; } = new();
         public List<Order> RepTodayOrders { get; set; } = new();
+        public List<SalesRepRouteDebtorDto> MyRouteDebtors { get; set; } = new();
         public int RepCompletedTickets => RepTodayOrders.Count(o => o.Status == OrderStatus.Dispatched);
 
         // Vendor / Supermarket Client
@@ -172,6 +173,7 @@ namespace Manufacture.Pages.Dashboard
                     UnprintedOrders = orders
                         .Where(o => o.SalesRepId == currentSalesRep.Id && !o.IsPrintedForLoading)
                         .ToList();
+                    MyRouteDebtors = await _dbSalesService.GetSalesRepRouteDebtorsAsync(currentSalesRep.Id, cancellationToken);
                 }
             }
             else

@@ -71,13 +71,17 @@ Manufacture.Database/
 - `SupermarketAccounts`
 - `SupermarketAccountPrices` — agreed per-product prices for an account.
 - `CustomerReturns` — prior-sale items returned by customers.
-- `DailyRepRouteSheets` — daily rep reconciliation header.
+- `DailyRepRouteSheets` — daily rep reconciliation header, optionally linked to one fleet delivery dispatch.
 - `RouteSheetItems` — per-SKU loaded, sold, closing-stock, and damaged quantities.
+- `RouteSheetSupermarkets` — supermarkets visited on a daily dispatch route.
+- `RouteSheetSupermarketDebts` — dispatch-level supermarket debt ledger (one row per route + supermarket).
 
 ### Fleet and logistics
 
 - `Drivers`
 - `Vehicles`
+- `FleetDispatches` — non-charter delivery movements with a free-text purpose.
+- `FleetDispatchStops` — free-text delivery points for a fleet dispatch.
 - `FuelLogs`
 - `RouteRates`
 - `CharterBookings`
@@ -156,12 +160,19 @@ erDiagram
     Recipes ||--o{ ProductionBatches : "produced as"
     ProductionBatches ||--o{ ProductionDefects : "yields"
     SalesReps ||--o{ DailyRepRouteSheets : "reconciles"
+    FleetDispatches ||--o| DailyRepRouteSheets : "carries"
     DailyRepRouteSheets ||--|{ RouteSheetItems : "contains"
+    DailyRepRouteSheets ||--o{ RouteSheetSupermarkets : "visits"
+    SupermarketAccounts ||--o{ RouteSheetSupermarkets : "is visited on"
+    DailyRepRouteSheets ||--o{ RouteSheetSupermarketDebts : "records"
+    SupermarketAccounts ||--o{ RouteSheetSupermarketDebts : "owes"
     Recipes ||--o{ RouteSheetItems : "loaded/sold as"
     Recipes ||--o{ CustomerReturns : "returned as"
     Customers ||--o{ SupermarketAccounts : "has"
     SupermarketAccounts ||--o{ SupermarketAccountPrices : "agrees"
     Vehicles ||--o{ FuelLogs : "consumes"
+    Vehicles ||--o{ FleetDispatches : "assigned to"
+    FleetDispatches ||--|{ FleetDispatchStops : "contains"
     Vehicles ||--o{ MaintenanceLogs : "serviced by"
     Vehicles ||--o{ CharterBookings : "chartered as"
     CharterBookings ||--|{ TripLegs : "contains"

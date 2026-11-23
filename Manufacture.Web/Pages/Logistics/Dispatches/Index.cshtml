@@ -62,7 +62,7 @@
                         <tr class="hover:bg-base-200/30">
                             <td class="py-3 px-4"><a asp-page="/Logistics/Dispatches/Details" asp-route-id="@d.Id" class="font-black text-primary hover:underline">@d.DispatchRef</a><div class="text-[10px] opacity-50">@d.DispatchDate.ToString("dd MMM yyyy")</div></td>
                             <td class="py-3 px-4"><div class="font-bold">@d.VehicleRegNumber</div><div class="text-[10px] opacity-50">@d.DriverName</div></td>
-                            <td class="py-3 px-4"><span class="badge badge-ghost badge-xs">@d.Purpose</span></td>
+                            <td class="py-3 px-4"><span class="badge badge-ghost badge-xs max-w-[18rem] truncate" title="@d.Purpose">@d.Purpose</span></td>
                             <td class="py-3 px-4"><div class="font-bold">@d.Stops.Count</div><div class="text-[10px] opacity-50">@d.DeliveredStopCount delivered · @d.PendingStopCount pending · @d.FailedStopCount failed</div></td>
                             <td class="py-3 px-4 text-right font-mono">₦@d.TotalFuelCost.ToString("N0")</td>
                             <td class="py-3 px-4"><span class="badge badge-sm @IndexModel.StatusBadge(d.Status) font-bold">@d.Status</span></td>

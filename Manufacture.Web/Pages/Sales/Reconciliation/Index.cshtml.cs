@@ -42,6 +42,7 @@ namespace Manufacture.Pages.Sales.Reconciliation
         public decimal NetRevenue => GrossSales - CustomerReturnValue - DamagedValue;
 
         public bool CanEdit { get; set; }
+        public bool CanSaveDebts { get; set; }
         public bool IsSalesRep { get; set; }
         public SalesRepProfile? CurrentSalesRep { get; set; }
         public string UserRole { get; set; } = string.Empty;
@@ -112,6 +113,7 @@ namespace Manufacture.Pages.Sales.Reconciliation
             }
 
             CustomerReturns = await _salesService.GetCustomerReturnsAsync(date ?? SelectedSheet?.Date, SelectedSheet?.RepId, cancellationToken);
+            CanSaveDebts = CanEdit && SelectedSheet?.Status == RouteSheetStatus.LoadedOnRoute;
             return Page();
         }
 
@@ -135,6 +137,38 @@ namespace Manufacture.Pages.Sales.Reconciliation
                 : $"Failed to reconcile route sheet #{input.RouteSheetId}.";
 
             return RedirectToPage(new { sheetId = input.RouteSheetId, filterDate = FilterDate });
+        }
+
+        public async Task<IActionResult> OnPostSaveSupermarketDebtsAsync(
+            int routeSheetId,
+            Dictionary<int, decimal>? debtAmounts,
+            List<int>? settledSupermarketIds,
+            CancellationToken cancellationToken = default)
+        {
+            var role = HttpContext.Session.GetString("UserRole") ?? string.Empty;
+            var canEdit = role == "SuperAdmin"
+                || string.Equals(role, "SalesRep", StringComparison.OrdinalIgnoreCase)
+                || _rbacService.CanEdit(role, "Sales");
+
+            if (!canEdit || !await CanManageSheetAsync(routeSheetId, cancellationToken))
+            {
+                TempData["ErrorMessage"] = "You do not have permission to record supermarket debts on this route sheet.";
+                return RedirectToPage(new { sheetId = routeSheetId, filterDate = FilterDate });
+            }
+
+            var recordedBy = HttpContext.Session.GetString("UserName") ?? "Chief Cashier";
+            var success = await _salesService.SaveRouteSheetSupermarketDebtsAsync(
+                routeSheetId,
+                debtAmounts ?? new Dictionary<int, decimal>(),
+                settledSupermarketIds ?? new List<int>(),
+                recordedBy,
+                cancellationToken);
+
+            TempData[success ? "SuccessMessage" : "ErrorMessage"] = success
+                ? "Supermarket dispatch debts saved and account balances updated."
+                : "Could not save supermarket debts. The route sheet must be dispatched (signed off) and not yet reconciled.";
+
+            return RedirectToPage(new { sheetId = routeSheetId, filterDate = FilterDate });
         }
 
         public async Task<IActionResult> OnPostRecordReturnAsync(CancellationToken cancellationToken = default)

@@ -30,6 +30,13 @@ namespace Manufacture.Library.Interfaces
         bool UpdateRecipe(RecipeBuilderDto dto);
         bool SoftDeleteRecipe(int id);
 
+        /// <summary>
+        /// Returns a human-readable reason when the recipe cannot be permanently
+        /// deleted because linked records exist; otherwise returns <c>null</c>.
+        /// </summary>
+        string? GetRecipeDeleteBlocker(int id);
+        bool DeleteRecipe(int id);
+
         List<ProductionBatch> GetAllBatches();
         ProductionBatch? GetBatchById(int id);
         ProductionBatch CreateBatch(ProductionBatchDto dto, string loggedBy);

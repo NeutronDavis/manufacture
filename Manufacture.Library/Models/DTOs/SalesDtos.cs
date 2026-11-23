@@ -181,4 +181,34 @@ namespace Manufacture.Models.DTOs
         public string Description { get; set; } = string.Empty;
         public bool IsActive { get; set; } = true;
     }
+
+    /// <summary>
+    /// One dispatch (route sheet) on the SalesRep dashboard with the supermarkets
+    /// still owing money for that dispatch.
+    /// </summary>
+    public class SalesRepRouteDebtorDto
+    {
+        public int RouteSheetId { get; set; }
+        public string RouteSheetRef { get; set; } = string.Empty;
+        public DateTime RouteDate { get; set; }
+        public string RouteName { get; set; } = string.Empty;
+        public string SalesRepName { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public List<SalesRepRouteDebtorLineDto> Debtors { get; set; } = new();
+
+        public decimal TotalDebt => Debtors.Sum(d => d.DebtAmount);
+    }
+
+    public class SalesRepRouteDebtorLineDto
+    {
+        public int SupermarketAccountId { get; set; }
+        public string AccountName { get; set; } = string.Empty;
+        public string ContactPerson { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public decimal DebtAmount { get; set; }
+        public decimal CurrentOutstandingCredit { get; set; }
+        public decimal CreditLimit { get; set; }
+        public string RecordedBy { get; set; } = string.Empty;
+        public DateTime RecordedAt { get; set; }
+    }
 }
