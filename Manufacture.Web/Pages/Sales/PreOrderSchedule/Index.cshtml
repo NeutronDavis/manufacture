@@ -1,0 +1,304 @@
+@page
+@model Manufacture.Pages.Sales.PreOrderSchedule.IndexModel
+@{
+    ViewData["Title"] = "My Pre-Order Schedule";
+    var activeOrders = Model.PreOrders.Where(o => o.Status != OrderStatus.Cancelled).ToList();
+    var nextDelivery = activeOrders
+        .Where(o => o.TargetDeliveryDate.Date >= DateTime.UtcNow.Date)
+        .OrderBy(o => o.TargetDeliveryDate)
+        .FirstOrDefault();
+}
+
+<div class="space-y-6 w-full">
+    <!-- Breadcrumb & Header Bar -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Sales/Index" class="hover:underline">Sales &amp; POS</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Pre-Order Schedule</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-clock-rotate-left text-warning"></i> My Pre-Order Schedule
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                @(Model.PortalCustomer?.Name ?? "No linked customer account") &bull; Standing pre-orders booked by your customer account.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a asp-page="/Sales/Orders/Create" asp-route-orderType="Supermarket / Partner Order" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
+                <i class="fa-solid fa-plus text-xs"></i> Place Pre-Order
+            </a>
+        </div>
+    </div>
+
+    @if (Model.PortalCustomer == null)
+    {
+        <div class="alert alert-error text-xs rounded-xl">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>This customer login is not linked to a customer account. Contact an administrator.</span>
+        </div>
+    }
+
+    <!-- Demand Summary Stats -->
+    <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
+        <div class="stat p-5">
+            <div class="stat-figure text-warning text-2xl"><i class="fa-solid fa-clock-rotate-left"></i></div>
+            <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Active Pre-Orders</div>
+            <div class="stat-value text-2xl font-black font-mono text-warning">@activeOrders.Count</div>
+            <div class="stat-desc opacity-70">Booked by your account</div>
+        </div>
+        <div class="stat p-5">
+            <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-bread-slice"></i></div>
+            <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Units Scheduled</div>
+            <div class="stat-value text-2xl font-black font-mono text-primary">@activeOrders.Sum(o => o.Items.Sum(i => i.Quantity))</div>
+            <div class="stat-desc opacity-70">Loaves across all pre-orders</div>
+        </div>
+        <div class="stat p-5">
+            <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-naira-sign"></i></div>
+            <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Gross Pre-Order Value</div>
+            <div class="stat-value text-2xl font-black font-mono text-success">&#8358;@activeOrders.Sum(o => o.TotalAmount).ToString("N0")</div>
+            <div class="stat-desc opacity-70">Before settlement and reconciliation</div>
+        </div>
+        <div class="stat p-5">
+            <div class="stat-figure text-info text-2xl"><i class="fa-solid fa-truck-fast"></i></div>
+            <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Next Delivery</div>
+            <div class="stat-value text-lg font-black font-mono text-info">
+                @(nextDelivery != null ? nextDelivery.TargetDeliveryDate.ToString("yyyy-MM-dd") : "No scheduled date")
+            </div>
+            <div class="stat-desc opacity-70">
+                @(nextDelivery != null ? $"{nextDelivery.Items.Sum(i => i.Quantity)} units on {nextDelivery.OrderNumber}" : "Place a pre-order to schedule delivery")
+            </div>
+        </div>
+    </div>
+
+    <!-- Search & Filter Toolbar -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4 space-y-3">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="relative w-full sm:w-96">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-xs opacity-50"></i>
+                <input type="text"
+                       id="preOrderSearchInput"
+                       oninput="filterPreOrders()"
+                       placeholder="Search by order #, product, or delivery date..."
+                       class="input input-bordered input-sm w-full pl-9 bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" />
+            </div>
+            <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                <span id="preOrderCountBadge" class="badge badge-neutral badge-xs font-mono font-bold">
+                    @activeOrders.Count Pre-Order@(activeOrders.Count == 1 ? "" : "s")
+                </span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            <button type="button" onclick="setPreOrderFilter('all', this)" class="btn btn-xs btn-neutral rounded-lg font-bold preorder-filter-pill">All Pre-Orders</button>
+            <button type="button" onclick="setPreOrderFilter('production', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg preorder-filter-pill">In Production</button>
+            <button type="button" onclick="setPreOrderFilter('ready', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg preorder-filter-pill">Ready To Load</button>
+            <button type="button" onclick="setPreOrderFilter('dispatched', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg preorder-filter-pill">Dispatched</button>
+            <button type="button" onclick="setPreOrderFilter('printed', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg preorder-filter-pill">Slip Printed</button>
+            <button type="button" onclick="setPreOrderFilter('unprinted', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg preorder-filter-pill">Unprinted</button>
+        </div>
+    </div>
+
+    <!-- Pre-Orders Table Card -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+        <div class="card-body p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                    <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                        <i class="fa-solid fa-list-check"></i>
+                    </div>
+                    <span>My Pre-Order Ledger</span>
+                </div>
+                <span class="badge badge-ghost border border-base-300 text-[10px] font-mono">Customer: @(Model.PortalCustomer?.MemberCode ?? "—")</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="table table-sm w-full text-xs">
+                    <thead>
+                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                            <th class="py-3 pl-4">Order #</th>
+                            <th>Target Delivery</th>
+                            <th>Items Breakdown</th>
+                            <th>Payment Channel</th>
+                            <th>Gross Total</th>
+                            <th>Order Status</th>
+                            <th>Loading Slip</th>
+                            <th>Dispatch</th>
+                            <th class="text-right pr-4">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="preOrdersTableBody" class="divide-y divide-base-200">
+                        @foreach (var o in activeOrders)
+                        {
+                            var itemsSummary = string.Join(" ", o.Items.Select(i => $"{i.Quantity}x {i.ProductName}".ToLower()));
+                            var statusText = o.Status.ToString().ToLower();
+
+                            <tr class="hover:bg-base-200/60 transition-colors preorder-row"
+                                data-order="@o.OrderNumber.ToLower()"
+                                data-items="@itemsSummary"
+                                data-target="@o.TargetDeliveryDate.ToString("yyyy-MM-dd")"
+                                data-status="@statusText"
+                                data-printed="@(o.IsPrintedForLoading ? "printed" : "unprinted")">
+
+                                <td class="font-mono text-xs font-bold pl-4 py-3 text-base-content">
+                                    <span class="badge badge-neutral badge-xs font-mono font-bold">@o.OrderNumber</span>
+                                    <div class="text-[10px] opacity-60 mt-1">Booked @o.OrderDate.ToString("yyyy-MM-dd")</div>
+                                </td>
+                                <td class="py-3">
+                                    <div class="font-bold text-warning font-mono text-[11px]">
+                                        <i class="fa-solid fa-calendar-day"></i> @o.TargetDeliveryDate.ToString("yyyy-MM-dd")
+                                    </div>
+                                    <span class="badge badge-ghost border border-base-300 text-[10px] mt-1">@o.Type</span>
+                                </td>
+                                <td class="py-3 max-w-xs text-[11px] opacity-90">
+                                    @foreach (var item in o.Items)
+                                    {
+                                        <div>
+                                            <strong class="text-base-content font-mono">@item.Quantity</strong> x @item.ProductName
+                                            <span class="opacity-60 font-mono">(&#8358;@item.UnitPrice.ToString("N0")/unit)</span>
+                                            @if (item.BonusQuantity > 0)
+                                            {
+                                                <span class="badge badge-success badge-xs font-mono ml-1">+@item.BonusQuantity bonus</span>
+                                            }
+                                        </div>
+                                    }
+                                </td>
+                                <td class="py-3">
+                                    <span class="badge badge-ghost border border-base-300 text-[10px] font-mono font-bold">@o.PaymentMethod</span>
+                                    <div class="mt-1">
+                                        <span class="badge @(o.PaymentStatus == OrderPaymentStatus.Completed ? "badge-success" : o.PaymentStatus == OrderPaymentStatus.PartiallyPaid ? "badge-warning" : "badge-ghost") badge-xs font-bold">@o.PaymentStatus</span>
+                                    </div>
+                                </td>
+                                <td class="font-mono text-xs font-black text-base-content py-3">
+                                    &#8358;@o.TotalAmount.ToString("N0")
+                                </td>
+                                <td class="py-3">
+                                    <span class="badge @(o.Status == OrderStatus.Dispatched ? "badge-neutral" : o.Status == OrderStatus.ReadyToLoad ? "badge-info" : o.Status == OrderStatus.InProduction ? "badge-warning" : "badge-ghost") badge-xs font-bold">
+                                        @o.Status
+                                    </span>
+                                </td>
+                                <td class="py-3">
+                                    @if (o.IsPrintedForLoading)
+                                    {
+                                        <span class="badge badge-success badge-xs font-bold gap-1">
+                                            <i class="fa-solid fa-check text-[9px]"></i> Printed
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-warning badge-xs font-bold gap-1">
+                                            <i class="fa-solid fa-clock text-[9px]"></i> Unprinted
+                                        </span>
+                                    }
+                                </td>
+                                <td class="py-3">
+                                    @if (o.Status == OrderStatus.Dispatched)
+                                    {
+                                        <span class="badge badge-neutral badge-xs font-bold">Dispatched</span>
+                                        @if (!string.IsNullOrWhiteSpace(o.VerifiedByLoaderName))
+                                        {
+                                            <div class="text-[10px] opacity-60">By: @o.VerifiedByLoaderName</div>
+                                        }
+                                    }
+                                    else if (o.Status == OrderStatus.ReadyToLoad)
+                                    {
+                                        <span class="badge badge-info badge-xs font-bold">Ready To Load</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-ghost badge-xs">@o.Status</span>
+                                    }
+                                </td>
+                                <td class="text-right pr-4 py-3">
+                                    <a asp-page="/Sales/PreOrderSchedule/Details" asp-route-id="@o.Id" class="btn btn-xs btn-ghost rounded-lg gap-1 font-semibold" title="Open pre-order details">
+                                        <i class="fa-solid fa-eye text-[10px]"></i> Details
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.PortalCustomer != null && !activeOrders.Any())
+            {
+                <div class="alert alert-info shadow-xs rounded-2xl text-xs py-4 flex items-center gap-3">
+                    <i class="fa-solid fa-circle-info text-base"></i>
+                    <span>No pre-orders have been booked yet for @Model.PortalCustomer.Name. Use <strong>Place Pre-Order</strong> to book your next delivery.</span>
+                </div>
+            }
+
+            <div id="noPreOrdersAlert" class="alert alert-info shadow-xs rounded-2xl text-xs py-4 hidden flex items-center gap-3">
+                <i class="fa-solid fa-circle-info text-base"></i>
+                <span>No pre-orders matched your search criteria or selected status filter.</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    let activePreOrderFilter = 'all';
+
+    function setPreOrderFilter(filter, button) {
+        activePreOrderFilter = filter;
+
+        document.querySelectorAll('.preorder-filter-pill').forEach(btn => {
+            btn.className = 'btn btn-xs btn-ghost border border-base-300 rounded-lg preorder-filter-pill';
+        });
+        button.className = 'btn btn-xs btn-neutral rounded-lg font-bold preorder-filter-pill';
+
+        filterPreOrders();
+    }
+
+    function filterPreOrders() {
+        const query = document.getElementById('preOrderSearchInput').value.toLowerCase().trim();
+        const rows = document.querySelectorAll('.preorder-row');
+        const countBadge = document.getElementById('preOrderCountBadge');
+        const noResults = document.getElementById('noPreOrdersAlert');
+
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const orderNum = row.getAttribute('data-order') || '';
+            const items = row.getAttribute('data-items') || '';
+            const target = row.getAttribute('data-target') || '';
+            const status = row.getAttribute('data-status') || '';
+            const printed = row.getAttribute('data-printed') || '';
+
+            const matchesQuery = !query || orderNum.includes(query) || items.includes(query) || target.includes(query);
+
+            let matchesFilter = true;
+            if (activePreOrderFilter === 'production') {
+                matchesFilter = status === 'inproduction' || status === 'pending';
+            } else if (activePreOrderFilter === 'ready') {
+                matchesFilter = status === 'readytoload';
+            } else if (activePreOrderFilter === 'dispatched') {
+                matchesFilter = status === 'dispatched';
+            } else if (activePreOrderFilter === 'printed') {
+                matchesFilter = printed === 'printed';
+            } else if (activePreOrderFilter === 'unprinted') {
+                matchesFilter = printed === 'unprinted';
+            }
+
+            if (matchesQuery && matchesFilter) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        countBadge.innerText = `${visibleCount} Pre-Order${visibleCount !== 1 ? 's' : ''}`;
+
+        if (visibleCount === 0) {
+            noResults.classList.remove('hidden');
+        } else {
+            noResults.classList.add('hidden');
+        }
+    }
+</script>
+}

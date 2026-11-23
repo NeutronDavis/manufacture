@@ -1,0 +1,518 @@
+@model Manufacture.Pages.Dashboard.IndexModel
+@using Manufacture.Models.DTOs
+@using Manufacture.Models.Domain
+
+@{
+    var overview = Model.Overview;
+
+    // "Today" is the landing view; every other window is revealed by the switcher.
+    var defaultPeriod = overview.Periods.First();
+
+    string Money(decimal value) => ReportColumnCatalog.FormatMoney(value);
+
+    // The operational week is always Sunday to Saturday, so say so on the toggle.
+    string TimeframeLabel(KpiPeriodCardDto period) =>
+        period.Key == "This Week" ? "This Week (Sun–Sat)" : period.Label;
+
+    // All eight stages in strict pipeline order.
+    var stageColumns = new (string Label, Func<LifecycleTotalsDto, int> Select, string Subtitle, string Tone, string BgTone, string BorderTone)[]
+    {
+        ("Orders Placed",        t => t.OrdersPlaced,    "Booked in the order register", "text-info",      "bg-info/10",      "border-info/30"),
+        ("Produced",             t => t.Produced,        "Plant manufactured",      "text-primary",   "bg-primary/10",   "border-primary/30"),
+        ("Loaded",               t => t.Loaded,          "Physical truck loading",  "text-secondary", "bg-secondary/10", "border-secondary/30"),
+        ("Factory Defects",      t => t.FactoryDefects,  "Rejected before loading", "text-warning",   "bg-warning/10",   "border-warning/30"),
+        ("Sold",                 t => t.Sold,            "Route verified volume",   "text-success",   "bg-success/10",   "border-success/30"),
+        ("Closing Stock",        t => t.Returned,        "Rolls into tomorrow",     "text-accent",    "bg-accent/10",    "border-accent/30"),
+        ("Damaged",              t => t.Damaged,         "In-transit write-off",    "text-error",     "bg-error/10",     "border-error/30"),
+        ("Returns",              t => t.CustomerReturns, "Prior-sale replacements", "text-neutral",   "bg-neutral/10",   "border-neutral/30")
+    };
+
+    int StageValue(LifecycleTotalsDto totals, LifecycleMetric metric) => metric switch
+    {
+        LifecycleMetric.OrdersPlaced => totals.OrdersPlaced,
+        LifecycleMetric.Produced => totals.Produced,
+        LifecycleMetric.Loaded => totals.Loaded,
+        LifecycleMetric.FactoryDefects => totals.FactoryDefects,
+        LifecycleMetric.Sold => totals.Sold,
+        LifecycleMetric.Returned => totals.Returned,
+        LifecycleMetric.Damaged => totals.Damaged,
+        LifecycleMetric.CustomerReturns => totals.CustomerReturns,
+        _ => 0
+    };
+
+    decimal FillRate(LifecycleTotalsDto t) => t.OrdersPlaced <= 0 ? 0m : Math.Round(t.Loaded / (decimal)t.OrdersPlaced * 100m, 1);
+    decimal SellThrough(LifecycleTotalsDto t) => t.Loaded <= 0 ? 0m : Math.Round(t.Sold / (decimal)t.Loaded * 100m, 1);
+    decimal DamageRate(LifecycleTotalsDto t) => t.Loaded <= 0 ? 0m : Math.Round(t.Damaged / (decimal)t.Loaded * 100m, 1);
+    decimal CollectionRate(LifecycleTotalsDto t) => t.ExpectedRevenue <= 0 ? 0m : Math.Round(t.Collected / t.ExpectedRevenue * 100m, 1);
+
+    @* string HealthTone(decimal value, decimal good, decimal warn) =>
+        value >= good ? "text-success" : value >= warn ? "text-warning" : "text-error"; *@
+
+}
+
+<div class="space-y-6" id="exec-overview">
+    <!-- Executive context bar: visible timeframe switcher and stage definitions -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+        <div class="card-body p-5 space-y-4">
+            <div class="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="badge badge-primary badge-sm font-bold">SuperAdmin Control Centre</span>
+                        <span class="badge badge-ghost border border-base-300 badge-sm font-mono">@overview.AnchorDateLabel</span>
+                    </div>
+                    <h2 class="text-xl font-black text-base-content tracking-tight mt-2 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-primary"></i> Executive Operational Overview
+                    </h2>
+                    <p class="text-xs opacity-65 mt-1">
+                        Database-backed lifecycle from rep request through production, loading, sales, closing stock, transit damage and customer returns.
+                    </p>
+                </div>
+
+                <div class="flex flex-col items-start xl:items-end gap-2">
+                    <div class="join border border-base-300 rounded-xl overflow-hidden p-0.5 bg-base-200/50" role="tablist" aria-label="Dashboard period">
+                        @foreach (var period in overview.Periods)
+                        {
+                            <button type="button"
+                                    class="btn btn-sm join-item font-bold text-[11px] drill-period-btn @(period.Key == defaultPeriod.Key ? "btn-neutral" : "btn-ghost")"
+                                    data-period="@period.Key"
+                                    onclick="selectDrillPeriod(this)">
+                                @TimeframeLabel(period)
+                            </button>
+                        }
+                    </div>
+                    <div class="text-[10px] opacity-55 font-mono" id="exec-period-caption">
+                        @defaultPeriod.Label &bull; @defaultPeriod.DateLabel
+                    </div>
+                </div>
+            </div>
+
+            <details class="collapse collapse-arrow bg-base-200/40 border border-base-300 rounded-xl">
+                <summary class="collapse-title min-h-0 py-2.5 px-4 text-[11px] font-bold text-base-content/70">
+                    <i class="fa-solid fa-circle-info text-primary mr-1.5"></i> How to read the eight-stage pipeline
+                </summary>
+                <div class="collapse-content px-4 pb-3">
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-x-5 gap-y-2 text-[10px] leading-relaxed opacity-70">
+                        <div><strong>Orders Placed</strong> — sales orders booked in the register.</div>
+                        <div><strong>Produced</strong> — actual factory output for the period.</div>
+                        <div><strong>Loaded</strong> — stock physically released to the trucks.</div>
+                        <div><strong>Factory Defects</strong> — production losses before loading.</div>
+                        <div><strong>Sold</strong> — verified route sales reported by reps.</div>
+                        <div><strong>Closing Stock</strong> — good unsold stock rolled into tomorrow.</div>
+                        <div><strong>Damaged</strong> — loaded stock spoiled before sale and written off.</div>
+                        <div><strong>Returns</strong> — prior-sale customer returns replaced with fresh stock.</div>
+                    </div>
+                </div>
+            </details>
+        </div>
+    </div>
+
+    @* One panel per window. The switcher reveals the selected panel instantaneously. *@
+    @foreach (var period in overview.Periods)
+    {
+        var totals = period.Totals;
+        var lines = overview.ProductLinesByPeriod.GetValueOrDefault(period.Key) ?? new List<ProductLineBreakdownDto>();
+        var tender = overview.TenderByPeriod.GetValueOrDefault(period.Key) ?? new TenderSplitDto();
+        var alerts = overview.AlertsByPeriod.GetValueOrDefault(period.Key) ?? new List<ExecutiveAlertDto>();
+        var isDefault = period.Key == defaultPeriod.Key;
+
+        var fillRateVal = FillRate(totals);
+        var sellThroughVal = SellThrough(totals);
+        var damageRateVal = DamageRate(totals);
+        var collectionRateVal = CollectionRate(totals);
+
+        var tenderSum = tender.Total + tender.Outstanding;
+        if (tenderSum <= 0) { tenderSum = totals.ExpectedRevenue > 0 ? totals.ExpectedRevenue : 1m; }
+
+        <div class="exec-period-panel space-y-6 @(isDefault ? "" : "hidden")" data-period-panel="@period.Key">
+
+            <!-- ============ B. Daily Lifecycle Flow Pipeline ============ -->
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-5 space-y-4">
+                    <div class="flex items-center justify-between flex-wrap gap-3 pb-1 border-b border-base-200">
+                        <div>
+                            <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                                <i class="fa-solid fa-arrows-split-up-and-left text-primary"></i> Lifecycle Flow &bull; @TimeframeLabel(period)
+                            </h2>
+                            <p class="text-[11px] opacity-65 mt-0.5">
+                                Strict 8-stage operational pipeline from rep request through production, loading, factory rejects, sales, closing stock, transit damage and customer returns. Click any stage to open its grouped breakdown.
+                            </p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="badge badge-primary badge-soft badge-sm font-bold">@period.RepCount Sales Reps Active</span>
+                            <span class="badge badge-ghost border border-base-300 badge-sm font-bold">8 Stages &bull; Click for records</span>
+                        </div>
+                    </div>
+
+                    <!-- 8-Stage Sequential Pipeline Cards: clicking a stage opens its grouped side panel. -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2.5">
+                        @for (int i = 0; i < Model.Stages.Count; i++)
+                        {
+                            var stage = Model.Stages[i];
+                            var stageCol = stageColumns[i];
+                            var stageVal = StageValue(totals, stage.Metric);
+                            var stageNum = i + 1;
+                            var stageHint = i switch
+                            {
+                                1 => $"{(totals.OrdersPlaced > 0 ? Math.Round(totals.Produced / (decimal)totals.OrdersPlaced * 100m, 1) : 0m):0.0}% of requests",
+                                2 => $"{FillRate(totals):0.0}% of requests",
+                                3 => $"{(totals.Produced > 0 ? Math.Round(totals.FactoryDefects / (decimal)totals.Produced * 100m, 1) : 0m):0.0}% defect rate",
+                                4 => $"{SellThrough(totals):0.0}% sell-through",
+                                5 => $"{(totals.Loaded > 0 ? Math.Round(totals.Returned / (decimal)totals.Loaded * 100m, 1) : 0m):0.0}% of loaded",
+                                6 => $"{DamageRate(totals):0.0}% of loaded",
+                                7 => $"{(totals.Sold > 0 ? Math.Round(totals.CustomerReturns / (decimal)totals.Sold * 100m, 1) : 0m):0.0}% of sold",
+                                _ => "Rep requests"
+                            };
+
+                            <div class="relative group cursor-pointer"
+                                 title="@stageCol.Subtitle"
+                                 onclick="openDrill('all', '@period.Key', '@stage.Metric')">
+                                <div class="card bg-base-100 border border-base-300 rounded-xl hover:border-primary hover:shadow-md transition-all duration-200 h-full p-3 space-y-2 flex flex-col justify-between group-hover:-translate-y-0.5">
+                                    <div>
+                                        <div class="text-[9px] font-bold uppercase tracking-wider opacity-60 leading-tight">@stageCol.Label</div>
+                                        <div class="font-mono font-black text-xl text-base-content tracking-tight mt-0.5">
+                                            @stageVal.ToString("N0")
+                                        </div>
+                                    </div>
+                                    <div class="pt-1.5 border-t border-base-200/80 flex items-center justify-between text-[9px] opacity-60">
+                                        <span class="truncate">@stageCol.Subtitle</span>
+                                        <i class="fa-solid fa-arrow-right text-[8px] opacity-40 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-primary"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ C. Side-by-Side Product Category Cards ============ -->
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-boxes-stacked text-primary"></i> Product Line Performance &bull; @TimeframeLabel(period)
+                    </h3>
+                    <span class="text-[11px] opacity-60">Segmented multi-product yield & reconciliation</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                    @foreach (var line in lines)
+                    {
+                        var t = line.Totals;
+                        var skus = line.SkuNames;
+
+                        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                            <div class="card-body p-5 space-y-4">
+                                <!-- Card Header -->
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="flex items-center gap-2.5">
+                                        <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg shadow-xs">
+                                            <i class="@line.IconClass"></i>
+                                        </div>
+                                        <div>
+                                            <h4 class="font-black text-base tracking-tight text-base-content">@line.ProductionCategoryName</h4>
+                                            <p class="text-[10px] opacity-60">@skus.Count active SKU@(skus.Count == 1 ? "" : "s")</p>
+                                        </div>
+                                    </div>
+                        
+                                </div>
+
+                                <!-- Sales highlights: read-only snapshot for this product line -->
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div class="text-left p-3 rounded-xl bg-success/10 border border-success/20">
+                                        <div class="text-[9px] font-bold uppercase tracking-wider opacity-60">Units Sold</div>
+                                        <div class="font-mono font-black text-xl text-success mt-0.5">@t.Sold.ToString("N0")</div>
+                                    </div>
+                                    <div class="text-left p-3 rounded-xl bg-base-200/60 border border-base-300">
+                                        <div class="text-[9px] font-bold uppercase tracking-wider opacity-60">Gross Revenue</div>
+                                        <div class="font-mono font-black text-sm text-base-content mt-1">@Money(t.ExpectedRevenue)</div>
+                                    </div>
+                                </div>
+
+                                <!-- Remaining reconciliation metrics -->
+                                <div class="grid grid-cols-3 gap-2 text-center">
+                                    <div class="rounded-xl bg-accent/10 border border-accent/20 px-2 py-2">
+                                        <div class="text-[8px] font-bold uppercase opacity-60">Closing Stock</div>
+                                        <div class="font-mono font-black text-sm text-accent mt-0.5">@t.Returned.ToString("N0")</div>
+                                    </div>
+                                    <div class="rounded-xl @(t.Damaged > 0 ? "bg-error/10 border-error/20" : "bg-base-200/60 border-base-300") border px-2 py-2">
+                                        <div class="text-[8px] font-bold uppercase opacity-60">Damaged</div>
+                                        <div class="font-mono font-black text-sm @(t.Damaged > 0 ? "text-error" : "opacity-60") mt-0.5">@t.Damaged.ToString("N0")</div>
+                                    </div>
+                                    <div class="rounded-xl @(t.CustomerReturns > 0 ? "bg-warning/10 border-warning/20" : "bg-base-200/60 border-base-300") border px-2 py-2">
+                                        <div class="text-[8px] font-bold uppercase opacity-60">Returns</div>
+                                        <div class="font-mono font-black text-sm @(t.CustomerReturns > 0 ? "text-warning" : "opacity-60") mt-0.5">@t.CustomerReturns.ToString("N0")</div>
+                                    </div>
+                                </div>
+
+                                <!-- Actual database SKUs -->
+                                <div>
+                                    <div class="text-[10px] font-bold uppercase tracking-wider opacity-50 mb-1.5">SKUs in this category</div>
+                                    <div class="flex flex-wrap gap-1.5">
+                                        @if (skus.Count == 0)
+                                        {
+                                            <span class="text-[10px] opacity-50">No active SKU recorded yet.</span>
+                                        }
+                                        @foreach (var sku in skus)
+                                        {
+                                            <span class="badge badge-sm badge-ghost bg-base-200 border border-base-300 text-[10px] font-medium py-1">
+                                                @sku
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+        </div>
+    }
+</div>
+
+<!-- ============ Interactive Side Bar Slide-Over Drawer ============ -->
+<!-- Backdrop Overlay -->
+<div id="drill-backdrop"
+     class="fixed inset-0 bg-neutral-900/60 backdrop-blur-xs z-50 opacity-0 pointer-events-none transition-opacity duration-300 ease-out"
+     onclick="closeDrillDrawer()"></div>
+
+<!-- Drawer Body (Slide-in from Right Edge, Full Screen Height) -->
+<aside id="drill-drawer"
+       class="fixed top-0 right-0 bottom-0 z-50 w-full max-w-4xl bg-base-100 shadow-2xl border-l border-base-300 flex flex-col h-screen transform translate-x-full transition-transform duration-300 ease-in-out"
+       role="dialog" aria-modal="true" aria-labelledby="drill-header-title">
+
+    <!-- Drawer Top Header -->
+    <div class="bg-base-100 border-b border-base-300 px-6 py-4 flex items-center justify-between shrink-0">
+        <div class="space-y-1">
+            <div class="flex items-center gap-2">
+                <span id="drill-stage-badge" class="badge badge-primary font-bold text-[10px] uppercase tracking-wider">
+                    Orders Placed
+                </span>
+                <span id="drill-scope-badge" class="badge badge-ghost border border-base-300 font-bold text-[10px]">
+                    All Product Lines
+                </span>
+            </div>
+            <h3 class="font-black text-lg text-base-content tracking-tight flex items-center gap-2" id="drill-header-title">
+                Today's Orders Placed — By Sales Rep
+            </h3>
+            <p class="text-xs opacity-60" id="drill-caption">
+                Quantities requested by each sales rep before route departure.
+            </p>
+        </div>
+        <button type="button"
+                onclick="closeDrillDrawer()"
+                class="btn btn-sm btn-circle btn-ghost hover:bg-base-200 transition-colors"
+                aria-label="Close side bar drawer">
+            <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+    </div>
+
+    <!-- Hidden State Inputs -->
+    <input type="hidden" id="drill-metric" value="OrdersPlaced" />
+    <input type="hidden" id="drill-period" value="@defaultPeriod.Key" />
+    <input type="hidden" id="drill-scope" value="all" />
+    <input type="hidden" id="drill-view-mode" value="stage" />
+
+    <!-- Drawer Body -->
+    <div class="p-6 space-y-5 overflow-y-auto flex-1">
+        <!-- Navigation Tabs: Stage Breakdown vs Product Orders (SKU List) vs Sales Rep Allocations -->
+        <div class="flex items-center justify-between border-b border-base-300 pb-2 flex-wrap gap-2">
+            <div class="tabs tabs-boxed bg-base-200/60 p-1 rounded-xl">
+                <button type="button"
+                        id="tab-btn-records"
+                        class="tab tab-sm font-bold text-xs tab-active rounded-lg transition-all"
+                        onclick="switchDrillTab('records')">
+                    <i class="fa-solid fa-list-ul mr-1.5 text-xs"></i> Records
+                </button>
+                <button type="button"
+                        id="tab-btn-stage"
+                        class="tab tab-sm font-bold text-xs rounded-lg transition-all"
+                        onclick="switchDrillTab('stage')">
+                    <i class="fa-solid fa-diagram-project mr-1.5 text-xs"></i> Stage Breakdown
+                </button>
+                <button type="button"
+                        id="tab-btn-products"
+                        class="tab tab-sm font-bold text-xs rounded-lg transition-all"
+                        onclick="switchDrillTab('products')">
+                    <i class="fa-solid fa-box-open mr-1.5 text-xs"></i> Product Orders (SKU List)
+                </button>
+                <button type="button"
+                        id="tab-btn-reps"
+                        class="tab tab-sm font-bold text-xs rounded-lg transition-all"
+                        onclick="switchDrillTab('reps')">
+                    <i class="fa-solid fa-users mr-1.5 text-xs"></i> Sales Rep Allocations
+                </button>
+            </div>
+
+            <!-- Instant Search Bar -->
+            <div class="relative">
+                <i class="fa-solid fa-magnifying-glass text-[10px] opacity-40 absolute left-2.5 top-2.5"></i>
+                <input type="text" id="drill-search-input" placeholder="Search records or groups..."
+                       class="input input-xs input-bordered pl-7 rounded-xl text-xs w-44 sm:w-56 focus:w-64 transition-all" />
+            </div>
+        </div>
+
+        <!-- Secondary Filter Controls: Scope & Timeframe Chips -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <!-- Product Scope Switcher -->
+            <div class="flex flex-wrap gap-1.5" role="tablist" aria-label="Product scope">
+                @foreach (var scope in overview.DrillDownScopes)
+                {
+                    <button type="button"
+                            class="btn btn-xs rounded-xl font-bold text-[11px] drill-scope-btn"
+                            data-scope="@scope.ScopeKey"
+                            onclick="selectDrillScope(this)">
+                        <i class="fa-solid @(scope.ScopeKey == "all" ? "fa-layer-group" : "fa-box") text-[10px]"></i>
+                        @scope.ScopeLabel
+                    </button>
+                }
+            </div>
+
+            <!-- Period Switcher (Default: Today) -->
+            <div class="join border border-base-300 rounded-xl overflow-hidden p-0.5 bg-base-200/50" role="tablist" aria-label="Period">
+                @foreach (var period in overview.Periods)
+                {
+                    <button type="button"
+                            class="btn btn-xs join-item font-bold text-[10px] drill-period-btn @(period.Key == defaultPeriod.Key ? "btn-neutral" : "btn-ghost")"
+                            data-period="@period.Key"
+                            onclick="selectDrillPeriod(this)">
+                        @period.Label
+                    </button>
+                }
+            </div>
+        </div>
+
+        <!-- VIEW: Source records for the selected KPI (fetched on demand) -->
+        <div id="drill-records-container" class="space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-base-200 bg-base-200/40 px-4 py-2.5">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span id="drill-records-grouping-badge" class="badge badge-primary badge-sm font-bold text-[10px]">
+                        By Sales Rep
+                    </span>
+                    <span id="drill-records-total-badge" class="badge badge-ghost border border-base-300 badge-sm font-mono font-bold text-[10px]">
+                        0 units
+                    </span>
+                    <span id="drill-records-count-badge" class="badge badge-ghost border border-base-300 badge-sm font-mono text-[10px]">
+                        0 records
+                    </span>
+                    <span id="drill-records-value-badge" class="badge badge-success badge-soft badge-sm font-mono font-bold text-[10px] hidden">
+                        ₦0
+                    </span>
+                </div>
+                <span id="drill-records-note" class="text-[10px] opacity-60 max-w-xl text-right">
+                    Source records for the selected stage.
+                </span>
+            </div>
+
+            <div id="drill-records-loading" class="hidden rounded-xl border border-base-200 bg-base-100 px-4 py-12 flex-col items-center gap-3 shadow-xs">
+                <span class="loading loading-spinner loading-md text-primary"></span>
+                <span class="text-xs opacity-60 font-medium">Loading records…</span>
+            </div>
+
+            <div id="drill-records-error" class="hidden alert alert-error rounded-xl text-xs">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span id="drill-records-error-text">Could not load records.</span>
+                <button type="button" class="btn btn-xs btn-ghost font-bold" onclick="reloadDrillRecords()">Retry</button>
+            </div>
+
+            <div id="drill-records-empty" class="hidden rounded-xl border border-dashed border-base-300 bg-base-100 px-4 py-12 text-center text-xs opacity-60">
+                <span id="drill-records-empty-text">No source records were found for this stage, scope and period.</span>
+            </div>
+
+            <div id="drill-records-groups" class="space-y-4"></div>
+        </div>
+
+        <!-- VIEW 0: Stage-specific grouped breakdown (the eight KPI cards) -->
+        <div id="drill-stage-container" class="space-y-3 hidden">
+            <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-base-200 bg-base-200/40 px-4 py-2.5">
+                <div class="flex items-center gap-2">
+                    <span id="drill-stage-grouping-badge" class="badge badge-primary badge-sm font-bold text-[10px]">
+                        By Sales Rep
+                    </span>
+                    <span id="drill-stage-total-badge" class="badge badge-ghost border border-base-300 badge-sm font-mono font-bold text-[10px]">
+                        0 units
+                    </span>
+                </div>
+                <span id="drill-stage-note" class="text-[10px] opacity-60 max-w-xl text-right">
+                    Click any stage KPI to see its grouped operational detail.
+                </span>
+            </div>
+
+            <div class="rounded-xl border border-base-200 bg-base-100 overflow-x-auto shadow-xs">
+                <table class="table table-sm w-full text-xs">
+                    <thead class="bg-base-200/60">
+                        <tr id="drill-stage-head" class="uppercase text-[10px] tracking-wider border-b border-base-300 opacity-70">
+                            <!-- Dynamic stage columns rendered via JS -->
+                        </tr>
+                    </thead>
+                    <tbody id="drill-stage-body" class="divide-y divide-base-200 font-medium">
+                        <!-- Dynamic stage rows rendered via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- VIEW 1: Product Orders (SKU List) Table -->
+        <div id="drill-product-container" class="rounded-xl border border-base-200 bg-base-100 overflow-x-auto shadow-xs hidden">
+            <table class="table table-sm w-full text-xs">
+                <thead class="bg-base-200/60">
+                    <tr class="uppercase text-[10px] tracking-wider border-b border-base-300 opacity-70">
+                        <th class="text-left py-2.5">Product / SKU</th>
+                        <th class="text-left">Category</th>
+                        <th class="text-right">Unit Price</th>
+                        <th class="text-right bg-primary/10 text-primary font-black" id="th-product-active-metric">Orders Placed</th>
+                        <th class="text-center">Lifecycle Funnel (Ord &rarr; Prod &rarr; Load &rarr; Sold)</th>
+                        <th class="text-right">Total Value</th>
+                        <th class="text-right w-24">Share</th>
+                    </tr>
+                </thead>
+                <tbody id="drill-product-body" class="divide-y divide-base-200 font-medium">
+                    <!-- Dynamic Product Order Rows Rendered via JS -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- VIEW 2: Sales Rep Allocations Table -->
+        <div id="drill-rep-container" class="rounded-xl border border-base-200 bg-base-100 overflow-x-auto shadow-xs hidden">
+            <table class="table table-sm w-full text-xs">
+                <thead class="bg-base-200/60">
+                    <tr class="uppercase text-[10px] tracking-wider border-b border-base-300 opacity-70">
+                        <th class="text-left py-2.5">Rep Name</th>
+                        <th class="text-left">Vehicle / Route</th>
+                        <th class="text-right">Requested<br />Qty</th>
+                        <th class="text-right">Loaded<br />Qty</th>
+                        <th class="text-right">Sold<br />Qty</th>
+                        <th class="text-right">Closing Stock<br />Qty</th>
+                        <th class="text-right">Damaged<br />Qty</th>
+                        <th class="text-right">Customer<br />Returns</th>
+                        <th class="text-right">Expected<br />Revenue</th>
+                        <th class="text-right">Cash<br />Collected</th>
+                        <th class="text-right">Outstanding<br />Balance</th>
+                    </tr>
+                </thead>
+                <tbody id="drill-rep-body" class="divide-y divide-base-200 font-medium">
+                    <!-- Dynamic Rep Rows Rendered via JS -->
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <!-- Drawer Sticky Footer -->
+    <div class="bg-base-100 border-t border-base-300 px-6 py-3.5 flex items-center justify-between shrink-0 flex-wrap gap-3">
+        <div class="text-xs opacity-60 font-medium" id="drill-footer-summary">
+            Showing records for Today
+        </div>
+        <div class="flex items-center gap-2">
+            <a id="drill-reports-link" asp-page="/Reports/Index" asp-route-view="table" asp-route-module="Operational"
+               asp-route-timeframe="@defaultPeriod.ReportsTimeframe"
+               class="btn btn-sm btn-primary rounded-xl font-bold text-xs gap-2 shadow-xs">
+                <i class="fa-solid fa-chart-column text-xs"></i> Open in Full Reports
+            </a>
+            <button type="button"
+                    onclick="closeDrillDrawer()"
+                    class="btn btn-sm btn-ghost rounded-xl font-bold text-xs">
+                Close
+            </button>
+        </div>
+    </div>
+</aside>

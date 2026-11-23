@@ -38,3 +38,4 @@
 
     8. When Returns is cliked, it should open at the side panel showing the dayly products returned by supermarkets/retailers from prior sales, i.e group them by product category, (`Bread`, `Water`,`Snack`
 
+

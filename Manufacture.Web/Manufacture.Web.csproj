@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Keep the application namespace stable after moving the project into
+         its own folder. -->
+    <RootNamespace>Manufacture</RootNamespace>
+    <AssemblyName>Manufacture.Web</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Manufacture.Library\Manufacture.Library.csproj" />
+  </ItemGroup>
+
+</Project>

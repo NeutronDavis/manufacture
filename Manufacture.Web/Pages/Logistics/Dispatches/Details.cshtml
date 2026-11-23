@@ -1,0 +1,121 @@
+@page "{id:int}"
+@model Manufacture.Pages.Logistics.Dispatches.DetailsModel
+@using Manufacture.Models.DTOs
+@{
+    ViewData["Title"] = "Delivery Dispatch";
+    var d = Model.Dispatch!;
+    var statusClass = IndexModel.StatusBadge(d.Status);
+}
+@functions {
+    public static string StopBadge(FleetDispatchStopStatus status) => status switch
+    {
+        FleetDispatchStopStatus.Delivered => "badge-success",
+        FleetDispatchStopStatus.Failed => "badge-error",
+        _ => "badge-ghost"
+    };
+}
+
+<div class="space-y-6">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a><span>&gt;</span>
+                <a asp-page="/Logistics/Dispatches/Index" class="hover:underline">Delivery Dispatches</a><span>&gt;</span>
+                <span class="text-primary font-bold">@d.DispatchRef</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2"><i class="fa-solid fa-truck-ramp-box text-primary"></i> @d.DispatchRef <span class="badge badge-sm @statusClass font-bold">@d.Status</span></h1>
+            <p class="text-xs opacity-70 mt-0.5">@d.VehicleRegNumber · @d.DriverName · @d.DispatchDate.ToString("dd MMM yyyy")</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+            <a asp-page="/Logistics/Dispatches/Index" class="btn btn-sm btn-ghost rounded-xl text-xs"><i class="fa-solid fa-arrow-left"></i> List</a>
+            @if (d.Status is FleetDispatchStatus.Planned or FleetDispatchStatus.Loading)
+            {
+                <form method="post" asp-page-handler="Start" asp-route-id="@d.Id"><button class="btn btn-sm btn-info rounded-xl text-xs font-bold"><i class="fa-solid fa-truck-moving"></i> Start Dispatch</button></form>
+            }
+            @if (d.Status is FleetDispatchStatus.InTransit or FleetDispatchStatus.Delivered)
+            {
+                <form method="post" asp-page-handler="Complete" asp-route-id="@d.Id"><button class="btn btn-sm btn-success rounded-xl text-xs font-bold"><i class="fa-solid fa-circle-check"></i> Complete</button></form>
+            }
+            @if (d.Status is not FleetDispatchStatus.Completed and not FleetDispatchStatus.Cancelled)
+            {
+                <form method="post" asp-page-handler="Cancel" asp-route-id="@d.Id" onsubmit="return confirm('Cancel this dispatch?');"><button class="btn btn-sm btn-error btn-outline rounded-xl text-xs font-bold"><i class="fa-solid fa-xmark"></i> Cancel</button></form>
+            }
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div class="lg:col-span-8 space-y-6">
+            <div class="card bg-base-100 border border-base-300 rounded-2xl p-5">
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
+                    <div><div class="opacity-50">Vehicle</div><div class="font-black">@d.VehicleRegNumber</div></div>
+                    <div><div class="opacity-50">Driver</div><div class="font-bold">@d.DriverName</div></div>
+                    <div><div class="opacity-50">Purpose</div><div class="font-bold">@d.Purpose</div></div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(d.Notes)) { <p class="text-xs opacity-70 bg-base-200/40 p-3 rounded-xl mt-4">@d.Notes</p> }
+            </div>
+
+            <div class="card bg-base-100 border border-base-300 rounded-2xl p-5 space-y-3">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="text-sm font-black text-base-content">Delivery Points</h2>
+                    <span class="badge badge-ghost badge-sm font-bold">@d.Stops.Count stops</span>
+                </div>
+                @foreach (var stop in d.Stops)
+                {
+                    <div class="border border-base-200 rounded-xl p-4 space-y-2">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                                <div class="font-black text-sm"><span class="badge badge-neutral badge-xs mr-1">@stop.StopNumber</span> @stop.DeliveryPointName</div>
+                                <div class="text-xs opacity-60">@stop.Address · @stop.CityState</div>
+                                <div class="text-[11px] opacity-50">@stop.ContactName @stop.ContactPhone</div>
+                            </div>
+                            <span class="badge badge-sm @StopBadge(stop.Status) font-bold">@stop.Status</span>
+                        </div>
+                        <form method="post" asp-page-handler="StopStatus" asp-route-id="@d.Id" class="flex items-center gap-2">
+                            <input type="hidden" name="stopId" value="@stop.Id" />
+                            <select name="status" class="select select-xs select-bordered rounded-lg text-xs">
+                                @foreach (var s in Enum.GetValues<FleetDispatchStopStatus>()) { <option value="@s" selected="@(stop.Status == s)">@s</option> }
+                            </select>
+                            <button type="submit" class="btn btn-xs btn-outline rounded-lg text-xs">Update Stop</button>
+                        </form>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="lg:col-span-4 space-y-4">
+            <div class="card bg-base-100 border border-base-300 rounded-2xl p-5 space-y-3">
+                <h2 class="text-sm font-black">Vehicle Status</h2>
+                <div class="text-xs">Current: <span class="badge badge-sm badge-neutral font-bold">@Model.VehicleStatus</span></div>
+                <form method="post" asp-page-handler="VehicleStatus" asp-route-id="@d.Id" class="space-y-2">
+                    <input type="hidden" name="vehicleId" value="@d.VehicleId" />
+                    <select name="status" class="select select-sm select-bordered rounded-xl text-xs w-full">
+                        @foreach (var s in new[] { "Active", "InTransit", "InMaintenance", "Grounded" }) { <option value="@s" selected="@(Model.VehicleStatus == s)">@s</option> }
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-neutral rounded-xl text-xs w-full">Update Vehicle Status</button>
+                </form>
+            </div>
+
+            <div class="card bg-base-100 border border-base-300 rounded-2xl p-5 space-y-3">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="text-sm font-black">Fuel Records</h2>
+                    <a asp-page="/Logistics/FuelLogs/Create" asp-route-fleetDispatchId="@d.Id" asp-route-returnUrl="@($"/Fleet/Dispatches/Details/{d.Id}")" class="btn btn-xs btn-neutral rounded-lg font-bold gap-1"><i class="fa-solid fa-gas-pump text-[10px]"></i> Record Fuel</a>
+                </div>
+                @if (d.FuelLogs.Count == 0)
+                {
+                    <div class="text-xs opacity-50 text-center py-4">No fuel recorded for this dispatch yet.</div>
+                }
+                else
+                {
+                    @foreach (var fuel in d.FuelLogs)
+                    {
+                        <div class="flex justify-between text-xs border-b border-base-200 pb-2">
+                            <div><div class="font-bold">@fuel.PetrolStation</div><div class="text-[10px] opacity-50">@fuel.Date.ToString("dd MMM yyyy") · @fuel.LitresDispensed.ToString("N2") L</div></div>
+                            <div class="font-mono font-black">₦@fuel.TotalCost.ToString("N0")</div>
+                        </div>
+                    }
+                    <div class="flex justify-between font-bold text-xs pt-2"><span>Total Fuel</span><span class="font-mono">₦@d.TotalFuelCost.ToString("N0")</span></div>
+                }
+            </div>
+        </div>
+    </div>
+</div>

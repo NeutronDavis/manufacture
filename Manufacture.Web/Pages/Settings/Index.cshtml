@@ -1,0 +1,255 @@
+@page
+@model Manufacture.Pages.Settings.IndexModel
+@{
+    ViewData["Title"] = "System Settings & Configuration";
+}
+
+<div class="space-y-8 w-full pb-12">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Home</a>
+                <span>&gt;</span>
+                <span>Settings Hub</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2.5">
+                <i class="fa-solid fa-gear text-primary"></i> System Settings &amp; Administration
+            </h1>
+            <p class="text-xs opacity-70 mt-1">
+                Choose a settings area below. Each card opens the configuration page for that part of the system.
+            </p>
+        </div>
+    </div>
+
+    <!-- Organization -->
+    <section class="space-y-3">
+        <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs">
+                <i class="fa-solid fa-building"></i>
+            </div>
+            <h2 class="text-sm font-black text-base-content">Organization &amp; People</h2>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+
+            <a asp-page="/Settings/Departments" class="card h-full bg-base-100 border border-base-300 hover:border-primary hover:shadow-md transition-all rounded-2xl group">
+                <div class="card-body p-5 flex flex-col">
+                    <div class="flex items-start justify-between">
+                        <div class="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-building"></i>
+                        </div>
+                        <span class="badge badge-ghost badge-xs font-bold">People</span>
+                    </div>
+                    <h3 class="font-black text-base text-base-content mt-3">Departments</h3>
+                    <p class="text-xs opacity-70 leading-relaxed mt-1">
+                        Create and maintain the departments used by employees, job roles, and payroll.
+                    </p>
+                    <div class="mt-auto pt-4 flex items-center justify-between text-[11px] font-bold text-primary">
+                        Open departments <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-0.5 transition-transform"></i>
+                    </div>
+                </div>
+            </a>
+
+            <a asp-page="/Settings/JobRoles" class="card h-full bg-base-100 border border-base-300 hover:border-primary hover:shadow-md transition-all rounded-2xl group">
+                <div class="card-body p-5 flex flex-col">
+                    <div class="flex items-start justify-between">
+                        <div class="w-11 h-11 rounded-xl bg-secondary/10 text-secondary flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-id-badge"></i>
+                        </div>
+                        <span class="badge badge-ghost badge-xs font-bold">People</span>
+                    </div>
+                    <h3 class="font-black text-base text-base-content mt-3">Job Roles</h3>
+                    <p class="text-xs opacity-70 leading-relaxed mt-1">
+                        Define job titles and role descriptions used when assigning employees.
+                    </p>
+                    <div class="mt-auto pt-4 flex items-center justify-between text-[11px] font-bold text-secondary">
+                        Open job roles <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-0.5 transition-transform"></i>
+                    </div>
+                </div>
+            </a>
+
+            <a asp-page="/UserManagement/Index" class="card h-full bg-base-100 border border-base-300 hover:border-primary hover:shadow-md transition-all rounded-2xl group">
+                <div class="card-body p-5 flex flex-col">
+                    <div class="flex items-start justify-between">
+                        <div class="w-11 h-11 rounded-xl bg-accent/10 text-accent flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-users-gear"></i>
+                        </div>
+                        <span class="badge badge-ghost badge-xs font-bold">Access</span>
+                    </div>
+                    <h3 class="font-black text-base text-base-content mt-3">User Accounts &amp; PINs</h3>
+                    <p class="text-xs opacity-70 leading-relaxed mt-1">
+                        Manage user accounts, link staff to employees, and issue POS PINs.
+                    </p>
+                    <div class="mt-auto pt-4 flex items-center justify-between text-[11px] font-bold text-accent">
+                        Open user management <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-0.5 transition-transform"></i>
+                    </div>
+                </div>
+            </a>
+
+            <a asp-page="/UserManagement/Permissions" class="card h-full bg-base-100 border border-base-300 hover:border-primary hover:shadow-md transition-all rounded-2xl group">
+                <div class="card-body p-5 flex flex-col">
+                    <div class="flex items-start justify-between">
+                        <div class="w-11 h-11 rounded-xl bg-warning/10 text-warning flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <span class="badge badge-ghost badge-xs font-bold">Security</span>
+                    </div>
+                    <h3 class="font-black text-base text-base-content mt-3">Role-Based Access Matrix</h3>
+                    <p class="text-xs opacity-70 leading-relaxed mt-1">
+                        Control module permissions for each role across the ERP.
+                    </p>
+                    <div class="mt-auto pt-4 flex items-center justify-between text-[11px] font-bold text-warning">
+                        Manage permissions <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-0.5 transition-transform"></i>
+                    </div>
+                </div>
+            </a>
+
+        </div>
+    </section>
+
+    <!-- Production & Inventory -->
+    <section class="space-y-3">
+        <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs">
+                <i class="fa-solid fa-industry"></i>
+            </div>
+            <h2 class="text-sm font-black text-base-content">Production &amp; Inventory</h2>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+
+            <a asp-page="/Settings/Production" class="card h-full bg-base-100 border border-base-300 hover:border-primary hover:shadow-md transition-all rounded-2xl group">
+                <div class="card-body p-5 flex flex-col">
+                    <div class="flex items-start justify-between">
+                        <div class="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-industry"></i>
+                        </div>
+                        <span class="badge badge-primary badge-soft badge-xs font-bold">Production</span>
+                    </div>
+                    <h3 class="font-black text-base text-base-content mt-3">Production Settings</h3>
+                    <p class="text-xs opacity-70 leading-relaxed mt-1">
+                        Manage production categories and product types, including baselines and output units used by recipes.
+                    </p>
+                    <div class="mt-auto pt-4 flex items-center justify-between text-[11px] font-bold text-primary">
+                        Configure production <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-0.5 transition-transform"></i>
+                    </div>
+                </div>
+            </a>
+
+            <a asp-page="/Settings/ProductionShifts" class="card h-full bg-base-100 border border-base-300 hover:border-primary hover:shadow-md transition-all rounded-2xl group">
+                <div class="card-body p-5 flex flex-col">
+                    <div class="flex items-start justify-between">
+                        <div class="w-11 h-11 rounded-xl bg-info/10 text-info flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-clock"></i>
+                        </div>
+                        <span class="badge badge-info badge-soft badge-xs font-bold">Production</span>
+                    </div>
+                    <h3 class="font-black text-base text-base-content mt-3">Production Shifts</h3>
+                    <p class="text-xs opacity-70 leading-relaxed mt-1">
+                        Set the shift names and times used when recording production batches.
+                    </p>
+                    <div class="mt-auto pt-4 flex items-center justify-between text-[11px] font-bold text-info">
+                        Configure shifts <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-0.5 transition-transform"></i>
+                    </div>
+                </div>
+            </a>
+
+            <a asp-page="/Settings/Measurements" class="card h-full bg-base-100 border border-base-300 hover:border-primary hover:shadow-md transition-all rounded-2xl group">
+                <div class="card-body p-5 flex flex-col">
+                    <div class="flex items-start justify-between">
+                        <div class="w-11 h-11 rounded-xl bg-success/10 text-success flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-scale-balanced"></i>
+                        </div>
+                        <span class="badge badge-success badge-soft badge-xs font-bold">Inventory</span>
+                    </div>
+                    <h3 class="font-black text-base text-base-content mt-3">Measurement Densities</h3>
+                    <p class="text-xs opacity-70 leading-relaxed mt-1">
+                        Store measured bulk densities (kg/L) so kitchen volume requests can convert to warehouse weight.
+                    </p>
+                    <div class="mt-auto pt-4 flex items-center justify-between text-[11px] font-bold text-success">
+                        Manage densities <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-0.5 transition-transform"></i>
+                    </div>
+                </div>
+            </a>
+
+        </div>
+    </section>
+
+    <!-- Sales & Finance -->
+    <section class="space-y-3">
+        <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-warning/10 text-warning flex items-center justify-center text-xs">
+                <i class="fa-solid fa-chart-line"></i>
+            </div>
+            <h2 class="text-sm font-black text-base-content">Sales &amp; Finance</h2>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+            <a asp-page="/Settings/SalesRules" class="card h-full bg-base-100 border border-base-300 hover:border-primary hover:shadow-md transition-all rounded-2xl group">
+                <div class="card-body p-5 flex flex-col">
+                    <div class="flex items-start justify-between">
+                        <div class="w-11 h-11 rounded-xl bg-warning/10 text-warning flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-gift"></i>
+                        </div>
+                        <span class="badge badge-warning badge-soft badge-xs font-bold">Sales</span>
+                    </div>
+                    <h3 class="font-black text-base text-base-content mt-3">Sales Rules &amp; Bonuses</h3>
+                    <p class="text-xs opacity-70 leading-relaxed mt-1">
+                        Configure product bonus rules, qualifying quantities, and reward thresholds for sales orders.
+                    </p>
+                    <div class="mt-auto pt-4 flex items-center justify-between text-[11px] font-bold text-warning">
+                        Configure sales rules <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-0.5 transition-transform"></i>
+                    </div>
+                </div>
+            </a>
+
+            <a asp-page="/Settings/Finance" class="card h-full bg-base-100 border border-base-300 hover:border-primary hover:shadow-md transition-all rounded-2xl group">
+                <div class="card-body p-5 flex flex-col">
+                    <div class="flex items-start justify-between">
+                        <div class="w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-scale-balanced"></i>
+                        </div>
+                        <span class="badge badge-primary badge-soft badge-xs font-mono font-bold">
+                            @Model.TreasuryPolicy.PlannedCashPercent.ToString("0.#")% Cash / @Model.TreasuryPolicy.PlannedDigitalPercent.ToString("0.#")% Digital
+                        </span>
+                    </div>
+                    <h3 class="font-black text-base text-base-content mt-3">Finance &amp; Payroll Policy</h3>
+                    <p class="text-xs opacity-70 leading-relaxed mt-1">
+                        Set treasury cash/digital collection benchmarks, variance tolerance, and payroll policy percentages.
+                    </p>
+                    <div class="mt-auto pt-4 flex items-center justify-between text-[11px] font-bold text-primary">
+                        Configure finance <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-0.5 transition-transform"></i>
+                    </div>
+                </div>
+            </a>
+
+        </div>
+    </section>
+
+    <!-- Appearance -->
+    <section class="space-y-3">
+        <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-info/10 text-info flex items-center justify-center text-xs">
+                <i class="fa-solid fa-palette"></i>
+            </div>
+            <h2 class="text-sm font-black text-base-content">Appearance</h2>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            <a asp-page="/Settings/Theme" class="card h-full bg-base-100 border border-base-300 hover:border-primary hover:shadow-md transition-all rounded-2xl group">
+                <div class="card-body p-5 flex flex-col">
+                    <div class="flex items-start justify-between">
+                        <div class="w-11 h-11 rounded-xl bg-info/10 text-info flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-palette"></i>
+                        </div>
+                        <span class="badge badge-info badge-soft badge-xs font-bold">Visuals</span>
+                    </div>
+                    <h3 class="font-black text-base text-base-content mt-3">Theme &amp; Colour Palettes</h3>
+                    <p class="text-xs opacity-70 leading-relaxed mt-1">
+                        Switch the visual theme and colour palette used throughout the ERP.
+                    </p>
+                    <div class="mt-auto pt-4 flex items-center justify-between text-[11px] font-bold text-info">
+                        Choose theme <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-0.5 transition-transform"></i>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </section>
+</div>

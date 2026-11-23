@@ -1,0 +1,161 @@
+@page
+@model Manufacture.Pages.Logistics.Rates.IndexModel
+@using Manufacture.Models.DTOs
+@{
+    ViewData["Title"] = "Client Quotes";
+}
+
+<div class="space-y-6">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs breadcrumbs p-0 mb-1">
+                <ul>
+                    <li><a asp-page="/Dashboard/Index" class="opacity-60">Dashboard</a></li>
+                    <li><a asp-page="/Logistics/Index" class="opacity-60">Logistics & Fleet</a></li>
+                    <li class="font-bold text-base-content">Client Quotes</li>
+                </ul>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-black text-lg">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black text-base-content tracking-tight">Client Quote Requests</h1>
+                    <p class="text-xs text-base-content/60">Address-based multi-stop quotes for commercial haulage and VIP movement. No state/city fixed tariffs.</p>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <a asp-page="/Logistics/Charter/Index" class="btn btn-outline btn-sm rounded-xl gap-2 font-bold text-xs">
+                <i class="fa-solid fa-truck-moving"></i> Charter Bookings
+            </a>
+            <a asp-page="/Logistics/Rates/Create" class="btn btn-neutral btn-sm rounded-xl gap-2 font-bold text-xs shadow-xs">
+                <i class="fa-solid fa-plus"></i> New Client Quote
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="card bg-base-100 border border-base-300 p-4 rounded-2xl">
+            <div class="text-xs font-semibold text-base-content/60">Pending Approval</div>
+            <div class="mt-2 text-2xl font-black text-warning">@Model.PendingCount</div>
+            <div class="text-[11px] text-base-content/50 mt-1">Quotes waiting for manager review</div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 p-4 rounded-2xl">
+            <div class="text-xs font-semibold text-base-content/60">Approved</div>
+            <div class="mt-2 text-2xl font-black text-success">@Model.ApprovedCount</div>
+            <div class="text-[11px] text-base-content/50 mt-1">Ready to convert to bookings</div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 p-4 rounded-2xl">
+            <div class="text-xs font-semibold text-base-content/60">Converted</div>
+            <div class="mt-2 text-2xl font-black text-info">@Model.ConvertedCount</div>
+            <div class="text-[11px] text-base-content/50 mt-1">Approved quotes already booked</div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 p-4 rounded-2xl">
+            <div class="text-xs font-semibold text-base-content/60">Total Quoted Value</div>
+            <div class="mt-2 text-2xl font-black text-base-content">₦@Model.TotalQuotedValue.ToString("N0")</div>
+            <div class="text-[11px] text-base-content/50 mt-1">Excluding rejected quotes</div>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 p-4 rounded-2xl space-y-4">
+        <div class="flex flex-wrap items-center gap-1.5">
+            @foreach (var status in new[] { "All", "Draft", "PendingApproval", "Approved", "Rejected", "Expired", "Converted" })
+            {
+                <a asp-page="/Logistics/Rates/Index" asp-route-StatusFilter="@status" asp-route-Search="@Model.Search"
+                   class="btn btn-xs rounded-xl font-bold @(Model.StatusFilter == status ? "btn-neutral" : "btn-ghost")">
+                    @status
+                </a>
+            }
+        </div>
+        <form method="get" class="flex flex-col sm:flex-row gap-3 items-end border-t border-base-200 pt-4">
+            <input type="hidden" name="StatusFilter" value="@Model.StatusFilter" />
+            <div class="form-control w-full">
+                <label class="label pb-1"><span class="label-text text-[10px] font-bold uppercase opacity-60">Search</span></label>
+                <input type="text" name="Search" value="@Model.Search" placeholder="Quote ref, customer, phone, address..." class="input input-sm input-bordered w-full rounded-xl text-xs" />
+            </div>
+            <button type="submit" class="btn btn-sm btn-neutral rounded-xl text-xs px-5">Apply</button>
+            <a asp-page="/Logistics/Rates/Index" class="btn btn-sm btn-ghost rounded-xl text-xs">Clear</a>
+        </form>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="table table-sm text-xs">
+                <thead>
+                    <tr class="bg-base-200/60 border-b border-base-300">
+                        <th class="py-3 px-4">Quote</th>
+                        <th class="py-3 px-4">Client</th>
+                        <th class="py-3 px-4">Route / Legs</th>
+                        <th class="py-3 px-4">Vehicle Class</th>
+                        <th class="py-3 px-4 text-right">Quoted</th>
+                        <th class="py-3 px-4 text-center">Status</th>
+                        <th class="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-base-200">
+                    @if (!Model.Quotes.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-12 text-base-content/50">
+                                <i class="fa-solid fa-file-circle-plus text-3xl opacity-30"></i>
+                                <div class="mt-2 font-medium">No client quotes found.</div>
+                                <a asp-page="/Logistics/Rates/Create" class="btn btn-xs btn-neutral rounded-lg mt-3">Create New Quote</a>
+                            </td>
+                        </tr>
+                    }
+                    @foreach (var q in Model.Quotes)
+                    {
+                        var first = q.Legs.FirstOrDefault();
+                        var last = q.Legs.LastOrDefault();
+                        <tr class="hover:bg-base-200/30 transition-colors">
+                            <td class="py-3 px-4">
+                                <a asp-page="/Logistics/Rates/Edit" asp-route-id="@q.Id" class="font-black text-primary hover:underline">@q.QuoteRef</a>
+                                <div class="text-[10px] text-base-content/50">@q.RequestDate.ToString("dd MMM yyyy")</div>
+                                @if (q.BookingId.HasValue)
+                                {
+                                    <div class="text-[10px] text-info font-bold">@q.BookingRef</div>
+                                }
+                            </td>
+                            <td class="py-3 px-4">
+                                <div class="font-bold text-base-content">@q.CustomerName</div>
+                                <div class="text-[10px] text-base-content/50">@q.CustomerPhone</div>
+                            </td>
+                            <td class="py-3 px-4">
+                                @if (first is not null && last is not null)
+                                {
+                                    <div class="font-bold text-base-content">@first.OriginCityState → @last.DestinationCityState</div>
+                                    <div class="text-[10px] text-base-content/50">@q.Legs.Count leg(s) · @q.TotalDistanceKm.ToString("N0") km</div>
+                                }
+                            </td>
+                            <td class="py-3 px-4">
+                                <span class="badge badge-sm badge-neutral border-0 font-medium whitespace-nowrap">@q.VehicleTypeRequired</span>
+                            </td>
+                            <td class="py-3 px-4 text-right font-black">₦@q.QuotedAmount.ToString("N0")</td>
+                            <td class="py-3 px-4 text-center">
+                                <span class="badge badge-sm @Model.StatusBadge(q.Status) font-bold">@q.Status</span>
+                                @if (q.IsExpired)
+                                {
+                                    <div class="text-[10px] text-error font-bold mt-1">Expired</div>
+                                }
+                            </td>
+                            <td class="py-3 px-4 text-right">
+                                <div class="flex items-center justify-end gap-1.5">
+                                    <a asp-page="/Logistics/Rates/Edit" asp-route-id="@q.Id" class="btn btn-ghost btn-xs rounded-lg" title="Review quote">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </a>
+                                    @if (q.IsApproved)
+                                    {
+                                        <a asp-page="/Logistics/Charter/Create" asp-route-quoteId="@q.Id" class="btn btn-success btn-xs rounded-lg font-bold">
+                                            Book
+                                        </a>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

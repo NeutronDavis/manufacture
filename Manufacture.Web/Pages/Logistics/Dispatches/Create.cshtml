@@ -1,0 +1,100 @@
+@page
+@model Manufacture.Pages.Logistics.Dispatches.CreateModel
+@using System.Text.Json
+@using Manufacture.Models.DTOs
+@{
+    ViewData["Title"] = "New Delivery Dispatch";
+    var initialStops = JsonSerializer.Serialize(Model.DispatchInput.Stops, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a><span>&gt;</span>
+                <a asp-page="/Logistics/Dispatches/Index" class="hover:underline">Delivery Dispatches</a><span>&gt;</span>
+                <span class="text-primary font-bold">New Dispatch</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2"><i class="fa-solid fa-truck-ramp-box text-primary"></i> New Delivery Dispatch</h1>
+            <p class="text-xs opacity-70 mt-0.5">Register a non-charter production or PreOrder delivery movement with multiple free-text delivery points.</p>
+        </div>
+        <a asp-page="/Logistics/Dispatches/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold"><i class="fa-solid fa-arrow-left"></i> Dispatch List</a>
+    </div>
+
+    <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div class="lg:col-span-8 space-y-6">
+            <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">
+                <h2 class="text-sm font-black text-base-content border-b border-base-200 pb-3">Dispatch Details</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="form-control"><label class="label pb-1"><span class="label-text text-xs font-bold">Dispatch Date</span></label><input asp-for="DispatchInput.DispatchDate" type="date" class="input input-sm input-bordered rounded-xl text-xs font-mono" required /></div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-xs font-bold">Purpose</span></label>
+                        <input asp-for="DispatchInput.Purpose" type="text" maxlength="200" class="input input-sm input-bordered rounded-xl text-xs" placeholder="e.g. Production delivery — Ikeja route" required />
+                        <span asp-validation-for="DispatchInput.Purpose" class="text-error text-[10px]"></span>
+                        <span class="text-[10px] opacity-60 mt-1">Describe this movement in your own words.</span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="form-control"><label class="label pb-1"><span class="label-text text-xs font-bold">Vehicle</span></label><select asp-for="DispatchInput.VehicleId" id="dispatchVehicle" class="select select-sm select-bordered rounded-xl text-xs" onchange="syncDispatchDriver()">@foreach (var v in Model.Vehicles) { <option value="@v.Id" data-driver-id="@v.AssignedEmployeeId">@v.RegistrationNumber - @v.MakeAndModel (@v.Status)</option> }</select></div>
+                    <div class="form-control"><label class="label pb-1"><span class="label-text text-xs font-bold">Driver</span></label><select asp-for="DispatchInput.DriverEmployeeId" id="dispatchDriver" class="select select-sm select-bordered rounded-xl text-xs"><option value="">Use vehicle assigned driver</option>@foreach (var d in Model.Drivers) { <option value="@d.Id">@d.FullName @(string.IsNullOrWhiteSpace(d.PhoneNumber) ? "" : $"· {d.PhoneNumber}")</option> }</select></div>
+                </div>
+                <div class="form-control"><label class="label pb-1"><span class="label-text text-xs font-bold">Notes</span></label><textarea asp-for="DispatchInput.Notes" rows="2" class="textarea textarea-bordered rounded-xl text-xs"></textarea></div>
+            </div>
+
+            <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <div><h2 class="text-sm font-black text-base-content">Delivery Points</h2><p class="text-[11px] opacity-60">Free-text multi-stop delivery list.</p></div>
+                    <button type="button" onclick="addStop()" class="btn btn-sm btn-neutral rounded-xl text-xs font-bold gap-1"><i class="fa-solid fa-plus text-[10px]"></i> Add Point</button>
+                </div>
+                <div id="stopsContainer" class="space-y-4"></div>
+            </div>
+        </div>
+        <div class="lg:col-span-4 sticky top-20">
+            <div class="card bg-base-100 border border-base-300 shadow-md rounded-2xl p-6 space-y-3">
+                <h2 class="text-sm font-black text-base-content">Dispatch Summary</h2>
+                <div class="flex justify-between text-xs"><span>Delivery Points:</span><span id="stopCount" class="font-bold font-mono">0</span></div>
+                <div class="flex justify-between text-xs"><span>Vehicle:</span><span id="vehicleDisplay" class="font-bold">—</span></div>
+                <div class="text-[11px] opacity-60">Starting the dispatch will mark the selected vehicle InTransit.</div>
+                <button type="submit" asp-page-handler="Start" class="btn btn-neutral w-full rounded-xl text-xs font-black py-3 gap-2 mt-2"><i class="fa-solid fa-truck-moving"></i> Save &amp; Start Dispatch</button>
+                <button type="submit" asp-page-handler="Save" class="btn btn-outline w-full rounded-xl text-xs font-bold py-2.5 gap-2 border-base-300"><i class="fa-solid fa-floppy-disk"></i> Save as Planned</button>
+                <a asp-page="/Logistics/Dispatches/Index" class="btn btn-ghost w-full rounded-xl text-xs">Cancel</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    let stops = @Html.Raw(initialStops);
+    if (!Array.isArray(stops) || stops.length === 0) stops = [{ stopNumber: 1, deliveryPointName: '', address: '', cityState: '', contactName: '', contactPhone: '', notes: '' }];
+    function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]); }
+    function addStop() { stops.push({ stopNumber: stops.length + 1, deliveryPointName: '', address: '', cityState: '', contactName: '', contactPhone: '', notes: '' }); renderStops(); }
+    function removeStop(index) { if (stops.length <= 1) { alert('At least one delivery point is required.'); return; } stops.splice(index, 1); stops.forEach((s, i) => s.stopNumber = i + 1); renderStops(); }
+    function updateStop(index, field, value) { stops[index][field] = value; }
+    function renderStops() {
+        document.getElementById('stopsContainer').innerHTML = stops.map((stop, index) => `
+            <div class="card bg-base-200/50 border border-base-300 p-4 rounded-2xl space-y-3">
+                <div class="flex items-center justify-between"><span class="badge badge-neutral badge-sm font-black text-[10px]">Point ${index + 1}</span>${stops.length > 1 ? `<button type="button" onclick="removeStop(${index})" class="btn btn-ghost btn-xs text-error rounded-lg"><i class="fa-solid fa-trash text-[10px]"></i> Remove</button>` : ''}</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input name="DispatchInput.Stops[${index}].DeliveryPointName" value="${escapeHtml(stop.deliveryPointName)}" class="input input-sm input-bordered rounded-xl text-xs" placeholder="Delivery point name *" required oninput="updateStop(${index},'deliveryPointName',this.value)" />
+                    <input name="DispatchInput.Stops[${index}].CityState" value="${escapeHtml(stop.cityState)}" class="input input-sm input-bordered rounded-xl text-xs" placeholder="City / State *" required oninput="updateStop(${index},'cityState',this.value)" />
+                    <input name="DispatchInput.Stops[${index}].Address" value="${escapeHtml(stop.address)}" class="input input-sm input-bordered rounded-xl text-xs sm:col-span-2" placeholder="Delivery address *" required oninput="updateStop(${index},'address',this.value)" />
+                    <input name="DispatchInput.Stops[${index}].ContactName" value="${escapeHtml(stop.contactName)}" class="input input-sm input-bordered rounded-xl text-xs" placeholder="Contact name" oninput="updateStop(${index},'contactName',this.value)" />
+                    <input name="DispatchInput.Stops[${index}].ContactPhone" value="${escapeHtml(stop.contactPhone)}" class="input input-sm input-bordered rounded-xl text-xs font-mono" placeholder="Contact phone" oninput="updateStop(${index},'contactPhone',this.value)" />
+                    <input name="DispatchInput.Stops[${index}].Notes" value="${escapeHtml(stop.notes)}" class="input input-sm input-bordered rounded-xl text-xs sm:col-span-2" placeholder="Stop notes" oninput="updateStop(${index},'notes',this.value)" />
+                </div>
+                <input type="hidden" name="DispatchInput.Stops[${index}].StopNumber" value="${index + 1}" />
+            </div>`).join('');
+        document.getElementById('stopCount').textContent = stops.length;
+    }
+    function syncDispatchDriver() {
+        const vehicle = document.getElementById('dispatchVehicle');
+        const driver = document.getElementById('dispatchDriver');
+        if (!vehicle || !driver) return;
+        const option = vehicle.options[vehicle.selectedIndex];
+        driver.value = option?.getAttribute('data-driver-id') || '';
+        document.getElementById('vehicleDisplay').textContent = option?.textContent?.trim() || '—';
+    }
+    document.addEventListener('DOMContentLoaded', () => { renderStops(); syncDispatchDriver(); });
+</script>
+}

@@ -1,0 +1,133 @@
+@page
+@model Manufacture.Pages.Settings.MeasurementsModel
+@{
+    ViewData["Title"] = "Measurement Densities";
+}
+
+<div class="space-y-6 w-full pb-12">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Home</a>
+                <span>&gt;</span>
+                <a asp-page="/Settings/Index" class="hover:underline">Settings</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Measurement Densities</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2.5">
+                <i class="fa-solid fa-scale-balanced text-primary"></i> Measurement Densities
+            </h1>
+            <p class="text-xs opacity-70 mt-1">
+                Store measured bulk densities so the system can convert kitchen volume requests into warehouse weight or package quantities.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a asp-page="/Settings/Index" class="btn btn-sm btn-ghost rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Settings
+            </a>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 border border-info/30 shadow-xs rounded-2xl">
+        <div class="card-body p-6 space-y-3">
+            <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                <i class="fa-regular fa-lightbulb text-info"></i> How to measure bulk density
+            </h2>
+            <p class="text-xs opacity-80 leading-relaxed">
+                Do not rely on a textbook figure. Bulk density depends on the product and how it is packed. Measure it once:
+            </p>
+            <ol class="list-decimal list-inside space-y-1.5 text-xs opacity-80 leading-relaxed">
+                <li>Fill a 1 L container with the material, level it off, and do not shake it down.</li>
+                <li>Weigh the contents and subtract the container weight.</li>
+                <li>Repeat 2 or 3 times and take the average.</li>
+            </ol>
+            <p class="text-[11px] opacity-60">
+                Enter the final density in <strong>kg per litre (kg/L)</strong>. Example: if 1 L of maize weighs 0.72 kg, enter 0.72.
+            </p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        <div class="xl:col-span-4 card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+            <div class="card-body p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-plus text-primary"></i> @(Model.DensityInput.Id > 0 ? "Edit Density" : "Add Density")
+                    </h2>
+                    @if (Model.DensityInput.Id > 0)
+                    {
+                        <a asp-page="/Settings/Measurements" class="btn btn-xs btn-ghost rounded-lg font-bold">Cancel Edit</a>
+                    }
+                </div>
+
+                <form method="post" asp-page-handler="Save" class="space-y-3">
+                    <input type="hidden" asp-for="DensityInput.Id" />
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-[10px] font-bold uppercase opacity-70">Raw Material Name *</span></label>
+                        <input asp-for="DensityInput.MaterialName" class="input input-sm input-bordered rounded-xl text-xs font-semibold" placeholder="e.g. Popcorn Maize" required />
+                        <span asp-validation-for="DensityInput.MaterialName" class="text-error text-[10px]"></span>
+                    </div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-[10px] font-bold uppercase opacity-70">Density (kg/L) *</span></label>
+                        <input asp-for="DensityInput.DensityKgPerLitre" type="number" step="0.0001" min="0.0001" class="input input-sm input-bordered rounded-xl text-xs font-mono font-bold" placeholder="e.g. 0.72" required />
+                        <span asp-validation-for="DensityInput.DensityKgPerLitre" class="text-error text-[10px]"></span>
+                    </div>
+                    <label class="label cursor-pointer justify-start gap-2">
+                        <input asp-for="DensityInput.IsActive" class="checkbox checkbox-xs checkbox-primary" />
+                        <span class="label-text text-xs font-semibold">Active</span>
+                    </label>
+                    <button type="submit" class="btn btn-sm btn-primary rounded-xl text-xs font-bold gap-1.5 w-full">
+                        <i class="fa-solid fa-floppy-disk text-xs"></i> Save Density
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="xl:col-span-8 card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+            <div class="card-body p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-list text-primary"></i> Density Catalogue
+                    </h2>
+                    <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.Densities.Count</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table table-sm text-xs">
+                        <thead>
+                            <tr class="uppercase text-[10px] opacity-60">
+                                <th>Raw Material</th>
+                                <th>Density</th>
+                                <th>Status</th>
+                                <th class="text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var density in Model.Densities)
+                            {
+                                <tr>
+                                    <td class="font-bold">@density.MaterialName</td>
+                                    <td class="font-mono font-bold text-primary">@density.DensityKgPerLitre.ToString("0.####") kg/L</td>
+                                    <td>
+                                        <span class="badge @(density.IsActive ? "badge-success" : "badge-ghost") badge-xs font-bold">
+                                            @(density.IsActive ? "Active" : "Inactive")
+                                        </span>
+                                    </td>
+                                    <td class="text-right whitespace-nowrap">
+                                        <a asp-page="/Settings/Measurements" asp-route-editId="@density.Id" class="btn btn-xs btn-ghost rounded-lg">Edit</a>
+                                        <form method="post" asp-page-handler="Toggle" class="inline">
+                                            <input type="hidden" name="id" value="@density.Id" />
+                                            <button type="submit" class="btn btn-xs btn-ghost text-@(density.IsActive ? "error" : "success") rounded-lg">
+                                                @(density.IsActive ? "Deactivate" : "Activate")
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

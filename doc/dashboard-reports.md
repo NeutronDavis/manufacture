@@ -134,7 +134,7 @@ ProductionManager / StoreManager / SalesRep View Only; Vendor / HrPayrollManager
   is the bridge.
 - Registration order matters: `MockAnalyticsService` needs Production, User and Logistics.
 - `dotnet run` needs `--no-launch-profile`, otherwise `launchSettings.json` overrides `ASPNETCORE_URLS`.
-- Tests live in `tests/Manufacture.Tests/MockAnalyticsServiceTests.cs` and cover range
+- Tests live in `Manufacture.Tests/MockAnalyticsServiceTests.cs` and cover range
   resolution, clamping, determinism, the lifecycle invariants, allocation, pagination,
   sorting, chart shape, dashboard overview, and both exports.
 ```

@@ -1,0 +1,104 @@
+@page "{id:int}"
+@model Manufacture.Pages.Logistics.Maintenance.DetailsModel
+@{
+    ViewData["Title"] = "Maintenance Log Details";
+    var log = Model.Log;
+}
+
+<div class="space-y-6 w-full max-w-6xl mx-auto">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Logistics/Maintenance/Index" class="hover:underline">Maintenance Logs</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">@log.VehicleRegNumber</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-wrench text-primary"></i> Maintenance Log Details
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Service performed on @log.ServiceDate.ToString("dd MMM yyyy") for @log.VehicleRegNumber.
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <a asp-page="/Logistics/Maintenance/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Logs
+            </a>
+            <a asp-page="/Logistics/Maintenance/Create" asp-route-vehicleId="@log.VehicleId" class="btn btn-sm btn-neutral rounded-xl text-xs gap-1.5">
+                <i class="fa-solid fa-plus text-xs"></i> Log New Maintenance
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-5 space-y-6">
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                <h2 class="font-black text-sm text-base-content border-b border-base-200 pb-3">Service Information</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div>
+                        <div class="text-[10px] uppercase font-bold opacity-60">Vehicle</div>
+                        <div class="font-mono font-bold mt-0.5">@log.VehicleRegNumber</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase font-bold opacity-60">Service Date</div>
+                        <div class="font-mono font-bold mt-0.5">@log.ServiceDate.ToString("dd MMM yyyy")</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase font-bold opacity-60">Workshop / Vendor</div>
+                        <div class="font-bold mt-0.5">@(string.IsNullOrWhiteSpace(log.WorkshopOrVendor) ? "In-House" : log.WorkshopOrVendor)</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] uppercase font-bold opacity-60">Invoice Number</div>
+                        <div class="font-mono font-bold mt-0.5">@(string.IsNullOrWhiteSpace(log.InvoiceNumber) ? "—" : log.InvoiceNumber)</div>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <div class="text-[10px] uppercase font-bold opacity-60">Total Cost</div>
+                        <div class="font-mono font-black text-lg text-primary mt-0.5">₦@log.Cost.ToString("N2")</div>
+                    </div>
+                    <div class="sm:col-span-2">
+                        <div class="text-[10px] uppercase font-bold opacity-60">Description</div>
+                        <div class="font-medium mt-1 leading-relaxed">@log.Description</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-7 space-y-6">
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
+                <h2 class="font-black text-sm text-base-content border-b border-base-200 pb-3">Photo Evidence</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <div class="badge badge-neutral badge-sm font-bold uppercase tracking-wider">Before Service</div>
+                        @if (!string.IsNullOrWhiteSpace(log.BeforeImageUrl))
+                        {
+                            <a href="@log.BeforeImageUrl" target="_blank" rel="noopener">
+                                <img src="@log.BeforeImageUrl" alt="Before service" class="w-full h-56 object-cover rounded-xl border border-base-300 hover:opacity-90 transition-opacity" />
+                            </a>
+                        }
+                        else
+                        {
+                            <div class="w-full h-56 rounded-xl border border-dashed border-base-300 bg-base-200 flex items-center justify-center text-xs opacity-50">
+                                No before photo
+                            </div>
+                        }
+                    </div>
+                    <div class="space-y-2">
+                        <div class="badge badge-success badge-sm font-bold uppercase tracking-wider">After Service</div>
+                        @if (!string.IsNullOrWhiteSpace(log.AfterImageUrl))
+                        {
+                            <a href="@log.AfterImageUrl" target="_blank" rel="noopener">
+                                <img src="@log.AfterImageUrl" alt="After service" class="w-full h-56 object-cover rounded-xl border border-base-300 hover:opacity-90 transition-opacity" />
+                            </a>
+                        }
+                        else
+                        {
+                            <div class="w-full h-56 rounded-xl border border-dashed border-base-300 bg-base-200 flex items-center justify-center text-xs opacity-50">
+                                No after photo
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,169 @@
+@page
+@model Manufacture.Pages.Logistics.IndexModel
+@using Manufacture.Models.Domain
+@using Manufacture.Models.DTOs
+@{
+    ViewData["Title"] = "Logistics & Fleet Management";
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Fleet Logistics</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-truck-moving text-primary"></i> Fleet Operations Overview
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">Vehicles, charters, client quotes, delivery dispatches and fleet activity.</p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap justify-end">
+            <a asp-page="/Logistics/Vehicles/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold"><i class="fa-solid fa-van-shuttle"></i> Vehicles</a>
+            <a asp-page="/Logistics/Rates/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold"><i class="fa-solid fa-file-invoice-dollar"></i> Client Quotes</a>
+            <a asp-page="/Logistics/Dispatches/Create" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold"><i class="fa-solid fa-truck-ramp-box"></i> New Dispatch</a>
+            <a asp-page="/Logistics/Charter/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 text-xs shadow-xs"><i class="fa-solid fa-truck-fast"></i> Book Charter</a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="card bg-base-100 border border-base-300 p-4 rounded-2xl">
+            <div class="flex items-center justify-between"><span class="text-[10px] uppercase font-bold opacity-60">Total Vehicles</span><i class="fa-solid fa-van-shuttle text-primary"></i></div>
+            <div class="text-2xl font-black font-mono mt-2">@Model.Vehicles.Count</div>
+            <div class="text-[10px] opacity-50 mt-1">Registered fleet assets</div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 p-4 rounded-2xl">
+            <div class="flex items-center justify-between"><span class="text-[10px] uppercase font-bold opacity-60">Active</span><i class="fa-solid fa-circle-check text-success"></i></div>
+            <div class="text-2xl font-black font-mono text-success mt-2">@Model.ActiveVehicleCount</div>
+            <div class="text-[10px] opacity-50 mt-1">Available for assignment</div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 p-4 rounded-2xl">
+            <div class="flex items-center justify-between"><span class="text-[10px] uppercase font-bold opacity-60">In Transit</span><i class="fa-solid fa-truck-fast text-info"></i></div>
+            <div class="text-2xl font-black font-mono text-info mt-2">@Model.InTransitVehicleCount</div>
+            <div class="text-[10px] opacity-50 mt-1">Currently on dispatch</div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 p-4 rounded-2xl">
+            <div class="flex items-center justify-between"><span class="text-[10px] uppercase font-bold opacity-60">Unavailable</span><i class="fa-solid fa-triangle-exclamation text-warning"></i></div>
+            <div class="text-2xl font-black font-mono text-warning mt-2">@(Model.InMaintenanceVehicleCount + Model.GroundedVehicleCount)</div>
+            <div class="text-[10px] opacity-50 mt-1">Maintenance + grounded</div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-5 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-neutral text-neutral-content flex items-center justify-center"><i class="fa-solid fa-truck-moving"></i></div>
+                    <div><h2 class="text-sm font-black">Charter Bookings</h2><p class="text-[10px] opacity-60">Commercial and VIP movements</p></div>
+                </div>
+                <a asp-page="/Logistics/Charter/Index" class="btn btn-xs btn-outline rounded-lg">Open Ledger</a>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-base-200/50 rounded-xl p-3"><div class="text-[10px] opacity-60">Total</div><div class="font-black text-lg">@Model.CharterBookings.Count</div></div>
+                <div class="bg-warning/10 rounded-xl p-3"><div class="text-[10px] opacity-60">Booked</div><div class="font-black text-lg text-warning">@Model.OpenCharterCount</div></div>
+                <div class="bg-info/10 rounded-xl p-3"><div class="text-[10px] opacity-60">In Transit</div><div class="font-black text-lg text-info">@Model.CharterInTransitCount</div></div>
+            </div>
+        </div>
+
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-5 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                    <div><h2 class="text-sm font-black">Client Quotes</h2><p class="text-[10px] opacity-60">Request-based charter pricing</p></div>
+                </div>
+                <a asp-page="/Logistics/Rates/Index" class="btn btn-xs btn-outline rounded-lg">Open Quotes</a>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-base-200/50 rounded-xl p-3"><div class="text-[10px] opacity-60">Total</div><div class="font-black text-lg">@Model.Quotes.Count</div></div>
+                <div class="bg-warning/10 rounded-xl p-3"><div class="text-[10px] opacity-60">Pending</div><div class="font-black text-lg text-warning">@Model.PendingQuoteCount</div></div>
+                <div class="bg-success/10 rounded-xl p-3"><div class="text-[10px] opacity-60">Approved</div><div class="font-black text-lg text-success">@Model.ApprovedQuoteCount</div></div>
+            </div>
+        </div>
+
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-5 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-info/10 text-info flex items-center justify-center"><i class="fa-solid fa-truck-ramp-box"></i></div>
+                    <div><h2 class="text-sm font-black">Delivery Dispatches</h2><p class="text-[10px] opacity-60">Production and PreOrder deliveries</p></div>
+                </div>
+                <a asp-page="/Logistics/Dispatches/Index" class="btn btn-xs btn-outline rounded-lg">Open Dispatches</a>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-warning/10 rounded-xl p-3"><div class="text-[10px] opacity-60">Planned</div><div class="font-black text-lg text-warning">@Model.PlannedDispatchCount</div></div>
+                <div class="bg-info/10 rounded-xl p-3"><div class="text-[10px] opacity-60">In Transit</div><div class="font-black text-lg text-info">@Model.DispatchInTransitCount</div></div>
+                <div class="bg-success/10 rounded-xl p-3"><div class="text-[10px] opacity-60">Completed</div><div class="font-black text-lg text-success">@Model.CompletedDispatchCount</div></div>
+            </div>
+        </div>
+
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-5 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-warning/10 text-warning flex items-center justify-center"><i class="fa-solid fa-gas-pump"></i></div>
+                    <div><h2 class="text-sm font-black">Fuel &amp; Maintenance</h2><p class="text-[10px] opacity-60">Usage and service activity</p></div>
+                </div>
+                <a asp-page="/Logistics/FuelLogs/Index" class="btn btn-xs btn-outline rounded-lg">Fuel Logs</a>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-base-200/50 rounded-xl p-3"><div class="text-[10px] opacity-60">Fuel Records</div><div class="font-black text-lg">@Model.FuelRecordCount</div></div>
+                <div class="bg-base-200/50 rounded-xl p-3"><div class="text-[10px] opacity-60">Litres Logged</div><div class="font-black text-lg">@Model.TotalFuelLitres.ToString("N0")</div></div>
+                <div class="bg-base-200/50 rounded-xl p-3"><div class="text-[10px] opacity-60">Service Events</div><div class="font-black text-lg">@Model.MaintenanceEventCount</div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden">
+        <div class="p-5 border-b border-base-200 flex items-center justify-between">
+            <div class="flex items-center gap-2"><i class="fa-solid fa-van-shuttle text-primary"></i><h2 class="text-sm font-black">Fleet Vehicles</h2></div>
+            <a asp-page="/Logistics/Vehicles/Index" class="btn btn-xs btn-outline rounded-lg">Vehicle Directory</a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table table-sm text-xs">
+                <thead><tr class="bg-base-200/60 border-b border-base-300"><th class="pl-4">Plate</th><th>Vehicle</th><th>Function</th><th>Driver</th><th>Status</th><th class="text-right pr-4">Action</th></tr></thead>
+                <tbody class="divide-y divide-base-200">
+                    @foreach (var v in Model.Vehicles)
+                    {
+                        var statusClass = v.Status == "Active" ? "badge-success" : v.Status == "InTransit" ? "badge-info" : v.Status == "InMaintenance" ? "badge-warning" : "badge-error";
+                        <tr class="hover:bg-base-200/40">
+                            <td class="pl-4 py-3"><span class="badge badge-neutral badge-xs font-mono font-bold">@v.RegistrationNumber</span></td>
+                            <td class="py-3"><div class="font-bold">@v.MakeAndModel</div><div class="text-[10px] opacity-50">@v.Type</div></td>
+                            <td class="py-3"><span class="badge badge-ghost badge-xs">@v.Function</span></td>
+                            <td class="py-3">@v.AssignedDriverName</td>
+                            <td class="py-3"><span class="badge badge-xs @statusClass font-bold">@v.Status</span></td>
+                            <td class="text-right pr-4 py-3"><a asp-page="/Logistics/Vehicles/Details" asp-route-id="@v.Id" class="btn btn-ghost btn-xs rounded-lg"><i class="fa-solid fa-eye"></i></a></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden">
+        <div class="p-5 border-b border-base-200 flex items-center justify-between">
+            <div class="flex items-center gap-2"><i class="fa-solid fa-gas-pump text-warning"></i><h2 class="text-sm font-black">Recent Fuel Activity</h2></div>
+            <a asp-page="/Logistics/FuelLogs/Index" class="btn btn-xs btn-outline rounded-lg">All Fuel Logs</a>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="table table-sm text-xs">
+                <thead><tr class="bg-base-200/60 border-b border-base-300"><th class="pl-4">Date</th><th>Vehicle</th><th>Fuel For</th><th>Driver</th><th>Fuel Type</th><th class="text-right">Litres</th><th class="pr-4">Station</th></tr></thead>
+                <tbody class="divide-y divide-base-200">
+                    @foreach (var log in Model.FuelLogs.Take(8))
+                    {
+                        var source = log.CharterBookingId.HasValue ? "Charter" : log.FleetDispatchId.HasValue ? "Dispatch" : "General";
+                        var refText = log.CharterBookingId.HasValue ? log.CharterBookingRef : log.FleetDispatchId.HasValue ? log.FleetDispatchRef : string.Empty;
+                        var sourceClass = source == "Charter" ? "badge-info" : source == "Dispatch" ? "badge-primary" : "badge-ghost";
+                        <tr class="hover:bg-base-200/40">
+                            <td class="pl-4 py-3 font-mono">@log.Date.ToString("dd MMM yyyy")</td>
+                            <td class="py-3"><span class="badge badge-neutral badge-xs font-mono">@log.VehicleRegNumber</span></td>
+                            <td class="py-3"><span class="badge badge-xs @sourceClass font-bold">@source</span>@if (!string.IsNullOrWhiteSpace(refText)) { <div class="text-[10px] opacity-50 font-mono mt-0.5">@refText</div> }</td>
+                            <td class="py-3">@log.DriverName</td>
+                            <td class="py-3"><span class="badge badge-ghost badge-xs">@log.FuelType</span></td>
+                            <td class="py-3 text-right font-mono">@log.LitresDispensed.ToString("N1")</td>
+                            <td class="py-3 pr-4">@log.PetrolStation</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

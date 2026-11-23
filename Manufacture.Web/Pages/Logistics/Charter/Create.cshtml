@@ -1,0 +1,160 @@
+@page
+@model Manufacture.Pages.Logistics.Charter.CreateModel
+@using Manufacture.Models.DTOs
+@{
+    ViewData["Title"] = "Confirm Charter Booking";
+    var quote = Model.SelectedQuote;
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a><span>&gt;</span>
+                <a asp-page="/Logistics/Index" class="hover:underline">Fleet Logistics</a><span>&gt;</span>
+                <a asp-page="/Logistics/Charter/Index" class="hover:underline">Charter Bookings</a><span>&gt;</span>
+                <span class="text-primary font-bold">Confirm Booking</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-truck-fast text-primary"></i> Confirm Charter Booking
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">A booking must be created from an approved client quote. The quote is the source of price and route detail.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a asp-page="/Logistics/Charter/Index" class="btn btn-ghost btn-sm rounded-xl font-bold text-xs border border-base-300"><i class="fa-solid fa-arrow-left"></i> Bookings</a>
+            <a asp-page="/Logistics/Rates/Create" class="btn btn-outline btn-sm rounded-xl font-bold text-xs gap-1.5"><i class="fa-solid fa-file-invoice-dollar"></i> New Client Quote</a>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 rounded-2xl p-5">
+        <form method="get" class="flex flex-col sm:flex-row items-end gap-3">
+            <div class="form-control w-full">
+                <label class="label pb-1"><span class="label-text text-[10px] font-bold uppercase opacity-60">Approved Client Quote</span></label>
+                <select name="QuoteId" class="select select-sm select-bordered w-full rounded-xl text-xs font-bold" onchange="this.form.submit()">
+                    @if (!Model.ApprovedQuotes.Any())
+                    {
+                        <option value="">No approved quotes available</option>
+                    }
+                    @foreach (var q in Model.ApprovedQuotes)
+                    {
+                        <option value="@q.Id" selected="@(quote?.Id == q.Id)">@q.QuoteRef · @q.CustomerName · ₦@q.QuotedAmount.ToString("N0")</option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="btn btn-sm btn-neutral rounded-xl text-xs">Load Quote</button>
+        </form>
+    </div>
+
+    @if (quote is null)
+    {
+        <div class="card bg-base-100 border border-base-300 rounded-2xl p-10 text-center">
+            <i class="fa-solid fa-file-circle-xmark text-3xl opacity-30"></i>
+            <h2 class="font-black text-base-content mt-3">No approved quote selected</h2>
+            <p class="text-xs opacity-60 mt-1">Create a client quote and have it approved before confirming a charter booking.</p>
+            <a asp-page="/Logistics/Rates/Create" class="btn btn-sm btn-neutral rounded-xl text-xs mt-4">Create Client Quote</a>
+        </div>
+    }
+    else
+    {
+        <form method="post" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            <input type="hidden" asp-for="Booking.QuoteRequestId" value="@quote.Id" />
+            <input type="hidden" asp-for="Booking.CustomerName" value="@quote.CustomerName" />
+            <input type="hidden" asp-for="Booking.CustomerPhone" value="@quote.CustomerPhone" />
+            <input type="hidden" asp-for="Booking.QuoteRef" value="@quote.QuoteRef" />
+            <input type="hidden" asp-for="Booking.TotalDistanceKm" value="@quote.TotalDistanceKm" />
+            <div class="lg:col-span-8 space-y-6">
+                <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <h2 class="text-sm font-black text-base-content">Approved Quote Summary</h2>
+                        <span class="badge badge-success badge-sm font-bold">@quote.QuoteRef</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                        <div><div class="opacity-50">Client</div><div class="font-black">@quote.CustomerName</div></div>
+                        <div><div class="opacity-50">Phone</div><div class="font-bold">@quote.CustomerPhone</div></div>
+                        <div><div class="opacity-50">Vehicle Class</div><div class="font-bold">@quote.VehicleTypeRequired</div></div>
+                        <div><div class="opacity-50">Total Distance</div><div class="font-bold">@quote.TotalDistanceKm.ToString("N0") km</div></div>
+                        <div><div class="opacity-50">Quoted Amount</div><div class="font-black text-success">₦@quote.QuotedAmount.ToString("N0")</div></div>
+                        <div><div class="opacity-50">Valid Until</div><div class="font-bold">@(quote.ValidUntil?.ToString("dd MMM yyyy") ?? "No expiry")</div></div>
+                    </div>
+                    <div class="overflow-x-auto pt-2">
+                        <table class="table table-sm text-xs">
+                            <thead><tr class="bg-base-200/60"><th>Leg</th><th>Origin</th><th>Destination</th><th class="text-right">Distance</th><th>Fuel</th><th class="text-right">Amount</th></tr></thead>
+                            <tbody class="divide-y divide-base-200">
+                            @foreach (var leg in quote.Legs)
+                            {
+                                <tr>
+                                    <td class="font-black">@leg.LegNumber</td>
+                                    <td><div class="font-bold">@leg.OriginAddress</div><div class="text-[10px] opacity-50">@leg.OriginCityState</div></td>
+                                    <td><div class="font-bold">@leg.DestinationAddress</div><div class="text-[10px] opacity-50">@leg.DestinationCityState</div></td>
+                                    <td class="text-right font-mono">@(leg.DistanceKm.HasValue ? $"{leg.DistanceKm.Value:N0} km" : "—")</td>
+                                    <td><span class="badge badge-xs @(leg.FuelOption == FuelOption.WithFuel ? "badge-success" : "badge-info")">@leg.FuelOption</span></td>
+                                    <td class="text-right font-black">₦@leg.QuotedLegAmount.ToString("N0")</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card bg-base-100 border border-base-300 rounded-2xl p-6 space-y-4">
+                    <h2 class="text-sm font-black text-base-content border-b border-base-200 pb-3">Booking Assignment</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="form-control"><label class="label pb-1"><span class="label-text text-xs font-bold">Vehicle</span></label>
+                            <select asp-for="Booking.VehicleId" id="vehicleSelector" class="select select-sm select-bordered rounded-xl text-xs" onchange="syncDriverFromVehicle()">
+                                @foreach (var v in Model.AvailableVehicles)
+                                {
+                                    <option value="@v.Id" data-driver-id="@v.AssignedEmployeeId">@v.RegistrationNumber - @v.MakeAndModel (@v.Type)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="form-control"><label class="label pb-1"><span class="label-text text-xs font-bold">Driver</span></label>
+                            <select asp-for="Booking.DriverEmployeeId" id="driverSelector" class="select select-sm select-bordered rounded-xl text-xs">
+                                <option value="">Use vehicle assigned driver</option>
+                                @foreach (var driver in Model.AvailableDrivers)
+                                {
+                                    <option value="@driver.Id">@driver.FullName @(string.IsNullOrWhiteSpace(driver.PhoneNumber) ? "" : $"· {driver.PhoneNumber}")</option>
+                                }
+                            </select>
+                            <span class="text-[10px] text-base-content/50 mt-1">Selecting a vehicle auto-selects its assigned driver. You can still choose another logistics driver for this booking.</span>
+                        </div>
+                        <div class="form-control"><label class="label pb-1"><span class="label-text text-xs font-bold">Departure Date</span></label><input asp-for="Booking.DepartureDate" type="date" class="input input-sm input-bordered rounded-xl text-xs font-mono" required /></div>
+                        <div class="form-control"><label class="label pb-1"><span class="label-text text-xs font-bold">Return Date (optional)</span></label><input asp-for="Booking.ReturnDate" type="date" class="input input-sm input-bordered rounded-xl text-xs font-mono" /></div>
+                    </div>
+                    <div class="form-control"><label class="label pb-1"><span class="label-text text-xs font-bold">Booking Notes</span></label><textarea asp-for="Booking.Notes" rows="3" class="textarea textarea-bordered rounded-xl text-xs"></textarea></div>
+                    <span asp-validation-for="Booking.VehicleId" class="text-error text-[10px]"></span>
+                </div>
+            </div>
+
+            <div class="lg:col-span-4 sticky top-20">
+                <div class="card bg-base-100 border border-base-300 shadow-md rounded-2xl overflow-hidden">
+                    <div class="bg-neutral text-neutral-content p-5">
+                        <div class="text-[10px] uppercase font-bold tracking-wider opacity-70">Booking Value</div>
+                        <div class="text-3xl font-black tracking-tight text-white font-mono mt-2">₦@quote.QuotedAmount.ToString("N0")</div>
+                    </div>
+                    <div class="p-6 space-y-3 text-xs">
+                        <div class="flex justify-between"><span>Incidentals:</span><span class="font-mono font-bold text-error">₦@quote.TotalTripIncidentals.ToString("N0")</span></div>
+                        <div class="flex justify-between pt-3 border-t border-base-200 font-bold"><span>Estimated Net:</span><span class="font-mono font-black text-success">₦@quote.NetEstimate.ToString("N0")</span></div>
+                        <div class="alert alert-info py-2.5 px-3 rounded-xl text-[11px] flex items-start gap-2"><i class="fa-solid fa-circle-info text-xs mt-0.5"></i><span>The approved quote is copied into the booking. The amount is not editable here.</span></div>
+                        <button type="submit" class="btn btn-neutral w-full rounded-xl text-xs font-black py-3 gap-2"><i class="fa-solid fa-circle-check"></i> Confirm &amp; Book Charter</button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    }
+</div>
+
+@section Scripts {
+<script>
+    function syncDriverFromVehicle() {
+        const vehicle = document.getElementById('vehicleSelector');
+        const driver = document.getElementById('driverSelector');
+        if (!vehicle || !driver) return;
+
+        const selected = vehicle.options[vehicle.selectedIndex];
+        const assignedDriverId = selected ? (selected.getAttribute('data-driver-id') || '') : '';
+        driver.value = assignedDriverId;
+    }
+
+    document.addEventListener('DOMContentLoaded', syncDriverFromVehicle);
+</script>
+}

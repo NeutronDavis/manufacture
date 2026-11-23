@@ -1,0 +1,67 @@
+@page "{id:int}"
+@model Manufacture.Pages.Payroll.Advances.EditModel
+@{
+    ViewData["Title"] = "Edit Salary Advance";
+    var a = Model.Advance;
+}
+
+<div class="space-y-6 max-w-3xl mx-auto">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs breadcrumbs mb-1">
+                <ul>
+                    <li><a asp-page="/Payroll/Advances/Index">Salary Advances</a></li>
+                    <li class="font-semibold text-primary">Edit Advance #@a.Id</li>
+                </ul>
+            </div>
+            <h1 class="text-2xl font-black text-base-content flex items-center gap-2">
+                <i class="fa-solid fa-pen-to-square text-primary"></i> Edit Salary Advance
+            </h1>
+            <p class="text-xs opacity-60 mt-0.5">@a.EmployeeName · @a.StaffCode · @a.Department</p>
+        </div>
+        <a asp-page="/Payroll/Advances/Details" asp-route-id="@a.Id" class="btn btn-sm btn-ghost rounded-xl text-xs gap-1.5">
+            <i class="fa-solid fa-arrow-left text-xs"></i> Back to Details
+        </a>
+    </div>
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-error shadow-xs rounded-2xl text-xs py-3">
+            <i class="fa-solid fa-circle-exclamation text-base"></i>
+            <div asp-validation-summary="All"></div>
+        </div>
+    }
+
+    <form method="post" class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
+        <input type="hidden" asp-for="AdvanceInput.Id" />
+        <input type="hidden" asp-for="AdvanceInput.EmployeeId" />
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="form-control">
+                <label class="label pb-1"><span class="label-text text-xs font-bold">Principal Amount (₦)</span></label>
+                <input asp-for="AdvanceInput.PrincipalAmount" type="number" step="1000" min="@a.TotalRepaid" class="input input-sm input-bordered font-mono font-bold rounded-xl" required />
+                <span class="text-[10px] opacity-60 mt-1">Already repaid: ₦@a.TotalRepaid.ToString("N2"). Principal cannot be below this.</span>
+            </div>
+            <div class="form-control">
+                <label class="label pb-1"><span class="label-text text-xs font-bold">Current Status</span></label>
+                <div class="input input-sm input-bordered flex items-center bg-base-200 rounded-xl font-bold text-xs">@a.Status</div>
+            </div>
+            <div class="sm:col-span-2 form-control">
+                <label class="label pb-1"><span class="label-text text-xs font-bold">Reason / Purpose</span></label>
+                <textarea asp-for="AdvanceInput.Reason" rows="3" class="textarea textarea-bordered rounded-xl text-xs" required></textarea>
+            </div>
+        </div>
+
+        <div class="rounded-xl bg-base-200/60 border border-base-300 p-3 text-xs">
+            Remaining balance will be recalculated as <strong>₦@a.RemainingBalance.ToString("N2")</strong> before applying any principal change.
+            Monthly recovery follows the current payroll policy (@a.MonthlyRepaymentPercent.ToString("0.#")% of remaining).
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-base-200">
+            <a asp-page="/Payroll/Advances/Details" asp-route-id="@a.Id" class="btn btn-sm btn-ghost rounded-xl text-xs">Cancel</a>
+            <button type="submit" class="btn btn-sm btn-neutral rounded-xl text-xs font-bold gap-1.5">
+                <i class="fa-solid fa-floppy-disk text-xs"></i> Save Changes
+            </button>
+        </div>
+    </form>
+</div>

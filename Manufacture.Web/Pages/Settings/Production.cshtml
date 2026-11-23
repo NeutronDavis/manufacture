@@ -1,0 +1,162 @@
+@page
+@model Manufacture.Pages.Settings.ProductionModel
+@{
+    ViewData["Title"] = "Production Settings";
+}
+
+<div class="space-y-6 w-full pb-12">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Home</a>
+                <span>&gt;</span>
+                <a asp-page="/Settings/Index" class="hover:underline">Settings</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Production</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2.5">
+                <i class="fa-solid fa-industry text-primary"></i> Production Settings
+            </h1>
+            <p class="text-xs opacity-70 mt-1">
+                Manage production categories and the product types, baselines, and output units used by the recipe builder.
+            </p>
+        </div>
+        <a asp-page="/Settings/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+            <i class="fa-solid fa-arrow-left text-xs"></i> Back to Settings
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        <!-- Categories -->
+        <div class="xl:col-span-5 card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+            <div class="card-body p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-layer-group text-primary"></i> Production Categories
+                    </h2>
+                    <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.Categories.Count</span>
+                </div>
+
+                <form method="post" asp-page-handler="SaveCategory" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input type="hidden" asp-for="CategoryInput.Id" />
+                    <div class="form-control sm:col-span-2">
+                        <label class="label pb-1"><span class="label-text text-[10px] font-bold">Category Name *</span></label>
+                        <input asp-for="CategoryInput.Name" class="input input-sm input-bordered rounded-xl text-xs font-semibold" placeholder="e.g. Bread" required />
+                    </div>
+                    <div class="form-control sm:col-span-2">
+                        <label class="label pb-1"><span class="label-text text-[10px] font-bold">Description</span></label>
+                        <input asp-for="CategoryInput.Description" class="input input-sm input-bordered rounded-xl text-xs" placeholder="Optional description" />
+                    </div>
+                    <label class="label cursor-pointer justify-start gap-2 sm:col-span-2">
+                        <input asp-for="CategoryInput.IsActive" class="checkbox checkbox-xs checkbox-primary" />
+                        <span class="label-text text-xs font-semibold">Active</span>
+                    </label>
+                    <button type="submit" class="btn btn-sm btn-primary rounded-xl text-xs font-bold gap-1.5 sm:col-span-2">
+                        <i class="fa-solid fa-floppy-disk text-xs"></i> Save Category
+                    </button>
+                </form>
+
+                <div class="divider my-0"></div>
+                <div class="space-y-2">
+                    @foreach (var category in Model.Categories)
+                    {
+                        <div class="flex items-center justify-between gap-2 rounded-xl border border-base-300 bg-base-200/40 p-3">
+                            <div>
+                                <div class="font-bold text-xs">@category.Name</div>
+                                <div class="text-[10px] opacity-60">@category.Description</div>
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="badge @(category.IsActive ? "badge-success" : "badge-ghost") badge-xs font-bold">@(category.IsActive ? "Active" : "Inactive")</span>
+                                <a asp-page="/Settings/Production" asp-route-editCategoryId="@category.Id" class="btn btn-xs btn-ghost rounded-lg">Edit</a>
+                                <form method="post" asp-page-handler="ToggleCategory">
+                                    <input type="hidden" name="id" value="@category.Id" />
+                                    <button type="submit" class="btn btn-xs btn-ghost text-@(category.IsActive ? "error" : "success") rounded-lg">@(category.IsActive ? "Deactivate" : "Activate")</button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Product Types -->
+        <div class="xl:col-span-7 card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+            <div class="card-body p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-box text-primary"></i> Product Types
+                    </h2>
+                    <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.ProductTypes.Count</span>
+                </div>
+
+                <form method="post" asp-page-handler="SaveProductType" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input type="hidden" asp-for="ProductTypeInput.Id" />
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-[10px] font-bold">Category *</span></label>
+                        <select asp-for="ProductTypeInput.ProductionCategoryId" class="select select-sm select-bordered rounded-xl text-xs font-semibold" required>
+                            <option value="">-- Select Category --</option>
+                            @foreach (var category in Model.Categories.Where(c => c.IsActive))
+                            {
+                                <option value="@category.Id">@category.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-[10px] font-bold">Product Type Name *</span></label>
+                        <input asp-for="ProductTypeInput.Name" class="input input-sm input-bordered rounded-xl text-xs font-semibold" placeholder="e.g. Popcorn" required />
+                    </div>
+                    <div class="form-control sm:col-span-2">
+                        <label class="label pb-1"><span class="label-text text-[10px] font-bold">Baseline *</span></label>
+                        <input asp-for="ProductTypeInput.Baseline" class="input input-sm input-bordered rounded-xl text-xs" placeholder="e.g. 1 Cooking Pot (~2 kg corn)" required />
+                    </div>
+                    <div class="form-control">
+                        <label class="label pb-1"><span class="label-text text-[10px] font-bold">Output Unit Noun *</span></label>
+                        <input asp-for="ProductTypeInput.OutputUnitNoun" class="input input-sm input-bordered rounded-xl text-xs" placeholder="e.g. bags" required />
+                    </div>
+                    <label class="label cursor-pointer justify-start gap-2 mt-5">
+                        <input asp-for="ProductTypeInput.IsActive" class="checkbox checkbox-xs checkbox-primary" />
+                        <span class="label-text text-xs font-semibold">Active</span>
+                    </label>
+                    <button type="submit" class="btn btn-sm btn-primary rounded-xl text-xs font-bold gap-1.5 sm:col-span-2">
+                        <i class="fa-solid fa-floppy-disk text-xs"></i> Save Product Type
+                    </button>
+                </form>
+
+                <div class="divider my-0"></div>
+                <div class="overflow-x-auto">
+                    <table class="table table-sm text-xs">
+                        <thead>
+                            <tr class="uppercase text-[10px] opacity-60">
+                                <th>Product Type</th>
+                                <th>Category</th>
+                                <th>Baseline</th>
+                                <th>Output Unit</th>
+                                <th>Status</th>
+                                <th class="text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var type in Model.ProductTypes)
+                            {
+                                <tr>
+                                    <td class="font-bold">@type.Name</td>
+                                    <td>@type.CategoryName</td>
+                                    <td>@type.Baseline</td>
+                                    <td class="font-mono">@type.OutputUnitNoun</td>
+                                    <td><span class="badge @(type.IsActive ? "badge-success" : "badge-ghost") badge-xs font-bold">@(type.IsActive ? "Active" : "Inactive")</span></td>
+                                    <td class="text-right">
+                                        <a asp-page="/Settings/Production" asp-route-editProductTypeId="@type.Id" class="btn btn-xs btn-ghost rounded-lg">Edit</a>
+                                        <form method="post" asp-page-handler="ToggleProductType" class="inline">
+                                            <input type="hidden" name="id" value="@type.Id" />
+                                            <button type="submit" class="btn btn-xs btn-ghost text-@(type.IsActive ? "error" : "success") rounded-lg">@(type.IsActive ? "Deactivate" : "Activate")</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -31,6 +31,8 @@ bld/
 *.pidb
 *.booproj
 *.svclog
+*.dbmdl
+*.jfm
 
 ## JetBrains / Rider / Resharper
 _ReSharper*/
@@ -47,3 +49,6 @@ desktop.ini
 *~
 *.lock
 *.log
+
+## Ignore all contents inside doc
+doc/*

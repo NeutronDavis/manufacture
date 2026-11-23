@@ -1,0 +1,129 @@
+@page
+@model Manufacture.Pages.Payroll.IndexModel
+@{
+    ViewData["Title"] = "Payroll Runs";
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-money-check-dollar text-primary"></i> Payroll Runs
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Monthly payrolls generated for employees. Open a run to view every employee and their payroll columns.
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <a asp-page="/Payroll/Advances/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-semibold px-3.5 text-xs">
+                <i class="fa-solid fa-hand-holding-dollar text-xs"></i> Salary Advances
+            </a>
+            <a asp-page="/Payroll/Run" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 text-xs shadow-xs">
+                <i class="fa-solid fa-gears text-xs"></i> Process Monthly Payroll
+            </a>
+        </div>
+    </div>
+
+    <!-- Date filter toolbar -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+        <form method="get" class="card-body p-4">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                <div class="md:col-span-4 form-control">
+                    <label class="label pb-1.5">
+                        <span class="label-text text-xs font-bold flex items-center gap-1.5">
+                            <i class="fa-regular fa-calendar text-primary text-xs"></i> Generated Date
+                        </span>
+                    </label>
+                    <input type="date" name="date" value="@(Model.GeneratedDate?.ToString("yyyy-MM-dd"))"
+                           class="input input-sm input-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs font-mono focus:bg-base-100 focus:border-primary" />
+                </div>
+                <div class="md:col-span-4 flex items-center gap-2">
+                    <button type="submit" class="btn btn-sm btn-neutral rounded-xl text-xs font-bold gap-1.5 px-4">
+                        <i class="fa-solid fa-filter text-xs"></i> Apply
+                    </button>
+                    <a asp-page="/Payroll/Index" class="btn btn-sm btn-ghost rounded-xl text-xs gap-1.5">
+                        <i class="fa-solid fa-rotate-left text-xs"></i> Clear
+                    </a>
+                </div>
+                <div class="md:col-span-4 flex md:justify-end">
+                    <div class="rounded-xl border border-base-300 bg-base-200/60 px-3 py-2 text-right">
+                        <div class="text-[10px] uppercase font-bold opacity-60">Active Filter</div>
+                        <div class="text-xs font-semibold">@Model.FilterLabel</div>
+                        <div class="text-[10px] opacity-60 font-mono">@Model.PayrollRuns.Count run(s)</div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Payroll runs table -->
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+        <div class="card-body p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-table-list text-primary"></i> Generated Payrolls
+                </h2>
+                <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.PayrollRuns.Count run(s)</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="table table-sm w-full text-xs">
+                    <thead>
+                        <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                            <th>Run Number</th>
+                            <th>Generated</th>
+                            <th>Payroll Period</th>
+                            <th class="text-right">Employees</th>
+                            <th class="text-right">Gross (₦)</th>
+                            <th class="text-right">Deductions (₦)</th>
+                            <th class="text-right">Net Pay (₦)</th>
+                            <th>Status</th>
+                            <th class="text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-base-200">
+                        @if (!Model.PayrollRuns.Any())
+                        {
+                            <tr>
+                                <td colspan="9" class="text-center py-10 text-xs opacity-60">
+                                    No payroll runs match this filter. Process a monthly payroll run to generate one.
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var run in Model.PayrollRuns)
+                        {
+                            <tr class="hover:bg-base-200/60 transition-colors">
+                                <td class="font-mono text-[11px] font-bold text-primary">@run.RunNumber</td>
+                                <td class="font-mono text-[11px]">@run.GeneratedAt.ToLocalTime().ToString("dd MMM yyyy")</td>
+                                <td class="font-mono text-[11px]">@(new DateTime(run.Year, run.Month, 1).ToString("MMM yyyy"))</td>
+                                <td class="text-right font-mono">@run.EmployeeCount</td>
+                                <td class="text-right font-mono">₦@run.GrossTotal.ToString("N2")</td>
+                                <td class="text-right font-mono text-error">-₦@run.DeductionsTotal.ToString("N2")</td>
+                                <td class="text-right font-mono font-black text-success">₦@run.NetTotal.ToString("N2")</td>
+                                <td>
+                                    @if (run.Status == "Paid")
+                                    {
+                                        <span class="badge badge-success badge-xs font-bold gap-1">● Paid</span>
+                                    }
+                                    else if (run.Status == "PartiallyPaid")
+                                    {
+                                        <span class="badge badge-info badge-xs font-bold gap-1">● Partially Paid</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-warning badge-xs font-bold gap-1">● Pending</span>
+                                    }
+                                </td>
+                                <td class="text-right">
+                                    <a asp-page="/Payroll/RunDetails" asp-route-id="@run.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg gap-1">
+                                        <i class="fa-solid fa-eye text-[10px]"></i> View
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

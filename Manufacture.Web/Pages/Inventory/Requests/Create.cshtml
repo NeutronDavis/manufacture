@@ -1,0 +1,330 @@
+@page
+@model Manufacture.Pages.Inventory.Requests.CreateModel
+@{
+    ViewData["Title"] = "New Material Requisition";
+    var itemsJson = System.Text.Json.JsonSerializer.Serialize(Model.AvailableItems.Select(item => new
+    {
+        id = item.Id,
+        name = item.Name,
+        code = item.ItemCode,
+        stock = item.QuantityInStock,
+        stockUnit = item.Unit,
+        packageSize = item.PackageSize,
+        packageUnit = item.PackageUnitOfMeasure,
+        density = item.DensityKgPerLitre ?? 0m,
+        compatibleUnits = Model.CompatibleUnitsFor(item)
+    }));
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Inventory/Requests/Index" class="hover:underline">Store Requisitions</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">New Requisition</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-clipboard-question text-primary"></i> Requisition Raw Materials
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Request raw materials in the unit used on the production floor. The system converts volume requests into warehouse stock quantities before deduction.
+            </p>
+        </div>
+        <a asp-page="/Inventory/Requests/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+            <i class="fa-solid fa-arrow-left text-xs"></i> Back to Requisitions
+        </a>
+    </div>
+
+    <form method="post" id="requisitionForm" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
+        <div class="lg:col-span-8 space-y-6">
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
+                <div class="card-body p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-regular fa-clipboard"></i>
+                            </div>
+                            <span>Requisition Purpose &amp; Department</span>
+                        </div>
+                        <span class="badge badge-neutral badge-xs font-bold uppercase tracking-wider">Internal Issue</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Requested By (Manager / Baker) <span class="text-error">*</span></span>
+                            </label>
+                            <input type="text" asp-for="RequestInput.RequestedBy" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary font-medium" required />
+                        </div>
+                        <div class="form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Department / Shift</span>
+                            </label>
+                            <input type="text" asp-for="RequestInput.Department" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" value="Bakery Production Floor" required />
+                        </div>
+                        <div class="sm:col-span-2 form-control w-full">
+                            <label class="label pb-1.5">
+                                <span class="label-text font-bold text-xs text-base-content">Target Production Batch / Purpose <span class="text-error">*</span></span>
+                            </label>
+                            <input type="text" asp-for="RequestInput.Purpose" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. Morning Shift Batch #103 Jumbo Bread" required />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+                <div class="card-body p-6 space-y-5">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                        <div class="flex items-center gap-2.5 font-bold text-base-content text-sm">
+                            <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-solid fa-wheat-awn"></i>
+                            </div>
+                            <span>Required Materials &amp; Quantities</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="badge badge-neutral badge-xs font-mono font-bold" id="itemCountBadge">0 Items</span>
+                            <button type="button" onclick="addRow()" class="btn btn-xs btn-neutral rounded-lg font-bold gap-1.5">
+                                <i class="fa-solid fa-plus text-[10px]"></i> Add Material
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm w-full text-xs">
+                            <thead>
+                                <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
+                                    <th class="py-3 pl-3">Raw Material</th>
+                                    <th class="w-40">Qty</th>
+                                    <th class="w-40">Unit</th>
+                                    <th class="text-center w-16 pr-3">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="materialsTableBody" class="divide-y divide-base-200"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="emptyMaterialsAlert" class="alert alert-info shadow-xs rounded-2xl text-xs py-4 flex items-center gap-3">
+                        <i class="fa-solid fa-circle-info text-base"></i>
+                        <span><strong>No materials added yet.</strong> Click <strong>Add Material</strong> to start the requisition.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-20">
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
+                <div class="flex items-center justify-between border-b border-base-200 pb-3">
+                    <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                        <i class="fa-solid fa-paper-plane text-primary"></i> Dispatch Actions
+                    </h2>
+                    <span class="badge badge-success badge-xs font-bold">Pending Approval</span>
+                </div>
+
+                <div class="space-y-2.5 text-xs font-mono">
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Total Materials:</span>
+                        <span class="font-bold text-base-content" id="cardTotalCount">0 Items</span>
+                    </div>
+                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
+                        <span class="font-sans opacity-70">Store Status:</span>
+                        <span class="badge badge-success badge-xs font-bold font-sans">Ready to Submit</span>
+                    </div>
+                </div>
+
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    Submitting this requisition alerts the warehouse store keeper to verify stock. Warehouse quantities are deducted only when the request is approved and issued.
+                </p>
+
+                <div class="space-y-2 pt-2 border-t border-base-200">
+                    <button type="submit" class="btn btn-neutral w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
+                        <i class="fa-solid fa-paper-plane text-xs"></i> Submit Store Requisition
+                    </button>
+                    <a asp-page="/Inventory/Requests/Index" class="btn btn-ghost w-full rounded-xl text-xs font-semibold">Cancel</a>
+                </div>
+            </div>
+
+            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 text-xs space-y-2">
+                <div class="font-bold text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-shield-check text-success"></i> Conversion Policy
+                </div>
+                <p class="text-[11px] opacity-70 leading-relaxed">
+                    If an item has a density configured, litres and millilitres are available. Without density, only weight/count units are offered.
+                </p>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    const inventoryItems = @Html.Raw(itemsJson);
+    const previewUrl = '@Url.Page("/Inventory/Requests/Create", "Preview")';
+    let rows = [];
+
+    function itemById(id) {
+        return inventoryItems.find(item => item.id === id) || null;
+    }
+
+    function defaultUnitFor(item) {
+        if (!item) return 'kg';
+        return item.compatibleUnits && item.compatibleUnits.length > 0
+            ? item.compatibleUnits[0]
+            : item.packageUnit || 'kg';
+    }
+
+    function addRow() {
+        if (inventoryItems.length === 0) return;
+        const item = inventoryItems[0];
+        rows.push({
+            itemId: item.id,
+            quantity: 1,
+            unit: defaultUnitFor(item)
+        });
+        renderRows();
+        refreshPreview(rows.length - 1);
+    }
+
+    function removeRow(index) {
+        rows.splice(index, 1);
+        renderRows();
+    }
+
+    function onItemChanged(index, value) {
+        const item = itemById(parseInt(value));
+        if (!item) return;
+        rows[index].itemId = item.id;
+        rows[index].unit = defaultUnitFor(item);
+        rows[index].quantity = 0;
+        renderRows();
+        refreshPreview(index);
+    }
+
+    function onQtyChanged(index, value) {
+        rows[index].quantity = parseFloat(value) || 0;
+        refreshPreview(index);
+    }
+
+    function onUnitChanged(index, value) {
+        rows[index].unit = value;
+        refreshPreview(index);
+    }
+
+    function stockText(item) {
+        const stockUnit = item.stockUnit || 'units';
+        const baseText = item.packageSize > 0 && item.packageUnit
+            ? ` (${(item.stock * item.packageSize).toLocaleString('en-US', { maximumFractionDigits: 3 })} ${item.packageUnit})`
+            : '';
+        return `Stock: ${item.stock.toLocaleString('en-US', { maximumFractionDigits: 3 })} ${stockUnit}${baseText}`;
+    }
+
+    function renderRows() {
+        const tbody = document.getElementById('materialsTableBody');
+        const emptyAlert = document.getElementById('emptyMaterialsAlert');
+        const countBadge = document.getElementById('itemCountBadge');
+        const cardCount = document.getElementById('cardTotalCount');
+
+        tbody.innerHTML = '';
+
+        if (rows.length === 0) {
+            emptyAlert.classList.remove('hidden');
+            countBadge.innerText = '0 Items';
+            cardCount.innerText = '0 Items';
+            return;
+        }
+
+        emptyAlert.classList.add('hidden');
+        countBadge.innerText = `${rows.length} Item${rows.length === 1 ? '' : 's'}`;
+        cardCount.innerText = `${rows.length} Material${rows.length === 1 ? '' : 's'}`;
+
+        rows.forEach((row, index) => {
+            const item = itemById(row.itemId);
+            if (!item) return;
+
+            const unitOptions = (item.compatibleUnits || [item.packageUnit || 'kg'])
+                .map(unit => `<option value="${unit}" ${unit === row.unit ? 'selected' : ''}>${unit}</option>`)
+                .join('');
+
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-base-200/60 transition-colors';
+            tr.innerHTML = `
+                <td class="py-2.5 pl-3 align-top">
+                    <select name="RequestInput.Items[${index}].InventoryItemId"
+                            class="select select-bordered select-xs w-full rounded-lg text-xs font-bold"
+                            onchange="onItemChanged(${index}, this.value)">
+                        ${inventoryItems.map(candidate => `
+                            <option value="${candidate.id}" ${candidate.id === row.itemId ? 'selected' : ''}>${candidate.name}</option>
+                        `).join('')}
+                    </select>
+                    <input type="hidden" name="RequestInput.Items[${index}].ItemName" value="${item.name}" />
+                    <div class="text-[10px] opacity-60 mt-1 font-mono">${item.code} • ${stockText(item)}</div>
+                </td>
+                <td class="align-top">
+                    <input type="number" step="0.01" min="0"
+                           name="RequestInput.Items[${index}].RequestedQuantity"
+                           value="${row.quantity}"
+                           class="input input-xs input-bordered w-full font-mono font-black text-xs rounded-lg bg-base-100 border-base-300"
+                           onchange="onQtyChanged(${index}, this.value)" />
+                    <div id="conversionHint-${index}" class="text-[10px] opacity-70 mt-1 font-mono"></div>
+                    <div id="stockWarning-${index}" class="mt-1"></div>
+                </td>
+                <td class="align-top">
+                    <select name="RequestInput.Items[${index}].Unit"
+                            class="select select-bordered select-xs w-full rounded-lg text-xs font-mono"
+                            onchange="onUnitChanged(${index}, this.value)">
+                        ${unitOptions}
+                    </select>
+                </td>
+                <td class="text-center pr-3 align-top">
+                    <button type="button" onclick="removeRow(${index})" class="btn btn-xs btn-ghost text-error" title="Remove material">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function refreshPreview(index) {
+        const row = rows[index];
+        const hint = document.getElementById(`conversionHint-${index}`);
+        const warning = document.getElementById(`stockWarning-${index}`);
+        if (hint) hint.innerText = '';
+        if (warning) warning.innerHTML = '';
+        if (!row) return;
+
+        const item = itemById(row.itemId);
+        if (!item || !row.quantity || row.quantity <= 0) return;
+
+        fetch(`${previewUrl}&itemId=${row.itemId}&quantity=${row.quantity}&unit=${encodeURIComponent(row.unit)}`)
+            .then(response => response.json())
+            .then(data => {
+                const hintEl = document.getElementById(`conversionHint-${index}`);
+                const warningEl = document.getElementById(`stockWarning-${index}`);
+                if (!data.success) {
+                    if (warningEl) warningEl.innerHTML = `<span class="badge badge-error badge-xs font-bold">${data.errorMessage || 'Conversion unavailable'}</span>`;
+                    return;
+                }
+
+                if (hintEl) {
+                    hintEl.innerText = `${data.requestedQuantity} ${data.requestedUnit} = ${data.baseQuantity} ${data.baseUnit} = ${data.stockQuantity} ${data.stockUnit}`;
+                }
+                if (warningEl) {
+                    warningEl.innerHTML = data.isEnoughStock
+                        ? `<span class="badge badge-success badge-xs font-bold">Available</span>`
+                        : `<span class="badge badge-error badge-xs font-bold">Exceeds stock (${data.availableStock} ${data.stockUnit})</span>`;
+                }
+            })
+            .catch(() => {
+                const warningEl = document.getElementById(`stockWarning-${index}`);
+                if (warningEl) warningEl.innerHTML = `<span class="badge badge-warning badge-xs font-bold">Conversion check failed</span>`;
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        renderRows();
+    });
+</script>
+}

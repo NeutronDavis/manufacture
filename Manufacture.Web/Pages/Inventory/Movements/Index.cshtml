@@ -1,0 +1,350 @@
+@page
+@model Manufacture.Pages.Inventory.Movements.IndexModel
+@{
+    ViewData["Title"] = "Stock Movement Ledger";
+    var selectedItem = Model.Items.FirstOrDefault(i => i.Id == Model.ItemId);
+    var netMovement = Model.TotalReceipts - Model.TotalIssues;
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Inventory/Index" class="hover:underline">Store Inventory</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Stock Ledger</span>
+            </div>
+            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-arrow-right-arrow-left text-primary"></i> Stock Movement Ledger
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">
+                Every receipt and every approved store-release issue is recorded here with the balance that followed.
+            </p>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+            <a asp-page="/Inventory/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Back to Inventory
+            </a>
+            <a asp-page="/Inventory/Requests/Index" class="btn btn-sm btn-neutral rounded-xl text-xs gap-1.5 font-bold shadow-xs">
+                <i class="fa-solid fa-clipboard-check text-xs"></i> Store Releases
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="stat bg-base-100 border border-base-300 rounded-2xl shadow-xs">
+            <div class="stat-figure text-success text-xl">
+                <i class="fa-solid fa-arrow-down-to-bracket"></i>
+            </div>
+            <div class="stat-title text-[11px] font-bold uppercase tracking-wider opacity-60">Receipts</div>
+            <div class="stat-value text-xl font-black font-mono text-success">@Model.TotalReceipts.ToString("N1")</div>
+            <div class="stat-desc opacity-60">Restocks and opening balances</div>
+        </div>
+        <div class="stat bg-base-100 border border-base-300 rounded-2xl shadow-xs">
+            <div class="stat-figure text-error text-xl">
+                <i class="fa-solid fa-arrow-up-from-bracket"></i>
+            </div>
+            <div class="stat-title text-[11px] font-bold uppercase tracking-wider opacity-60">Issues</div>
+            <div class="stat-value text-xl font-black font-mono text-error">@Model.TotalIssues.ToString("N1")</div>
+            <div class="stat-desc opacity-60">Deducted only by approved releases</div>
+        </div>
+        <div class="stat bg-base-100 border border-base-300 rounded-2xl shadow-xs">
+            <div class="stat-figure text-primary text-xl">
+                <i class="fa-solid fa-scale-balanced"></i>
+            </div>
+            <div class="stat-title text-[11px] font-bold uppercase tracking-wider opacity-60">Net Movement</div>
+            <div class="stat-value text-xl font-black font-mono @(netMovement >= 0 ? "text-primary" : "text-error")">@netMovement.ToString("N1")</div>
+            <div class="stat-desc opacity-60">Receipts minus issues in this view</div>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4">
+        <form method="get" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+            <div class="md:col-span-4 form-control w-full">
+                <label class="label pb-1.5">
+                    <span class="label-text font-bold text-xs text-base-content">Search</span>
+                </label>
+                <input type="text" name="Search" value="@Model.Search" placeholder="Item, code, reference, staff, notes..." class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs" />
+            </div>
+            <div class="md:col-span-4 form-control w-full">
+                <label class="label pb-1.5">
+                    <span class="label-text font-bold text-xs text-base-content">Inventory Item</span>
+                </label>
+                <select name="ItemId" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium">
+                    <option value="">All inventory items</option>
+                    @foreach (var item in Model.Items)
+                    {
+                        <option value="@item.Id" selected="@(Model.ItemId == item.Id)">
+                            @item.Name (@item.ItemCode)
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="md:col-span-4 form-control w-full">
+                <label class="label pb-1.5">
+                    <span class="label-text font-bold text-xs text-base-content">Movement Type</span>
+                </label>
+                <select name="MovementType" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-semibold">
+                    <option value="">All movements</option>
+                    <option value="Receipt" selected="@(Model.MovementType == "Receipt")">Receipt</option>
+                    <option value="Issue" selected="@(Model.MovementType == "Issue")">Issue</option>
+                </select>
+            </div>
+            <div class="md:col-span-3 form-control w-full">
+                <label class="label pb-1.5">
+                    <span class="label-text font-bold text-xs text-base-content">Date From</span>
+                </label>
+                <input type="date" name="DateFrom" value="@(Model.DateFrom?.ToString("yyyy-MM-dd"))" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs" />
+            </div>
+            <div class="md:col-span-3 form-control w-full">
+                <label class="label pb-1.5">
+                    <span class="label-text font-bold text-xs text-base-content">Date To</span>
+                </label>
+                <input type="date" name="DateTo" value="@(Model.DateTo?.ToString("yyyy-MM-dd"))" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs" />
+            </div>
+            <div class="md:col-span-6 flex items-center gap-2">
+                <button type="submit" class="btn btn-sm btn-neutral rounded-xl text-xs font-bold gap-1.5">
+                    <i class="fa-solid fa-filter text-[10px]"></i> Apply Filter
+                </button>
+                <a asp-page="/Inventory/Movements/Index" class="btn btn-sm btn-ghost rounded-xl text-xs font-semibold">
+                    Clear
+                </a>
+                @if (selectedItem != null)
+                {
+                    <span class="badge badge-primary badge-outline badge-sm font-mono truncate max-w-[170px]">@selectedItem.ItemCode</span>
+                }
+            </div>
+        </form>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-base-200 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-2 font-black text-sm text-base-content">
+                <i class="fa-solid fa-clock-rotate-left text-primary"></i>
+                Movement History
+            </div>
+            <span class="badge badge-neutral badge-sm font-mono font-bold">@Model.Movements.Count Records</span>
+        </div>
+
+        @if (Model.Movements.Any())
+        {
+            <div class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead>
+                        <tr class="text-[11px] uppercase tracking-wider">
+                            <th class="whitespace-nowrap">Date &amp; Time</th>
+                            <th class="whitespace-nowrap">Item</th>
+                            <th class="whitespace-nowrap">Type</th>
+                            <th class="text-right whitespace-nowrap">Quantity</th>
+                            <th class="text-right whitespace-nowrap">Balance After</th>
+                            <th class="whitespace-nowrap">Reference</th>
+                            <th class="whitespace-nowrap">Performed By</th>
+                            <th class="whitespace-nowrap">Notes</th>
+                            <th class="text-center whitespace-nowrap">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var movement in Model.Movements)
+                        {
+                            var isReceipt = movement.MovementType == "Receipt";
+                            <tr class="hover:bg-base-200/40">
+                                <td class="whitespace-nowrap font-mono text-[11px] opacity-70">
+                                    @movement.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                                </td>
+                                <td>
+                                    <a asp-page="/Inventory/Items/Details" asp-route-id="@movement.InventoryItemId" class="block hover:underline">
+                                        <span class="font-bold text-xs text-base-content">@movement.ItemName</span>
+                                        <span class="block font-mono text-[10px] text-primary">@movement.ItemCode</span>
+                                    </a>
+                                </td>
+                                <td>
+                                    @if (isReceipt)
+                                    {
+                                        <span class="badge badge-success badge-soft badge-sm font-bold gap-1 whitespace-nowrap">
+                                            <i class="fa-solid fa-arrow-down text-[9px]"></i> Receipt
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-error badge-soft badge-sm font-bold gap-1 whitespace-nowrap">
+                                            <i class="fa-solid fa-arrow-up text-[9px]"></i> Issue
+                                        </span>
+                                    }
+                                </td>
+                                <td class="text-right font-mono font-black text-xs @(isReceipt ? "text-success" : "text-error")">
+                                    @if (!isReceipt && movement.RequestedQuantity.HasValue)
+                                    {
+                                        <div>@movement.RequestedQuantity.Value.ToString("N3") @movement.RequestedUnit</div>
+                                        @if (movement.BaseQuantity.HasValue && !string.IsNullOrWhiteSpace(movement.BaseUnit))
+                                        {
+                                            <div class="text-[10px] font-normal opacity-60">
+                                                = @movement.BaseQuantity.Value.ToString("N3") @movement.BaseUnit
+                                            </div>
+                                        }
+                                        <div class="text-[10px] font-normal opacity-60">
+                                            Issued: @movement.Quantity.ToString("0.######") @movement.StockUnit
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span>@(isReceipt ? "+" : "-")@movement.Quantity.ToString("N3")</span>
+                                        <span class="text-[10px] font-normal opacity-60">@movement.Unit</span>
+                                    }
+                                </td>
+                                <td class="text-right font-mono font-bold text-xs">@movement.BalanceAfter.ToString("N3")</td>
+                                <td class="font-mono text-[11px]">
+                                    @if (!string.IsNullOrEmpty(movement.ReferenceNumber))
+                                    {
+                                        <span class="badge badge-ghost badge-sm font-mono">@movement.ReferenceNumber</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="opacity-40">-</span>
+                                    }
+                                </td>
+                                <td class="text-[11px] font-semibold text-base-content whitespace-nowrap">@movement.PerformedBy</td>
+                                <td class="text-[11px] opacity-70 max-w-[220px] truncate" title="@movement.Notes">@movement.Notes</td>
+                                <td class="text-center whitespace-nowrap">
+                                    <button type="button" class="btn btn-xs btn-ghost text-primary rounded-lg font-bold"
+                                            onclick="openMovementModal(this)"
+                                            data-item-name="@movement.ItemName"
+                                            data-item-code="@movement.ItemCode"
+                                            data-item-id="@movement.InventoryItemId"
+                                            data-type="@movement.MovementType"
+                                            data-date="@movement.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")"
+                                            data-quantity="@movement.Quantity.ToString("0.######")"
+                                            data-unit="@movement.Unit"
+                                            data-requested="@(movement.RequestedQuantity?.ToString("0.###") ?? "")"
+                                            data-requested-unit="@(movement.RequestedUnit ?? "")"
+                                            data-base="@(movement.BaseQuantity?.ToString("0.###") ?? "")"
+                                            data-base-unit="@(movement.BaseUnit ?? "")"
+                                            data-stock="@(movement.StockQuantity?.ToString("0.######") ?? "")"
+                                            data-stock-unit="@(movement.StockUnit ?? "")"
+                                            data-balance="@movement.BalanceAfter.ToString("0.###")"
+                                            data-reference="@(movement.ReferenceNumber ?? "")"
+                                            data-performed-by="@movement.PerformedBy"
+                                            data-notes="@(movement.Notes ?? "")"
+                                            data-request-number="@(movement.RequestNumber ?? "")">
+                                        <i class="fa-solid fa-eye text-[10px]"></i> View
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-16 px-6 opacity-60">
+                <div class="w-14 h-14 rounded-2xl bg-base-200 mx-auto flex items-center justify-center text-2xl mb-3">
+                    <i class="fa-solid fa-arrow-right-arrow-left"></i>
+                </div>
+                <p class="font-bold text-sm text-base-content">No stock movements found</p>
+                <p class="text-xs mt-1">Restock an item or approve a store release to create the first ledger entry.</p>
+                <a asp-page="/Inventory/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs mt-4">Back to Inventory</a>
+            </div>
+        }
+    </div>
+</div>
+
+<dialog id="movementDetailModal" class="modal">
+    <div class="modal-box max-w-2xl rounded-2xl border border-base-300">
+        <div class="flex items-start justify-between gap-4 border-b border-base-200 pb-4">
+            <div>
+                <h3 class="font-black text-lg text-base-content flex items-center gap-2">
+                    <i class="fa-solid fa-arrow-right-arrow-left text-primary"></i> Stock Movement Details
+                </h3>
+                <p class="text-xs opacity-60 mt-0.5" id="movementModalSubtitle"></p>
+            </div>
+            <button type="button" onclick="closeMovementModal()" class="btn btn-ghost btn-sm btn-circle rounded-xl">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="py-5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div class="rounded-xl bg-base-200/60 border border-base-300 p-3 sm:col-span-2">
+                <div class="text-[10px] uppercase font-bold opacity-60">Item</div>
+                <div class="font-bold text-sm text-base-content mt-0.5" id="movementModalItem"></div>
+                <div class="font-mono text-[11px] text-primary mt-0.5" id="movementModalItemCode"></div>
+            </div>
+            <div class="rounded-xl bg-base-200/60 border border-base-300 p-3">
+                <div class="text-[10px] uppercase font-bold opacity-60">Movement Type</div>
+                <div class="font-bold mt-0.5" id="movementModalType"></div>
+            </div>
+            <div class="rounded-xl bg-base-200/60 border border-base-300 p-3">
+                <div class="text-[10px] uppercase font-bold opacity-60">Date &amp; Time</div>
+                <div class="font-mono font-bold mt-0.5" id="movementModalDate"></div>
+            </div>
+            <div class="rounded-xl bg-base-200/60 border border-base-300 p-3">
+                <div class="text-[10px] uppercase font-bold opacity-60">Requested Quantity</div>
+                <div class="font-mono font-black text-primary mt-0.5" id="movementModalRequested"></div>
+            </div>
+            <div class="rounded-xl bg-base-200/60 border border-base-300 p-3">
+                <div class="text-[10px] uppercase font-bold opacity-60">Converted Warehouse Quantity</div>
+                <div class="font-mono font-black mt-0.5" id="movementModalConverted"></div>
+            </div>
+            <div class="rounded-xl bg-base-200/60 border border-base-300 p-3">
+                <div class="text-[10px] uppercase font-bold opacity-60">Balance After</div>
+                <div class="font-mono font-bold mt-0.5" id="movementModalBalance"></div>
+            </div>
+            <div class="rounded-xl bg-base-200/60 border border-base-300 p-3">
+                <div class="text-[10px] uppercase font-bold opacity-60">Reference / Request</div>
+                <div class="font-mono font-bold mt-0.5" id="movementModalReference"></div>
+            </div>
+            <div class="rounded-xl bg-base-200/60 border border-base-300 p-3 sm:col-span-2">
+                <div class="text-[10px] uppercase font-bold opacity-60">Performed By</div>
+                <div class="font-bold mt-0.5" id="movementModalPerformedBy"></div>
+            </div>
+            <div class="rounded-xl bg-base-200/60 border border-base-300 p-3 sm:col-span-2">
+                <div class="text-[10px] uppercase font-bold opacity-60">Notes</div>
+                <div class="opacity-80 mt-0.5 whitespace-pre-wrap" id="movementModalNotes"></div>
+            </div>
+        </div>
+
+        <div class="modal-action border-t border-base-200 pt-3">
+            <a id="movementModalItemLink" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs font-semibold">
+                <i class="fa-solid fa-box"></i> Open Item
+            </a>
+            <button type="button" onclick="closeMovementModal()" class="btn btn-sm btn-neutral rounded-xl text-xs font-bold">Close</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button type="submit">close</button>
+    </form>
+</dialog>
+
+@section Scripts {
+<script>
+    function openMovementModal(button) {
+        const data = button.dataset;
+        const isReceipt = data.type === 'Receipt';
+        const requested = data.requested
+            ? `${data.requested} ${data.requestedUnit}`.trim()
+            : `${data.quantity} ${data.unit}`.trim();
+        const converted = data.stock
+            ? `${data.base || ''} ${data.baseUnit || ''} = ${data.stock} ${data.stockUnit || ''}`.trim()
+            : `${data.quantity} ${data.unit}`.trim();
+
+        document.getElementById('movementModalSubtitle').textContent = data.reference || 'Stock ledger entry';
+        document.getElementById('movementModalItem').textContent = data.itemName || '';
+        document.getElementById('movementModalItemCode').textContent = data.itemCode || '';
+        document.getElementById('movementModalType').textContent = data.type || '';
+        document.getElementById('movementModalDate').textContent = data.date || '';
+        document.getElementById('movementModalRequested').textContent = requested;
+        document.getElementById('movementModalConverted').textContent = isReceipt ? `${data.quantity} ${data.unit}`.trim() : converted;
+        document.getElementById('movementModalBalance').textContent = `${data.balance} ${data.unit}`.trim();
+        document.getElementById('movementModalReference').textContent = data.requestNumber || data.reference || '-';
+        document.getElementById('movementModalPerformedBy').textContent = data.performedBy || '';
+        document.getElementById('movementModalNotes').textContent = data.notes || 'No notes recorded.';
+        document.getElementById('movementModalItemLink').href = `/Inventory/Items/Details/${data.itemId}`;
+        document.getElementById('movementDetailModal').showModal();
+    }
+
+    function closeMovementModal() {
+        document.getElementById('movementDetailModal').close();
+    }
+</script>
+}

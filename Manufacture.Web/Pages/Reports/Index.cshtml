@@ -1,0 +1,275 @@
+@page
+@model Manufacture.Pages.Reports.IndexModel
+@using Manufacture.Models.DTOs
+@using Manufacture.Services.Reports
+@{
+    ViewData["Title"] = Model.SelectedReport?.Title ?? "Reports";
+    var report = Model.SelectedReport;
+    var result = Model.Result;
+}
+
+<div class="space-y-6 w-full">
+    @if (report is null)
+    {
+        <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+            <div>
+                <div class="breadcrumbs text-xs opacity-60 mb-1">
+                    <ul><li><a asp-page="/Dashboard/Index">Dashboard</a></li><li class="font-bold text-base-content">Reports</li></ul>
+                </div>
+                <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                    <i class="fa-solid fa-chart-column text-primary"></i> Report Catalogue
+                </h1>
+                <p class="text-xs opacity-70 mt-0.5">Reports available to <strong>@Model.ActiveRole</strong>. Open a report to apply its filters, view the table and export.</p>
+            </div>
+            <div class="join w-full lg:w-80">
+                <input id="report-search" type="search" class="input input-sm input-bordered join-item w-full rounded-l-xl text-xs" placeholder="Search reports..." />
+                <span class="join-item btn btn-sm btn-neutral rounded-r-xl"><i class="fa-solid fa-magnifying-glass text-xs"></i></span>
+            </div>
+        </div>
+
+        @if (Model.VisibleReports.Count == 0)
+        {
+            <div class="card bg-base-100 border border-base-300 rounded-2xl p-10 text-center">
+                <i class="fa-solid fa-chart-column text-3xl opacity-30"></i>
+                <h2 class="font-black text-base-content mt-3">No reports are available for your role yet</h2>
+                <p class="text-xs opacity-60 mt-1">HR/Payroll and other module report families are part of the next delivery phase.</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var group in Model.VisibleReports.GroupBy(report => report.Group))
+            {
+                <section class="space-y-3 report-group" data-group="@group.Key.ToLowerInvariant()">
+                    <div class="flex items-center justify-between border-b border-base-200 pb-2">
+                        <h2 class="font-black text-sm text-base-content flex items-center gap-2">
+                            <i class="fa-solid fa-folder-open text-primary"></i> @group.Key
+                        </h2>
+                        <span class="badge badge-neutral badge-xs font-mono font-bold">@group.Count()</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        @foreach (var item in group)
+                        {
+                            <a href="@Model.ReportUrl(item.Key)"
+                               class="report-card card bg-base-100 border border-base-300 rounded-2xl p-5 hover:border-primary/60 hover:shadow-md transition-all group"
+                               data-search="@($"{item.Title} {item.Description} {item.Group}".ToLowerInvariant())">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-base shrink-0">
+                                        <i class="@item.IconClass"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <h3 class="font-black text-sm text-base-content group-hover:text-primary transition-colors">@item.Title</h3>
+                                        <p class="text-[11px] opacity-65 leading-relaxed mt-1">@item.Description</p>
+                                        <div class="flex items-center gap-2 mt-3">
+                                            <span class="badge badge-ghost border border-base-300 badge-xs font-bold">@item.Group</span>
+                                            @if (item.SupportsCsv || item.SupportsPdf)
+                                            {
+                                                <span class="text-[9px] uppercase tracking-wider opacity-40 font-bold">CSV / PDF</span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        }
+                    </div>
+                </section>
+            }
+            <div id="report-empty" class="hidden card bg-base-100 border border-base-300 rounded-2xl p-10 text-center text-xs opacity-60">
+                No reports match your search.
+            </div>
+        }
+    }
+    else
+    {
+        <div class="flex flex-col xl:flex-row xl:items-end justify-between gap-4">
+            <div>
+                <div class="breadcrumbs text-xs opacity-60 mb-1">
+                    <ul>
+                        <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
+                        <li><a asp-page="/Reports/Index">Reports</a></li>
+                        <li class="font-bold text-base-content">@report.Title</li>
+                    </ul>
+                </div>
+                <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+                    <i class="@report.IconClass text-primary"></i> @report.Title
+                </h1>
+                <p class="text-xs opacity-70 mt-0.5 max-w-4xl">@report.Description</p>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <a asp-page="/Reports/Index" class="btn btn-sm btn-ghost rounded-xl text-xs font-bold gap-1.5">
+                    <i class="fa-solid fa-arrow-left text-xs"></i> All Reports
+                </a>
+                <a href="@Url.Page("/Reports/Index", "ExportCsv", new { report = report.Key, from = Model.Filters.StartDate.ToString("yyyy-MM-dd"), to = Model.Filters.EndDate.ToString("yyyy-MM-dd"), categoryId = Model.Filters.CategoryId, salesRepId = Model.Filters.SalesRepId, status = Model.Filters.Status, search = Model.Filters.Search })"
+                   class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs font-bold gap-1.5">
+                    <i class="fa-solid fa-file-csv text-success"></i> CSV
+                </a>
+                <a href="@Url.Page("/Reports/Index", "ExportPdf", new { report = report.Key, from = Model.Filters.StartDate.ToString("yyyy-MM-dd"), to = Model.Filters.EndDate.ToString("yyyy-MM-dd"), categoryId = Model.Filters.CategoryId, salesRepId = Model.Filters.SalesRepId, status = Model.Filters.Status, search = Model.Filters.Search })"
+                   class="btn btn-sm btn-primary rounded-xl text-xs font-bold gap-1.5">
+                    <i class="fa-solid fa-file-pdf"></i> PDF
+                </a>
+            </div>
+        </div>
+
+        <form method="get" asp-page="/Reports/Index" class="card bg-base-100 border border-base-300 rounded-2xl p-4 space-y-3">
+            <input type="hidden" name="report" value="@report.Key" />
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <label class="form-control">
+                    <span class="label-text text-[10px] font-bold pb-1">From</span>
+                    <input type="date" name="from" value="@Model.Filters.StartDate.ToString("yyyy-MM-dd")" class="input input-sm input-bordered rounded-xl text-xs" />
+                </label>
+                <label class="form-control">
+                    <span class="label-text text-[10px] font-bold pb-1">To</span>
+                    <input type="date" name="to" value="@Model.Filters.EndDate.ToString("yyyy-MM-dd")" class="input input-sm input-bordered rounded-xl text-xs" />
+                </label>
+                @if (report.SupportsCategoryFilter)
+                {
+                    <label class="form-control">
+                        <span class="label-text text-[10px] font-bold pb-1">Product Category</span>
+                        <select name="categoryId" class="select select-sm select-bordered rounded-xl text-xs">
+                            <option value="">All categories</option>
+                            @foreach (var category in Model.Categories)
+                            {
+                                <option value="@category.Id" selected="@(Model.Filters.CategoryId == category.Id)">@category.Name</option>
+                            }
+                        </select>
+                    </label>
+                }
+                @if (report.SupportsRepFilter)
+                {
+                    <label class="form-control">
+                        <span class="label-text text-[10px] font-bold pb-1">Sales Rep</span>
+                        <select name="salesRepId" class="select select-sm select-bordered rounded-xl text-xs">
+                            <option value="">All reps</option>
+                            @foreach (var rep in Model.SalesReps)
+                            {
+                                <option value="@rep.Id" selected="@(Model.Filters.SalesRepId == rep.Id)">@rep.FullName</option>
+                            }
+                        </select>
+                    </label>
+                }
+                @if (report.SupportsStatusFilter)
+                {
+                    <label class="form-control">
+                        <span class="label-text text-[10px] font-bold pb-1">Status</span>
+                        <input type="text" name="status" value="@Model.Filters.Status" class="input input-sm input-bordered rounded-xl text-xs" placeholder="Any status" />
+                    </label>
+                }
+                @if (report.SupportsSearch)
+                {
+                    <label class="form-control">
+                        <span class="label-text text-[10px] font-bold pb-1">Search</span>
+                        <input type="text" name="search" value="@Model.Filters.Search" class="input input-sm input-bordered rounded-xl text-xs" placeholder="Order, item, rep..." />
+                    </label>
+                }
+                <div class="flex items-end gap-2">
+                    <button type="submit" class="btn btn-sm btn-primary rounded-xl text-xs font-bold gap-1.5">
+                        <i class="fa-solid fa-filter"></i> Apply
+                    </button>
+                    <a asp-page="/Reports/Index" asp-route-report="@report.Key" class="btn btn-sm btn-ghost rounded-xl text-xs font-bold">Reset</a>
+                </div>
+            </div>
+        </form>
+
+        @if (result is null)
+        {
+            <div class="alert alert-info rounded-xl text-xs"><span>Run the report to see results.</span></div>
+        }
+        else
+        {
+            <div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden">
+                <div class="p-4 border-b border-base-200 flex items-center justify-between flex-wrap gap-2">
+                    <div class="flex items-center gap-2">
+                        <span class="badge badge-primary badge-soft badge-sm font-bold">@result.Group</span>
+                        <span class="text-xs opacity-60">@result.DateRangeLabel</span>
+                    </div>
+                    <span class="badge badge-ghost border border-base-300 badge-sm font-mono font-bold">@result.TotalRows.ToString("N0") rows</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table table-sm w-full text-xs">
+                        <thead>
+                            <tr class="bg-base-200/60 uppercase text-[10px] tracking-wider border-b border-base-300">
+                                @foreach (var column in result.Columns)
+                                {
+                                    <th class="whitespace-nowrap @(column.Align == "right" ? "text-right" : "text-left")">@column.Label</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-base-200">
+                            @if (Model.PagedRows.Count == 0)
+                            {
+                                <tr>
+                                    <td colspan="@result.Columns.Count" class="text-center py-10 opacity-50">No data found for the selected filters.</td>
+                                </tr>
+                            }
+                            @foreach (var row in Model.PagedRows)
+                            {
+                                <tr class="hover:bg-base-200/50 transition-colors">
+                                    @foreach (var column in result.Columns)
+                                    {
+                                        row.TryGetValue(column.Key, out var value);
+                                        <td class="whitespace-nowrap @(column.Align == "right" ? "text-right font-mono" : "text-left")">@ReportFormatter.Format(value, column.Type)</td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                        @if (result.Totals.Count > 0)
+                        {
+                            <tfoot class="bg-base-200/70 border-t-2 border-base-300 font-bold">
+                                <tr>
+                                    @foreach (var column in result.Columns)
+                                    {
+                                        result.Totals.TryGetValue(column.Key, out var total);
+                                        <td class="whitespace-nowrap @(column.Align == "right" ? "text-right font-mono" : "text-left")">@(total is null ? "" : ReportFormatter.Format(total, column.Type))</td>
+                                    }
+                                </tr>
+                            </tfoot>
+                        }
+                    </table>
+                </div>
+
+                @if (result.TotalPages > 1)
+                {
+                    <div class="p-4 border-t border-base-200 flex items-center justify-between">
+                        <span class="text-[11px] opacity-60">Page @Model.PageNumber of @result.TotalPages</span>
+                        <div class="join">
+                            @if (Model.PageNumber > 1)
+                            {
+                                <a href="@Model.PageUrl(Model.PageNumber - 1)" class="btn btn-xs join-item">Previous</a>
+                            }
+                            @if (Model.PageNumber < result.TotalPages)
+                            {
+                                <a href="@Model.PageUrl(Model.PageNumber + 1)" class="btn btn-xs join-item">Next</a>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@section Scripts {
+<script>
+    (() => {
+        const input = document.getElementById('report-search');
+        if (!input) return;
+        const cards = Array.from(document.querySelectorAll('.report-card'));
+        const groups = Array.from(document.querySelectorAll('.report-group'));
+        const empty = document.getElementById('report-empty');
+        input.addEventListener('input', () => {
+            const term = input.value.trim().toLowerCase();
+            let visible = 0;
+            cards.forEach(card => {
+                const match = !term || (card.dataset.search || '').includes(term);
+                card.classList.toggle('hidden', !match);
+                if (match) visible++;
+            });
+            groups.forEach(group => {
+                const hasVisible = Array.from(group.querySelectorAll('.report-card')).some(card => !card.classList.contains('hidden'));
+                group.classList.toggle('hidden', !hasVisible);
+            });
+            empty?.classList.toggle('hidden', visible > 0);
+        });
+    })();
+</script>
+}
