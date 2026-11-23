@@ -1,12 +1,17 @@
 ## .NET / Visual Studio
 bin/
 obj/
+artifacts/
 *.user
 *.userosscache
 *.sln.docstates
 *.suo
 .vs/
 .vscode/
+*.binlog
+*.nupkg
+*.snupkg
+packages/
 
 ## Build results
 [Dd]ebug/
@@ -22,6 +27,8 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Ll]ogs/
+publish/
+logs/
 
 ## Visual Studio cache / temporary files
 *.ide/
@@ -34,10 +41,30 @@ bld/
 *.dbmdl
 *.jfm
 
+## SQL Server / SSDT database project artifacts
+*.sqlproj.user
+*.publish.xml
+*.dacpac
+*.bacpac
+*.mdf
+*.ldf
+*.ndf
+.sqlpackage/
+
 ## JetBrains / Rider / Resharper
+.idea/
 _ReSharper*/
 *.ReSharper
 *.DotSettings.user
+
+## Test results and coverage
+TestResults/
+[Tt]est[Rr]esults/
+*.trx
+*.coverage
+*.coveragexml
+coverage*.xml
+coverage*.json
 
 ## OS Generated files
 .DS_Store
@@ -49,6 +76,14 @@ desktop.ini
 *~
 *.lock
 *.log
+*.tmp
+*.bak
+appsettings.Local.json
+appsettings.*.local.json
+*.secrets.json
+.env
+.env.*
+!.env.example
 
 ## Ignore all contents inside doc
 doc/*

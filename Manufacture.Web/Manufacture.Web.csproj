@@ -9,6 +9,7 @@
          its own folder. -->
     <RootNamespace>Manufacture</RootNamespace>
     <AssemblyName>Manufacture.Web</AssemblyName>
+    <UserSecretsId>d316c5c1-fa41-4b6f-ba8e-da06e46337b3</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
