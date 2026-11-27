@@ -39,6 +39,7 @@
     <Build Include="Tables\JobRoles.sql" />
     <Build Include="Tables\MaintenanceLogs.sql" />
     <Build Include="Tables\MeasurementDensities.sql" />
+    <Build Include="Tables\Notifications.sql" />
     <Build Include="Tables\OrderItems.sql" />
     <Build Include="Tables\OrderPayments.sql" />
     <Build Include="Tables\Orders.sql" />

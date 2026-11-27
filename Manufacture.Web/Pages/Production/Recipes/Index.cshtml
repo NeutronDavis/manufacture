@@ -1,4 +1,5 @@
 @page
+@using Manufacture.Models.Domain
 @model Manufacture.Pages.Production.Recipes.IndexModel
 @{
     ViewData["Title"] = "Product Recipes & Costing";
@@ -23,7 +24,7 @@
             </p>
         </div>
         <div class="flex items-center gap-2">
-            @if (!string.Equals(Model.UserRole, "SalesRep", StringComparison.OrdinalIgnoreCase))
+            @if (Model.UserRoleId != (int)UserRole.SalesRep)
             {
                 <a asp-page="/Production/Pricing/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-2 font-bold px-4 text-xs">
                     <i class="fa-solid fa-tags text-xs"></i> Price &amp; Margin Admin

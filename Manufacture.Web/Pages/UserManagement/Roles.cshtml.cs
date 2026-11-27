@@ -1,5 +1,6 @@
-using Manufacture.Library.Interfaces;
+﻿using Manufacture.Library.Interfaces;
 using Manufacture.Models.DTOs;
+using Manufacture.Models.Domain;
 using Manufacture.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -20,6 +21,8 @@ namespace Manufacture.Pages.UserManagement
         }
 
         public List<RoleDto> Roles { get; set; } = new();
+
+        public string UserName => HttpContext.Session.GetString(SessionKeys.UserName) ?? "System";
 
         [BindProperty]
         public RoleDto Input { get; set; } = new();
@@ -62,6 +65,11 @@ namespace Manufacture.Pages.UserManagement
             try
             {
                 var role = await _userService.SaveRoleAsync(Input, cancellationToken);
+                if (Input.Id <= 0)
+                {
+                    await _rbacService.InitializeRolePermissionsAsync(role.Id, UserName, cancellationToken);
+                }
+
                 await _rbacService.RefreshCacheAsync(cancellationToken);
                 TempData["SuccessMessage"] = $"Platform role '{role.DisplayName}' saved successfully.";
                 return RedirectToPage();
@@ -105,9 +113,9 @@ namespace Manufacture.Pages.UserManagement
 
         private bool CanManageRoles()
         {
-            var userRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
-            return string.Equals(userRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase)
-                || _rbacCache.CanManage(userRole, "Settings");
+            var roleId = HttpContext.Session.GetRoleId();
+            return roleId == (int)UserRole.SuperAdmin
+                || _rbacCache.CanManage(roleId, "Settings");
         }
     }
 }

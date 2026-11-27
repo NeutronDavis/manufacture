@@ -44,6 +44,8 @@ public partial class ManufactureDbContext : DbContext
 
     public virtual DbSet<MeasurementDensity> MeasurementDensities { get; set; }
 
+    public virtual DbSet<Notification> Notifications { get; set; }
+
     public virtual DbSet<Order> Orders { get; set; }
 
     public virtual DbSet<OrderItem> OrderItems { get; set; }
@@ -1082,6 +1084,38 @@ public partial class ManufactureDbContext : DbContext
             entity.HasOne(d => d.ProductRepository).WithMany(p => p.PosTerminals)
                 .HasForeignKey(d => d.ProductRepositoryId)
                 .HasConstraintName("FK_PosTerminals_ProductRepositories");
+        });
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasIndex(e => new { e.RecipientUserId, e.IsRead, e.CreatedAt }, "IX_Notifications_Recipient_IsRead_CreatedAt")
+                .IsDescending(false, false, true);
+
+            entity.HasIndex(e => e.CreatedAt, "IX_Notifications_CreatedAt").IsDescending();
+
+            entity.Property(e => e.CreatedAt)
+                .HasPrecision(3)
+                .HasDefaultValueSql("(sysutcdatetime())", "DF_Notifications_CreatedAt");
+            entity.Property(e => e.IsRead).HasDefaultValue(false, "DF_Notifications_IsRead");
+            entity.Property(e => e.LinkUrl).HasMaxLength(300);
+            entity.Property(e => e.Message)
+                .HasMaxLength(1000)
+                .HasDefaultValue("", "DF_Notifications_Message");
+            entity.Property(e => e.ReadAt).HasPrecision(3);
+            entity.Property(e => e.RowVersion)
+                .IsRowVersion()
+                .IsConcurrencyToken();
+            entity.Property(e => e.Title).HasMaxLength(200);
+            entity.Property(e => e.Type).HasDefaultValue(0, "DF_Notifications_Type");
+
+            entity.HasOne(d => d.CreatedByUser).WithMany()
+                .HasForeignKey(d => d.CreatedByUserId)
+                .OnDelete(DeleteBehavior.NoAction)
+                .HasConstraintName("FK_Notifications_CreatedByUser");
+
+            entity.HasOne(d => d.RecipientUser).WithMany()
+                .HasForeignKey(d => d.RecipientUserId)
+                .HasConstraintName("FK_Notifications_RecipientUser");
         });
 
         modelBuilder.Entity<ProductRepository>(entity =>

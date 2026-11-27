@@ -1,5 +1,6 @@
-using Manufacture.Library.Interfaces;
+﻿using Manufacture.Library.Interfaces;
 using Manufacture.Models.Domain;
+using Manufacture.Services;
 using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -29,17 +30,17 @@ namespace Manufacture.Pages.Sales.Orders
         public bool IsSalesRep { get; set; }
         public Customer? Customer { get; set; }
         public SalesRepProfile? CurrentSalesRep { get; set; }
-        public string UserRole { get; set; } = string.Empty;
+        public int UserRoleId { get; set; }
         public string SelectedTerminalCode { get; set; } = string.Empty;
         public string RepositoryName { get; set; } = string.Empty;
 
         public async Task<IActionResult> OnGetAsync(string? orderType, CancellationToken cancellationToken = default)
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
-            IsCustomer = string.Equals(UserRole, "Customer", StringComparison.OrdinalIgnoreCase);
-            IsSalesRep = string.Equals(UserRole, "SalesRep", StringComparison.OrdinalIgnoreCase);
+            UserRoleId = HttpContext.Session.GetRoleId();
+            IsCustomer = UserRoleId == (int)UserRole.Customer;
+            IsSalesRep = UserRoleId == (int)UserRole.SalesRep;
 
-            if (string.Equals(UserRole, "ProductionManager", StringComparison.OrdinalIgnoreCase))
+            if (UserRoleId == (int)UserRole.ProductionManager)
             {
                 TempData["ErrorMessage"] = "Production Managers cannot create POS orders.";
                 return RedirectToPage("/Sales/Orders/Index");
@@ -47,7 +48,7 @@ namespace Manufacture.Pages.Sales.Orders
 
             if (IsCustomer)
             {
-                var userId = HttpContext.Session.GetInt32("UserId");
+                var userId = HttpContext.Session.GetInt32(SessionKeys.UserId);
                 if (userId.HasValue)
                 {
                     Customer = await _salesService.GetCustomerByUserIdAsync(userId.Value, cancellationToken);
@@ -72,7 +73,7 @@ namespace Manufacture.Pages.Sales.Orders
 
             if (IsSalesRep)
             {
-                var userId = HttpContext.Session.GetInt32("UserId");
+                var userId = HttpContext.Session.GetInt32(SessionKeys.UserId);
                 if (userId.HasValue)
                 {
                     CurrentSalesRep = await _salesService.GetSalesRepByUserIdAsync(userId.Value, cancellationToken);
@@ -120,11 +121,11 @@ namespace Manufacture.Pages.Sales.Orders
 
         public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken = default)
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
-            IsCustomer = string.Equals(UserRole, "Customer", StringComparison.OrdinalIgnoreCase);
-            IsSalesRep = string.Equals(UserRole, "SalesRep", StringComparison.OrdinalIgnoreCase);
+            UserRoleId = HttpContext.Session.GetRoleId();
+            IsCustomer = UserRoleId == (int)UserRole.Customer;
+            IsSalesRep = UserRoleId == (int)UserRole.SalesRep;
 
-            if (string.Equals(UserRole, "ProductionManager", StringComparison.OrdinalIgnoreCase))
+            if (UserRoleId == (int)UserRole.ProductionManager)
             {
                 TempData["ErrorMessage"] = "Production Managers cannot create POS orders.";
                 return RedirectToPage("/Sales/Orders/Index");
@@ -132,7 +133,7 @@ namespace Manufacture.Pages.Sales.Orders
 
             if (IsCustomer)
             {
-                var userId = HttpContext.Session.GetInt32("UserId");
+                var userId = HttpContext.Session.GetInt32(SessionKeys.UserId);
                 if (userId.HasValue)
                 {
                     Customer = await _salesService.GetCustomerByUserIdAsync(userId.Value, cancellationToken);
@@ -157,7 +158,7 @@ namespace Manufacture.Pages.Sales.Orders
             }
             else if (IsSalesRep)
             {
-                var userId = HttpContext.Session.GetInt32("UserId");
+                var userId = HttpContext.Session.GetInt32(SessionKeys.UserId);
                 if (userId.HasValue)
                 {
                     CurrentSalesRep = await _salesService.GetSalesRepByUserIdAsync(userId.Value, cancellationToken);
@@ -208,9 +209,9 @@ namespace Manufacture.Pages.Sales.Orders
             {
                 var order = await _salesService.CreateOrderAsync(
                     OrderInput,
-                    HttpContext.Session.GetInt32("UserId"),
-                    HttpContext.Session.GetString("UserName") ?? "Sales",
-                    UserRole,
+                    HttpContext.Session.GetInt32(SessionKeys.UserId),
+                    HttpContext.Session.GetString(SessionKeys.UserName) ?? "Sales",
+                    UserRoleId,
                     cancellationToken);
 
                 TempData["SuccessMessage"] = IsCustomer

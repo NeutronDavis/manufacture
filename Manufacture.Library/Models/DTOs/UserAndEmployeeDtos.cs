@@ -38,7 +38,7 @@ namespace Manufacture.Models.DTOs
         public string? CustomerName { get; set; }
 
         /// <summary>Role machine name, e.g. SuperAdmin. Populated for display.</summary>
-        public string Role { get; set; } = "SalesRep";
+        public string Role { get; set; } = string.Empty;
 
         /// <summary>Friendly role name, e.g. Super Admin. Populated for display.</summary>
         public string RoleDisplayName { get; set; } = string.Empty;

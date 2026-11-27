@@ -1,4 +1,5 @@
 using Manufacture.Library.Data;
+using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,14 +19,14 @@ namespace Manufacture.Services.Reports
         public async Task<ReportViewResultDto> RunAsync(
             string key,
             ReportFilterDto filters,
-            string role,
+            int roleId,
             int userId,
             CancellationToken cancellationToken = default)
         {
             var definition = ReportCatalog.Find(key)
                 ?? throw new InvalidOperationException("Report not found.");
 
-            if (!_authorization.CanAccess(role, key))
+            if (!_authorization.CanAccess(roleId, key))
             {
                 throw new UnauthorizedAccessException("You do not have access to this report.");
             }
@@ -37,7 +38,7 @@ namespace Manufacture.Services.Reports
             int? salesRepId = null;
             int? customerId = null;
 
-            if (string.Equals(role, "SalesRep", StringComparison.OrdinalIgnoreCase) && userId > 0)
+            if (roleId == (int)UserRole.SalesRep && userId > 0)
             {
                 salesRepId = await _db.SalesReps.AsNoTracking()
                     .Where(rep => rep.UserId == userId && rep.IsActive)
@@ -45,7 +46,7 @@ namespace Manufacture.Services.Reports
                     .FirstOrDefaultAsync(cancellationToken);
             }
 
-            if (string.Equals(role, "Customer", StringComparison.OrdinalIgnoreCase) && userId > 0)
+            if (roleId == (int)UserRole.Customer && userId > 0)
             {
                 customerId = await _db.Users.AsNoTracking()
                     .Where(user => user.Id == userId)
@@ -57,7 +58,7 @@ namespace Manufacture.Services.Reports
             {
                 Definition = definition,
                 Filters = filters,
-                Role = role,
+                RoleId = roleId,
                 UserId = userId,
                 CurrentSalesRepId = salesRepId,
                 CurrentCustomerId = customerId

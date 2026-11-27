@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Manufacture.Library.Interfaces;
 using Manufacture.Models.DTOs;
@@ -24,9 +24,9 @@ namespace Manufacture.Pages.Production.Recipes
         public Recipe Recipe { get; set; } = new();
         public RecipeCostingResultDto Costing { get; set; } = new();
         public List<ProductionBatch> RecentBatches { get; set; } = new();
-        public string UserRole { get; set; } = string.Empty;
+        public int UserRoleId { get; set; }
         public bool IsSuperAdmin =>
-            string.Equals(UserRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase);
+            UserRoleId == (int)UserRole.SuperAdmin;
 
         public void OnGet(int id)
         {
@@ -82,7 +82,7 @@ namespace Manufacture.Pages.Production.Recipes
 
         private void LoadRole()
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
+            UserRoleId = HttpContext.Session.GetRoleId();
         }
     }
 }

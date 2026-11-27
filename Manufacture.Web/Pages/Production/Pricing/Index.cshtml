@@ -338,13 +338,14 @@
                             <th>Requested</th>
                             <th>Reviewed</th>
                             <th class="pr-4">Notes</th>
+                            <th class="text-right pr-4">Action</th>
                         </tr>
                     </thead>
                     <tbody id="priceHistoryBody" class="divide-y divide-base-200">
                         @if (Model.PriceHistory.Count == 0)
                         {
                             <tr>
-                                <td colspan="9" class="text-center py-6 opacity-60">No price changes have been submitted yet.</td>
+                                <td colspan="10" class="text-center py-6 opacity-60">No price changes have been submitted yet.</td>
                             </tr>
                         }
                         @foreach (var request in Model.PriceHistory)
@@ -385,6 +386,12 @@
                                 </td>
                                 <td class="pr-4 max-w-xs text-[11px] opacity-70" title="@request.ReviewNotes">
                                     @(string.IsNullOrWhiteSpace(request.ReviewNotes) ? "—" : request.ReviewNotes)
+                                </td>
+                                <td class="text-right pr-4">
+                                    <a asp-page="/Production/Pricing/History" asp-route-id="@request.Id"
+                                       class="btn btn-xs btn-outline rounded-lg font-bold gap-1">
+                                        <i class="fa-solid fa-eye text-[10px]"></i> View
+                                    </a>
                                 </td>
                             </tr>
                         }

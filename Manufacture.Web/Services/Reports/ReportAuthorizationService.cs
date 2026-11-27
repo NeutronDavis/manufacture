@@ -1,14 +1,19 @@
+using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
 
 namespace Manufacture.Services.Reports
 {
+    /// <summary>
+    /// Report access checks keyed on dbo.Roles.Id. A role rename must never
+    /// change which reports a user can see.
+    /// </summary>
     public class ReportAuthorizationService
     {
-        public List<ReportDefinitionDto> VisibleReports(string role) =>
-            ReportCatalog.ForRole(role);
+        public List<ReportDefinitionDto> VisibleReports(int roleId) =>
+            ReportCatalog.ForRole(roleId);
 
-        public bool CanAccess(string role, string key) =>
-            string.Equals(role, "SuperAdmin", StringComparison.OrdinalIgnoreCase)
-            || ReportCatalog.Find(key)?.AllowedRoles.Contains(role, StringComparer.OrdinalIgnoreCase) == true;
+        public bool CanAccess(int roleId, string key) =>
+            roleId == (int)UserRole.SuperAdmin
+            || ReportCatalog.Find(key)?.AllowedRoleIds.Contains(roleId) == true;
     }
 }

@@ -1,4 +1,5 @@
 @page
+@using Manufacture.Models.Domain
 @model Manufacture.Pages.Dashboard.IndexModel
 @using Manufacture.Models.DTOs
 @{
@@ -27,27 +28,27 @@
                     Welcome back, @Model.ActiveUserName!
                 </h1>
                 <p class="text-xs opacity-70 mt-0.5">
-                    @if (Model.ActiveRole == "SuperAdmin")
+                    @if (Model.ActiveRoleId == (int)UserRole.SuperAdmin)
                     {
                         <span>Executive Control Center &bull; Enterprise Financials, Multi-Channel POS & Factory Yields.</span>
                     }
-                    else if (Model.ActiveRole == "ProductionManager")
+                    else if (Model.ActiveRoleId == (int)UserRole.ProductionManager)
                     {
                         <span>Bakery Floor Control &bull; Flour Batch Mixing, Oven Output Yields & Shift Variance.</span>
                     }
-                    else if (Model.ActiveRole == "StoreManager")
+                    else if (Model.ActiveRoleId == (int)UserRole.StoreManager)
                     {
                         <span>Warehouse & Material Store &bull; Stock Deductions, Requisitions & Raw Material Supplies.</span>
                     }
-                    else if (Model.ActiveRole == "SalesRep")
+                    else if (Model.ActiveRoleId == (int)UserRole.SalesRep)
                     {
-                        <span>POS Checkout Terminal &bull; Counter Sales, Multi-Channel Accounts & Print-to-Load Slips.</span>
+                        <span>POS Checkout Terminal &bull; Counter Sales, Multi-Channel Accounts & Print Receipts.</span>
                     }
-                    else if (Model.ActiveRole == "Customer")
+                    else if (Model.ActiveRoleId == (int)UserRole.Customer)
                     {
                         <span>Client Pre-Order Portal &bull; Supermarket Standing Orders, Credit Balance & Delivery Slips.</span>
                     }
-                    else if (Model.ActiveRole == "HrPayrollManager")
+                    else if (Model.ActiveRoleId == (int)UserRole.HrPayrollManager)
                     {
                         <span>HR & Payroll Hub &bull; Staff Attendance, Verified Guarantors & Dynamic Salary Advances.</span>
                     }
@@ -56,7 +57,7 @@
             
             <!-- Contextual Quick Action Buttons per Role -->
             <div class="flex flex-wrap gap-2">
-                @if (Model.ActiveRole == "SuperAdmin")
+                @if (Model.ActiveRoleId == (int)UserRole.SuperAdmin)
                 {
                     <a asp-page="/Reports/Index" asp-route-view="table" asp-route-module="Operational"
                        class="btn btn-sm btn-primary rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
@@ -72,7 +73,7 @@
                         <i class="fa-solid fa-layer-group"></i> Log Batch
                     </a>
                 }
-                @if (Model.ActiveRole == "ProductionManager")
+                @if (Model.ActiveRoleId == (int)UserRole.ProductionManager)
                 {
                     <a asp-page="/Production/Batches/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
                         <i class="fa-solid fa-plus"></i> Log Batch Output
@@ -84,7 +85,7 @@
                         <i class="fa-solid fa-calculator"></i> Recipe Builder
                     </a>
                 }
-                @if (Model.ActiveRole == "StoreManager")
+                @if (Model.ActiveRoleId == (int)UserRole.StoreManager)
                 {
                     <a asp-page="/Inventory/Requests/Index" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
                         <i class="fa-solid fa-clipboard-check"></i> Review Store Requests (@Model.PendingStoreRequests.Count)
@@ -93,19 +94,19 @@
                         <i class="fa-solid fa-plus"></i> Add Raw Material
                     </a>
                 }
-                @if (Model.ActiveRole == "SalesRep")
+                @if (Model.ActiveRoleId == (int)UserRole.SalesRep)
                 {
                     <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
                         <i class="fa-solid fa-cash-register"></i> Instant POS Checkout
                     </a>
                 }
-                @if (Model.ActiveRole == "Customer")
+                @if (Model.ActiveRoleId == (int)UserRole.Customer)
                 {
                     <a asp-page="/Sales/Orders/Create" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
                         <i class="fa-solid fa-cart-shopping"></i> Place Next Day Pre-Order
                     </a>
                 }
-                @if (Model.ActiveRole == "HrPayrollManager")
+                @if (Model.ActiveRoleId == (int)UserRole.HrPayrollManager)
                 {
                     <a asp-page="/Payroll/Run" class="btn btn-sm btn-neutral rounded-xl gap-2 font-bold px-4 shadow-xs text-xs">
                         <i class="fa-solid fa-money-check-dollar"></i> Process Monthly Payroll
@@ -122,7 +123,7 @@
     </div>
 
     <!-- 1. SUPER ADMIN DASHBOARD -->
-    @if (Model.ActiveRole == "SuperAdmin")
+    @if (Model.ActiveRoleId == (int)UserRole.SuperAdmin)
     {
         <div class="space-y-6">
 
@@ -132,7 +133,7 @@
     }
 
     <!-- 2. PRODUCTION MANAGER DASHBOARD -->
-    @if (Model.ActiveRole == "ProductionManager")
+    @if (Model.ActiveRoleId == (int)UserRole.ProductionManager)
     {
         var dashboard = Model.ProductionDashboard;
         <div class="space-y-6">
@@ -327,7 +328,7 @@
     }
 
     <!-- 3. STORE MANAGER DASHBOARD -->
-    @if (Model.ActiveRole == "StoreManager")
+    @if (Model.ActiveRoleId == (int)UserRole.StoreManager)
     {
         <div class="space-y-6">
             <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
@@ -397,7 +398,7 @@
     }
 
     <!-- 4. SALES REP DASHBOARD -->
-    @if (Model.ActiveRole == "SalesRep")
+    @if (Model.ActiveRoleId == (int)UserRole.SalesRep)
     {
         <div class="space-y-6">
             <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
@@ -418,7 +419,7 @@
                 <div class="stat p-5">
                     <div class="stat-figure text-info text-2xl"><i class="fa-solid fa-cash-register"></i></div>
                     <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Assigned Terminal</div>
-                    <div class="stat-value text-xl font-black font-mono text-info">@(Model.AssignedTerminal?.TerminalName ?? (Model.ActiveRole == "SalesRep" ? "No terminal assigned" : "POS-01 (Main Gate)"))</div>
+                    <div class="stat-value text-xl font-black font-mono text-info">@(Model.AssignedTerminal?.TerminalName ?? (Model.ActiveRoleId == (int)UserRole.SalesRep ? "No terminal assigned" : "POS-01 (Main Gate)"))</div>
                     <div class="stat-desc opacity-70">Active session</div>
                 </div>
             </div>
@@ -436,7 +437,7 @@
     }
 
     <!-- 5. CUSTOMER DASHBOARD -->
-    @if (Model.ActiveRole == "Customer")
+    @if (Model.ActiveRoleId == (int)UserRole.Customer)
     {
         <div class="space-y-6">
             <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
@@ -507,7 +508,7 @@
     }
 
     <!-- 6. HR & PAYROLL MANAGER DASHBOARD -->
-    @if (Model.ActiveRole == "HrPayrollManager")
+    @if (Model.ActiveRoleId == (int)UserRole.HrPayrollManager)
     {
         <div class="space-y-6">
             <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 shadow-xs rounded-2xl w-full">
@@ -529,7 +530,7 @@
                     <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-money-check-dollar"></i></div>
                     <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Monthly Payroll Status</div>
                     <div class="stat-value text-2xl font-black text-success">Ready</div>
-                    <div class="stat-desc opacity-70">Auto-deductions loaded</div>
+                    <div class="stat-desc opacity-70">Auto-deductions applied</div>
                 </div>
 
                 <div class="stat p-5">
@@ -618,7 +619,7 @@
 @* The executive overview partial's script lives here: Razor Pages renders
    @section only from the page itself, never from a partial, so leaving it
    in _ExecutiveOverview.cshtml silently dropped the whole drill-down. *@
-@if (Model.ActiveRole == "SuperAdmin")
+@if (Model.ActiveRoleId == (int)UserRole.SuperAdmin)
 {
 @section Scripts {
     <script>
@@ -720,7 +721,6 @@
                     { key: 'groupLabel', label: 'Sales Rep', type: 'text' },
                     { key: 'categoryLabel', label: 'Product Category', type: 'badge' },
                     { key: 'metricValue', label: 'Damaged', type: 'qty', highlight: true },
-                    { key: 'loaded', label: 'Loaded', type: 'qty' },
                     { key: 'sharePercent', label: 'Share', type: 'share' }
                 ],
                 'CustomerReturns': [
@@ -781,7 +781,6 @@
                     { key: 'product', label: 'Product', type: 'product' },
                     { key: 'category', label: 'Category', type: 'badge' },
                     { key: 'quantity', label: 'Closing Stock', type: 'qty', highlight: true },
-                    { key: 'secondaryQuantity', label: 'Loaded', type: 'qty' },
                     { key: 'status', label: 'Reconciliation', type: 'status' }
                 ],
                 'Damaged': [
@@ -789,7 +788,6 @@
                     { key: 'product', label: 'Product', type: 'product' },
                     { key: 'category', label: 'Category', type: 'badge' },
                     { key: 'quantity', label: 'Damaged', type: 'qty', highlight: true },
-                    { key: 'secondaryQuantity', label: 'Loaded', type: 'qty' },
                     { key: 'amount', label: 'Write-off Value', type: 'money' },
                     { key: 'status', label: 'Reconciliation', type: 'status' }
                 ],
@@ -1281,7 +1279,6 @@
                 let totalMetricUnits = 0;
                 let totalRevenue = 0;
                 let totalProduced = 0;
-                let totalLoaded = 0;
                 let totalSold = 0;
 
                 pList.forEach(item => {
@@ -1289,7 +1286,6 @@
                     totalMetricUnits += (item[stageKey] !== undefined ? item[stageKey] : item.ordersPlaced) || 0;
                     totalRevenue += item.expectedRevenue || 0;
                     totalProduced += item.produced || 0;
-                    totalLoaded += item.loaded || 0;
                     totalSold += item.sold || 0;
                 });
 
@@ -1303,8 +1299,8 @@
                 if (skusValueEl) skusValueEl.textContent = pList.length + ' SKUs';
                 const completionValueEl = document.getElementById('drawer-kpi-completion-value');
                 if (completionValueEl) {
-                    const sellThroughPct = totalLoaded > 0 ? Math.round(totalSold / totalLoaded * 1000) / 10 : 0;
-                    completionValueEl.textContent = sellThroughPct + '%';
+                    const completionPct = totalProduced > 0 ? Math.round(totalSold / totalProduced * 1000) / 10 : 0;
+                    completionValueEl.textContent = completionPct + '%';
                 }
 
                 // Update table column header for the active stage
@@ -1351,8 +1347,6 @@
                                 +     '<span class="opacity-40">&rarr;</span>'
                                 +     '<span class="px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold" title="Produced">' + num(item.produced) + '</span>'
                                 +     '<span class="opacity-40">&rarr;</span>'
-                                +     '<span class="px-1.5 py-0.5 rounded bg-secondary/10 text-secondary font-bold" title="Loaded">' + num(item.loaded) + '</span>'
-                                +     '<span class="opacity-40">&rarr;</span>'
                                 +     '<span class="px-1.5 py-0.5 rounded bg-success/10 text-success font-black" title="Sold">' + num(item.sold) + '</span>'
                                 +   '</div>'
                                 + '</td>'
@@ -1393,7 +1387,6 @@
                                 +   '<div class="text-[10px] opacity-60 font-mono">' + vehicleDisplay + '</div>'
                                 + '</td>'
                                 + '<td class="text-right font-mono font-bold text-info">' + num(r.ordersPlaced) + '</td>'
-                                + '<td class="text-right font-mono font-bold text-secondary">' + num(r.loaded) + '</td>'
                                 + '<td class="text-right font-mono font-black text-success">' + num(r.sold) + '</td>'
                                 + '<td class="text-right font-mono font-bold text-warning">' + num(r.returned) + '</td>'
                                 + '<td class="text-right font-mono font-bold ' + damaged + '">' + num(r.damaged) + '</td>'
@@ -1403,7 +1396,7 @@
                                 + '<td class="text-right font-mono font-bold ' + owed + '">' + money(r.outstandingBalance) + '</td>'
                                 + '</tr>';
                         }).join('')
-                        : '<tr><td colspan="11" class="text-center py-10 opacity-50 text-xs font-medium">No sales rep activity recorded in this scope and period.</td></tr>';
+                        : '<tr><td colspan="10" class="text-center py-10 opacity-50 text-xs font-medium">No sales rep activity recorded in this scope and period.</td></tr>';
                 }
 
                 // Update Footer Summary Text

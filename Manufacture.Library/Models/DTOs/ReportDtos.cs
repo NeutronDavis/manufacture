@@ -79,7 +79,7 @@ namespace Manufacture.Models.DTOs
         public string Description { get; set; } = string.Empty;
         public string Group { get; set; } = string.Empty;
         public string IconClass { get; set; } = "fa-solid fa-chart-column";
-        public List<string> AllowedRoles { get; set; } = new();
+        public List<int> AllowedRoleIds { get; set; } = new();
         public bool SupportsCategoryFilter { get; set; }
         public bool SupportsRepFilter { get; set; }
         public bool SupportsStatusFilter { get; set; }
@@ -106,7 +106,7 @@ namespace Manufacture.Models.DTOs
     {
         public required ReportDefinitionDto Definition { get; init; }
         public required ReportFilterDto Filters { get; init; }
-        public required string Role { get; init; }
+        public required int RoleId { get; init; }
         public int UserId { get; init; }
         public int? CurrentSalesRepId { get; init; }
         public int? CurrentCustomerId { get; init; }

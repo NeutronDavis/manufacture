@@ -1,5 +1,6 @@
-using Manufacture.Library.Interfaces;
+﻿using Manufacture.Library.Interfaces;
 using Manufacture.Models.Domain;
+using Manufacture.Services;
 using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -19,9 +20,9 @@ namespace Manufacture.Pages.Inventory.Items
         public List<StoreRequestDto> ItemRequests { get; set; } = new();
         public List<InventoryRecipeUsageDto> AssociatedRecipes { get; set; } = new();
         public List<RequisitionHistoryRow> RequisitionHistory { get; set; } = new();
-        public string UserRole { get; set; } = string.Empty;
+        public int UserRoleId { get; set; }
         public bool CanManageStock =>
-            !string.Equals(UserRole, "ProductionManager", StringComparison.OrdinalIgnoreCase);
+            UserRoleId != (int)UserRole.ProductionManager;
         public decimal TotalStockValuation => Item != null ? Item.QuantityInStock * Item.UnitCostPrice : 0m;
         public decimal StockBaseQuantity => Item != null ? Item.QuantityInStock * Item.PackageSize : 0m;
         public decimal UnitBaseCost => Item != null && Item.PackageSize > 0m
@@ -56,7 +57,7 @@ namespace Manufacture.Pages.Inventory.Items
             }
 
             Item = item;
-            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
+            UserRoleId = HttpContext.Session.GetRoleId();
             ItemRequests = await _inventoryService.GetRequestsByItemAsync(id, cancellationToken);
             RequisitionHistory = ItemRequests
                 .SelectMany(request => request.Items
@@ -90,7 +91,7 @@ namespace Manufacture.Pages.Inventory.Items
             decimal addedQuantity,
             CancellationToken cancellationToken = default)
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
+            UserRoleId = HttpContext.Session.GetRoleId();
 
             if (!CanManageStock)
             {

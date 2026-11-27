@@ -218,7 +218,7 @@
                             <span class="text-[10px] uppercase font-bold opacity-60 flex items-center gap-1.5">
                                 <i class="fa-solid fa-truck-field text-primary"></i> Preferred Vendor / Supplier
                             </span>
-                            @if (item.PreferredSupplierId.HasValue && !string.Equals(Model.UserRole, "StoreManager", StringComparison.OrdinalIgnoreCase))
+                            @if (item.PreferredSupplierId.HasValue && Model.UserRoleId != (int)UserRole.StoreManager)
                             {
                                 <a asp-page="/Inventory/Suppliers/Index" class="text-[10px] text-primary hover:underline font-bold">
                                     View Supplier Directory &gt;

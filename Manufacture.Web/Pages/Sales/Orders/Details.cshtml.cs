@@ -1,5 +1,6 @@
 using Manufacture.Library.Interfaces;
 using Manufacture.Models.Domain;
+using Manufacture.Services;
 using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -17,14 +18,14 @@ namespace Manufacture.Pages.Sales.Orders
 
         public Order Order { get; set; } = new();
         public List<SalesRepProfile> SalesReps { get; set; } = new();
-        public string UserRole { get; set; } = string.Empty;
+        public int UserRoleId { get; set; }
         public bool IsProductionManager =>
-            string.Equals(UserRole, "ProductionManager", StringComparison.OrdinalIgnoreCase);
+            UserRoleId == (int)UserRole.ProductionManager;
         public bool CanManageSales => !IsProductionManager;
         public bool IsSalesRep =>
-            string.Equals(UserRole, "SalesRep", StringComparison.OrdinalIgnoreCase);
+            UserRoleId == (int)UserRole.SalesRep;
         public bool IsSuperAdmin =>
-            string.Equals(UserRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase);
+            UserRoleId == (int)UserRole.SuperAdmin;
         public bool IsOrderOpen => IsOpenStatus(Order.Status);
         public bool CanAcceptOrder => IsSalesRep && IsOrderOpen && Order.SalesRepId is null;
         public bool CanAssignRep => IsSuperAdmin && IsOrderOpen && Order.SalesRepId is null;
@@ -133,7 +134,7 @@ namespace Manufacture.Pages.Sales.Orders
                 return RedirectToPage(new { id });
             }
 
-            var userId = HttpContext.Session.GetInt32("UserId");
+            var userId = HttpContext.Session.GetInt32(SessionKeys.UserId);
             var currentRep = userId.HasValue
                 ? await _salesService.GetSalesRepByUserIdAsync(userId.Value, cancellationToken)
                 : null;
@@ -167,7 +168,7 @@ namespace Manufacture.Pages.Sales.Orders
                 return RedirectToPage(new { id = PaymentInput.OrderId });
             }
 
-            PaymentInput.ReceivedBy = HttpContext.Session.GetString("UserName") ?? "Sales";
+            PaymentInput.ReceivedBy = HttpContext.Session.GetString(SessionKeys.UserName) ?? "Sales";
 
             try
             {
@@ -189,7 +190,7 @@ namespace Manufacture.Pages.Sales.Orders
 
         private void LoadRole()
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
+            UserRoleId = HttpContext.Session.GetRoleId();
         }
     }
 }

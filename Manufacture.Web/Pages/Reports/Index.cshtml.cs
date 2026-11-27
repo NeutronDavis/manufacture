@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Manufacture.Library.Interfaces;
 using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
+using Manufacture.Services;
 using Manufacture.Services.Reports;
 
 namespace Manufacture.Pages.Reports
@@ -26,7 +27,8 @@ namespace Manufacture.Pages.Reports
             _salesService = salesService;
         }
 
-        public string ActiveRole { get; set; } = "SuperAdmin";
+        public string ActiveRole { get; set; } = string.Empty;
+        public int ActiveRoleId { get; set; }
         public int UserId { get; set; }
         public List<ReportDefinitionDto> VisibleReports { get; set; } = new();
         public ReportDefinitionDto? SelectedReport { get; set; }
@@ -53,9 +55,10 @@ namespace Manufacture.Pages.Reports
             int page = 1,
             CancellationToken cancellationToken = default)
         {
-            ActiveRole = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
-            UserId = HttpContext.Session.GetInt32("UserId") ?? 0;
-            VisibleReports = _authorization.VisibleReports(ActiveRole);
+            ActiveRoleId = HttpContext.Session.GetRoleId();
+            ActiveRole = HttpContext.Session.GetRoleName();
+            UserId = HttpContext.Session.GetInt32(SessionKeys.UserId) ?? 0;
+            VisibleReports = _authorization.VisibleReports(ActiveRoleId);
 
             if (string.IsNullOrWhiteSpace(report))
             {
@@ -63,7 +66,7 @@ namespace Manufacture.Pages.Reports
             }
 
             SelectedReport = ReportCatalog.Find(report);
-            if (SelectedReport is null || !_authorization.CanAccess(ActiveRole, report))
+            if (SelectedReport is null || !_authorization.CanAccess(ActiveRoleId, report))
             {
                 TempData["ErrorMessage"] = "That report is not available for your role.";
                 return RedirectToPage("/Reports/Index");
@@ -87,7 +90,7 @@ namespace Manufacture.Pages.Reports
 
             try
             {
-                Result = await _reports.RunAsync(report, Filters, ActiveRole, UserId, cancellationToken);
+                Result = await _reports.RunAsync(report, Filters, ActiveRoleId, UserId, cancellationToken);
             }
             catch (UnauthorizedAccessException)
             {
@@ -137,10 +140,11 @@ namespace Manufacture.Pages.Reports
             string? search,
             CancellationToken cancellationToken)
         {
-            ActiveRole = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
-            UserId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            ActiveRoleId = HttpContext.Session.GetRoleId();
+            ActiveRole = HttpContext.Session.GetRoleName();
+            UserId = HttpContext.Session.GetInt32(SessionKeys.UserId) ?? 0;
             var definition = ReportCatalog.Find(report);
-            if (definition is null || !_authorization.CanAccess(ActiveRole, report)) return null;
+            if (definition is null || !_authorization.CanAccess(ActiveRoleId, report)) return null;
 
             var filters = new ReportFilterDto
             {
@@ -154,7 +158,7 @@ namespace Manufacture.Pages.Reports
                 PageSize = 5000
             };
 
-            return await _reports.RunAsync(report, filters, ActiveRole, UserId, cancellationToken);
+            return await _reports.RunAsync(report, filters, ActiveRoleId, UserId, cancellationToken);
         }
 
         public string ReportUrl(string key) => Url.Page("/Reports/Index", new { report = key }) ?? $"/Reports?report={key}";

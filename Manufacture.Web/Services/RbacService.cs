@@ -1,5 +1,6 @@
 using Manufacture.Library.Data;
 using Manufacture.Library.Interfaces;
+using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
 using Manufacture.Models.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +14,6 @@ namespace Manufacture.Services
     /// </summary>
     public class RbacService : IRbacService
     {
-        private const string SuperAdminRole = "SuperAdmin";
         private const string FullAccessLevel = "Full Access";
 
         private readonly ManufactureDbContext _db;
@@ -107,7 +107,7 @@ namespace Manufacture.Services
                         RoleDisplayName = role.DisplayName,
                         PermissionLevelId = level?.Id ?? noneLevel?.Id ?? 0,
                         PermissionLevelName = level?.Name ?? noneLevel?.Name ?? "None",
-                        IsLocked = string.Equals(role.Name, SuperAdminRole, StringComparison.OrdinalIgnoreCase)
+                        IsLocked = role.Id == (int)UserRole.SuperAdmin
                     };
                 }).ToList()
             }).ToList();
@@ -141,8 +141,7 @@ namespace Manufacture.Services
             var roles = await _db.Roles.ToDictionaryAsync(r => r.Id, cancellationToken);
             var modules = await _db.RbacModules.ToDictionaryAsync(m => m.Id, cancellationToken);
             var levels = await _db.RbacPermissionLevels.ToDictionaryAsync(l => l.Id, cancellationToken);
-            var superAdmin = roles.Values.FirstOrDefault(r =>
-                string.Equals(r.Name, SuperAdminRole, StringComparison.OrdinalIgnoreCase));
+            var superAdminRoleId = (int)UserRole.SuperAdmin;
             var fullAccess = levels.Values.FirstOrDefault(l =>
                 string.Equals(l.Name, FullAccessLevel, StringComparison.OrdinalIgnoreCase));
 
@@ -177,7 +176,7 @@ namespace Manufacture.Services
                 }
 
                 // Super Admin is always full access, regardless of what was posted.
-                var levelId = superAdmin != null && role.Id == superAdmin.Id
+                var levelId = role.Id == superAdminRoleId
                     ? fullAccess.Id
                     : level.Id;
 
@@ -237,7 +236,7 @@ namespace Manufacture.Services
         public async Task ResetToDefaultsAsync(string updatedBy, CancellationToken cancellationToken = default)
         {
             var changedBy = string.IsNullOrWhiteSpace(updatedBy) ? "System" : updatedBy.Trim();
-            var roles = await _db.Roles.ToDictionaryAsync(r => r.Name, StringComparer.OrdinalIgnoreCase, cancellationToken);
+            var roles = await _db.Roles.ToDictionaryAsync(r => r.Id, cancellationToken);
             var modules = await _db.RbacModules.ToDictionaryAsync(m => m.ModuleKey, StringComparer.OrdinalIgnoreCase, cancellationToken);
             var levels = await _db.RbacPermissionLevels.ToDictionaryAsync(l => l.Name, StringComparer.OrdinalIgnoreCase, cancellationToken);
             var existing = await _db.RbacRolePermissions
@@ -253,9 +252,9 @@ namespace Manufacture.Services
 
             _db.RbacRolePermissions.RemoveRange(existing);
 
-            foreach (var (moduleKey, roleName, levelName) in RbacDefaults.Matrix)
+            foreach (var (moduleKey, roleId, levelName) in RbacDefaults.Matrix)
             {
-                if (!roles.TryGetValue(roleName, out var role) ||
+                if (!roles.TryGetValue((int)roleId, out var role) ||
                     !modules.TryGetValue(moduleKey, out var module) ||
                     !levels.TryGetValue(levelName, out var level))
                 {
@@ -278,6 +277,78 @@ namespace Manufacture.Services
             await _db.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             await RefreshCacheAsync(cancellationToken);
+        }
+
+        public async Task<int> InitializeRolePermissionsAsync(int roleId, string updatedBy, CancellationToken cancellationToken = default)
+        {
+            var roleExists = await _db.Roles.AnyAsync(r => r.Id == roleId, cancellationToken);
+            if (!roleExists)
+            {
+                return 0;
+            }
+
+            var noneLevelId = await _db.RbacPermissionLevels
+                .Where(l => l.IsNone && l.IsActive)
+                .Select(l => (int?)l.Id)
+                .FirstOrDefaultAsync(cancellationToken)
+                ?? await _db.RbacPermissionLevels
+                    .Where(l => l.Name == "None" && l.IsActive)
+                    .Select(l => (int?)l.Id)
+                    .FirstOrDefaultAsync(cancellationToken);
+
+            if (noneLevelId is null)
+            {
+                throw new InvalidOperationException("The None permission level is not configured.");
+            }
+
+            var moduleIds = await _db.RbacModules
+                .Where(m => m.IsActive)
+                .Select(m => m.Id)
+                .ToListAsync(cancellationToken);
+
+            var existingModuleIds = await _db.RbacRolePermissions
+                .Where(p => p.RoleId == roleId)
+                .Select(p => p.ModuleId)
+                .ToListAsync(cancellationToken);
+
+            var changedBy = string.IsNullOrWhiteSpace(updatedBy) ? "System" : updatedBy.Trim();
+            var now = DateTime.UtcNow;
+            var added = 0;
+
+            foreach (var moduleId in moduleIds.Except(existingModuleIds))
+            {
+                _db.RbacRolePermissions.Add(new RbacRolePermission
+                {
+                    RoleId = roleId,
+                    ModuleId = moduleId,
+                    PermissionLevelId = noneLevelId.Value,
+                    UpdatedAt = now,
+                    UpdatedBy = changedBy
+                });
+                added++;
+            }
+
+            if (added > 0)
+            {
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+
+            return added;
+        }
+
+        public async Task<int> InitializeMissingRolePermissionsAsync(string updatedBy, CancellationToken cancellationToken = default)
+        {
+            var roleIds = await _db.Roles
+                .Select(r => r.Id)
+                .ToListAsync(cancellationToken);
+
+            var total = 0;
+            foreach (var roleId in roleIds)
+            {
+                total += await InitializeRolePermissionsAsync(roleId, updatedBy, cancellationToken);
+            }
+
+            return total;
         }
 
         public async Task RefreshCacheAsync(CancellationToken cancellationToken = default)

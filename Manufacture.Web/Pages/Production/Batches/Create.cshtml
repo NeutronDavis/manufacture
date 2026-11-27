@@ -52,7 +52,7 @@
 
     <form method="post" id="batchForm" class="space-y-6">
         <div class="card bg-base-100 border border-base-300 rounded-2xl">
-            <div class="card-body p-5 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="card-body p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
                 <label class="form-control">
                     <span class="label-text text-[10px] font-bold uppercase opacity-60">Shift</span>
                     <select asp-for="BatchInput.Shift" class="select select-sm select-bordered rounded-xl">
@@ -74,12 +74,7 @@
                     <span class="label-text text-[10px] font-bold uppercase opacity-60">Production Date</span>
                     <input asp-for="BatchInput.ProductionDate" type="date" value="@Model.BatchInput.ProductionDate.ToString("yyyy-MM-dd")" class="input input-sm input-bordered rounded-xl" />
                 </label>
-                <label class="form-control">
-                    <span class="label-text text-[10px] font-bold uppercase opacity-60">Output Repository</span>
-                    <input type="text" value="@Model.FactoryRepositoryName" class="input input-sm input-bordered rounded-xl" disabled />
-                    <span class="label-text-alt text-[10px] opacity-60">Default factory repository</span>
-                </label>
-                <label class="form-control md:col-span-4">
+                <label class="form-control md:col-span-3">
                     <span class="label-text text-[10px] font-bold uppercase opacity-60">Notes</span>
                     <input asp-for="BatchInput.Notes" class="input input-sm input-bordered rounded-xl" placeholder="Optional production notes" />
                 </label>

@@ -1,4 +1,4 @@
-using Manufacture.Library.Interfaces;
+﻿using Manufacture.Library.Interfaces;
 using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
 using Manufacture.Services;
@@ -25,11 +25,11 @@ namespace Manufacture.Pages.Logistics.Rates
 
         public CharterQuoteDto? Quote { get; set; }
         public List<VehicleDto> AvailableVehicles { get; set; } = new();
-        public string ActiveRole { get; set; } = "SuperAdmin";
+        public int ActiveRoleId { get; set; }
         public int UserId { get; set; }
 
-        public bool CanApprove => string.Equals(ActiveRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase)
-            || _rbac.CanApprove(ActiveRole, "Fleet");
+        public bool CanApprove => ActiveRoleId == (int)UserRole.SuperAdmin
+            || _rbac.CanApprove(ActiveRoleId, "Fleet");
 
         public List<string> VehicleTypes { get; } = new()
         {
@@ -56,7 +56,7 @@ namespace Manufacture.Pages.Logistics.Rates
 
             try
             {
-                var userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                var userId = HttpContext.Session.GetInt32(SessionKeys.UserId) ?? 0;
                 await _quotes.UpdateCharterQuoteAsync(QuoteInput, userId, cancellationToken);
                 TempData["SuccessMessage"] = "Quote saved as draft.";
                 return Redirect($"/Fleet/Quotes/Edit/{id}");
@@ -79,7 +79,7 @@ namespace Manufacture.Pages.Logistics.Rates
                 if (q.IsEditable)
                 {
                     NormalizeLegs();
-                    var userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                    var userId = HttpContext.Session.GetInt32(SessionKeys.UserId) ?? 0;
                     await _quotes.UpdateCharterQuoteAsync(QuoteInput, userId, cancellationToken);
                 }
 
@@ -105,11 +105,11 @@ namespace Manufacture.Pages.Logistics.Rates
 
             try
             {
-                var userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                var userId = HttpContext.Session.GetInt32(SessionKeys.UserId) ?? 0;
                 var quote = await _quotes.GetCharterQuoteAsync(id, cancellationToken);
                 if (quote is not null
                     && quote.RequestedByUserId == userId
-                    && !string.Equals(ActiveRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
+                    && ActiveRoleId != (int)UserRole.SuperAdmin)
                 {
                     throw new InvalidOperationException("You cannot approve a quote you prepared yourself.");
                 }
@@ -135,7 +135,7 @@ namespace Manufacture.Pages.Logistics.Rates
 
             try
             {
-                var userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                var userId = HttpContext.Session.GetInt32(SessionKeys.UserId) ?? 0;
                 await _quotes.RejectCharterQuoteAsync(id, reason ?? string.Empty, userId, cancellationToken);
                 TempData["SuccessMessage"] = "Quote rejected. It can be edited and resubmitted.";
             }
@@ -151,7 +151,7 @@ namespace Manufacture.Pages.Logistics.Rates
         {
             try
             {
-                var userId = HttpContext.Session.GetInt32("UserId") ?? 0;
+                var userId = HttpContext.Session.GetInt32(SessionKeys.UserId) ?? 0;
                 var clone = await _quotes.CloneCharterQuoteAsync(id, userId, cancellationToken);
                 TempData["SuccessMessage"] = $"Quote cloned as {clone.QuoteRef}.";
                 return Redirect($"/Fleet/Quotes/Edit/{clone.Id}");
@@ -165,8 +165,8 @@ namespace Manufacture.Pages.Logistics.Rates
 
         private async Task LoadAsync(int id, CancellationToken cancellationToken)
         {
-            ActiveRole = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
-            UserId = HttpContext.Session.GetInt32("UserId") ?? 0;
+            ActiveRoleId = HttpContext.Session.GetRoleId();
+            UserId = HttpContext.Session.GetInt32(SessionKeys.UserId) ?? 0;
             AvailableVehicles = await _fleetService.GetVehiclesAsync(cancellationToken);
             Quote = await _quotes.GetCharterQuoteAsync(id, cancellationToken);
             if (Quote is null)

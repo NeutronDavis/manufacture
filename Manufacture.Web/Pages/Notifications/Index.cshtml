@@ -1,0 +1,137 @@
+@page
+@using Manufacture.Models.DTOs
+@model Manufacture.Pages.Notifications.IndexModel
+@{
+    ViewData["Title"] = "Notifications";
+}
+
+<div class="max-w-5xl mx-auto space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+            <div class="text-xs opacity-60 mb-1">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Notifications</span>
+            </div>
+            <h1 class="text-2xl font-black tracking-tight flex items-center gap-2">
+                <i class="fa-regular fa-bell text-primary"></i> Notifications
+                @if (Model.UnreadCount > 0)
+                {
+                    <span class="badge badge-error badge-sm font-mono font-bold">@Model.UnreadCount unread</span>
+                }
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">Price approvals, price decisions and general announcements for your account.</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <div class="join">
+                <a asp-page="/Notifications/Index" class="btn btn-xs join-item rounded-l-lg @(!Model.UnreadOnly ? "btn-neutral" : "btn-ghost border border-base-300")">All</a>
+                <a asp-page="/Notifications/Index" asp-route-unreadOnly="true" class="btn btn-xs join-item rounded-r-lg @(Model.UnreadOnly ? "btn-neutral" : "btn-ghost border border-base-300")">Unread</a>
+            </div>
+            @if (Model.UnreadCount > 0)
+            {
+                <form method="post" asp-page-handler="MarkAllRead">
+                    <button type="submit" class="btn btn-xs btn-outline rounded-lg font-bold">Mark all as read</button>
+                </form>
+            }
+        </div>
+    </div>
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-error rounded-2xl text-sm">
+            @foreach (var item in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <div>@item.ErrorMessage</div>
+            }
+        </div>
+    }
+
+    <div class="card bg-base-100 border border-base-300 rounded-2xl overflow-hidden">
+        <div class="card-body p-0">
+            @if (Model.Items.Count == 0)
+            {
+                <div class="p-12 text-center opacity-60">
+                    <i class="fa-regular fa-bell-slash text-3xl mb-2 block"></i>
+                    <div class="font-bold">No @(Model.UnreadOnly ? "unread " : "")notifications.</div>
+                    <div class="text-xs mt-1">New approvals and announcements will appear here.</div>
+                </div>
+            }
+            else
+            {
+                <div class="divide-y divide-base-200">
+                    @foreach (var notification in Model.Items)
+                    {
+                        <div class="flex items-start gap-3 p-4 @(notification.IsRead ? "" : "bg-primary/5")">
+                            <div class="w-9 h-9 rounded-xl bg-base-200 flex items-center justify-center shrink-0 @NotificationText.ToneClass(notification.Type)">
+                                <i class="@NotificationText.IconClass(notification.Type)"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <a asp-page="/Notifications/Index" asp-page-handler="Open" asp-route-id="@notification.Id"
+                                       class="font-bold text-sm text-base-content hover:text-primary @(notification.IsRead ? "" : "font-black")">
+                                        @notification.Title
+                                    </a>
+                                    <span class="badge badge-ghost border border-base-300 badge-xs font-bold">@notification.TypeLabel</span>
+                                    @if (!notification.IsRead)
+                                    {
+                                        <span class="badge badge-error badge-xs font-bold">Unread</span>
+                                    }
+                                </div>
+                                <p class="text-xs opacity-75 mt-1 whitespace-pre-line">@notification.Message</p>
+                                <div class="text-[10px] opacity-50 mt-1.5 font-mono">@notification.CreatedAt.ToString("yyyy-MM-dd HH:mm")</div>
+                            </div>
+                            <a asp-page="/Notifications/Index" asp-page-handler="Open" asp-route-id="@notification.Id"
+                               class="btn btn-xs btn-ghost rounded-lg shrink-0" title="Open notification">
+                                <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                            </a>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (Model.IsSuperAdmin)
+    {
+        <div class="card bg-base-100 border border-base-300 rounded-2xl">
+            <div class="card-body p-5 space-y-4">
+                <div>
+                    <h2 class="font-black text-sm">Send a General Notification</h2>
+                    <p class="text-xs opacity-60 mt-0.5">Send to everyone except Customers, or target one role.</p>
+                </div>
+                <form method="post" asp-page-handler="SendGeneral" class="space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <label class="form-control sm:col-span-2">
+                            <span class="label-text text-[10px] font-bold uppercase opacity-60">Title *</span>
+                            <input asp-for="SendInput.Title" class="input input-sm input-bordered rounded-xl" maxlength="200" required />
+                        </label>
+                        <label class="form-control sm:col-span-2">
+                            <span class="label-text text-[10px] font-bold uppercase opacity-60">Message *</span>
+                            <textarea asp-for="SendInput.Message" class="textarea textarea-bordered textarea-sm rounded-xl" rows="3" maxlength="1000" required></textarea>
+                        </label>
+                        <label class="form-control">
+                            <span class="label-text text-[10px] font-bold uppercase opacity-60">Audience</span>
+                            <select asp-for="SendInput.AudienceRoleId" class="select select-sm select-bordered rounded-xl">
+                                <option value="">Everyone (except Customers)</option>
+                                @foreach (var role in Model.AudienceRoles)
+                                {
+                                    <option value="@role.Id">@role.DisplayName</option>
+                                }
+                            </select>
+                        </label>
+                        <label class="form-control">
+                            <span class="label-text text-[10px] font-bold uppercase opacity-60">Link (optional)</span>
+                            <input asp-for="SendInput.LinkUrl" class="input input-sm input-bordered rounded-xl" placeholder="/Production/Pricing" maxlength="300" />
+                            <span class="label-text-alt text-[10px] opacity-50">App-relative path only.</span>
+                        </label>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="btn btn-sm btn-primary rounded-xl font-bold gap-2">
+                            <i class="fa-solid fa-paper-plane text-xs"></i> Send Notification
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    }
+</div>

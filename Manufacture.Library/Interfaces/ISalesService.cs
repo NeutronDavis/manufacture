@@ -45,7 +45,7 @@ namespace Manufacture.Library.Interfaces
             CreateOrderDto dto,
             int? currentUserId,
             string? currentUserName,
-            string? currentUserRole = null,
+            int? currentUserRoleId = null,
             CancellationToken cancellationToken = default);
 
         Task<bool> AssignOrderSalesRepAsync(int orderId, int? salesRepId, CancellationToken cancellationToken = default);

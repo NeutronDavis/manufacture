@@ -31,12 +31,18 @@ namespace Manufacture.Services
         private readonly ManufactureDbContext _db;
         private readonly IUnitConversionService _unitConversion;
         private readonly ProductStockLedger _stockLedger;
+        private readonly INotificationService _notifications;
 
-        public ProductionService(ManufactureDbContext db, IUnitConversionService unitConversion, ProductStockLedger stockLedger)
+        public ProductionService(
+            ManufactureDbContext db,
+            IUnitConversionService unitConversion,
+            ProductStockLedger stockLedger,
+            INotificationService notifications)
         {
             _db = db;
             _unitConversion = unitConversion;
             _stockLedger = stockLedger;
+            _notifications = notifications;
         }
 
         // =============================================================
@@ -974,6 +980,16 @@ namespace Manufacture.Services
                 .ToList();
         }
 
+        public IngredientPriceChangeRequestDto? GetIngredientPriceChangeRequest(int id)
+        {
+            var request = _db.IngredientPriceChangeRequests
+                .AsNoTracking()
+                .Include(candidate => candidate.InventoryItem)
+                .FirstOrDefault(candidate => candidate.Id == id);
+
+            return request == null ? null : MapIngredientPriceChangeRequest(request);
+        }
+
         public PriceChangeSubmissionResultDto SubmitIngredientPriceChangeRequests(
             IEnumerable<UpdateIngredientPriceDto> updates,
             int requestedByUserId,
@@ -1081,6 +1097,7 @@ namespace Manufacture.Services
 
             if (result.SubmittedCount > 0)
             {
+                _notifications.AddPriceChangeSubmitted(requestedByUserId, requestedByName, result.SubmittedCount);
                 _db.SaveChanges();
                 result.Messages.Add(
                     $"Submitted {result.SubmittedCount} price change{(result.SubmittedCount == 1 ? "" : "s")} for SuperAdmin approval.");
@@ -1154,6 +1171,20 @@ namespace Manufacture.Services
                 OccurredAt = now
             });
 
+            _notifications.AddPriceChangeDecision(new PriceChangeDecisionNotificationDto
+            {
+                RequestId = request.Id,
+                RequestNumber = request.RequestNumber,
+                InventoryItemId = request.InventoryItemId,
+                InventoryItemName = request.InventoryItemName,
+                PreviousUnitCost = request.PreviousUnitCost,
+                RequestedUnitCost = requestedCost,
+                RequestedByUserId = request.RequestedByUserId,
+                RequestedByName = request.RequestedByName,
+                Approved = true,
+                ReviewerName = request.ReviewedByName ?? "SuperAdmin"
+            });
+
             _db.SaveChanges();
 
             return new PriceChangeActionResultDto
@@ -1206,6 +1237,21 @@ namespace Manufacture.Services
                 OldValues = $"Item: {request.InventoryItemName}; Proposed price: {request.RequestedUnitCost:0.####}; Status: Pending",
                 NewValues = $"Status: Rejected; Reason: {request.ReviewNotes}",
                 OccurredAt = now
+            });
+
+            _notifications.AddPriceChangeDecision(new PriceChangeDecisionNotificationDto
+            {
+                RequestId = request.Id,
+                RequestNumber = request.RequestNumber,
+                InventoryItemId = request.InventoryItemId,
+                InventoryItemName = request.InventoryItemName,
+                PreviousUnitCost = request.PreviousUnitCost,
+                RequestedUnitCost = request.RequestedUnitCost,
+                RequestedByUserId = request.RequestedByUserId,
+                RequestedByName = request.RequestedByName,
+                Approved = false,
+                ReviewerName = request.ReviewedByName ?? "SuperAdmin",
+                Reason = request.ReviewNotes
             });
 
             _db.SaveChanges();

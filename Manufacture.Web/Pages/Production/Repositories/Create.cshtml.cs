@@ -1,4 +1,5 @@
-using Manufacture.Library.Interfaces;
+﻿using Manufacture.Library.Interfaces;
+using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
 using Manufacture.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -26,8 +27,8 @@ namespace Manufacture.Pages.Production.Repositories
 
         public IActionResult OnGet()
         {
-            var role = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
-            if (role != "SuperAdmin" && !_rbac.CanEdit(role, "Production"))
+            var roleId = HttpContext.Session.GetRoleId();
+            if (roleId != (int)UserRole.SuperAdmin && !_rbac.CanEdit(roleId, "Production"))
             {
                 return RedirectToPage("/Production/Repositories/Index");
             }

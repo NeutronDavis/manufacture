@@ -1,4 +1,5 @@
-using Manufacture.Library.Interfaces;
+﻿using Manufacture.Library.Interfaces;
+using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
 using Manufacture.Services;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -26,8 +27,8 @@ namespace Manufacture.Pages.Production.Repositories
 
         public async Task OnGetAsync(CancellationToken cancellationToken = default)
         {
-            var role = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
-            CanEdit = role == "SuperAdmin" || _rbac.CanEdit(role, "Production");
+            var roleId = HttpContext.Session.GetRoleId();
+            CanEdit = roleId == (int)UserRole.SuperAdmin || _rbac.CanEdit(roleId, "Production");
             Repositories = await _repositoryService.GetRepositoriesAsync(includeInactive: true, cancellationToken);
             Totals = await _repositoryService.GetProductTotalsAsync(cancellationToken);
             LowStock = await _repositoryService.GetLowStockAsync(cancellationToken);

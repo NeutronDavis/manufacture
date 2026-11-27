@@ -1,5 +1,6 @@
-using Manufacture.Library.Interfaces;
+﻿using Manufacture.Library.Interfaces;
 using Manufacture.Models.Domain;
+using Manufacture.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -17,14 +18,14 @@ namespace Manufacture.Pages.Sales
         public List<PosTerminal> Terminals { get; set; } = new();
         public List<Order> RecentOrders { get; set; } = new();
 
-        public string UserRole { get; set; } = string.Empty;
+        public int UserRoleId { get; set; }
 
         public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken = default)
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
+            UserRoleId = HttpContext.Session.GetRoleId();
 
             // Sales reps do not use the Sales hub; they work from the order register.
-            if (string.Equals(UserRole, "SalesRep", StringComparison.OrdinalIgnoreCase))
+            if (UserRoleId == (int)UserRole.SalesRep)
             {
                 return RedirectToPage("/Sales/Orders/Index");
             }

@@ -1,4 +1,4 @@
-using Manufacture.Library.Interfaces;
+﻿using Manufacture.Library.Interfaces;
 using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
 using Manufacture.Services;
@@ -21,7 +21,7 @@ namespace Manufacture.Pages.Settings
         public PayrollSettingsDto Payroll { get; set; } = new();
 
         public bool CanEdit { get; set; }
-        public string UserRole { get; set; } = string.Empty;
+        public int UserRoleId { get; set; }
 
         [BindProperty]
         public PayrollSettingsDto PayrollInput { get; set; } = new();
@@ -58,7 +58,7 @@ namespace Manufacture.Pages.Settings
         public async Task<IActionResult> OnPostResetPayrollAsync()
         {
             if (!await AuthorizeAsync()) return RedirectToPage("/Dashboard/Index");
-            if (UserRole != "SuperAdmin")
+            if (UserRoleId != (int)UserRole.SuperAdmin)
             {
                 TempData["ErrorMessage"] = "Only a SuperAdmin can reset the payroll policy.";
                 return RedirectToPage();
@@ -71,14 +71,14 @@ namespace Manufacture.Pages.Settings
 
         private async Task<bool> AuthorizeAsync()
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
-            if (!_rbacService.HasAccess(UserRole, "Settings"))
+            UserRoleId = HttpContext.Session.GetRoleId();
+            if (!_rbacService.HasAccess(UserRoleId, "Settings"))
             {
                 TempData["ErrorMessage"] = "Access Denied: You do not have permission to view Finance & Payroll Settings.";
                 return false;
             }
 
-            CanEdit = UserRole == "SuperAdmin" || _rbacService.CanEdit(UserRole, "Settings");
+            CanEdit = UserRoleId == (int)UserRole.SuperAdmin || _rbacService.CanEdit(UserRoleId, "Settings");
             return true;
         }
 
@@ -126,6 +126,6 @@ namespace Manufacture.Pages.Settings
         }
 
         private string UserName() =>
-            $"{HttpContext.Session.GetString("UserName") ?? "Administrator"} ({UserRole})";
+            $"{HttpContext.Session.GetString("UserName") ?? "Administrator"} ({HttpContext.Session.GetRoleName()})";
     }
 }

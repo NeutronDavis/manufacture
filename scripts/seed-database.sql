@@ -1,4 +1,4 @@
-SET QUOTED_IDENTIFIER ON;
+﻿SET QUOTED_IDENTIFIER ON;
 SET ANSI_NULLS ON;
 GO
 
@@ -43,23 +43,13 @@ GO
 
 /* -------------------------------------------------------------------------
    Roles
+
+   Role IDs are an application contract (Manufacture.Models.Domain.UserRole):
+     1 SuperAdmin, 2 ProductionManager, 3 StoreManager,
+     4 SalesRep, 5 Customer, 6 HrPayrollManager.
+   Insert them with explicit IDs so navigation/authorization by ID stays stable
+   even if a role name is changed later.
    ------------------------------------------------------------------------- */
-
-IF NOT EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Name] = N'SuperAdmin')
-    INSERT INTO [dbo].[Roles] ([Name], [DisplayName], [Description]) VALUES
-    (N'SuperAdmin', N'Super Admin', N'Full enterprise control and settings.');
-
-IF NOT EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Name] = N'ProductionManager')
-    INSERT INTO [dbo].[Roles] ([Name], [DisplayName], [Description]) VALUES
-    (N'ProductionManager', N'Production Manager', N'Recipes, batches, and oven output.');
-
-IF NOT EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Name] = N'StoreManager')
-    INSERT INTO [dbo].[Roles] ([Name], [DisplayName], [Description]) VALUES
-    (N'StoreManager', N'Store Manager', N'Inventory, requisitions, and material issues.');
-
-IF NOT EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Name] = N'SalesRep')
-    INSERT INTO [dbo].[Roles] ([Name], [DisplayName], [Description]) VALUES
-    (N'SalesRep', N'Sales Representative', N'POS registers, counter sales, and pre-orders.');
 
 IF EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Name] = N'Vendor')
    AND NOT EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Name] = N'Customer')
@@ -70,13 +60,37 @@ IF EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Name] = N'Vendor')
         [UpdatedAt] = SYSUTCDATETIME()
     WHERE [Name] = N'Vendor';
 
-IF NOT EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Name] = N'Customer')
-    INSERT INTO [dbo].[Roles] ([Name], [DisplayName], [Description]) VALUES
-    (N'Customer', N'Customer', N'Customer portal for self-service pre-orders and standing orders.');
+SET IDENTITY_INSERT [dbo].[Roles] ON;
 
-IF NOT EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Name] = N'HrPayrollManager')
-    INSERT INTO [dbo].[Roles] ([Name], [DisplayName], [Description]) VALUES
-    (N'HrPayrollManager', N'HR & Payroll Manager', N'Staff records, advances, and payroll runs.');
+IF NOT EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Id] = 1)
+    INSERT INTO [dbo].[Roles] ([Id], [Name], [DisplayName], [Description], [IsSystemRole]) VALUES
+    (1, N'SuperAdmin', N'Super Admin', N'Full enterprise control and settings.', 1);
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Id] = 2)
+    INSERT INTO [dbo].[Roles] ([Id], [Name], [DisplayName], [Description], [IsSystemRole]) VALUES
+    (2, N'ProductionManager', N'Production Manager', N'Recipes, batches, and oven output.', 1);
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Id] = 3)
+    INSERT INTO [dbo].[Roles] ([Id], [Name], [DisplayName], [Description], [IsSystemRole]) VALUES
+    (3, N'StoreManager', N'Store Manager', N'Inventory, requisitions, and material issues.', 1);
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Id] = 4)
+    INSERT INTO [dbo].[Roles] ([Id], [Name], [DisplayName], [Description], [IsSystemRole]) VALUES
+    (4, N'SalesRep', N'Sales Representative', N'POS registers, counter sales, and pre-orders.', 1);
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Id] = 5)
+    INSERT INTO [dbo].[Roles] ([Id], [Name], [DisplayName], [Description], [IsSystemRole]) VALUES
+    (5, N'Customer', N'Customer', N'External vendor / supermarket pre-orders portal.', 1);
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[Roles] WHERE [Id] = 6)
+    INSERT INTO [dbo].[Roles] ([Id], [Name], [DisplayName], [Description], [IsSystemRole]) VALUES
+    (6, N'HrPayrollManager', N'HR & Payroll Manager', N'Staff records, advances, and payroll runs.', 1);
+
+SET IDENTITY_INSERT [dbo].[Roles] OFF;
+GO
+
+IF (SELECT COUNT(*) FROM [dbo].[Roles] WHERE [Id] BETWEEN 1 AND 6) <> 6
+    THROW 50001, N'The six system roles must exist with IDs 1-6. Check the Roles table before seeding.', 1;
 GO
 
 /* -------------------------------------------------------------------------
@@ -91,7 +105,7 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Users] WHERE [Email] = N'admin@bakery.com')
         ([Name], [Email], [RoleId], [PinCodeHash], [PasswordHash], [MustChangePassword], [PhoneNumber], [IsActive])
     VALUES
         (N'Adekunle Johnson', N'admin@bakery.com',
-         (SELECT [Id] FROM [dbo].[Roles] WHERE [Name] = N'SuperAdmin'),
+         1,
          N'AQAAAAIAAYagAAAAEN2fB6Gm80DH/72PU5Ol/S9J8nYJQfeadr0U+Zbb74dIZadBzXBkGwTZce0Fy08Tng==',
          N'AQAAAAIAAYagAAAAENuCi0Rzrw3zfRHF7vP5SOUzzVLkYLD8ckUbuoDxS70ubvIIpJ+VjVMVqW+p6wPKXA==',
          0, N'+2348011112222', 1);
@@ -101,7 +115,7 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Users] WHERE [Email] = N'production@bakery.c
         ([Name], [Email], [RoleId], [PinCodeHash], [PasswordHash], [MustChangePassword], [PhoneNumber], [IsActive])
     VALUES
         (N'Chidinma Okoro', N'production@bakery.com',
-         (SELECT [Id] FROM [dbo].[Roles] WHERE [Name] = N'ProductionManager'),
+         2,
          N'AQAAAAIAAYagAAAAEPs9jkfdQR5EP7MTjCIKOEEU44yFOSi0TL+DmqkZzSBAGf6yRlMD0g4K6exMak9Eag==',
          N'AQAAAAIAAYagAAAAEH+JEl9vdSDDEUYMWzBYjz6bblK6aiZZC+/AfFbUpDt/8mZoy7MXUFEK9/wC2NRjXg==',
          0, N'+2348022223333', 1);
@@ -111,7 +125,7 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Users] WHERE [Email] = N'store@bakery.com')
         ([Name], [Email], [RoleId], [PinCodeHash], [PasswordHash], [MustChangePassword], [PhoneNumber], [IsActive])
     VALUES
         (N'Musa Ibrahim', N'store@bakery.com',
-         (SELECT [Id] FROM [dbo].[Roles] WHERE [Name] = N'StoreManager'),
+         3,
          N'AQAAAAIAAYagAAAAEFNmBGZQ8Sj1IQlI9+w7lpzFlm7wgGLEpEjd9GJfLML3fYJwi01kpzGsywtGPwUJSw==',
          N'AQAAAAIAAYagAAAAEE5pvMnwpmwv1bGmRNPWESwE0jr/X8ViIS8AaYxR9cOkT/7jxOsRL8TXOhIYT0ldfA==',
          0, N'+2348033334444', 1);
@@ -121,7 +135,7 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Users] WHERE [Email] = N'sales@bakery.com')
         ([Name], [Email], [RoleId], [PinCodeHash], [PasswordHash], [MustChangePassword], [PosTerminalCode], [PhoneNumber], [IsActive])
     VALUES
         (N'Babatunde Alabi', N'sales@bakery.com',
-         (SELECT [Id] FROM [dbo].[Roles] WHERE [Name] = N'SalesRep'),
+         4,
          N'AQAAAAIAAYagAAAAEOI4ASXzk6OkHxNl69pKtrU81uAG3MvjBNRhfWx30L1rNwqxZylcivLjhr7mjqlhRw==',
          N'AQAAAAIAAYagAAAAEAT8y2OWAITp3ZeFhi8lCuyAqiEJobgy5CbkGZNmOsEyQW5fd51nNbwSqPsuXwzv2w==',
          0, N'POS-01', N'+2348044445555', 1);
@@ -131,7 +145,7 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Users] WHERE [Email] = N'vendor@bakery.com')
         ([Name], [Email], [RoleId], [PinCodeHash], [PasswordHash], [MustChangePassword], [PhoneNumber], [IsActive])
     VALUES
         (N'Goodness Supermarkets', N'vendor@bakery.com',
-         (SELECT [Id] FROM [dbo].[Roles] WHERE [Name] = N'Customer'),
+         5,
          N'AQAAAAIAAYagAAAAEGD5g+unPj7fxxxpJ42+e/wDL4fgxocDXo8wdm5MHEFDUQl4F5ozorMVmRkuntqBQg==',
          N'AQAAAAIAAYagAAAAEE/rfipIppys9YZFc0/Ntsy+V4LGTvWdtAQDmFtq6Xm5JbdPKQsY+Rt5Hks+glLZbA==',
          0, N'+2348055556666', 1);
@@ -141,7 +155,7 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[Users] WHERE [Email] = N'hr@bakery.com')
         ([Name], [Email], [RoleId], [PinCodeHash], [PasswordHash], [MustChangePassword], [PhoneNumber], [IsActive])
     VALUES
         (N'Ngozi Eze', N'hr@bakery.com',
-         (SELECT [Id] FROM [dbo].[Roles] WHERE [Name] = N'HrPayrollManager'),
+         6,
          N'AQAAAAIAAYagAAAAEE1V4Vz0ve5snvmFjveOTnEG5e5dcige9/tQLCfOcl+RbuwAFxvLBER2vOopY+hERw==',
          N'AQAAAAIAAYagAAAAEPofJjuFhb0pAHYezYNMMK7cSEKFLIRZCaD8dM2/ej4//yV/5VyiLlD2KxOe8IE+ug==',
          0, N'+2348066667777', 1);
@@ -1635,6 +1649,7 @@ GO
 
 /* -------------------------------------------------------------------------
    Default role/module permission matrix
+   Keyed on role ID (dbo.Roles.Id), not role name.
    ------------------------------------------------------------------------- */
 
 MERGE [dbo].[RbacRolePermissions] AS target
@@ -1642,84 +1657,86 @@ USING
 (
     SELECT m.[Id] AS [ModuleId], r.[Id] AS [RoleId], l.[Id] AS [PermissionLevelId]
     FROM (VALUES
-        (N'Recipes',   N'SuperAdmin',        N'Full Access'),
-        (N'Recipes',   N'ProductionManager', N'View, Edit'),
-        (N'Recipes',   N'StoreManager',      N'View Only'),
-        (N'Recipes',   N'SalesRep',          N'View Only'),
-        (N'Recipes',   N'Customer',            N'None'),
-        (N'Recipes',   N'HrPayrollManager',  N'None'),
+        (N'Recipes',   1, N'Full Access'),
+        (N'Recipes',   2, N'View, Edit'),
+        (N'Recipes',   3, N'View Only'),
+        (N'Recipes',   4, N'None'),
+        (N'Recipes',   5, N'None'),
+        (N'Recipes',   6, N'None'),
 
-        (N'Production',N'SuperAdmin',        N'Full Access'),
-        (N'Production',N'ProductionManager', N'View, Edit'),
-        (N'Production',N'StoreManager',      N'View Only'),
-        (N'Production',N'SalesRep',          N'None'),
-        (N'Production',N'Customer',            N'None'),
-        (N'Production',N'HrPayrollManager',  N'None'),
+        (N'Production',1, N'Full Access'),
+        (N'Production',2, N'View, Edit'),
+        (N'Production',3, N'View Only'),
+        (N'Production',4, N'None'),
+        (N'Production',5, N'None'),
+        (N'Production',6, N'None'),
 
-        (N'Inventory', N'SuperAdmin',        N'Full Access'),
-        (N'Inventory', N'ProductionManager', N'Request Only'),
-        (N'Inventory', N'StoreManager',      N'View, Issue, Edit'),
-        (N'Inventory', N'SalesRep',          N'None'),
-        (N'Inventory', N'Customer',            N'None'),
-        (N'Inventory', N'HrPayrollManager',  N'None'),
+        (N'Inventory', 1, N'Full Access'),
+        (N'Inventory', 2, N'Request Only'),
+        (N'Inventory', 3, N'View, Issue, Edit'),
+        (N'Inventory', 4, N'None'),
+        (N'Inventory', 5, N'None'),
+        (N'Inventory', 6, N'None'),
 
-        (N'Sales',     N'SuperAdmin',        N'Full Access'),
-        (N'Sales',     N'ProductionManager', N'None'),
-        (N'Sales',     N'StoreManager',      N'None'),
-        (N'Sales',     N'SalesRep',          N'Create, Print'),
-        (N'Sales',     N'Customer',            N'None'),
-        (N'Sales',     N'HrPayrollManager',  N'None'),
+        (N'Sales',     1, N'Full Access'),
+        (N'Sales',     2, N'None'),
+        (N'Sales',     3, N'None'),
+        (N'Sales',     4, N'Create, Print'),
+        (N'Sales',     5, N'None'),
+        (N'Sales',     6, N'None'),
 
-        (N'PreOrders', N'SuperAdmin',        N'Full Access'),
-        (N'PreOrders', N'ProductionManager', N'View Only'),
-        (N'PreOrders', N'StoreManager',      N'None'),
-        (N'PreOrders', N'SalesRep',          N'Create, Print'),
-        (N'PreOrders', N'Customer',            N'Book Own Order'),
-        (N'PreOrders', N'HrPayrollManager',  N'None'),
+        (N'PreOrders', 1, N'Full Access'),
+        (N'PreOrders', 2, N'View Only'),
+        (N'PreOrders', 3, N'None'),
+        (N'PreOrders', 4, N'Create, Print'),
+        (N'PreOrders', 5, N'Book Own Order'),
+        (N'PreOrders', 6, N'None'),
 
-        (N'Dispatch',  N'SuperAdmin',        N'Full Access'),
-        (N'Dispatch',  N'ProductionManager', N'None'),
-        (N'Dispatch',  N'StoreManager',      N'None'),
-        (N'Dispatch',  N'SalesRep',          N'Create, Print'),
-        (N'Dispatch',  N'Customer',            N'View Only'),
-        (N'Dispatch',  N'HrPayrollManager',  N'None'),
+        (N'Dispatch',  1, N'Full Access'),
+        (N'Dispatch',  2, N'None'),
+        (N'Dispatch',  3, N'None'),
+        (N'Dispatch',  4, N'Create, Print'),
+        (N'Dispatch',  5, N'View Only'),
+        (N'Dispatch',  6, N'None'),
 
-        (N'HR',        N'SuperAdmin',        N'Full Access'),
-        (N'HR',        N'ProductionManager', N'None'),
-        (N'HR',        N'StoreManager',      N'None'),
-        (N'HR',        N'SalesRep',          N'None'),
-        (N'HR',        N'Customer',            N'None'),
-        (N'HR',        N'HrPayrollManager',  N'Manage & Disburse'),
+        (N'HR',        1, N'Full Access'),
+        (N'HR',        2, N'None'),
+        (N'HR',        3, N'None'),
+        (N'HR',        4, N'None'),
+        (N'HR',        5, N'None'),
+        (N'HR',        6, N'Manage & Disburse'),
 
-        (N'Fleet',     N'SuperAdmin',        N'Full Access'),
-        (N'Fleet',     N'ProductionManager', N'View, Edit'),
-        (N'Fleet',     N'StoreManager',      N'None'),
-        (N'Fleet',     N'SalesRep',          N'None'),
-        (N'Fleet',     N'Customer',            N'None'),
-        (N'Fleet',     N'HrPayrollManager',  N'None'),
+        (N'Fleet',     1, N'Full Access'),
+        (N'Fleet',     2, N'View, Edit'),
+        (N'Fleet',     3, N'None'),
+        (N'Fleet',     4, N'None'),
+        (N'Fleet',     5, N'None'),
+        (N'Fleet',     6, N'None'),
 
-        (N'Reports',   N'SuperAdmin',        N'Full Access'),
-        (N'Reports',   N'ProductionManager', N'View Only'),
-        (N'Reports',   N'StoreManager',      N'View Only'),
-        (N'Reports',   N'SalesRep',          N'View Only'),
-        (N'Reports',   N'Customer',            N'None'),
-        (N'Reports',   N'HrPayrollManager',  N'View Only'),
+        (N'Reports',   1, N'Full Access'),
+        (N'Reports',   2, N'View Only'),
+        (N'Reports',   3, N'View Only'),
+        (N'Reports',   4, N'View Only'),
+        (N'Reports',   5, N'None'),
+        (N'Reports',   6, N'View Only'),
 
-        (N'Settings',  N'SuperAdmin',        N'Full Access'),
-        (N'Settings',  N'ProductionManager', N'None'),
-        (N'Settings',  N'StoreManager',      N'None'),
-        (N'Settings',  N'SalesRep',          N'None'),
-        (N'Settings',  N'Customer',            N'None'),
-        (N'Settings',  N'HrPayrollManager',  N'None')
-    ) AS src ([ModuleKey], [RoleName], [LevelName])
+        (N'Settings',  1, N'Full Access'),
+        (N'Settings',  2, N'None'),
+        (N'Settings',  3, N'None'),
+        (N'Settings',  4, N'None'),
+        (N'Settings',  5, N'None'),
+        (N'Settings',  6, N'None')
+    ) AS src ([ModuleKey], [RoleId], [LevelName])
     INNER JOIN [dbo].[RbacModules] m ON m.[ModuleKey] = src.[ModuleKey]
-    INNER JOIN [dbo].[Roles] r ON r.[Name] = src.[RoleName]
+    INNER JOIN [dbo].[Roles] r ON r.[Id] = src.[RoleId]
     INNER JOIN [dbo].[RbacPermissionLevels] l ON l.[Name] = src.[LevelName]
 ) AS source
 ON target.[RoleId] = source.[RoleId] AND target.[ModuleId] = source.[ModuleId]
 WHEN NOT MATCHED BY TARGET THEN
     INSERT ([RoleId], [ModuleId], [PermissionLevelId], [UpdatedBy])
-    VALUES (source.[RoleId], source.[ModuleId], source.[PermissionLevelId], N'Seed');
+    VALUES (source.[RoleId], source.[ModuleId], source.[PermissionLevelId], N'Seed')
+WHEN MATCHED AND target.[PermissionLevelId] <> source.[PermissionLevelId] THEN
+    UPDATE SET [PermissionLevelId] = source.[PermissionLevelId], [UpdatedBy] = N'Seed', [UpdatedAt] = SYSUTCDATETIME();
 GO
 
 /* Ensure every POS terminal has a repository after seeding POS rows. */

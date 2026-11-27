@@ -1,5 +1,6 @@
-using Manufacture.Library.Interfaces;
+﻿using Manufacture.Library.Interfaces;
 using Manufacture.Models.Domain;
+using Manufacture.Services;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Manufacture.Pages.Sales.Orders
@@ -18,17 +19,17 @@ namespace Manufacture.Pages.Sales.Orders
         public bool IsProductionManager { get; set; }
         public bool CanCreatePosOrder => !IsProductionManager;
         public SalesRepProfile? CurrentSalesRep { get; set; }
-        public string UserRole { get; set; } = string.Empty;
+        public int UserRoleId { get; set; }
 
         public async Task OnGetAsync(CancellationToken cancellationToken = default)
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
-            IsSalesRep = string.Equals(UserRole, "SalesRep", StringComparison.OrdinalIgnoreCase);
-            IsProductionManager = string.Equals(UserRole, "ProductionManager", StringComparison.OrdinalIgnoreCase);
+            UserRoleId = HttpContext.Session.GetRoleId();
+            IsSalesRep = UserRoleId == (int)UserRole.SalesRep;
+            IsProductionManager = UserRoleId == (int)UserRole.ProductionManager;
 
             if (IsSalesRep)
             {
-                var userId = HttpContext.Session.GetInt32("UserId");
+                var userId = HttpContext.Session.GetInt32(SessionKeys.UserId);
                 if (userId.HasValue)
                 {
                     CurrentSalesRep = await _salesService.GetSalesRepByUserIdAsync(userId.Value, cancellationToken);

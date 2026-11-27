@@ -41,7 +41,7 @@
                 <i class="fa-solid fa-arrow-left text-xs"></i> Back to Recipes
             </a>
 
-            @if (!string.Equals(Model.UserRole, "SalesRep", StringComparison.OrdinalIgnoreCase))
+            @if (Model.UserRoleId != (int)UserRole.SalesRep)
             {
                 <a asp-page="/Production/Recipes/Edit" asp-route-id="@Model.Recipe.Id" class="btn btn-sm btn-outline border-base-300 rounded-xl gap-1.5 text-xs font-semibold">
                     <i class="fa-solid fa-pen-to-square text-xs"></i> Edit Formula

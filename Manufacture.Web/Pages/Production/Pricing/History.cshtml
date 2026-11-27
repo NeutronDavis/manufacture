@@ -1,0 +1,131 @@
+@page "{id:int}"
+@using Manufacture.Models.DTOs
+@model Manufacture.Pages.Production.Pricing.HistoryModel
+@{
+    ViewData["Title"] = $"Price Change {Model.PriceChange.RequestNumber}";
+    var statusClass = Model.PriceChange.Status == IngredientPriceChangeStatus.Approved ? "badge-success"
+        : Model.PriceChange.Status == IngredientPriceChangeStatus.Rejected ? "badge-error"
+        : "badge-warning";
+    var changeClass = Model.PriceChange.Difference >= 0 ? "text-error" : "text-success";
+}
+
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+            <div class="text-xs opacity-60 mb-1">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Production/Pricing/Index" class="hover:underline">Pricing</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">@Model.PriceChange.RequestNumber</span>
+            </div>
+            <h1 class="text-2xl font-black tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-clock-rotate-left text-primary"></i> Price Change Detail
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">Requested @Model.PriceChange.RequestedAt.ToString("yyyy-MM-dd HH:mm") by @Model.PriceChange.RequestedByName</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="badge @statusClass badge-sm font-bold">@Model.PriceChange.StatusLabel</span>
+            <a asp-page="/Production/Pricing/Index" class="btn btn-sm btn-outline rounded-xl">Back to Pricing</a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="card bg-base-100 border border-base-300 rounded-2xl">
+            <div class="card-body p-5 space-y-3">
+                <h2 class="font-black text-sm">Material</h2>
+                <div>
+                    <div class="font-bold text-base">@Model.PriceChange.InventoryItemName</div>
+                    <div class="font-mono text-[11px] opacity-60">@Model.PriceChange.ItemCode · per @Model.PriceChange.Unit</div>
+                </div>
+                <div class="rounded-xl bg-base-200 p-3 text-xs">
+                    This request targets inventory item #@Model.PriceChange.InventoryItemId.
+                </div>
+            </div>
+        </div>
+
+        <div class="card bg-base-100 border border-base-300 rounded-2xl">
+            <div class="card-body p-5 space-y-3">
+                <h2 class="font-black text-sm">Price Comparison</h2>
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div class="rounded-xl bg-base-200 p-3">
+                        <div class="text-[10px] uppercase opacity-60">Previous price</div>
+                        <div class="font-mono font-black text-lg">₦@Model.PriceChange.PreviousUnitCost.ToString("N2")</div>
+                    </div>
+                    <div class="rounded-xl bg-primary/10 border border-primary/20 p-3">
+                        <div class="text-[10px] uppercase opacity-60">Requested price</div>
+                        <div class="font-mono font-black text-lg text-primary">₦@Model.PriceChange.RequestedUnitCost.ToString("N2")</div>
+                    </div>
+                    <div class="rounded-xl bg-base-200 p-3">
+                        <div class="text-[10px] uppercase opacity-60">Difference</div>
+                        <div class="font-mono font-bold @changeClass">@(Model.PriceChange.Difference >= 0 ? "+" : "")₦@Model.PriceChange.Difference.ToString("N2")</div>
+                    </div>
+                    <div class="rounded-xl bg-base-200 p-3">
+                        <div class="text-[10px] uppercase opacity-60">Change</div>
+                        <div class="font-mono font-bold @changeClass">@(Model.PriceChange.Difference >= 0 ? "+" : "")@Model.DifferencePercent.ToString("N2")%</div>
+                    </div>
+                </div>
+                <div class="text-xs opacity-70">
+                    Current approved price: <span class="font-mono font-bold">₦@Model.PriceChange.CurrentUnitCost.ToString("N2")</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 rounded-2xl">
+        <div class="card-body p-5 space-y-4">
+            <h2 class="font-black text-sm">Workflow</h2>
+            <div class="space-y-3 text-xs">
+                <div class="flex gap-3">
+                    <div class="w-8 h-8 rounded-full bg-info/10 text-info flex items-center justify-center shrink-0">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold">Submitted</div>
+                        <div class="opacity-70">@Model.PriceChange.RequestedByName · @Model.PriceChange.RequestedAt.ToString("yyyy-MM-dd HH:mm")</div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <div class="w-8 h-8 rounded-full @(Model.PriceChange.ReviewedAt.HasValue ? (Model.PriceChange.Status == IngredientPriceChangeStatus.Approved ? "bg-success/10 text-success" : "bg-error/10 text-error") : "bg-base-200 text-base-content/40") flex items-center justify-center shrink-0">
+                        <i class="fa-solid @(Model.PriceChange.Status == IngredientPriceChangeStatus.Approved ? "fa-circle-check" : Model.PriceChange.Status == IngredientPriceChangeStatus.Rejected ? "fa-circle-xmark" : "fa-hourglass-half")"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold">@(Model.PriceChange.Status == IngredientPriceChangeStatus.Pending ? "Awaiting review" : Model.PriceChange.StatusLabel)</div>
+                        <div class="opacity-70">
+                            @if (Model.PriceChange.ReviewedAt.HasValue)
+                            {
+                                <span>@Model.PriceChange.ReviewedByName · @Model.PriceChange.ReviewedAt.Value.ToString("yyyy-MM-dd HH:mm")</span>
+                            }
+                            else
+                            {
+                                <span>Waiting for a SuperAdmin decision.</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @if (Model.PriceChange.AppliedAt.HasValue)
+                {
+                    <div class="flex gap-3">
+                        <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                            <i class="fa-solid fa-check-double"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold">Applied to inventory</div>
+                            <div class="opacity-70">@Model.PriceChange.AppliedAt.Value.ToString("yyyy-MM-dd HH:mm")</div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(Model.PriceChange.ReviewNotes))
+            {
+                <div class="rounded-xl bg-base-200 p-3 text-xs">
+                    <div class="font-bold mb-1">Review notes</div>
+                    <div class="opacity-80 whitespace-pre-line">@Model.PriceChange.ReviewNotes</div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

@@ -1,4 +1,5 @@
-using Manufacture.Library.Interfaces;
+﻿using Manufacture.Library.Interfaces;
+using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
 using Manufacture.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -43,8 +44,8 @@ namespace Manufacture.Pages.Production.Repositories
 
         public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancellationToken = default)
         {
-            var role = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
-            CanEdit = role == "SuperAdmin" || _rbac.CanEdit(role, "Production");
+            var roleId = HttpContext.Session.GetRoleId();
+            CanEdit = roleId == (int)UserRole.SuperAdmin || _rbac.CanEdit(roleId, "Production");
             await LoadAsync(id, cancellationToken);
             return Page();
         }
@@ -148,8 +149,8 @@ namespace Manufacture.Pages.Production.Repositories
 
         private Task<bool> CanEditAsync()
         {
-            var role = HttpContext.Session.GetString("UserRole") ?? string.Empty;
-            return Task.FromResult(role == "SuperAdmin" || _rbac.CanEdit(role, "Production"));
+            var roleId = HttpContext.Session.GetRoleId();
+            return Task.FromResult(roleId == (int)UserRole.SuperAdmin || _rbac.CanEdit(roleId, "Production"));
         }
     }
 }

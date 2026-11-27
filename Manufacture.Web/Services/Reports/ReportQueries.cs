@@ -1,4 +1,4 @@
-using Manufacture.Library.Data;
+﻿using Manufacture.Library.Data;
 using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
@@ -248,7 +248,7 @@ namespace Manufacture.Services.Reports
             var start = ctx.Filters.StartDate.Date;
             var end = ctx.Filters.EndDate.Date.AddDays(1);
             var query = db.Orders.AsNoTracking().Include(o => o.OrderItems).ThenInclude(i => i.Recipe).ThenInclude(r => r.ProductionProductType).ThenInclude(p => p!.ProductionCategory).Where(o => o.OrderDate >= start && o.OrderDate < end);
-            if (ctx.Role == "SalesRep" && ctx.CurrentSalesRepId.HasValue) query = query.Where(o => o.SalesRepId == ctx.CurrentSalesRepId || o.SalesRepId == null);
+            if (ctx.RoleId == (int)UserRole.SalesRep && ctx.CurrentSalesRepId.HasValue) query = query.Where(o => o.SalesRepId == ctx.CurrentSalesRepId || o.SalesRepId == null);
             var orders = await query.OrderByDescending(o => o.OrderDate).ToListAsync(ct);
             var rows = orders
                 .Where(o => !ctx.Filters.CategoryId.HasValue || o.OrderItems.Any(i => i.Recipe?.ProductionProductType?.ProductionCategoryId == ctx.Filters.CategoryId))
@@ -335,7 +335,7 @@ namespace Manufacture.Services.Reports
         {
             var start = ctx.Filters.StartDate.Date; var end = ctx.Filters.EndDate.Date.AddDays(1);
             var query = db.OrderPayments.AsNoTracking().Include(p => p.Order).Where(p => p.PaymentDate >= start && p.PaymentDate < end);
-            if (ctx.Role == "SalesRep" && ctx.CurrentSalesRepId.HasValue) query = query.Where(p => p.Order.SalesRepId == ctx.CurrentSalesRepId);
+            if (ctx.RoleId == (int)UserRole.SalesRep && ctx.CurrentSalesRepId.HasValue) query = query.Where(p => p.Order.SalesRepId == ctx.CurrentSalesRepId);
             var payments = await query.ToListAsync(ct);
             var rows = payments.GroupBy(p => new { p.PaymentDate.Date, p.PaymentMethod, p.ReceivedBy })
                 .Select(g => new Dictionary<string, object?>
@@ -388,7 +388,7 @@ namespace Manufacture.Services.Reports
         {
             var start = ctx.Filters.StartDate.Date; var end = ctx.Filters.EndDate.Date.AddDays(1);
             var query = db.CustomerReturns.AsNoTracking().Include(r => r.Customer).Include(r => r.SalesRep).Include(r => r.Recipe).Where(r => r.ReturnDate >= start && r.ReturnDate < end);
-            if (ctx.Role == "SalesRep" && ctx.CurrentSalesRepId.HasValue) query = query.Where(r => r.SalesRepId == ctx.CurrentSalesRepId);
+            if (ctx.RoleId == (int)UserRole.SalesRep && ctx.CurrentSalesRepId.HasValue) query = query.Where(r => r.SalesRepId == ctx.CurrentSalesRepId);
             var returns = await query.OrderByDescending(r => r.ReturnDate).ToListAsync(ct);
             var rows = returns.Select(r => new Dictionary<string, object?>
             {
@@ -409,7 +409,7 @@ namespace Manufacture.Services.Reports
         private static async Task<ReportViewResultDto> SalesSupermarketCredit(ManufactureDbContext db, ReportQueryContext ctx, CancellationToken ct)
         {
             var query = db.SupermarketAccounts.AsNoTracking().Include(a => a.Customer).Where(a => a.IsActive);
-            if (ctx.Role == "SalesRep" && ctx.CurrentSalesRepId.HasValue) query = query.Where(a => a.AssignedRepId == ctx.CurrentSalesRepId);
+            if (ctx.RoleId == (int)UserRole.SalesRep && ctx.CurrentSalesRepId.HasValue) query = query.Where(a => a.AssignedRepId == ctx.CurrentSalesRepId);
             var accounts = await query.ToListAsync(ct);
             var rows = accounts.Select(a => new Dictionary<string, object?>
             {
@@ -451,7 +451,7 @@ namespace Manufacture.Services.Reports
         {
             var start = ctx.Filters.StartDate.Date; var end = ctx.Filters.EndDate.Date.AddDays(1);
             var query = db.Orders.AsNoTracking().Where(o => o.OrderDate >= start && o.OrderDate < end);
-            if (ctx.Role == "SalesRep" && ctx.CurrentSalesRepId.HasValue) query = query.Where(o => o.SalesRepId == ctx.CurrentSalesRepId);
+            if (ctx.RoleId == (int)UserRole.SalesRep && ctx.CurrentSalesRepId.HasValue) query = query.Where(o => o.SalesRepId == ctx.CurrentSalesRepId);
             var orders = await query.OrderByDescending(o => o.OrderDate).ToListAsync(ct);
             var rows = orders.Select(o => new Dictionary<string, object?>
             {
@@ -1558,7 +1558,7 @@ namespace Manufacture.Services.Reports
         {
             var start = ctx.Filters.StartDate.Date; var end = ctx.Filters.EndDate.Date.AddDays(1);
             var query = db.Orders.AsNoTracking().Include(o => o.OrderItems).Where(o => o.OrderDate >= start && o.OrderDate < end);
-            if (ctx.Role == "SalesRep" && ctx.CurrentSalesRepId.HasValue) query = query.Where(o => o.SalesRepId == ctx.CurrentSalesRepId || o.SalesRepId == null);
+            if (ctx.RoleId == (int)UserRole.SalesRep && ctx.CurrentSalesRepId.HasValue) query = query.Where(o => o.SalesRepId == ctx.CurrentSalesRepId || o.SalesRepId == null);
             var orders = await query.ToListAsync(ct);
             var rows = orders.GroupBy(o => new { Terminal = o.PosTerminalCode ?? "No terminal", o.SalesRepName })
                 .Select(g =>
@@ -1586,7 +1586,7 @@ namespace Manufacture.Services.Reports
         {
             var start = ctx.Filters.StartDate.Date; var end = ctx.Filters.EndDate.Date.AddDays(1);
             var query = db.Orders.AsNoTracking().Include(o => o.OrderItems).Where(o => o.OrderType == 1 && o.OrderDate >= start && o.OrderDate < end);
-            if (ctx.Role == "SalesRep" && ctx.CurrentSalesRepId.HasValue) query = query.Where(o => o.SalesRepId == ctx.CurrentSalesRepId || o.SalesRepId == null);
+            if (ctx.RoleId == (int)UserRole.SalesRep && ctx.CurrentSalesRepId.HasValue) query = query.Where(o => o.SalesRepId == ctx.CurrentSalesRepId || o.SalesRepId == null);
             var orders = await query.OrderBy(o => o.TargetDeliveryDate).ToListAsync(ct);
             var rows = orders.Select(o => new Dictionary<string, object?>
             {
@@ -2053,7 +2053,7 @@ namespace Manufacture.Services.Reports
             var start = ctx.Filters.StartDate.Date; var end = ctx.Filters.EndDate.Date.AddDays(1);
             var orders = await db.OrderItems.AsNoTracking().Include(i => i.Order).Include(i => i.Recipe).ThenInclude(r => r.ProductionProductType).ThenInclude(p => p!.ProductionCategory)
                 .Where(i => i.Order.OrderDate >= start && i.Order.OrderDate < end).ToListAsync(ct);
-            if (ctx.Role == "SalesRep" && ctx.CurrentSalesRepId.HasValue) orders = orders.Where(i => i.Order.SalesRepId == ctx.CurrentSalesRepId || i.Order.SalesRepId == null).ToList();
+            if (ctx.RoleId == (int)UserRole.SalesRep && ctx.CurrentSalesRepId.HasValue) orders = orders.Where(i => i.Order.SalesRepId == ctx.CurrentSalesRepId || i.Order.SalesRepId == null).ToList();
             var rows = orders.GroupBy(i => new { CategoryId = i.Recipe?.ProductionProductType?.ProductionCategoryId ?? 0, Category = i.Recipe?.ProductionProductType?.ProductionCategory?.Name ?? "Uncategorised", i.RecipeId, i.ProductName })
                 .Select(g =>
                 {
@@ -2081,7 +2081,7 @@ namespace Manufacture.Services.Reports
             var end = DateOnly.FromDateTime(ctx.Filters.EndDate.Date);
             var query = db.SalesReconciliations.AsNoTracking().Include(s => s.SalesRep).Include(s => s.SalesReconciliationItems)
                 .Where(s => s.ReconciliationDate >= start && s.ReconciliationDate <= end);
-            if (ctx.Role == "SalesRep" && ctx.CurrentSalesRepId.HasValue) query = query.Where(s => s.SalesRepId == ctx.CurrentSalesRepId);
+            if (ctx.RoleId == (int)UserRole.SalesRep && ctx.CurrentSalesRepId.HasValue) query = query.Where(s => s.SalesRepId == ctx.CurrentSalesRepId);
             var sheets = await query.ToListAsync(ct);
             return sheets.GroupBy(s => new { s.SalesRepId, RepName = s.SalesRep?.FullName ?? "Unassigned", s.RouteName })
                 .Select(g =>
@@ -2110,7 +2110,7 @@ namespace Manufacture.Services.Reports
             var query = db.SalesReconciliationItems.AsNoTracking().Include(i => i.SalesReconciliation).ThenInclude(s => s.SalesRep)
                 .Include(i => i.Recipe).ThenInclude(r => r.ProductionProductType).ThenInclude(p => p!.ProductionCategory)
                 .Where(i => i.SalesReconciliation.ReconciliationDate >= start && i.SalesReconciliation.ReconciliationDate <= end);
-            if (ctx.Role == "SalesRep" && ctx.CurrentSalesRepId.HasValue) query = query.Where(i => i.SalesReconciliation.SalesRepId == ctx.CurrentSalesRepId);
+            if (ctx.RoleId == (int)UserRole.SalesRep && ctx.CurrentSalesRepId.HasValue) query = query.Where(i => i.SalesReconciliation.SalesRepId == ctx.CurrentSalesRepId);
             var items = await query.ToListAsync(ct);
             return items
                 .Where(i => ctx.Filters.CategoryId is null || i.Recipe?.ProductionProductType?.ProductionCategoryId == ctx.Filters.CategoryId)

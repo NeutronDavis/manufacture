@@ -1,3 +1,4 @@
+using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
 
 namespace Manufacture.Services.Reports
@@ -5,22 +6,17 @@ namespace Manufacture.Services.Reports
     /// <summary>
     /// Code-defined report catalogue. Add a definition here and a matching
     /// handler in <see cref="ReportHandlers"/> to expose a new report.
+    /// Visibility is keyed on dbo.Roles.Id, never on role names.
     /// </summary>
     public static class ReportCatalog
     {
-        private const string SuperAdmin = "SuperAdmin";
-        private const string ProductionManager = "ProductionManager";
-        private const string StoreManager = "StoreManager";
-        private const string SalesRep = "SalesRep";
-        private const string HrPayrollManager = "HrPayrollManager";
-
-        private static readonly string[] ExecutiveRoles = [SuperAdmin, ProductionManager];
-        private static readonly string[] SalesRoles = [SuperAdmin, SalesRep];
-        private static readonly string[] InventoryRoles = [SuperAdmin, StoreManager, ProductionManager];
-        private static readonly string[] ProductionRoles = [SuperAdmin, ProductionManager];
-        private static readonly string[] HrRoles = [SuperAdmin, HrPayrollManager];
-        private static readonly string[] FleetRoles = [SuperAdmin];
-        private static readonly string[] AdminRoles = [SuperAdmin];
+        private static readonly UserRole[] ExecutiveRoles = [UserRole.SuperAdmin, UserRole.ProductionManager];
+        private static readonly UserRole[] SalesRoles = [UserRole.SuperAdmin, UserRole.SalesRep];
+        private static readonly UserRole[] InventoryRoles = [UserRole.SuperAdmin, UserRole.StoreManager, UserRole.ProductionManager];
+        private static readonly UserRole[] ProductionRoles = [UserRole.SuperAdmin, UserRole.ProductionManager];
+        private static readonly UserRole[] HrRoles = [UserRole.SuperAdmin, UserRole.HrPayrollManager];
+        private static readonly UserRole[] FleetRoles = [UserRole.SuperAdmin];
+        private static readonly UserRole[] AdminRoles = [UserRole.SuperAdmin];
 
         public static readonly IReadOnlyList<ReportDefinitionDto> All =
         [
@@ -118,10 +114,10 @@ namespace Manufacture.Services.Reports
         public static ReportDefinitionDto? Find(string key) =>
             All.FirstOrDefault(report => string.Equals(report.Key, key, StringComparison.OrdinalIgnoreCase));
 
-        public static List<ReportDefinitionDto> ForRole(string role) =>
-            string.Equals(role, SuperAdmin, StringComparison.OrdinalIgnoreCase)
+        public static List<ReportDefinitionDto> ForRole(int roleId) =>
+            roleId == (int)UserRole.SuperAdmin
                 ? All.ToList()
-                : All.Where(report => report.AllowedRoles.Contains(role, StringComparer.OrdinalIgnoreCase)).ToList();
+                : All.Where(report => report.AllowedRoleIds.Contains(roleId)).ToList();
 
         private static ReportDefinitionDto Define(
             string key,
@@ -129,7 +125,7 @@ namespace Manufacture.Services.Reports
             string description,
             string group,
             string icon,
-            string[] roles,
+            UserRole[] roles,
             bool categoryFilter,
             bool repFilter,
             bool statusFilter,
@@ -141,7 +137,7 @@ namespace Manufacture.Services.Reports
                 Description = description,
                 Group = group,
                 IconClass = icon,
-                AllowedRoles = roles.ToList(),
+                AllowedRoleIds = roles.Select(role => (int)role).ToList(),
                 SupportsCategoryFilter = categoryFilter,
                 SupportsRepFilter = repFilter,
                 SupportsStatusFilter = statusFilter,

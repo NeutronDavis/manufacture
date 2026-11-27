@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using Manufacture.Library.Interfaces;
 using Manufacture.Models.DTOs;
+using Manufacture.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -48,7 +49,7 @@ namespace Manufacture.Pages
             }
 
             var user = await _userService.AuthenticatePasswordAsync(email!, LoginInput.Password!);
-            if (user == null)
+            if (user == null || user.RoleId <= 0)
             {
                 _logger.LogWarning(
                     "Failed password login for {Email} from {RemoteIp}.",
@@ -74,7 +75,7 @@ namespace Manufacture.Pages
             }
 
             var user = await _userService.AuthenticatePinAsync(pin!);
-            if (user == null)
+            if (user == null || user.RoleId <= 0)
             {
                 _logger.LogWarning(
                     "Failed PIN login from {RemoteIp}.",
@@ -121,10 +122,11 @@ namespace Manufacture.Pages
         private void SetUserSession(UserDto user)
         {
             HttpContext.Session.Clear();
-            HttpContext.Session.SetInt32("UserId", user.Id);
-            HttpContext.Session.SetString("UserName", user.Name);
-            HttpContext.Session.SetString("UserEmail", user.Email);
-            HttpContext.Session.SetString("UserRole", user.Role);
+            HttpContext.Session.SetInt32(SessionKeys.UserId, user.Id);
+            HttpContext.Session.SetString(SessionKeys.UserName, user.Name);
+            HttpContext.Session.SetString(SessionKeys.UserEmail, user.Email);
+            HttpContext.Session.SetInt32(SessionKeys.UserRoleId, user.RoleId);
+            HttpContext.Session.SetString(SessionKeys.UserRole, user.Role);
         }
     }
 }

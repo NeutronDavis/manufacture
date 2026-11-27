@@ -77,6 +77,7 @@ Manufacture.Database/
 - `CustomerReturns` — prior-sale items returned by customers.
 - `SalesReconciliations` — one daily reconciliation sheet per sales rep.
 - `SalesReconciliationItems` — opening, sold, damaged, replacement and closing quantities.
+- `Notifications` — per-recipient in-app notifications with unread/read state.
 
 ### Fleet and logistics
 
@@ -151,6 +152,7 @@ erDiagram
     RbacModules ||--o{ RbacRolePermissions : "is granted"
     RbacPermissionLevels ||--o{ RbacRolePermissions : "defines"
     Users ||--o{ PosTerminals : "operates"
+    Users ||--o{ Notifications : "receives"
     ProductRepositories ||--o{ PosTerminals : "serves"
     Users ||--o{ SalesReps : "signs in as"
     Vehicles ||--o{ SalesReps : "is assigned"

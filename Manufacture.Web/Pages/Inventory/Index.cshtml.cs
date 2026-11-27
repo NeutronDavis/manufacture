@@ -1,4 +1,6 @@
-using Manufacture.Library.Interfaces;
+﻿using Manufacture.Library.Interfaces;
+using Manufacture.Models.Domain;
+using Manufacture.Services;
 using Manufacture.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -17,13 +19,13 @@ namespace Manufacture.Pages.Inventory
         public List<InventoryItemDto> Items { get; set; } = new();
         public int LowStockCount { get; set; }
         public int PendingRequestsCount { get; set; }
-        public string UserRole { get; set; } = string.Empty;
+        public int UserRoleId { get; set; }
         public bool CanManageStock =>
-            !string.Equals(UserRole, "ProductionManager", StringComparison.OrdinalIgnoreCase);
+            UserRoleId != (int)UserRole.ProductionManager;
 
         public async Task OnGetAsync(CancellationToken cancellationToken = default)
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
+            UserRoleId = HttpContext.Session.GetRoleId();
             Items = await _inventoryService.GetItemsAsync(cancellationToken: cancellationToken);
             LowStockCount = await _inventoryService.GetLowStockCountAsync(cancellationToken);
             PendingRequestsCount = await _inventoryService.GetPendingRequestCountAsync(cancellationToken);
@@ -34,7 +36,7 @@ namespace Manufacture.Pages.Inventory
             decimal quantity,
             CancellationToken cancellationToken = default)
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
+            UserRoleId = HttpContext.Session.GetRoleId();
 
             if (!CanManageStock)
             {

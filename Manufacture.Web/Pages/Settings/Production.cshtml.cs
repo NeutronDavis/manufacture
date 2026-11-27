@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Manufacture.Library.Interfaces;
 using Manufacture.Models.Domain;
@@ -28,8 +28,8 @@ namespace Manufacture.Pages.Settings
 
         public IActionResult OnGet(int? editCategoryId, int? editProductTypeId)
         {
-            var role = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
-            if (!_rbacService.HasAccess(role, "Settings"))
+            var roleId = HttpContext.Session.GetRoleId();
+            if (!_rbacService.HasAccess(roleId, "Settings"))
                 return RedirectToPage("/Dashboard/Index");
 
             Load();

@@ -1,5 +1,6 @@
-using Manufacture.Library.Interfaces;
+﻿using Manufacture.Library.Interfaces;
 using Manufacture.Models.DTOs;
+using Manufacture.Models.Domain;
 using Manufacture.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -25,9 +26,9 @@ namespace Manufacture.Pages.Logistics.Rates
         [BindProperty(SupportsGet = true)]
         public string? Search { get; set; }
 
-        public string ActiveRole { get; set; } = "SuperAdmin";
-        public bool CanApprove => string.Equals(ActiveRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase)
-            || _rbac.CanApprove(ActiveRole, "Fleet");
+        public int ActiveRoleId { get; set; }
+        public bool CanApprove => ActiveRoleId == (int)UserRole.SuperAdmin
+            || _rbac.CanApprove(ActiveRoleId, "Fleet");
 
         public int DraftCount => Quotes.Count(q => q.Status == CharterQuoteStatus.Draft);
         public int PendingCount => Quotes.Count(q => q.Status == CharterQuoteStatus.PendingApproval);
@@ -37,7 +38,7 @@ namespace Manufacture.Pages.Logistics.Rates
 
         public async Task OnGetAsync(CancellationToken cancellationToken)
         {
-            ActiveRole = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
+            ActiveRoleId = HttpContext.Session.GetRoleId();
             Quotes = await _quotes.GetCharterQuotesAsync(StatusFilter, Search, cancellationToken);
         }
 

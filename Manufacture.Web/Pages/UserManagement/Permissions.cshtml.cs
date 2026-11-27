@@ -1,5 +1,6 @@
-using Manufacture.Library.Interfaces;
+﻿using Manufacture.Library.Interfaces;
 using Manufacture.Models.DTOs;
+using Manufacture.Models.Domain;
 using Manufacture.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -23,7 +24,7 @@ namespace Manufacture.Pages.UserManagement
         [BindProperty]
         public RbacSaveInputDto Input { get; set; } = new();
 
-        public string UserRole => HttpContext.Session.GetString("UserRole") ?? string.Empty;
+        public int UserRoleId => HttpContext.Session.GetRoleId();
         public string UserName => HttpContext.Session.GetString("UserName") ?? "System";
 
         public async Task<IActionResult> OnGetAsync(bool? edit)
@@ -89,8 +90,8 @@ namespace Manufacture.Pages.UserManagement
 
         private bool CanManageRbac()
         {
-            return string.Equals(UserRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase)
-                || _rbacCache.CanManage(UserRole, "Settings");
+            return UserRoleId == (int)UserRole.SuperAdmin
+                || _rbacCache.CanManage(UserRoleId, "Settings");
         }
     }
 }

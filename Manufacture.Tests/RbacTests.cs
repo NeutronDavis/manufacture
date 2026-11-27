@@ -1,3 +1,4 @@
+using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
 using Manufacture.Services;
 using Xunit;
@@ -9,11 +10,7 @@ namespace Manufacture.Tests
         [Fact]
         public void Defaults_ContainEveryModuleRoleCell()
         {
-            var roleNames = new[]
-            {
-                "SuperAdmin", "ProductionManager", "StoreManager",
-                "SalesRep", "Customer", "HrPayrollManager"
-            };
+            var roleIds = Enum.GetValues<UserRole>().Select(role => (int)role).ToHashSet();
 
             Assert.Equal(10, RbacDefaults.Modules.Count);
             Assert.Equal(9, RbacDefaults.Levels.Count);
@@ -22,10 +19,10 @@ namespace Manufacture.Tests
             var moduleKeys = RbacDefaults.Modules.Select(m => m.ModuleKey).ToHashSet(StringComparer.OrdinalIgnoreCase);
             var levelNames = RbacDefaults.Levels.Select(l => l.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            foreach (var (moduleKey, roleName, levelName) in RbacDefaults.Matrix)
+            foreach (var (moduleKey, role, levelName) in RbacDefaults.Matrix)
             {
                 Assert.Contains(moduleKey, moduleKeys);
-                Assert.Contains(roleName, roleNames);
+                Assert.Contains((int)role, roleIds);
                 Assert.Contains(levelName, levelNames);
             }
         }
@@ -36,28 +33,31 @@ namespace Manufacture.Tests
             var cache = new RbacCache();
             cache.SetSnapshot(BuildMatrixFromDefaults());
 
-            Assert.True(cache.HasAccess("SuperAdmin", "Settings"));
-            Assert.True(cache.HasAccess("ProductionManager", "Recipes"));
-            Assert.True(cache.CanEdit("ProductionManager", "Recipes"));
-            Assert.True(cache.CanRequest("ProductionManager", "Inventory"));
-            Assert.True(cache.CanIssue("StoreManager", "Inventory"));
-            Assert.True(cache.CanBookOwn("Customer", "PreOrders"));
+            Assert.True(cache.HasAccess((int)UserRole.SuperAdmin, "Settings"));
+            Assert.True(cache.HasAccess((int)UserRole.ProductionManager, "Recipes"));
+            Assert.True(cache.CanEdit((int)UserRole.ProductionManager, "Recipes"));
+            Assert.True(cache.CanRequest((int)UserRole.ProductionManager, "Inventory"));
+            Assert.True(cache.CanIssue((int)UserRole.StoreManager, "Inventory"));
+            Assert.True(cache.CanBookOwn((int)UserRole.Customer, "PreOrders"));
 
-            Assert.False(cache.HasAccess("Customer", "Reports"));
-            Assert.False(cache.CanEdit("SalesRep", "Recipes"));
-            Assert.False(cache.CanManage("SalesRep", "Sales"));
+            Assert.False(cache.HasAccess((int)UserRole.Customer, "Reports"));
+            Assert.False(cache.CanEdit((int)UserRole.SalesRep, "Recipes"));
+            Assert.False(cache.CanManage((int)UserRole.SalesRep, "Sales"));
+
+            // Missing/unknown role IDs fail closed.
+            Assert.False(cache.HasAccess(0, "Settings"));
+            Assert.False(cache.HasAccess(99, "Sales"));
         }
 
         private static RbacMatrixDto BuildMatrixFromDefaults()
         {
-            var roleNames = new[]
-            {
-                "SuperAdmin", "ProductionManager", "StoreManager",
-                "SalesRep", "Customer", "HrPayrollManager"
-            };
-
-            var roles = roleNames
-                .Select((name, index) => new RoleDto { Id = index + 1, Name = name, DisplayName = name })
+            var roles = Enum.GetValues<UserRole>()
+                .Select(role => new RoleDto
+                {
+                    Id = (int)role,
+                    Name = role.ToString(),
+                    DisplayName = role.ToString()
+                })
                 .ToList();
 
             var modules = RbacDefaults.Modules
@@ -103,16 +103,15 @@ namespace Manufacture.Tests
                 .ToList();
 
             var matrix = RbacDefaults.Matrix.ToDictionary(
-                x => (x.ModuleKey, x.RoleName),
-                x => x.LevelName,
-                new MatrixKeyComparer());
+                x => (x.ModuleKey, (int)x.Role),
+                x => x.LevelName);
 
             var rows = modules.Select(module => new RbacMatrixRowDto
             {
                 Module = module,
                 Cells = roles.Select(role =>
                 {
-                    var levelName = matrix.GetValueOrDefault((module.ModuleKey, role.Name), "None");
+                    var levelName = matrix.GetValueOrDefault((module.ModuleKey, role.Id), "None");
                     var level = levels.First(l => l.Name == levelName);
 
                     return new RbacMatrixCellDto
@@ -123,7 +122,7 @@ namespace Manufacture.Tests
                         RoleDisplayName = role.DisplayName,
                         PermissionLevelId = level.Id,
                         PermissionLevelName = level.Name,
-                        IsLocked = role.Name == "SuperAdmin"
+                        IsLocked = role.Id == (int)UserRole.SuperAdmin
                     };
                 }).ToList()
             }).ToList();
@@ -135,18 +134,6 @@ namespace Manufacture.Tests
                 PermissionLevels = levels,
                 Rows = rows
             };
-        }
-
-        private sealed class MatrixKeyComparer : IEqualityComparer<(string ModuleKey, string RoleName)>
-        {
-            public bool Equals((string ModuleKey, string RoleName) x, (string ModuleKey, string RoleName) y) =>
-                string.Equals(x.ModuleKey, y.ModuleKey, StringComparison.OrdinalIgnoreCase) &&
-                string.Equals(x.RoleName, y.RoleName, StringComparison.OrdinalIgnoreCase);
-
-            public int GetHashCode((string ModuleKey, string RoleName) obj) =>
-                HashCode.Combine(
-                    StringComparer.OrdinalIgnoreCase.GetHashCode(obj.ModuleKey),
-                    StringComparer.OrdinalIgnoreCase.GetHashCode(obj.RoleName));
         }
     }
 }

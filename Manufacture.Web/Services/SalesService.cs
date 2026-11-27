@@ -1,4 +1,4 @@
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using Manufacture.Library.Data;
 using Manufacture.Library.Interfaces;
 using Manufacture.Models.Domain;
@@ -346,12 +346,12 @@ namespace Manufacture.Services
             CreateOrderDto dto,
             int? currentUserId,
             string? currentUserName,
-            string? currentUserRole = null,
+            int? currentUserRoleId = null,
             CancellationToken cancellationToken = default)
         {
             await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
 
-            var isVendor = string.Equals(currentUserRole, "Customer", StringComparison.OrdinalIgnoreCase);
+            var isVendor = currentUserRoleId == (int)UserRole.Customer;
             var orderType = ParseOrderType(dto.OrderType);
             if (isVendor)
             {
@@ -403,7 +403,7 @@ namespace Manufacture.Services
             }
 
             SalesRepEntity? salesRep;
-            if (!isVendor && string.Equals(currentUserRole, "SalesRep", StringComparison.OrdinalIgnoreCase))
+            if (!isVendor && currentUserRoleId == (int)UserRole.SalesRep)
             {
                 if (!currentUserId.HasValue)
                 {
@@ -423,7 +423,7 @@ namespace Manufacture.Services
                     : await ResolveSalesRepAsync(dto.SalesRepId, currentUserId, terminal, cancellationToken);
             }
 
-            if (!isVendor && string.Equals(currentUserRole, "SalesRep", StringComparison.OrdinalIgnoreCase))
+            if (!isVendor && currentUserRoleId == (int)UserRole.SalesRep)
             {
                 if (salesRep?.EmployeeId == null)
                 {

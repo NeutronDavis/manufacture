@@ -30,7 +30,7 @@ namespace Manufacture.Pages.UserManagement
             await LoadRolesAsync();
             await LoadCustomersAsync();
             await LoadEmployeesAsync();
-            UserInput.RoleId = Roles.FirstOrDefault(r => r.Name == "SalesRep")?.Id
+            UserInput.RoleId = Roles.FirstOrDefault(r => r.Id == (int)Manufacture.Models.Domain.UserRole.SalesRep)?.Id
                 ?? Roles.FirstOrDefault()?.Id
                 ?? 0;
             UserInput.PinCode = "123456";

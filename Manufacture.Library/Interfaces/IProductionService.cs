@@ -62,6 +62,7 @@ namespace Manufacture.Library.Interfaces
         int SyncAllPriceSnapshots();
 
         List<IngredientPriceChangeRequestDto> GetIngredientPriceChangeRequests(IngredientPriceChangeStatus? status = null);
+        IngredientPriceChangeRequestDto? GetIngredientPriceChangeRequest(int id);
         PriceChangeSubmissionResultDto SubmitIngredientPriceChangeRequests(
             IEnumerable<UpdateIngredientPriceDto> updates,
             int requestedByUserId,

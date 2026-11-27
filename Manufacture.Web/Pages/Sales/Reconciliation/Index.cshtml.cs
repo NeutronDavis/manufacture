@@ -32,7 +32,7 @@ namespace Manufacture.Pages.Sales.Reconciliation
         public bool CanEdit { get; set; }
         public bool IsSalesRep { get; set; }
         public SalesRepProfile? CurrentSalesRep { get; set; }
-        public string UserRole { get; set; } = string.Empty;
+        public int UserRoleId { get; set; }
         public string DefaultReconcilerName { get; set; } = string.Empty;
 
         [BindProperty]
@@ -40,20 +40,20 @@ namespace Manufacture.Pages.Sales.Reconciliation
 
         public async Task<IActionResult> OnGetAsync(int? sheetId, DateTime? filterDate, int? repId, CancellationToken cancellationToken = default)
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
-            if (!_rbac.HasAccess(UserRole, "Sales") && !_rbac.HasAccess(UserRole, "Reports"))
+            UserRoleId = HttpContext.Session.GetRoleId();
+            if (!_rbac.HasAccess(UserRoleId, "Sales") && !_rbac.HasAccess(UserRoleId, "Reports"))
             {
                 return RedirectToPage("/Dashboard/Index");
             }
 
-            DefaultReconcilerName = HttpContext.Session.GetString("UserName") ?? "Sales Rep";
-            IsSalesRep = string.Equals(UserRole, "SalesRep", StringComparison.OrdinalIgnoreCase);
+            DefaultReconcilerName = HttpContext.Session.GetString(SessionKeys.UserName) ?? "Sales Rep";
+            IsSalesRep = UserRoleId == (int)UserRole.SalesRep;
             FilterDate = DateOnly.FromDateTime(filterDate?.Date ?? DateTime.UtcNow.Date);
             SheetId = sheetId;
 
             if (IsSalesRep)
             {
-                var userId = HttpContext.Session.GetInt32("UserId");
+                var userId = HttpContext.Session.GetInt32(SessionKeys.UserId);
                 if (userId.HasValue)
                 {
                     CurrentSalesRep = await _salesService.GetSalesRepByUserIdAsync(userId.Value, cancellationToken);
@@ -72,7 +72,7 @@ namespace Manufacture.Pages.Sales.Reconciliation
             {
                 SalesReps = await _salesService.GetSalesRepsAsync(cancellationToken: cancellationToken);
                 RepFilter = repId;
-                CanEdit = UserRole == "SuperAdmin" || _rbac.CanEdit(UserRole, "Sales");
+                CanEdit = UserRoleId == (int)UserRole.SuperAdmin || _rbac.CanEdit(UserRoleId, "Sales");
             }
 
             Sheets = await _reconciliationService.ListAsync(FilterDate, RepFilter, cancellationToken);
@@ -92,9 +92,9 @@ namespace Manufacture.Pages.Sales.Reconciliation
 
         public async Task<IActionResult> OnPostStartAsync(DateTime? filterDate, int? repId, CancellationToken cancellationToken = default)
         {
-            var role = HttpContext.Session.GetString("UserRole") ?? string.Empty;
+            var role = HttpContext.Session.GetRoleId();
             var (currentRep, _) = await ResolveCurrentRepAsync(cancellationToken);
-            var rep = string.Equals(role, "SalesRep", StringComparison.OrdinalIgnoreCase)
+            var rep = role == (int)UserRole.SalesRep
                 ? currentRep
                 : (repId.HasValue ? await _salesService.GetSalesRepAsync(repId.Value, cancellationToken) : null);
 
@@ -138,7 +138,7 @@ namespace Manufacture.Pages.Sales.Reconciliation
 
             try
             {
-                var actor = HttpContext.Session.GetString("UserName") ?? "Sales";
+                var actor = HttpContext.Session.GetString(SessionKeys.UserName) ?? "Sales";
                 var sheet = await _reconciliationService.ReconcileAsync(SaveInput, actor, cancellationToken);
                 TempData["SuccessMessage"] = $"Reconciliation {sheet.ReconciliationNumber} closed. Closing stock rolls into the next sheet.";
                 return RedirectToPage(new { sheetId = sheet.Id, filterDate = sheet.ReconciliationDate.ToString("yyyy-MM-dd") });
@@ -172,10 +172,10 @@ namespace Manufacture.Pages.Sales.Reconciliation
 
         private async Task<(SalesRepProfile? Rep, int? UserId)> ResolveCurrentRepAsync(CancellationToken cancellationToken)
         {
-            var role = HttpContext.Session.GetString("UserRole") ?? string.Empty;
-            var userId = HttpContext.Session.GetInt32("UserId");
+            var role = HttpContext.Session.GetRoleId();
+            var userId = HttpContext.Session.GetInt32(SessionKeys.UserId);
 
-            if (string.Equals(role, "SalesRep", StringComparison.OrdinalIgnoreCase) && userId.HasValue)
+            if (role == (int)UserRole.SalesRep && userId.HasValue)
             {
                 return (await _salesService.GetSalesRepByUserIdAsync(userId.Value, cancellationToken), userId);
             }
@@ -185,20 +185,20 @@ namespace Manufacture.Pages.Sales.Reconciliation
 
         private async Task<bool> CanManageAsync(int sheetId, CancellationToken cancellationToken)
         {
-            var role = HttpContext.Session.GetString("UserRole") ?? string.Empty;
+            var role = HttpContext.Session.GetRoleId();
             var sheet = await _reconciliationService.GetAsync(sheetId, cancellationToken);
             if (sheet == null)
             {
                 return false;
             }
 
-            if (string.Equals(role, "SalesRep", StringComparison.OrdinalIgnoreCase))
+            if (role == (int)UserRole.SalesRep)
             {
                 var (rep, _) = await ResolveCurrentRepAsync(cancellationToken);
                 return rep != null && rep.Id == sheet.SalesRepId;
             }
 
-            return role == "SuperAdmin" || _rbac.CanEdit(role, "Sales");
+            return role == (int)UserRole.SuperAdmin || _rbac.CanEdit(role, "Sales");
         }
     }
 }

@@ -101,6 +101,7 @@ builder.Services.AddScoped<IMeasurementDensityService, MeasurementDensityService
 builder.Services.AddScoped<ISalesService, SalesService>();
 builder.Services.AddScoped<IProductRepositoryService, ProductRepositoryService>();
 builder.Services.AddScoped<ISalesReconciliationService, SalesReconciliationService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ProductStockLedger>();
 builder.Services.AddScoped<IProductionService, ProductionService>();
 builder.Services.AddScoped<ISuperAdminDashboardService, SuperAdminDashboardService>();
@@ -125,14 +126,30 @@ var app = builder.Build();
 // Warm the RBAC cache so the first layout render has the database matrix.
 using (var startupScope = app.Services.CreateScope())
 {
+    var startupLogger = startupScope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
     try
     {
         var rbacService = startupScope.ServiceProvider.GetRequiredService<IRbacService>();
+        try
+        {
+            var createdPermissions = await rbacService.InitializeMissingRolePermissionsAsync("System");
+            if (createdPermissions > 0)
+            {
+                app.Logger.LogInformation(
+                    "Initialised {Count} RBAC permission rows for roles that had none.",
+                    createdPermissions);
+            }
+        }
+        catch (Exception ex)
+        {
+            startupLogger.LogError(ex, "RBAC role permission backfill failed.");
+        }
+
         await rbacService.RefreshCacheAsync();
     }
     catch (Exception ex)
     {
-        var startupLogger = startupScope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         startupLogger.LogError(ex, "RBAC cache warm-up failed. Falling back to Super Admin-only access.");
     }
 
@@ -143,7 +160,6 @@ using (var startupScope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        var startupLogger = startupScope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         startupLogger.LogError(ex, "Settings cache warm-up failed. Default settings will be used.");
     }
 }

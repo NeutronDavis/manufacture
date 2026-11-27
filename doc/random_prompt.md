@@ -361,3 +361,28 @@ Note during the reconcilation, that is where the sales rep can enter the `Qty So
 
 
 - at the /Production/Batches/Details page, if the all the selected actual fields has 0 or no value dont save 
+
+- when there is a price change by the production manager in `/Production/Pricing1` page, they should be a notification sent to the admin
+and when there is an approval or rejection of the item price, they should be a notification sent back to the sender of those price change request
+- when the user clicks on the notification bell on top of the nav it should bring out a drop down listing all unred notification
+- initially they should be a red badge with a number on top of the notic=fication bell signifying the total unread notification
+- note create a notification service, interface and the create the all notification page where all the notification sent to a specific person can be read also note that they will be a general notification which will be visible to every body exept the customers
+
+- the `Price Change History` section in the /Production/Pricing page should have a view action so a user will be a ble to view each history in a view page 
+
+ill also point out other things that needs notification later
+
+- i want this system not to hardcode any role but instead use thier ID
+- it is generally known in the system databse that 
+|---|---|
+|ID| Role|
+|1| SuperAdmin|
+|2| ProductionManager|
+|3| StoreManager|
+|4| SalesRep|
+|5| Customer|
+|6| HrPayrollManager|
+
+- so i want thier id to be use where it was hard coded, also you can use enum to make it easy
+
+anywhere the role is showing, then keep showing the name but if the role is use for navigation or authentication and it's hardcoded pls use the id because the name can change but the functions remain the same 

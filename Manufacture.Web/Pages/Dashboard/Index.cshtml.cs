@@ -1,4 +1,4 @@
-using Manufacture.Library.Interfaces;
+﻿using Manufacture.Library.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Manufacture.Services;
@@ -58,7 +58,8 @@ namespace Manufacture.Pages.Dashboard
 
         public sealed record LifecycleStage(string Label, string IconClass, string Tone, LifecycleMetric Metric);
 
-        public string ActiveRole { get; set; } = "SuperAdmin";
+        public string ActiveRole { get; set; } = string.Empty;
+        public int ActiveRoleId { get; set; }
         public string ActiveUserName { get; set; } = "Adekunle Johnson";
 
         // Executive / Shared data
@@ -120,8 +121,8 @@ namespace Manufacture.Pages.Dashboard
         /// </summary>
         public IActionResult OnGetDrill(string? metric, string? timeframe, string? scope, DateTime? date)
         {
-            var role = HttpContext.Session.GetString("UserRole");
-            if (!string.Equals(role, "SuperAdmin", StringComparison.OrdinalIgnoreCase))
+            var roleId = HttpContext.Session.GetRoleId();
+            if (roleId != (int)UserRole.SuperAdmin)
             {
                 return Forbid();
             }
@@ -131,13 +132,14 @@ namespace Manufacture.Pages.Dashboard
 
         public async Task OnGetAsync(CancellationToken cancellationToken = default)
         {
-            ActiveRole = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
+            ActiveRoleId = HttpContext.Session.GetRoleId();
+            ActiveRole = HttpContext.Session.GetRoleName();
             ActiveUserName = HttpContext.Session.GetString("UserName") ?? "Manager";
 
             Summary = _dashboardService.GetSummary();
             RecentOrders = _salesService.GetAllOrders().Take(8).ToList();
 
-            if (ActiveRole == "ProductionManager")
+            if (ActiveRoleId == (int)UserRole.ProductionManager)
             {
                 ProductionDashboard = _productionService.GetProductionDashboard(DateTime.UtcNow);
                 TodayBatches = ProductionDashboard.Batches;
@@ -153,7 +155,7 @@ namespace Manufacture.Pages.Dashboard
             // Load Sales Rep Data. Sales reps must see their own database orders and their
             // assigned HR employee terminal, not the shared mock dashboard data.
             var currentUserId = HttpContext.Session.GetInt32("UserId");
-            if (ActiveRole == "SalesRep" && currentUserId.HasValue)
+            if (ActiveRoleId == (int)UserRole.SalesRep && currentUserId.HasValue)
             {
                 var currentSalesRep = await _dbSalesService.GetSalesRepByUserIdAsync(currentUserId.Value, cancellationToken);
                 var terminals = await _dbSalesService.GetTerminalsAsync(cancellationToken: cancellationToken);
@@ -182,7 +184,7 @@ namespace Manufacture.Pages.Dashboard
             }
 
             // Load Vendor Data from the database and filter pre-orders to the signed-in customer.
-            if (ActiveRole == "Customer" && currentUserId.HasValue)
+            if (ActiveRoleId == (int)UserRole.Customer && currentUserId.HasValue)
             {
                 VendorAccount = await _dbSalesService.GetCustomerByUserIdAsync(currentUserId.Value, cancellationToken);
             }
@@ -198,7 +200,7 @@ namespace Manufacture.Pages.Dashboard
                 VendorOrders = dbOrders.Where(o => o.CustomerId == VendorAccount.Id).ToList();
             }
 
-            if (ActiveRole == "Customer")
+            if (ActiveRoleId == (int)UserRole.Customer)
             {
                 // A customer must only ever see their own pre-orders. If the login is not
                 // linked to a customer account, show nothing rather than every order.
@@ -229,7 +231,7 @@ namespace Manufacture.Pages.Dashboard
 
             // Executive quick-overview. Only the SuperAdmin control centre needs it;
             // every other role keeps its existing operational layout.
-            if (ActiveRole == "SuperAdmin")
+            if (ActiveRoleId == (int)UserRole.SuperAdmin)
             {
                 Overview = _analytics.GetOverview();
             }

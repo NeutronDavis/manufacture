@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Manufacture.Library.Interfaces;
 using Manufacture.Models.Domain;
@@ -24,11 +24,11 @@ namespace Manufacture.Pages.Production.Recipes
 
         public List<RecipeCostingResultDto> Recipes { get; set; } = new();
         public List<ProductionCategory> Categories { get; set; } = new();
-        public string UserRole { get; set; } = string.Empty;
+        public int UserRoleId { get; set; }
 
         public void OnGet()
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
+            UserRoleId = HttpContext.Session.GetRoleId();
             Recipes = _engine.CostAll(includeInactive: true);
             Categories = _productionService.GetCategories(includeInactive: true)
                 .Where(category => category.IsActive

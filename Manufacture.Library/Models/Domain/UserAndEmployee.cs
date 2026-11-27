@@ -1,13 +1,19 @@
 namespace Manufacture.Models.Domain
 {
+    /// <summary>
+    /// Stable role identifiers. The numeric values are pinned to dbo.Roles.Id
+    /// (see the role seed) and must never be reordered or renumbered, because
+    /// navigation, authorization and RBAC decisions key on these IDs rather
+    /// than on the changeable role name.
+    /// </summary>
     public enum UserRole
     {
-        SuperAdmin,
-        ProductionManager,
-        StoreManager,
-        SalesRep,
-        Customer,
-        HrPayrollManager
+        SuperAdmin = 1,
+        ProductionManager = 2,
+        StoreManager = 3,
+        SalesRep = 4,
+        Customer = 5,
+        HrPayrollManager = 6
     }
 
     public class User

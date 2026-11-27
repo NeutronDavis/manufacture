@@ -1,6 +1,7 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Manufacture.Library.Interfaces;
+using Manufacture.Models.Domain;
 using Manufacture.Models.DTOs;
 using Manufacture.Services;
 
@@ -24,11 +25,11 @@ namespace Manufacture.Pages.Production.Pricing
         public List<IngredientPriceChangeRequestDto> PriceHistory { get; set; } = new();
         public Dictionary<int, IngredientPriceChangeRequestDto> PendingByItemId { get; set; } = new();
 
-        public string UserRole { get; set; } = string.Empty;
+        public int UserRoleId { get; set; }
         public bool CanSubmitPriceChanges =>
-            string.Equals(UserRole, "ProductionManager", StringComparison.OrdinalIgnoreCase);
+            UserRoleId == (int)UserRole.ProductionManager;
         public bool CanApprovePriceChanges =>
-            string.Equals(UserRole, "SuperAdmin", StringComparison.OrdinalIgnoreCase);
+            UserRoleId == (int)UserRole.SuperAdmin;
 
         [BindProperty]
         public List<UpdateIngredientPriceDto> Edits { get; set; } = new();
@@ -131,7 +132,7 @@ namespace Manufacture.Pages.Production.Pricing
 
         private void LoadRole()
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? string.Empty;
+            UserRoleId = HttpContext.Session.GetRoleId();
         }
 
         private void Refresh()

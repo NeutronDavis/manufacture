@@ -1,9 +1,10 @@
-using Manufacture.Library.Data;
+﻿using Manufacture.Library.Data;
 using Manufacture.Library.Interfaces;
 using Manufacture.Models.DTOs;
 using Manufacture.Models.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using UserRole = Manufacture.Models.Domain.UserRole;
 
 namespace Manufacture.Services
 {
@@ -18,8 +19,6 @@ namespace Manufacture.Services
     /// </summary>
     public class UserService : IUserService
     {
-        private const string SuperAdminRole = "SuperAdmin";
-
         private readonly ManufactureDbContext _db;
         private readonly IPasswordHasher<User> _passwordHasher;
 
@@ -171,7 +170,7 @@ namespace Manufacture.Services
             var role = await _db.Roles.FirstOrDefaultAsync(r => r.Id == dto.RoleId, cancellationToken)
                 ?? throw new InvalidOperationException("Select a valid system role.");
 
-            var customerId = await ValidateCustomerLinkAsync(dto.CustomerId, role.Name, cancellationToken);
+            var customerId = await ValidateCustomerLinkAsync(dto.CustomerId, role.Id, cancellationToken);
             var employee = await ValidateEmployeeLinkAsync(dto.EmployeeId, null, cancellationToken);
             var pin = RequirePin(dto.PinCode);
             var password = RequirePassword(dto.Password);
@@ -222,7 +221,7 @@ namespace Manufacture.Services
                 throw new InvalidOperationException("Select a valid system role.");
             }
 
-            var customerId = await ValidateCustomerLinkAsync(dto.CustomerId, role.Name, cancellationToken);
+            var customerId = await ValidateCustomerLinkAsync(dto.CustomerId, role.Id, cancellationToken);
             var employee = await ValidateEmployeeLinkAsync(dto.EmployeeId, dto.Id, cancellationToken);
 
             user.Name = dto.Name.Trim();
@@ -261,11 +260,12 @@ namespace Manufacture.Services
                 return false;
             }
 
-            if (!isActive && user.Role.Name == SuperAdminRole)
+            var superAdminRoleId = (int)UserRole.SuperAdmin;
+
+            if (!isActive && user.RoleId == superAdminRoleId)
             {
                 var otherActiveAdmins = await _db.Users
-                    .Include(u => u.Role)
-                    .CountAsync(u => u.Id != id && u.IsActive && u.Role.Name == SuperAdminRole, cancellationToken);
+                    .CountAsync(u => u.Id != id && u.IsActive && u.RoleId == superAdminRoleId, cancellationToken);
 
                 if (otherActiveAdmins == 0)
                 {
@@ -290,11 +290,10 @@ namespace Manufacture.Services
                 return false;
             }
 
-            if (user.Role.Name == SuperAdminRole)
+            if (user.RoleId == (int)UserRole.SuperAdmin)
             {
                 var otherActiveAdmins = await _db.Users
-                    .Include(u => u.Role)
-                    .CountAsync(u => u.Id != id && u.IsActive && u.Role.Name == SuperAdminRole, cancellationToken);
+                    .CountAsync(u => u.Id != id && u.IsActive && u.RoleId == (int)UserRole.SuperAdmin, cancellationToken);
 
                 if (otherActiveAdmins == 0)
                 {
@@ -414,12 +413,12 @@ namespace Manufacture.Services
 
         private async Task<int?> ValidateCustomerLinkAsync(
             int? customerId,
-            string roleName,
+            int roleId,
             CancellationToken cancellationToken)
         {
             if (!customerId.HasValue || customerId.Value <= 0)
             {
-                if (string.Equals(roleName, "Customer", StringComparison.OrdinalIgnoreCase))
+                if (roleId == (int)UserRole.Customer)
                 {
                     throw new InvalidOperationException("Select the customer account for a Customer portal user.");
                 }

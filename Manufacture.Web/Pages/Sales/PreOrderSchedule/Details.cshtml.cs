@@ -1,5 +1,6 @@
-using Manufacture.Library.Interfaces;
+﻿using Manufacture.Library.Interfaces;
 using Manufacture.Models.Domain;
+using Manufacture.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -19,14 +20,14 @@ namespace Manufacture.Pages.Sales.PreOrderSchedule
 
         public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancellationToken = default)
         {
-            var role = HttpContext.Session.GetString("UserRole") ?? string.Empty;
-            if (!string.Equals(role, "Customer", StringComparison.OrdinalIgnoreCase))
+            var role = HttpContext.Session.GetRoleId();
+            if (role != (int)UserRole.Customer)
             {
                 TempData["ErrorMessage"] = "Pre-order details are available to customer portal accounts only.";
                 return RedirectToPage("/Sales/Orders/Index");
             }
 
-            var userId = HttpContext.Session.GetInt32("UserId");
+            var userId = HttpContext.Session.GetInt32(SessionKeys.UserId);
             if (!userId.HasValue)
             {
                 return RedirectToPage("/Login");

@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Manufacture.Models.Domain;
@@ -18,13 +18,13 @@ namespace Manufacture.Pages.Settings
         }
 
         public TreasuryPolicySettings TreasuryPolicy { get; set; } = new();
-        public string UserRole { get; set; } = string.Empty;
+        public int UserRoleId { get; set; }
         public bool CanAccessSettings { get; set; }
 
         public IActionResult OnGet()
         {
-            UserRole = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
-            CanAccessSettings = _rbacService.HasAccess(UserRole, "Settings");
+            UserRoleId = HttpContext.Session.GetRoleId();
+            CanAccessSettings = _rbacService.HasAccess(UserRoleId, "Settings");
 
             if (!CanAccessSettings)
             {

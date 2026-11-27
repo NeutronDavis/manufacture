@@ -1,9 +1,9 @@
-@page "{id:int}"
+﻿@page "{id:int}"
 @model Manufacture.Pages.UserManagement.EditModel
 @{
     ViewData["Title"] = $"Edit User - {Model.UserInput.Name}";
     var selectedRole = Model.Roles.FirstOrDefault(r => r.Id == Model.UserInput.RoleId);
-    var showCustomerLink = string.Equals(selectedRole?.Name, "Customer", StringComparison.OrdinalIgnoreCase);
+    var showCustomerLink = selectedRole?.Id == (int)UserRole.Customer;
 }
 
 <div class="space-y-6 w-full">
@@ -132,7 +132,7 @@
                                 <option value="">-- Select a system role --</option>
                                 @foreach (var role in Model.Roles)
                                 {
-                                    <option value="@role.Id" data-role-name="@role.Name">@role.DisplayName (@role.Name)</option>
+                                    <option value="@role.Id" data-role-id="@role.Id">@role.DisplayName (@role.Name)</option>
                                 }
                             </select>
                             <span asp-validation-for="UserInput.RoleId" class="text-error text-[10px] mt-1"></span>
@@ -210,8 +210,8 @@
         if (!roleSelect || !customerField || !customerSelect) return;
 
         const selectedOption = roleSelect.options[roleSelect.selectedIndex];
-        const roleName = selectedOption?.getAttribute('data-role-name') || '';
-        const isCustomer = roleName.toLowerCase() === 'customer';
+        const roleId = Number(selectedOption?.getAttribute('data-role-id') || 0);
+        const isCustomer = roleId === @((int)UserRole.Customer);
 
         customerField.classList.toggle('hidden', !isCustomer);
         customerField.style.display = isCustomer ? '' : 'none';

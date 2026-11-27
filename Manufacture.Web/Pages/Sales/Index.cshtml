@@ -1,4 +1,5 @@
 @page
+@using Manufacture.Models.Domain
 @model Manufacture.Pages.Sales.IndexModel
 @{
     ViewData["Title"] = "Sales & POS Hub";
@@ -120,7 +121,7 @@
             <h2 class="text-sm font-black text-base-content flex items-center gap-2">
                 <i class="fa-solid fa-desktop text-primary"></i> Dedicated Checkout Registers
             </h2>
-            @if (!string.Equals(Model.UserRole, "SalesRep", StringComparison.OrdinalIgnoreCase))
+            @if (Model.UserRoleId != (int)UserRole.SalesRep)
             {
                 <a asp-page="/Sales/Terminals/Index" class="btn btn-xs btn-ghost text-primary font-semibold">
                     Manage Terminals &rarr;
@@ -159,7 +160,7 @@
                         </div>
 
                         <div class="flex justify-between items-center pt-2 border-t border-base-200">
-                            @if (!string.Equals(Model.UserRole, "SalesRep", StringComparison.OrdinalIgnoreCase))
+                            @if (Model.UserRoleId != (int)UserRole.SalesRep)
                             {
                                 <a asp-page="/Sales/Terminals/Assign" asp-route-id="@term.Id" class="btn btn-xs btn-outline border-base-300 rounded-lg text-xs font-semibold hover:border-primary">
                                     <i class="fa-solid fa-user-plus text-[10px]"></i> Assign Rep

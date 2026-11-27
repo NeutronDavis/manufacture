@@ -1,4 +1,5 @@
 using Manufacture.Models.DTOs;
+using Manufacture.Models.Domain;
 using Manufacture.Services.Reports;
 using Xunit;
 
@@ -9,7 +10,7 @@ public class ReportCatalogTests
     [Fact]
     public void SuperAdminSeesTheFullCatalogue()
     {
-        var reports = ReportCatalog.ForRole("SuperAdmin");
+        var reports = ReportCatalog.ForRole((int)UserRole.SuperAdmin);
 
         Assert.Equal(ReportCatalog.All.Count, reports.Count);
         Assert.Contains(reports, report => report.Key == "production-yield");
@@ -20,7 +21,7 @@ public class ReportCatalogTests
     [Fact]
     public void SalesRepOnlySeesSalesAndOwnScopeReports()
     {
-        var reports = ReportCatalog.ForRole("SalesRep");
+        var reports = ReportCatalog.ForRole((int)UserRole.SalesRep);
 
         Assert.Contains(reports, report => report.Key == "sales-register");
         Assert.Contains(reports, report => report.Key == "exec-rep-performance");
@@ -32,7 +33,7 @@ public class ReportCatalogTests
     [Fact]
     public void StoreManagerOnlySeesInventoryReports()
     {
-        var reports = ReportCatalog.ForRole("StoreManager");
+        var reports = ReportCatalog.ForRole((int)UserRole.StoreManager);
 
         Assert.NotEmpty(reports);
         Assert.All(reports, report => Assert.Equal("Inventory", report.Group));
@@ -44,7 +45,7 @@ public class ReportCatalogTests
     [Fact]
     public void ProductionManagerSeesProductionInventoryAndExecutiveOperationalReports()
     {
-        var reports = ReportCatalog.ForRole("ProductionManager");
+        var reports = ReportCatalog.ForRole((int)UserRole.ProductionManager);
 
         Assert.Contains(reports, report => report.Key == "production-yield");
         Assert.Contains(reports, report => report.Key == "inventory-stock-valuation");
@@ -56,22 +57,22 @@ public class ReportCatalogTests
     [Fact]
     public void HrManagerOnlySeesHrAndPayrollReports()
     {
-        var reports = ReportCatalog.ForRole("HrPayrollManager");
+        var reports = ReportCatalog.ForRole((int)UserRole.HrPayrollManager);
 
         Assert.NotEmpty(reports);
         Assert.All(reports, report => Assert.Equal("HR & Payroll", report.Group));
         Assert.Contains(reports, report => report.Key == "payroll-register");
         Assert.DoesNotContain(reports, report => report.Key == "sales-register");
         Assert.DoesNotContain(reports, report => report.Key == "fleet-fuel");
-        Assert.Empty(ReportCatalog.ForRole("Customer"));
+        Assert.Empty(ReportCatalog.ForRole((int)UserRole.Customer));
     }
 
     [Fact]
     public void FleetAndAdminReportsAreSuperAdminOnly()
     {
-        var superAdmin = ReportCatalog.ForRole("SuperAdmin");
-        var production = ReportCatalog.ForRole("ProductionManager");
-        var store = ReportCatalog.ForRole("StoreManager");
+        var superAdmin = ReportCatalog.ForRole((int)UserRole.SuperAdmin);
+        var production = ReportCatalog.ForRole((int)UserRole.ProductionManager);
+        var store = ReportCatalog.ForRole((int)UserRole.StoreManager);
 
         Assert.Contains(superAdmin, report => report.Key == "fleet-fuel");
         Assert.Contains(superAdmin, report => report.Key == "admin-rbac-matrix");
@@ -84,11 +85,11 @@ public class ReportCatalogTests
     {
         var authorization = new ReportAuthorizationService();
 
-        Assert.True(authorization.CanAccess("SuperAdmin", "production-yield"));
-        Assert.True(authorization.CanAccess("StoreManager", "inventory-low-stock"));
-        Assert.False(authorization.CanAccess("StoreManager", "production-yield"));
-        Assert.False(authorization.CanAccess("SalesRep", "inventory-low-stock"));
-        Assert.False(authorization.CanAccess("HrPayrollManager", "sales-register"));
+        Assert.True(authorization.CanAccess((int)UserRole.SuperAdmin, "production-yield"));
+        Assert.True(authorization.CanAccess((int)UserRole.StoreManager, "inventory-low-stock"));
+        Assert.False(authorization.CanAccess((int)UserRole.StoreManager, "production-yield"));
+        Assert.False(authorization.CanAccess((int)UserRole.SalesRep, "inventory-low-stock"));
+        Assert.False(authorization.CanAccess((int)UserRole.HrPayrollManager, "sales-register"));
     }
 
     [Fact]
