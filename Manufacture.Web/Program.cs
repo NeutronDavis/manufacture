@@ -17,10 +17,55 @@ var manufactureConnectionString = builder.Configuration.GetConnectionString("Man
 // Safe startup diagnostic: shows which connection options the running container
 // actually received (never logs the user or password).
 var dbOptions = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(manufactureConnectionString);
+
+// Temporary escape hatch for hosts that cannot complete TLS with an older SQL
+// Server. Set DB_ALLOW_UNENCRYPTED=true to force Encrypt=Optional regardless of
+// what the connection string contains. Remove once SQL Server TLS is fixed.
+var allowUnencrypted = string.Equals(
+    builder.Configuration["DB_ALLOW_UNENCRYPTED"],
+    "true",
+    StringComparison.OrdinalIgnoreCase);
+if (allowUnencrypted)
+{
+    dbOptions.Encrypt = Microsoft.Data.SqlClient.SqlConnectionEncryptOption.Optional;
+    manufactureConnectionString = dbOptions.ConnectionString;
+}
+
 Console.WriteLine(
     $"[DB] Server={dbOptions.DataSource}; Database={dbOptions.InitialCatalog}; " +
     $"Encrypt={dbOptions.Encrypt}; TrustServerCertificate={dbOptions.TrustServerCertificate}; " +
-    $"IntegratedSecurity={dbOptions.IntegratedSecurity}; MARS={dbOptions.MultipleActiveResultSets}");
+    $"IntegratedSecurity={dbOptions.IntegratedSecurity}; MARS={dbOptions.MultipleActiveResultSets}; " +
+    $"ForcedUnencrypted={allowUnencrypted}");
+
+// One-shot startup probe: logs the exact database error (if any) before the
+// first request, so a failing login does not require reproducing it from the UI.
+try
+{
+    var probeOptions = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(manufactureConnectionString)
+    {
+        ConnectTimeout = 10
+    };
+
+    await using var probe = new Microsoft.Data.SqlClient.SqlConnection(probeOptions.ConnectionString);
+    await probe.OpenAsync();
+    await using var probeCommand = probe.CreateCommand();
+    probeCommand.CommandText =
+        "SELECT @@VERSION, encrypt_option FROM sys.dm_exec_connections WHERE session_id = @@SPID";
+    await using var probeReader = await probeCommand.ExecuteReaderAsync();
+    if (await probeReader.ReadAsync())
+    {
+        var versionLine = probeReader.IsDBNull(0)
+            ? "unknown"
+            : probeReader.GetString(0).Split('\n')[0].Trim();
+        var encrypted = probeReader.IsDBNull(1) ? "unknown" : probeReader.GetString(1);
+        Console.WriteLine($"[DB] Probe OK: {versionLine}; EncryptOption={encrypted}");
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"[DB] Probe FAILED: {ex.GetType().Name}: {ex.Message}");
+    Console.WriteLine(ex);
+}
 
 builder.Services.AddDbContext<ManufactureDbContext>(options =>
     options.UseSqlServer(manufactureConnectionString));
