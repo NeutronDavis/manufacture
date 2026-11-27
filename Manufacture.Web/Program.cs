@@ -13,6 +13,15 @@ var builder = WebApplication.CreateBuilder(args);
 // Manufacture.Database into Manufacture.Library/Data.
 var manufactureConnectionString = builder.Configuration.GetConnectionString("ManufactureDb")
     ?? throw new InvalidOperationException("Connection string 'ManufactureDb' is not configured.");
+
+// Safe startup diagnostic: shows which connection options the running container
+// actually received (never logs the user or password).
+var dbOptions = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(manufactureConnectionString);
+Console.WriteLine(
+    $"[DB] Server={dbOptions.DataSource}; Database={dbOptions.InitialCatalog}; " +
+    $"Encrypt={dbOptions.Encrypt}; TrustServerCertificate={dbOptions.TrustServerCertificate}; " +
+    $"IntegratedSecurity={dbOptions.IntegratedSecurity}; MARS={dbOptions.MultipleActiveResultSets}");
+
 builder.Services.AddDbContext<ManufactureDbContext>(options =>
     options.UseSqlServer(manufactureConnectionString));
 

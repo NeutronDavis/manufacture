@@ -386,3 +386,19 @@ ill also point out other things that needs notification later
 - so i want thier id to be use where it was hard coded, also you can use enum to make it easy
 
 anywhere the role is showing, then keep showing the name but if the role is use for navigation or authentication and it's hardcoded pls use the id because the name can change but the functions remain the same 
+
+
+
+
+i got an error in the live all when tring to login using the admin credentials
+
+hee is the error:
+
+Error.
+An error occurred while processing your request.
+Development Mode
+Swapping to the Development environment displays detailed information about the error that occurred.
+
+The Development environment shouldn't be enabled for deployed applications. It can result in displaying sensitive information from exceptions to end users. For local debugging, enable the Development environment by setting the ASPNETCORE_ENVIRONMENT environment variable to Development and restarting the app.
+
+First im using docker to host this application aon render, how do i enable developer mood
