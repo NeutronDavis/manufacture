@@ -29,7 +29,8 @@ namespace Manufacture.Models.Domain
         InProduction,
         ReadyToLoad,
         Dispatched,
-        Cancelled
+        Cancelled,
+        Completed
     }
 
     public enum OrderPaymentStatus
@@ -68,6 +69,8 @@ namespace Manufacture.Models.Domain
         public string? AssignedEmployeeCode { get; set; }
         public int? AssignedUserId { get; set; }
         public string? AssignedUserName { get; set; }
+        public int? ProductRepositoryId { get; set; }
+        public string? ProductRepositoryName { get; set; }
         // Multi-Account POS Mapping
         public string CashAccountName { get; set; } = "Bakery Cash Drawer";
         public string TransferAccountName { get; set; } = "FirstBank - 3021948291";
@@ -159,11 +162,9 @@ namespace Manufacture.Models.Domain
         public List<OrderPayment> Payments { get; set; } = new();
         public DateTime OrderDate { get; set; } = DateTime.UtcNow;
         public DateTime TargetDeliveryDate { get; set; } = DateTime.UtcNow;
-        // Print-to-load and verification
-        public bool IsPrintedForLoading { get; set; }
-        public DateTime? PrintedAt { get; set; }
-        public string? VerifiedByLoaderName { get; set; }
-        public DateTime? LoadedAt { get; set; }
+        public int? ProductRepositoryId { get; set; }
+        public DateTime? StockDeductedAt { get; set; }
+        public string? StockDeductedBy { get; set; }
         public string Notes { get; set; } = string.Empty;
     }
 
@@ -207,5 +208,30 @@ namespace Manufacture.Models.Domain
         public int ThresholdQuantity { get; set; }
         public int BonusQuantity { get; set; }
         public bool IsActive { get; set; } = true;
+    }
+
+    /// <summary>
+    /// Supermarket and institutional account with agreed custom pricing and credit management.
+    /// </summary>
+    public class SupermarketAccount
+    {
+        public int Id { get; set; }
+        public int CustomerId { get; set; }
+        public string AccountName { get; set; } = string.Empty;
+        public string ContactPerson { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+        public int AssignedRepId { get; set; }
+        public string AssignedRepName { get; set; } = string.Empty;
+        public decimal CurrentOutstandingCredit { get; set; }
+        public decimal CreditLimit { get; set; } = 250000m;
+        public string PaymentTerms { get; set; } = "Net 15 Days";
+        public bool IsActive { get; set; } = true;
+
+        /// <summary>
+        /// Map of RecipeId/ProductId -> Custom Agreed Selling Price.
+        /// Overrides master recipe price when billing this specific account.
+        /// </summary>
+        public Dictionary<int, decimal> CustomAgreedPrices { get; set; } = new();
     }
 }

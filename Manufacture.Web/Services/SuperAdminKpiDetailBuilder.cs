@@ -155,7 +155,7 @@ namespace Manufacture.Services
                                 Row = new KpiDetailRowDto
                                 {
                                     Reference = first.OrderNumber,
-                                    ReferenceUrl = $"/Sales/Orders/Details?id={first.OrderId}",
+                                    ReferenceUrl = $"/Sales/Orders/Details/{first.OrderId}",
                                     Product = products,
                                     Category = string.Join(", ", orderLines
                                         .Select(line => line.Category)
@@ -229,7 +229,7 @@ namespace Manufacture.Services
                         .Select(batch => new KpiDetailRowDto
                         {
                             Reference = batch.BatchNumber,
-                            ReferenceUrl = $"/Production/Batches/Details?id={batch.BatchId}",
+                            ReferenceUrl = $"/Production/Batches/Details/{batch.BatchId}",
                             Product = batch.ProductName,
                             Category = batch.Category,
                             UnitLabel = batch.Unit,
@@ -285,8 +285,8 @@ namespace Manufacture.Services
             string scopeLabel)
         {
             var minStatus = metric == LifecycleMetric.Loaded
-                ? (int)RouteSheetStatus.LoadedOnRoute
-                : (int)RouteSheetStatus.Reconciled;
+                ? (int)SalesReconciliationStatus.Draft
+                : (int)SalesReconciliationStatus.Reconciled;
 
             var rows = (lines ?? Enumerable.Empty<DispatchLineSource>())
                 .Where(line => line.Status >= minStatus)
@@ -384,7 +384,7 @@ namespace Manufacture.Services
                         .Select(defect => new KpiDetailRowDto
                         {
                             Reference = defect.BatchNumber,
-                            ReferenceUrl = $"/Production/Batches/Details?id={defect.BatchId}",
+                            ReferenceUrl = $"/Production/Batches/Details/{defect.BatchId}",
                             Product = defect.ProductName,
                             Category = defect.Category,
                             UnitLabel = defect.Unit,
@@ -495,13 +495,11 @@ namespace Manufacture.Services
         // Shared helpers
         // -----------------------------------------------------------------
 
-        /// <summary>Route-sheet status label shown in the drawer badge.</summary>
-        public static string SheetStatusLabel(int status) => (RouteSheetStatus)status switch
+        /// <summary>Reconciliation status label shown in the drawer badge.</summary>
+        public static string SheetStatusLabel(int status) => (SalesReconciliationStatus)status switch
         {
-            RouteSheetStatus.Reconciled => "Reconciled",
-            RouteSheetStatus.Closed => "Closed",
-            RouteSheetStatus.LoadedOnRoute => "Loaded \u00b7 pending reconciliation",
-            _ => "Ordered"
+            SalesReconciliationStatus.Reconciled => "Reconciled",
+            _ => "Draft"
         };
 
         /// <summary>Map a record status onto a daisyUI badge tone.</summary>
@@ -509,7 +507,7 @@ namespace Manufacture.Services
         {
             "Reconciled" or "Closed" or "Completed" or "Dispatched" or "Replaced" => "success",
             "Loaded \u00b7 pending reconciliation" or "LoadedOnRoute" or "Baking" or "InMixing"
-                or "InProduction" or "Planned" or "ReadyToLoad" or "Confirmed" or "Recorded" => "warning",
+                or "InProduction" or "Planned" or "ReadyToLoad" or "Confirmed" or "Recorded" or "Draft" => "warning",
             "Cancelled" => "error",
             "Pending" or "Ordered" => "info",
             _ => "ghost"

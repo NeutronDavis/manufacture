@@ -49,7 +49,49 @@ namespace Manufacture.Models.DTOs
     }
 
     /// <summary>
+    /// Postback for creating a multi-product production batch. Every line is a
+    /// product recipe with its own target quantity.
+    /// </summary>
+    public class ProductionBatchCreateDto
+    {
+        public string Shift { get; set; } = "Morning Shift";
+
+        [Required]
+        public string BakerInCharge { get; set; } = string.Empty;
+
+        public DateTime ProductionDate { get; set; } = DateTime.UtcNow;
+
+        public string Notes { get; set; } = string.Empty;
+
+        public List<ProductionBatchLineInputDto> Lines { get; set; } = new();
+    }
+
+    public class ProductionBatchLineInputDto
+    {
+        [Range(1, int.MaxValue)]
+        public int RecipeId { get; set; }
+
+        [Range(1, 100000)]
+        public int TargetQuantity { get; set; }
+    }
+
+    public class RecordBatchActualsDto
+    {
+        public int BatchId { get; set; }
+        public List<BatchActualLineDto> Lines { get; set; } = new();
+    }
+
+    public class BatchActualLineDto
+    {
+        public int LineId { get; set; }
+
+        [Range(0, 100000)]
+        public int ActualQuantity { get; set; }
+    }
+
+    /// <summary>
     /// Postback for manually creating a planned or logged production batch.
+    /// Kept for the legacy mock service and existing tests.
     /// </summary>
     public class ProductionBatchDto
     {
@@ -139,6 +181,8 @@ namespace Manufacture.Models.DTOs
     {
         public int Id { get; set; }
         public int BatchId { get; set; }
+        public int RecipeId { get; set; }
+        public string ProductName { get; set; } = string.Empty;
         public int Quantity { get; set; }
         public string DefectReason { get; set; } = string.Empty;
         public DateTime RecordedAt { get; set; }

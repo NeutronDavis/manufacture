@@ -138,22 +138,22 @@ public class SuperAdminKpiDetailBuilderTests
     }
 
     [Fact]
-    public void BuildDispatch_LoadedIncludesSignedOffDispatchesOnly()
+    public void BuildDispatch_LoadedIncludesAllReconciliations()
     {
         var detail = SuperAdminKpiDetailBuilder.BuildDispatch(
         [
-            Dispatch(1, (int)RouteSheetStatus.Ordered, loaded: 9),
-            Dispatch(2, (int)RouteSheetStatus.LoadedOnRoute, loaded: 4),
-            Dispatch(3, (int)RouteSheetStatus.Reconciled, loaded: 6)
+            Dispatch(1, 0, loaded: 9),
+            Dispatch(2, 0, loaded: 4),
+            Dispatch(3, 1, loaded: 6)
         ], LifecycleMetric.Loaded, "Today", "Mon, 16 Nov", "All Product Lines");
 
-        Assert.Equal(10, detail.Total);
-        Assert.Equal(2, detail.RecordCount);
-        Assert.Equal(2, detail.Groups.Single().Rows.Count);
-        Assert.DoesNotContain(detail.Groups.SelectMany(group => group.Rows), row => row.Reference == "RTE-0001");
+        Assert.Equal(19, detail.Total);
+        Assert.Equal(3, detail.RecordCount);
+        Assert.Equal(3, detail.Groups.Single().Rows.Count);
+        Assert.Contains(detail.Groups.SelectMany(group => group.Rows), row => row.Reference == "RTE-0001");
 
         var pending = detail.Groups.Single().Rows.Single(row => row.Reference == "RTE-0002");
-        Assert.Equal("Loaded · pending reconciliation", pending.Status);
+        Assert.Equal("Draft", pending.Status);
         Assert.Equal("warning", pending.StatusTone);
 
         var reconciled = detail.Groups.Single().Rows.Single(row => row.Reference == "RTE-0003");
@@ -166,8 +166,8 @@ public class SuperAdminKpiDetailBuilderTests
     {
         var detail = SuperAdminKpiDetailBuilder.BuildDispatch(
         [
-            Dispatch(1, (int)RouteSheetStatus.LoadedOnRoute, loaded: 10, sold: 5),
-            Dispatch(2, (int)RouteSheetStatus.Reconciled, loaded: 10, sold: 7)
+            Dispatch(1, 0, loaded: 10, sold: 5),
+            Dispatch(2, 1, loaded: 10, sold: 7)
         ], LifecycleMetric.Sold, "Today", "Mon, 16 Nov", "All Product Lines");
 
         Assert.Equal(7, detail.Total);
@@ -180,7 +180,7 @@ public class SuperAdminKpiDetailBuilderTests
     {
         var lines = new List<DispatchLineSource>
         {
-            Dispatch(1, (int)RouteSheetStatus.Reconciled, loaded: 10, closing: 3, damaged: 1)
+            Dispatch(1, 1, loaded: 10, closing: 3, damaged: 1)
         };
 
         var closing = SuperAdminKpiDetailBuilder.BuildDispatch(

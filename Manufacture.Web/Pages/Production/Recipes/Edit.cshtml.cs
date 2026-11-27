@@ -27,7 +27,11 @@ namespace Manufacture.Pages.Production.Recipes
 
         public List<Ingredient> AvailableIngredients { get; set; } = new();
         public List<ProductionProductType> ProductTypes { get; set; } = new();
+        public Dictionary<int, string> NextCodes { get; set; } = new();
         public bool Found { get; set; }
+
+        [BindProperty]
+        public int OriginalProductTypeId { get; set; }
 
         public IActionResult OnGet(int id)
         {
@@ -36,6 +40,7 @@ namespace Manufacture.Pages.Production.Recipes
 
             Found = true;
             RecipeInput = MapToBuilderDto(recipe);
+            OriginalProductTypeId = RecipeInput.ProductionProductTypeId;
             LoadFormData();
             return Page();
         }
@@ -44,6 +49,34 @@ namespace Manufacture.Pages.Production.Recipes
         {
             LoadFormData();
             Found = true;
+
+            var existing = _productionService.GetRecipeById(RecipeInput.Id);
+            if (existing == null) return RedirectToPage("/Production/Recipes/Index");
+
+            var currentType = ProductTypes
+                .FirstOrDefault(p => p.Id == RecipeInput.ProductionProductTypeId);
+
+            if (RecipeInput.ProductionProductTypeId != OriginalProductTypeId && currentType != null)
+            {
+                RecipeInput.Name = currentType.Name;
+                RecipeInput.ProductType = currentType.Name;
+                RecipeInput.BaselineUnit = currentType.Baseline;
+                RecipeInput.OutputUnit = currentType.OutputUnitNoun;
+                RecipeInput.Code = _productionService.GenerateRecipeCode(currentType.Id, RecipeInput.Id);
+                ModelState.Remove("RecipeInput.Name");
+                ModelState.Remove("RecipeInput.Code");
+            }
+            else
+            {
+                RecipeInput.Code = existing.Code;
+                ModelState.Remove("RecipeInput.Code");
+                if (currentType != null)
+                {
+                    RecipeInput.ProductType = currentType.Name;
+                    RecipeInput.BaselineUnit = currentType.Baseline;
+                    RecipeInput.OutputUnit = currentType.OutputUnitNoun;
+                }
+            }
 
             var yield = RecipeInput.ExpectedYield > 0 ? RecipeInput.ExpectedYield : 1m;
             foreach (var ing in RecipeInput.Ingredients)
@@ -111,6 +144,17 @@ namespace Manufacture.Pages.Production.Recipes
         {
             AvailableIngredients = _productionService.GetAllIngredients();
             ProductTypes = _productionService.GetProductTypes(includeInactive: true);
+
+            var existingCodes = _productionService.GetAllRecipes(includeInactive: true)
+                .Where(recipe => recipe.Id != RecipeInput.Id)
+                .Select(recipe => recipe.Code)
+                .ToList();
+
+            NextCodes = ProductTypes.ToDictionary(
+                productType => productType.Id,
+                productType => RecipeCodeGenerator.NextCode(
+                    RecipeCodeGenerator.PrefixFor(productType.Name),
+                    existingCodes));
         }
 
         private static RecipeBuilderDto MapToBuilderDto(Recipe recipe) => new()

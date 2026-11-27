@@ -92,27 +92,6 @@ namespace Manufacture.Services
             return dispatch == null ? null : MapDispatch(dispatch);
         }
 
-        public async Task<List<FleetDispatchDto>> GetAvailableForSalesRouteAsync(
-            CancellationToken cancellationToken = default)
-        {
-            // Only newly created (Planned) dispatch movements that have not already
-            // been claimed by a sales route sheet can be offered as a daily dispatch.
-            var dispatches = await _db.FleetDispatches
-                .AsNoTracking()
-                .Include(d => d.Vehicle)
-                .Include(d => d.DriverEmployee)
-                .Include(d => d.CreatedByUser)
-                .Include(d => d.FleetDispatchStops)
-                .Include(d => d.FuelLogs)
-                .Where(d => d.Status == (int)FleetDispatchStatus.Planned
-                    && !_db.DailyRepRouteSheets.Any(s => s.FleetDispatchId == d.Id))
-                .OrderByDescending(d => d.DispatchDate)
-                .ThenByDescending(d => d.Id)
-                .ToListAsync(cancellationToken);
-
-            return dispatches.Select(MapDispatch).ToList();
-        }
-
         public async Task<FleetDispatchDto> CreateDispatchAsync(
             FleetDispatchDto dto,
             int createdByUserId,

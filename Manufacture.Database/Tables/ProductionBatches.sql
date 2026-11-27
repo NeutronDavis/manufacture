@@ -2,7 +2,7 @@ CREATE TABLE [dbo].[ProductionBatches]
 (
     [Id]                    INT            IDENTITY (1, 1) NOT NULL,
     [BatchNumber]           NVARCHAR (40)  NOT NULL,
-    [RecipeId]              INT            NOT NULL,
+    [RecipeId]              INT            NULL,
     [RecipeName]            NVARCHAR (150) NOT NULL,
     [TargetQuantity]        INT            NOT NULL,
     [ActualQuantity]        INT            NOT NULL CONSTRAINT [DF_ProductionBatches_ActualQuantity] DEFAULT (0),
@@ -25,6 +25,7 @@ CREATE TABLE [dbo].[ProductionBatches]
     [CalculatedUnitCost]    DECIMAL (18, 4) NOT NULL CONSTRAINT [DF_ProductionBatches_CalculatedUnitCost] DEFAULT (0),
     [ExpectedUnitCost]      DECIMAL (18, 4) NOT NULL CONSTRAINT [DF_ProductionBatches_ExpectedUnitCost] DEFAULT (0),
     [LoggedBy]              NVARCHAR (150) NOT NULL CONSTRAINT [DF_ProductionBatches_LoggedBy] DEFAULT (N''),
+    [CompletedAt]           DATETIME2 (3)  NULL,
     [CreatedAt]             DATETIME2 (3)  NOT NULL CONSTRAINT [DF_ProductionBatches_CreatedAt] DEFAULT (SYSUTCDATETIME()),
     [UpdatedAt]             DATETIME2 (3)  NOT NULL CONSTRAINT [DF_ProductionBatches_UpdatedAt] DEFAULT (SYSUTCDATETIME()),
     [RowVersion]            ROWVERSION     NOT NULL,

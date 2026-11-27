@@ -9,6 +9,7 @@ using InventoryItemEntity = Manufacture.Models.Entities.InventoryItem;
 using OrderEntity = Manufacture.Models.Entities.Order;
 using OrderItemEntity = Manufacture.Models.Entities.OrderItem;
 using ProductionBatchEntity = Manufacture.Models.Entities.ProductionBatch;
+using ProductionBatchItemEntity = Manufacture.Models.Entities.ProductionBatchItem;
 using ProductionCategoryEntity = Manufacture.Models.Entities.ProductionCategory;
 using ProductionDefectEntity = Manufacture.Models.Entities.ProductionDefect;
 using ProductionProductTypeEntity = Manufacture.Models.Entities.ProductionProductType;
@@ -29,11 +30,13 @@ namespace Manufacture.Services
 
         private readonly ManufactureDbContext _db;
         private readonly IUnitConversionService _unitConversion;
+        private readonly ProductStockLedger _stockLedger;
 
-        public ProductionService(ManufactureDbContext db, IUnitConversionService unitConversion)
+        public ProductionService(ManufactureDbContext db, IUnitConversionService unitConversion, ProductStockLedger stockLedger)
         {
             _db = db;
             _unitConversion = unitConversion;
+            _stockLedger = stockLedger;
         }
 
         // =============================================================
@@ -341,6 +344,29 @@ namespace Manufacture.Services
             return true;
         }
 
+        public string GenerateRecipeCode(int productionProductTypeId, int? excludeRecipeId = null)
+        {
+            var productType = _db.ProductionProductTypes
+                .AsNoTracking()
+                .FirstOrDefault(p => p.Id == productionProductTypeId)
+                ?? throw new InvalidOperationException("Select a valid product type.");
+
+            var prefix = RecipeCodeGenerator.PrefixFor(productType.Name);
+            var codePrefix = $"{prefix}-";
+
+            var query = _db.Recipes
+                .AsNoTracking()
+                .Where(r => r.Code.StartsWith(codePrefix));
+
+            if (excludeRecipeId.HasValue)
+            {
+                query = query.Where(r => r.Id != excludeRecipeId.Value);
+            }
+
+            var existingCodes = query.Select(r => r.Code).ToList();
+            return RecipeCodeGenerator.NextCode(prefix, existingCodes);
+        }
+
         public string? GetRecipeDeleteBlocker(int id)
         {
             var recipeName = _db.Recipes
@@ -352,8 +378,11 @@ namespace Manufacture.Services
 
             var links = new List<string>();
 
-            var batches = _db.ProductionBatches.Count(b => b.RecipeId == id);
-            if (batches > 0) links.Add($"{batches} production batch{(batches == 1 ? string.Empty : "es")}");
+            var batches = _db.ProductionBatchItems.Count(b => b.RecipeId == id);
+            if (batches > 0) links.Add($"{batches} production batch line{(batches == 1 ? string.Empty : "s")}");
+
+            var stockRows = _db.ProductRepositoryStocks.Count(s => s.RecipeId == id);
+            if (stockRows > 0) links.Add($"{stockRows} product repository stock record{(stockRows == 1 ? string.Empty : "s")}");
 
             var orderItems = _db.OrderItems.Count(i => i.RecipeId == id);
             if (orderItems > 0) links.Add($"{orderItems} order line{(orderItems == 1 ? string.Empty : "s")}");
@@ -363,9 +392,6 @@ namespace Manufacture.Services
 
             var returns = _db.CustomerReturns.Count(r => r.RecipeId == id);
             if (returns > 0) links.Add($"{returns} customer return{(returns == 1 ? string.Empty : "s")}");
-
-            var routeSheetItems = _db.RouteSheetItems.Count(i => i.RecipeId == id);
-            if (routeSheetItems > 0) links.Add($"{routeSheetItems} route sheet line{(routeSheetItems == 1 ? string.Empty : "s")}");
 
             var accountPrices = _db.SupermarketAccountPrices.Count(p => p.RecipeId == id);
             if (accountPrices > 0) links.Add($"{accountPrices} supermarket price entr{(accountPrices == 1 ? "y" : "ies")}");
@@ -469,6 +495,8 @@ namespace Manufacture.Services
             return _db.ProductionBatches
                 .AsNoTracking()
                 .Include(b => b.Recipe)
+                .Include(b => b.ProductionBatchItems)
+                .ThenInclude(i => i.Recipe)
                 .Include(b => b.ProductionProductType)
                 .ThenInclude(p => p!.ProductionCategory)
                 .OrderByDescending(b => b.Id)
@@ -482,6 +510,8 @@ namespace Manufacture.Services
             var entity = _db.ProductionBatches
                 .AsNoTracking()
                 .Include(b => b.Recipe)
+                .Include(b => b.ProductionBatchItems)
+                .ThenInclude(i => i.Recipe)
                 .Include(b => b.ProductionProductType)
                 .ThenInclude(p => p!.ProductionCategory)
                 .FirstOrDefault(b => b.Id == id);
@@ -489,53 +519,108 @@ namespace Manufacture.Services
             return entity == null ? null : MapBatch(entity);
         }
 
-        public ProductionBatch CreateBatch(ProductionBatchDto dto, string loggedBy)
+        public ProductionBatch CreateBatch(ProductionBatchCreateDto dto, string loggedBy)
         {
-            var recipe = GetRecipeById(dto.RecipeId)
-                ?? throw new InvalidOperationException("Recipe not found.");
+            var lines = (dto.Lines ?? new List<ProductionBatchLineInputDto>())
+                .Where(l => l.RecipeId > 0 && l.TargetQuantity > 0)
+                .ToList();
 
-            var inputQty = dto.BatchInputQuantity > 0m ? dto.BatchInputQuantity : 1m;
-            var actualQuantity = Math.Max(0, dto.ActualQuantity ?? 0);
-            var totalMaterialCost = CalculateBatchMaterialCost(recipe.Id, inputQty);
-            var plannedYield = (int)(recipe.ExpectedYield * inputQty);
-            var expectedUnitCost = plannedYield > 0 ? Math.Round(totalMaterialCost / plannedYield, 2) : 0m;
-            var calculatedUnitCost = actualQuantity > 0
-                ? Math.Round(totalMaterialCost / actualQuantity, 2)
-                : 0m;
+            if (lines.Count == 0)
+            {
+                throw new InvalidOperationException("Add at least one product recipe and target quantity.");
+            }
 
-            var entity = new ProductionBatchEntity
+            if (lines.Select(l => l.RecipeId).Distinct().Count() != lines.Count)
+            {
+                throw new InvalidOperationException("Each product recipe can only appear once in a batch.");
+            }
+
+            var recipeIds = lines.Select(l => l.RecipeId).ToList();
+            var recipes = _db.Recipes
+                .Include(r => r.ProductionProductType)
+                .ThenInclude(p => p!.ProductionCategory)
+                .Where(r => recipeIds.Contains(r.Id) && r.IsActive)
+                .ToList()
+                .ToDictionary(r => r.Id);
+
+            if (recipes.Count != recipeIds.Count)
+            {
+                throw new InvalidOperationException("One or more selected recipes are missing or inactive.");
+            }
+
+            var now = DateTime.UtcNow;
+            var batch = new ProductionBatchEntity
             {
                 BatchNumber = GenerateBatchNumber(),
-                RecipeId = recipe.Id,
-                RecipeName = recipe.Name,
-                ProductionProductTypeId = recipe.ProductionProductTypeId,
-                BatchInputQuantity = inputQty,
-                BatchInputUnitLabel = string.IsNullOrWhiteSpace(dto.BatchInputUnitLabel) ? recipe.Baseline : dto.BatchInputUnitLabel,
-                OutputUnitLabel = string.IsNullOrWhiteSpace(dto.OutputUnitLabel) ? recipe.OutputUnit : dto.OutputUnitLabel,
-                TargetQuantity = dto.TargetQuantity > 0 ? dto.TargetQuantity : plannedYield,
-                TargetOrderQuantity = dto.TargetOrderQuantity,
-                LinkedOrderId = dto.LinkedOrderId,
-                LinkedOrderNumber = dto.LinkedOrderNumber,
-                CustomerName = dto.CustomerName,
-                ActualQuantity = actualQuantity,
-                Shift = dto.Shift,
-                BakerInCharge = dto.BakerInCharge,
-                FlourBagsUsed = recipe.CategoryName.Contains("Bread", StringComparison.OrdinalIgnoreCase) ? inputQty : 0m,
-                Status = Enum.TryParse<BatchStatus>(dto.Status, true, out var parsed) ? (int)parsed : (int)BatchStatus.Completed,
-                ProductionDate = dto.ProductionDate == default ? DateTime.UtcNow : dto.ProductionDate,
-                LoggedBy = loggedBy,
+                Shift = string.IsNullOrWhiteSpace(dto.Shift) ? "Morning Shift" : dto.Shift.Trim(),
+                BakerInCharge = NormalizeRequired(dto.BakerInCharge, "Baker / operator"),
+                ProductionDate = dto.ProductionDate == default ? now : dto.ProductionDate,
+                LoggedBy = string.IsNullOrWhiteSpace(loggedBy) ? "Production Manager" : loggedBy,
                 Notes = dto.Notes?.Trim() ?? string.Empty,
-                TotalBatchCost = totalMaterialCost,
-                ExpectedUnitCost = expectedUnitCost,
-                CalculatedUnitCost = calculatedUnitCost,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                Status = (int)BatchStatus.Planned,
+                TargetQuantity = 0,
+                ActualQuantity = 0,
+                CreatedAt = now,
+                UpdatedAt = now
             };
 
-            _db.ProductionBatches.Add(entity);
+            decimal totalCost = 0m;
+            decimal totalInput = 0m;
+            decimal flourBags = 0m;
+
+            foreach (var line in lines)
+            {
+                var recipe = recipes[line.RecipeId];
+                var inputQty = recipe.ExpectedYield > 0m
+                    ? Math.Round(line.TargetQuantity / recipe.ExpectedYield, 3)
+                    : 1m;
+                var lineCost = CalculateBatchMaterialCost(recipe.Id, inputQty);
+                var expectedUnitCost = line.TargetQuantity > 0
+                    ? Math.Round(lineCost / line.TargetQuantity, 4)
+                    : 0m;
+
+                batch.ProductionBatchItems.Add(new ProductionBatchItemEntity
+                {
+                    RecipeId = recipe.Id,
+                    RecipeName = recipe.Name,
+                    ProductCode = recipe.Code,
+                    TargetQuantity = line.TargetQuantity,
+                    ActualQuantity = 0,
+                    BatchInputQuantity = inputQty,
+                    BatchInputUnitLabel = recipe.ProductionProductType?.Baseline ?? recipe.OutputUnit,
+                    OutputUnitLabel = recipe.OutputUnit,
+                    TotalBatchCost = lineCost,
+                    ExpectedUnitCost = expectedUnitCost,
+                    CalculatedUnitCost = 0m,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
+
+                totalCost += lineCost;
+                totalInput += inputQty;
+                if ((recipe.ProductionProductType?.ProductionCategory?.Name ?? string.Empty)
+                    .Contains("Bread", StringComparison.OrdinalIgnoreCase))
+                {
+                    flourBags += inputQty;
+                }
+            }
+
+            var firstRecipe = recipes[lines[0].RecipeId];
+            batch.RecipeId = firstRecipe.Id;
+            batch.RecipeName = lines.Count == 1 ? firstRecipe.Name : $"{firstRecipe.Name} + {lines.Count - 1} more";
+            batch.ProductionProductTypeId = firstRecipe.ProductionProductTypeId;
+            batch.TargetQuantity = lines.Sum(l => l.TargetQuantity);
+            batch.BatchInputQuantity = totalInput;
+            batch.BatchInputUnitLabel = firstRecipe.ProductionProductType?.Baseline ?? firstRecipe.OutputUnit;
+            batch.OutputUnitLabel = firstRecipe.OutputUnit;
+            batch.FlourBagsUsed = flourBags;
+            batch.TotalBatchCost = Math.Round(totalCost, 2);
+            batch.ExpectedUnitCost = batch.TargetQuantity > 0 ? Math.Round(totalCost / batch.TargetQuantity, 4) : 0m;
+
+            _db.ProductionBatches.Add(batch);
             _db.SaveChanges();
 
-            return GetBatchById(entity.Id)!;
+            return GetBatchById(batch.Id)!;
         }
 
         public ProductionBatch LogDailyProduction(DailyProductionEntryDto dto, string loggedBy)
@@ -543,46 +628,19 @@ namespace Manufacture.Services
             var recipe = GetRecipeById(dto.RecipeId)
                 ?? throw new InvalidOperationException("Recipe not found.");
 
-            var inputQty = dto.BatchInputQuantity > 0m ? dto.BatchInputQuantity : 1m;
-            var totalMaterialCost = CalculateBatchMaterialCost(recipe.Id, inputQty);
-            var plannedYield = (int)(recipe.ExpectedYield * inputQty);
-            var expectedUnitCost = plannedYield > 0 ? Math.Round(totalMaterialCost / plannedYield, 2) : 0m;
-            var calculatedUnitCost = dto.ActualYield > 0
-                ? Math.Round(totalMaterialCost / dto.ActualYield, 2)
-                : 0m;
-
-            var entity = new ProductionBatchEntity
+            var plannedYield = (int)(recipe.ExpectedYield * (dto.BatchInputQuantity > 0m ? dto.BatchInputQuantity : 1m));
+            var target = dto.TargetOrderQuantity > 0 ? dto.TargetOrderQuantity : plannedYield;
+            var batch = CreateBatch(new ProductionBatchCreateDto
             {
-                BatchNumber = GenerateBatchNumber(),
-                RecipeId = recipe.Id,
-                RecipeName = recipe.Name,
-                ProductionProductTypeId = recipe.ProductionProductTypeId,
-                BatchInputQuantity = inputQty,
-                BatchInputUnitLabel = string.IsNullOrWhiteSpace(dto.BatchInputUnitLabel) ? recipe.Baseline : dto.BatchInputUnitLabel,
-                OutputUnitLabel = recipe.OutputUnit,
-                TargetQuantity = dto.TargetOrderQuantity > 0 ? dto.TargetOrderQuantity : plannedYield,
-                TargetOrderQuantity = dto.TargetOrderQuantity,
-                LinkedOrderId = dto.LinkedOrderId,
-                LinkedOrderNumber = dto.LinkedOrderNumber,
-                CustomerName = dto.CustomerName,
-                ActualQuantity = dto.ActualYield,
                 Shift = dto.Shift,
                 BakerInCharge = string.IsNullOrWhiteSpace(dto.BakerInCharge) ? loggedBy : dto.BakerInCharge,
-                FlourBagsUsed = recipe.CategoryName.Contains("Bread", StringComparison.OrdinalIgnoreCase) ? inputQty : 0m,
-                Status = (int)BatchStatus.Completed,
                 ProductionDate = DateTime.UtcNow,
-                LoggedBy = loggedBy,
-                Notes = dto.Notes?.Trim() ?? string.Empty,
-                TotalBatchCost = totalMaterialCost,
-                ExpectedUnitCost = expectedUnitCost,
-                CalculatedUnitCost = calculatedUnitCost,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+                Notes = dto.Notes ?? string.Empty,
+                Lines = { new ProductionBatchLineInputDto { RecipeId = recipe.Id, TargetQuantity = Math.Max(1, target) } }
+            }, loggedBy);
 
-            _db.ProductionBatches.Add(entity);
-            _db.SaveChanges();
-            return GetBatchById(entity.Id)!;
+            var lineId = batch.Lines.First().Id;
+            return RecordBatchActuals(batch.Id, new Dictionary<int, int> { [lineId] = dto.ActualYield }, loggedBy)!;
         }
 
         public bool UpdateBatchStatus(int id, BatchStatus status, int actualQuantity)
@@ -596,54 +654,91 @@ namespace Manufacture.Services
             return true;
         }
 
-        public ProductionBatch? RecordBatchActualOutput(
+        public ProductionBatch? RecordBatchActuals(
             int id,
-            int actualQuantity,
-            BatchStatus status,
-            string? notes = null,
-            string? bakerInCharge = null)
+            IReadOnlyDictionary<int, int> actualQuantitiesByLineId,
+            string recordedBy)
         {
             var entity = _db.ProductionBatches
-                .Include(b => b.Recipe)
+                .Include(b => b.ProductionBatchItems)
+                .ThenInclude(i => i.Recipe)
                 .Include(b => b.ProductionProductType)
                 .ThenInclude(p => p!.ProductionCategory)
                 .FirstOrDefault(b => b.Id == id);
 
             if (entity == null) return null;
 
-            entity.ActualQuantity = actualQuantity;
-            entity.Status = (int)status;
-            if (!string.IsNullOrWhiteSpace(notes))
+            if (entity.Status is (int)BatchStatus.Completed or (int)BatchStatus.Cancelled)
             {
-                entity.Notes = string.IsNullOrWhiteSpace(entity.Notes)
-                    ? notes.Trim()
-                    : $"{entity.Notes} | Output Log: {notes.Trim()}";
+                throw new InvalidOperationException("Actual output has already been recorded for this batch.");
             }
-            if (!string.IsNullOrWhiteSpace(bakerInCharge))
-                entity.BakerInCharge = bakerInCharge.Trim();
 
-            var inputQty = entity.BatchInputQuantity > 0m ? entity.BatchInputQuantity : 1m;
-            if (entity.TotalBatchCost <= 0m)
-                entity.TotalBatchCost = CalculateBatchMaterialCost(entity.RecipeId, inputQty);
+            var repository = _db.ProductRepositories
+                .FirstOrDefault(r => r.IsDefaultProductionOutput && r.IsActive)
+                ?? throw new InvalidOperationException("Set a default factory product repository before recording output.");
 
-            var recipe = MapRecipe(entity.Recipe);
-            var plannedYield = (int)(recipe.ExpectedYield * inputQty);
-            if (entity.ExpectedUnitCost <= 0m && plannedYield > 0)
-                entity.ExpectedUnitCost = Math.Round(entity.TotalBatchCost / plannedYield, 2);
+            var now = DateTime.UtcNow;
+            var actor = string.IsNullOrWhiteSpace(recordedBy) ? "Production Manager" : recordedBy.Trim();
 
-            entity.CalculatedUnitCost = actualQuantity > 0
-                ? Math.Round(entity.TotalBatchCost / actualQuantity, 2)
+            using var transaction = _db.Database.BeginTransaction();
+
+            foreach (var line in entity.ProductionBatchItems)
+            {
+                if (!actualQuantitiesByLineId.TryGetValue(line.Id, out var actual))
+                {
+                    actual = line.ActualQuantity;
+                }
+
+                if (actual < 0)
+                {
+                    throw new InvalidOperationException($"Actual output for '{line.RecipeName}' cannot be negative.");
+                }
+
+                line.ActualQuantity = actual;
+                line.ActualRecordedAt = now;
+                line.CalculatedUnitCost = actual > 0
+                    ? Math.Round(line.TotalBatchCost / actual, 4)
+                    : 0m;
+                line.UpdatedAt = now;
+
+                if (actual > 0)
+                {
+                    _stockLedger.ApplyAsync(
+                        repository.Id,
+                        line.RecipeId,
+                        ProductStockMovementType.ProductionIn,
+                        actual,
+                        "ProductionBatch",
+                        entity.Id,
+                        entity.BatchNumber,
+                        actor,
+                        $"Production output � {line.RecipeName}",
+                        default).GetAwaiter().GetResult();
+                }
+            }
+
+            entity.ActualQuantity = entity.ProductionBatchItems.Sum(i => i.ActualQuantity);
+            entity.TotalBatchCost = entity.ProductionBatchItems.Sum(i => i.TotalBatchCost);
+            entity.CalculatedUnitCost = entity.ActualQuantity > 0
+                ? Math.Round(entity.TotalBatchCost / entity.ActualQuantity, 4)
                 : 0m;
-            entity.UpdatedAt = DateTime.UtcNow;
+            entity.ExpectedUnitCost = entity.TargetQuantity > 0
+                ? Math.Round(entity.TotalBatchCost / entity.TargetQuantity, 4)
+                : 0m;
+            entity.Status = (int)BatchStatus.Completed;
+            entity.CompletedAt = now;
+            entity.UpdatedAt = now;
+
             _db.SaveChanges();
+            transaction.Commit();
 
             return GetBatchById(entity.Id);
         }
-
         public List<ProductionDefectDto> GetBatchDefects(int batchId)
         {
             return _db.ProductionDefects
                 .AsNoTracking()
+                .Include(defect => defect.Recipe)
                 .Where(defect => defect.ProductionBatchId == batchId)
                 .OrderByDescending(defect => defect.RecordedAt)
                 .ThenByDescending(defect => defect.Id)
@@ -654,15 +749,33 @@ namespace Manufacture.Services
 
         public ProductionDefectDto? SaveBatchDefects(
             int batchId,
+            int recipeId,
             int quantity,
             string? reason,
             string recordedBy)
         {
-            var batch = _db.ProductionBatches.FirstOrDefault(candidate => candidate.Id == batchId);
+            var batch = _db.ProductionBatches
+                .Include(b => b.ProductionBatchItems)
+                .FirstOrDefault(candidate => candidate.Id == batchId);
             if (batch == null || quantity < 0) return null;
 
+            var targetRecipeId = recipeId > 0
+                ? recipeId
+                : batch.ProductionBatchItems.Select(i => i.RecipeId).FirstOrDefault();
+
+            if (targetRecipeId <= 0)
+            {
+                return null;
+            }
+
+            if (batch.ProductionBatchItems.Count > 0
+                && !batch.ProductionBatchItems.Any(i => i.RecipeId == targetRecipeId))
+            {
+                throw new InvalidOperationException("Select a product that belongs to this batch.");
+            }
+
             var defects = _db.ProductionDefects
-                .Where(defect => defect.ProductionBatchId == batchId)
+                .Where(defect => defect.ProductionBatchId == batchId && defect.RecipeId == targetRecipeId)
                 .OrderBy(defect => defect.Id)
                 .ToList();
 
@@ -695,7 +808,7 @@ namespace Manufacture.Services
                 entity = new ProductionDefectEntity
                 {
                     ProductionBatchId = batchId,
-                    RecipeId = batch.RecipeId,
+                    RecipeId = targetRecipeId,
                     CreatedAt = now
                 };
                 _db.ProductionDefects.Add(entity);
@@ -1341,6 +1454,8 @@ namespace Manufacture.Services
             {
                 Id = entity.Id,
                 BatchId = entity.ProductionBatchId,
+                RecipeId = entity.RecipeId,
+                ProductName = entity.Recipe?.Name ?? string.Empty,
                 Quantity = entity.Quantity,
                 DefectReason = entity.DefectReason,
                 RecordedAt = entity.RecordedAt,
@@ -1352,6 +1467,48 @@ namespace Manufacture.Services
         {
             var productType = entity.ProductionProductType;
             var category = productType?.ProductionCategory;
+            var lines = entity.ProductionBatchItems
+                .OrderBy(i => i.Id)
+                .Select(i => new ProductionBatchLine
+                {
+                    Id = i.Id,
+                    BatchId = i.ProductionBatchId,
+                    RecipeId = i.RecipeId,
+                    RecipeName = i.RecipeName,
+                    ProductCode = i.ProductCode,
+                    TargetQuantity = i.TargetQuantity,
+                    ActualQuantity = i.ActualQuantity,
+                    BatchInputQuantity = i.BatchInputQuantity,
+                    BatchInputUnitLabel = i.BatchInputUnitLabel,
+                    OutputUnitLabel = i.OutputUnitLabel,
+                    TotalBatchCost = i.TotalBatchCost,
+                    ExpectedUnitCost = i.ExpectedUnitCost,
+                    CalculatedUnitCost = i.CalculatedUnitCost,
+                    ActualRecordedAt = i.ActualRecordedAt
+                })
+                .ToList();
+
+            if (lines.Count == 0 && entity.Recipe != null)
+            {
+                lines.Add(new ProductionBatchLine
+                {
+                    Id = 0,
+                    BatchId = entity.Id,
+                    RecipeId = entity.Recipe.Id,
+                    RecipeName = entity.RecipeName,
+                    ProductCode = entity.Recipe.Code,
+                    TargetQuantity = entity.TargetQuantity,
+                    ActualQuantity = entity.ActualQuantity,
+                    BatchInputQuantity = entity.BatchInputQuantity,
+                    BatchInputUnitLabel = entity.BatchInputUnitLabel,
+                    OutputUnitLabel = entity.OutputUnitLabel,
+                    TotalBatchCost = entity.TotalBatchCost,
+                    ExpectedUnitCost = entity.ExpectedUnitCost,
+                    CalculatedUnitCost = entity.CalculatedUnitCost,
+                    ActualRecordedAt = entity.Status == (int)BatchStatus.Completed ? entity.CompletedAt : null
+                });
+            }
+
             return new ProductionBatch
             {
                 Id = entity.Id,
@@ -1364,6 +1521,7 @@ namespace Manufacture.Services
                 CategoryName = category?.Name ?? string.Empty,
                 TargetQuantity = entity.TargetQuantity,
                 ActualQuantity = entity.ActualQuantity,
+                Lines = lines,
                 Shift = entity.Shift,
                 BakerInCharge = entity.BakerInCharge,
                 FlourBagsUsed = entity.FlourBagsUsed,
@@ -1377,6 +1535,7 @@ namespace Manufacture.Services
                 CustomerName = entity.CustomerName,
                 Status = (BatchStatus)entity.Status,
                 ProductionDate = entity.ProductionDate,
+                CompletedAt = entity.CompletedAt,
                 Notes = entity.Notes,
                 TotalBatchCost = entity.TotalBatchCost,
                 CalculatedUnitCost = entity.CalculatedUnitCost,

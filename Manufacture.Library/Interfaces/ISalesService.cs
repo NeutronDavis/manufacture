@@ -50,9 +50,7 @@ namespace Manufacture.Library.Interfaces
 
         Task<bool> AssignOrderSalesRepAsync(int orderId, int? salesRepId, CancellationToken cancellationToken = default);
 
-        Task<bool> MarkPrintedForLoadingAsync(int orderId, CancellationToken cancellationToken = default);
-
-        Task<bool> VerifyAndDispatchAsync(int orderId, string loaderName, CancellationToken cancellationToken = default);
+        Task<bool> DeductAndCompleteOrderAsync(int orderId, string performedBy, CancellationToken cancellationToken = default);
 
         Task<List<OrderPayment>> GetOrderPaymentsAsync(int orderId, CancellationToken cancellationToken = default);
 
@@ -73,24 +71,6 @@ namespace Manufacture.Library.Interfaces
         Task<bool> ToggleSupermarketStatusAsync(int id, CancellationToken cancellationToken = default);
 
         Task<bool> FulfillSupermarketOrderAsync(int accountId, int repId, List<OrderItemDto> items, string notes, CancellationToken cancellationToken = default);
-
-        Task<List<DailyRepRouteSheet>> GetRouteSheetsAsync(DateTime? date = null, int? repId = null, RouteSheetStatus? status = null, CancellationToken cancellationToken = default);
-
-        Task<DailyRepRouteSheet?> GetRouteSheetAsync(int id, CancellationToken cancellationToken = default);
-
-        Task<DailyRepRouteSheet> CreateRouteSheetAsync(int repId, DateTime date, Dictionary<int, int>? requestedQuantities = null, IReadOnlyCollection<int>? supermarketAccountIds = null, int? fleetDispatchId = null, CancellationToken cancellationToken = default);
-
-        Task<bool> UpdateRouteSheetSupermarketsAsync(int sheetId, IReadOnlyCollection<int> accountIds, CancellationToken cancellationToken = default);
-
-        Task<bool> SaveRouteSheetSupermarketDebtsAsync(int routeSheetId, IReadOnlyDictionary<int, decimal> debtAmounts, IReadOnlyCollection<int> settledAccountIds, string recordedBy, CancellationToken cancellationToken = default);
-
-        Task<List<SalesRepRouteDebtorDto>> GetSalesRepRouteDebtorsAsync(int salesRepId, CancellationToken cancellationToken = default);
-
-        Task<bool> SignOffDispatchAsync(int sheetId, Dictionary<int, int> loadedQuantities, string dispatcherName, string notes, CancellationToken cancellationToken = default);
-
-        Task<bool> ReconcileDailyRepAccountAsync(ReconciliationInputDto input, CancellationToken cancellationToken = default);
-
-        Task<bool> DeleteRouteSheetAsync(int sheetId, string deletedBy, CancellationToken cancellationToken = default);
 
         Task<List<CustomerReturn>> GetCustomerReturnsAsync(DateTime? date = null, int? salesRepId = null, CancellationToken cancellationToken = default);
 

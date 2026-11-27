@@ -234,6 +234,32 @@ namespace Manufacture.Models.Domain
     }
 
     /// <summary>
+    /// One product line inside a production batch.
+    /// </summary>
+    public class ProductionBatchLine
+    {
+        public int Id { get; set; }
+        public int BatchId { get; set; }
+        public int RecipeId { get; set; }
+        public string RecipeName { get; set; } = string.Empty;
+        public string ProductCode { get; set; } = string.Empty;
+        public int TargetQuantity { get; set; }
+        public int ActualQuantity { get; set; }
+        public int Variance => ActualQuantity - TargetQuantity;
+        public decimal BatchInputQuantity { get; set; }
+        public string BatchInputUnitLabel { get; set; } = string.Empty;
+        public string OutputUnitLabel { get; set; } = "units";
+        public decimal TotalBatchCost { get; set; }
+        public decimal ExpectedUnitCost { get; set; }
+        public decimal CalculatedUnitCost { get; set; }
+        public DateTime? ActualRecordedAt { get; set; }
+        public bool IsActualRecorded => ActualRecordedAt.HasValue;
+        public decimal YieldPercent => TargetQuantity > 0
+            ? Math.Round((decimal)ActualQuantity / TargetQuantity * 100m, 1)
+            : 0m;
+    }
+
+    /// <summary>
     /// A logged production run. Costing fields (<see cref="TotalBatchCost"/> and
     /// <see cref="CalculatedUnitCost"/>) are snapshotted at the moment the batch
     /// was logged so historical margins do not drift when ingredient prices change.
@@ -242,15 +268,16 @@ namespace Manufacture.Models.Domain
     {
         public int Id { get; set; }
         public string BatchNumber { get; set; } = string.Empty;
-        public int RecipeId { get; set; }
+        public int? RecipeId { get; set; }
         public string RecipeName { get; set; } = string.Empty;
         public int? ProductionProductTypeId { get; set; }
         public string ProductTypeName { get; set; } = string.Empty;
         public int? ProductionCategoryId { get; set; }
         public string CategoryName { get; set; } = string.Empty;
-        public int TargetQuantity { get; set; } // expected yield from the recipe
-        public int ActualQuantity { get; set; } // completed loaves/bags
+        public int TargetQuantity { get; set; } // aggregate of all lines
+        public int ActualQuantity { get; set; } // aggregate of all lines
         public int Variance => ActualQuantity - TargetQuantity;
+        public List<ProductionBatchLine> Lines { get; set; } = new();
         public string Shift { get; set; } = "Morning";
         public string BakerInCharge { get; set; } = string.Empty;
         public decimal FlourBagsUsed { get; set; }
@@ -264,6 +291,7 @@ namespace Manufacture.Models.Domain
         public string? CustomerName { get; set; }
         public BatchStatus Status { get; set; } = BatchStatus.Planned;
         public DateTime ProductionDate { get; set; } = DateTime.UtcNow;
+        public DateTime? CompletedAt { get; set; }
         public string Notes { get; set; } = string.Empty;
 
         // ---- Costing snapshot (doc/recipe-costing.md section 2) ----
@@ -282,5 +310,12 @@ namespace Manufacture.Models.Domain
 
         /// <summary>User who logged the daily production output.</summary>
         public string LoggedBy { get; set; } = string.Empty;
+
+        public bool IsCompleted => Status == BatchStatus.Completed;
+        public string ProductSummary => Lines.Count == 0
+            ? RecipeName
+            : Lines.Count == 1
+                ? Lines[0].RecipeName
+                : $"{Lines[0].RecipeName} + {Lines.Count - 1} more";
     }
 }

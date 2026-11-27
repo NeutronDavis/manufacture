@@ -56,25 +56,27 @@ Manufacture.Database/
 
 ### Production
 
-- `ProductionBatches` — logged production runs with costing snapshots.
+- `ProductRepositories` — factory/mall finished-goods locations and POS product directories.
+- `ProductRepositoryStocks` — per-repository product quantity and reorder threshold.
+- `ProductRepositoryMovements` — append-only finished-goods movement ledger.
+- `ProductionBatches` — logged production run headers with costing snapshots.
+- `ProductionBatchItems` — per-product target/actual output lines in a batch.
 - `ProductionDefects` — factory rejects removed before loading.
 - `StoreRequests`
 - `StoreRequestItems`
 
-### Sales and route reconciliation
+### Sales and reconciliation
 
 - `Customers`
-- `PosTerminals`
+- `PosTerminals` — POS register linked to one product repository.
 - `SalesReps` — field roster, route, POS terminal, and vehicle assignment.
-- `Orders`
+- `Orders` — POS/pre-orders with explicit stock-deduction metadata.
 - `OrderItems`
 - `SupermarketAccounts`
 - `SupermarketAccountPrices` — agreed per-product prices for an account.
 - `CustomerReturns` — prior-sale items returned by customers.
-- `DailyRepRouteSheets` — daily rep reconciliation header, optionally linked to one fleet delivery dispatch.
-- `RouteSheetItems` — per-SKU loaded, sold, closing-stock, and damaged quantities.
-- `RouteSheetSupermarkets` — supermarkets visited on a daily dispatch route.
-- `RouteSheetSupermarketDebts` — dispatch-level supermarket debt ledger (one row per route + supermarket).
+- `SalesReconciliations` — one daily reconciliation sheet per sales rep.
+- `SalesReconciliationItems` — opening, sold, damaged, replacement and closing quantities.
 
 ### Fleet and logistics
 
@@ -149,6 +151,7 @@ erDiagram
     RbacModules ||--o{ RbacRolePermissions : "is granted"
     RbacPermissionLevels ||--o{ RbacRolePermissions : "defines"
     Users ||--o{ PosTerminals : "operates"
+    ProductRepositories ||--o{ PosTerminals : "serves"
     Users ||--o{ SalesReps : "signs in as"
     Vehicles ||--o{ SalesReps : "is assigned"
     Customers ||--o{ Orders : "places"
@@ -158,15 +161,16 @@ erDiagram
     Recipes ||--o{ RecipeIngredients : "has"
     Ingredients ||--o{ RecipeIngredients : "used in"
     Recipes ||--o{ ProductionBatches : "produced as"
+    ProductionBatches ||--|{ ProductionBatchItems : "contains"
+    Recipes ||--o{ ProductionBatchItems : "produced as"
     ProductionBatches ||--o{ ProductionDefects : "yields"
-    SalesReps ||--o{ DailyRepRouteSheets : "reconciles"
-    FleetDispatches ||--o| DailyRepRouteSheets : "carries"
-    DailyRepRouteSheets ||--|{ RouteSheetItems : "contains"
-    DailyRepRouteSheets ||--o{ RouteSheetSupermarkets : "visits"
-    SupermarketAccounts ||--o{ RouteSheetSupermarkets : "is visited on"
-    DailyRepRouteSheets ||--o{ RouteSheetSupermarketDebts : "records"
-    SupermarketAccounts ||--o{ RouteSheetSupermarketDebts : "owes"
-    Recipes ||--o{ RouteSheetItems : "loaded/sold as"
+    ProductRepositories ||--o{ ProductRepositoryStocks : "holds"
+    Recipes ||--o{ ProductRepositoryStocks : "stocked as"
+    ProductRepositories ||--o{ ProductRepositoryMovements : "receives"
+    Recipes ||--o{ ProductRepositoryMovements : "moves"
+    SalesReps ||--o{ SalesReconciliations : "reconciles"
+    SalesReconciliations ||--|{ SalesReconciliationItems : "contains"
+    Recipes ||--o{ SalesReconciliationItems : "reconciled as"
     Recipes ||--o{ CustomerReturns : "returned as"
     Customers ||--o{ SupermarketAccounts : "has"
     SupermarketAccounts ||--o{ SupermarketAccountPrices : "agrees"

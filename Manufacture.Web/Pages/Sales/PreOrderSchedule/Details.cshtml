@@ -82,7 +82,7 @@
                     <div>
                         <div class="text-[10px] uppercase font-bold opacity-60">Operational Status</div>
                         <div class="mt-0.5">
-                            <span class="badge @(order.Status == OrderStatus.Dispatched ? "badge-neutral" : order.Status == OrderStatus.ReadyToLoad ? "badge-info" : order.Status == OrderStatus.InProduction ? "badge-warning" : "badge-ghost") badge-sm font-bold">
+                            <span class="badge @(order.Status == OrderStatus.Completed ? "badge-success" : order.Status == OrderStatus.ReadyToLoad ? "badge-info" : order.Status == OrderStatus.InProduction ? "badge-warning" : "badge-ghost") badge-sm font-bold">
                                 @order.Status
                             </span>
                         </div>
@@ -144,9 +144,9 @@
                 @{
                     var status = order.Status;
                     var booked = true;
-                    var inProduction = status is OrderStatus.InProduction or OrderStatus.ReadyToLoad or OrderStatus.Dispatched;
-                    var readyToLoad = status is OrderStatus.ReadyToLoad or OrderStatus.Dispatched;
-                    var dispatched = status == OrderStatus.Dispatched;
+                    var inProduction = status is OrderStatus.InProduction or OrderStatus.ReadyToLoad or OrderStatus.Completed;
+                    var readyToLoad = status is OrderStatus.ReadyToLoad or OrderStatus.Completed;
+                    var collected = order.StockDeductedAt != null;
                 }
 
                 <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
@@ -166,18 +166,18 @@
                         </div>
                         <div class="text-[10px] opacity-60 mt-1">@(readyToLoad ? "Loading slip available" : "Pending loading")</div>
                     </div>
-                    <div class="rounded-xl border p-3 @(dispatched ? "border-neutral/30 bg-neutral/5" : "border-base-300 bg-base-200/40 opacity-60")">
-                        <div class="font-bold flex items-center gap-1.5 @(dispatched ? "text-base-content" : "opacity-70")">
-                            <i class="fa-solid fa-truck-fast"></i> Dispatched
+                    <div class="rounded-xl border p-3 @(collected ? "border-neutral/30 bg-neutral/5" : "border-base-300 bg-base-200/40 opacity-60")">
+                        <div class="font-bold flex items-center gap-1.5 @(collected ? "text-base-content" : "opacity-70")">
+                            <i class="fa-solid fa-truck-fast"></i> Collected &amp; Deducted
                         </div>
                         <div class="text-[10px] opacity-60 mt-1">
-                            @if (dispatched)
+                            @if (collected)
                             {
-                                @(string.IsNullOrWhiteSpace(order.VerifiedByLoaderName) ? "Out for delivery" : $"Signed by {order.VerifiedByLoaderName}")
+                                @($"Stock deducted {order.StockDeductedAt:yyyy-MM-dd HH:mm}")
                             }
                             else
                             {
-                                <text>Out for delivery</text>
+                                <text>Awaiting collection</text>
                             }
                         </div>
                     </div>

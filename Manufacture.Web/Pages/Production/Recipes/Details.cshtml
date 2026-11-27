@@ -99,9 +99,10 @@
             <div class="stat-figure text-base-content text-2xl"><i class="fa-solid fa-wheat-awn"></i></div>
             <div class="stat-title text-[10px] uppercase font-bold opacity-60">Raw Ingredients</div>
             <div class="stat-value text-2xl font-black font-mono text-base-content">
-                ₦@Model.Costing.IngredientsCostPerUnit.ToString("N2")
+                @Model.Costing.Lines.Count components
+                
             </div>
-            <div class="stat-desc opacity-70">@Model.Costing.Lines.Count components</div>
+            @* <div class="stat-desc opacity-70"> components</div> *@
         </div>
 
         <div class="stat p-5">

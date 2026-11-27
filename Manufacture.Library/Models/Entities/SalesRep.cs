@@ -35,13 +35,13 @@ public partial class SalesRep
 
     public virtual ICollection<CustomerReturn> CustomerReturns { get; set; } = new List<CustomerReturn>();
 
-    public virtual ICollection<DailyRepRouteSheet> DailyRepRouteSheets { get; set; } = new List<DailyRepRouteSheet>();
-
     public virtual Employee? Employee { get; set; }
 
     public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
 
     public virtual PosTerminal? PosTerminal { get; set; }
+
+    public virtual ICollection<SalesReconciliation> SalesReconciliations { get; set; } = new List<SalesReconciliation>();
 
     public virtual ICollection<SupermarketAccount> SupermarketAccounts { get; set; } = new List<SupermarketAccount>();
 

@@ -1,0 +1,68 @@
+@page
+@using Manufacture.Models.DTOs
+@model Manufacture.Pages.Production.Repositories.CreateModel
+@{
+    ViewData["Title"] = "New Product Repository";
+}
+
+<div class="max-w-2xl mx-auto space-y-5">
+    <div>
+        <div class="text-xs opacity-60 mb-1">
+            <a asp-page="/Production/Repositories/Index" class="hover:underline">Product Repositories</a>
+            <span>&gt;</span>
+            <span class="text-primary font-bold">New</span>
+        </div>
+        <h1 class="text-2xl font-black tracking-tight">New Product Repository</h1>
+        <p class="text-xs opacity-70 mt-0.5">Create a factory or mall location that holds finished products and acts as a POS product directory.</p>
+    </div>
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-error rounded-2xl text-sm">
+            @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+            {
+                <div>@error.ErrorMessage</div>
+            }
+        </div>
+    }
+
+    <form method="post" class="card bg-base-100 border border-base-300 rounded-2xl">
+        <div class="card-body p-5 space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <label class="form-control">
+                    <span class="label-text text-[10px] font-bold uppercase opacity-60">Repository Code *</span>
+                    <input asp-for="Input.Code" class="input input-sm input-bordered rounded-xl font-mono" placeholder="e.g. MALL-01" required />
+                </label>
+                <label class="form-control">
+                    <span class="label-text text-[10px] font-bold uppercase opacity-60">Repository Name *</span>
+                    <input asp-for="Input.Name" class="input input-sm input-bordered rounded-xl" placeholder="e.g. Mall Retail Store" required />
+                </label>
+                <label class="form-control">
+                    <span class="label-text text-[10px] font-bold uppercase opacity-60">Location Type</span>
+                    <select asp-for="Input.LocationType" class="select select-sm select-bordered rounded-xl">
+                        <option value="@((int)ProductRepositoryLocationType.Factory)">Factory</option>
+                        <option value="@((int)ProductRepositoryLocationType.Mall)">Mall</option>
+                    </select>
+                </label>
+                <label class="form-control">
+                    <span class="label-text text-[10px] font-bold uppercase opacity-60">Address</span>
+                    <input asp-for="Input.Address" class="input input-sm input-bordered rounded-xl" placeholder="Optional address" />
+                </label>
+            </div>
+
+            <label class="label cursor-pointer justify-start gap-3">
+                <input asp-for="Input.IsDefaultProductionOutput" type="checkbox" class="checkbox checkbox-sm checkbox-primary" />
+                <span class="label-text text-xs font-semibold">Default production output repository (factory only)</span>
+            </label>
+            <label class="label cursor-pointer justify-start gap-3">
+                <input asp-for="Input.IsActive" type="checkbox" class="checkbox checkbox-sm" />
+                <span class="label-text text-xs font-semibold">Active</span>
+            </label>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <a asp-page="/Production/Repositories/Index" class="btn btn-sm btn-outline rounded-xl">Cancel</a>
+                <button type="submit" class="btn btn-sm btn-primary rounded-xl font-bold">Create Repository</button>
+            </div>
+        </div>
+    </form>
+</div>

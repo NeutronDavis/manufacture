@@ -154,7 +154,7 @@
                         <i class="fa-solid fa-circle-check text-success"></i>
                     </div>
                     <div class="text-2xl font-black font-mono text-success">@dashboard.CompletedBatches</div>
-                    <div class="text-[10px] opacity-60 mt-1">Runs ready for dispatch</div>
+                    <div class="text-[10px] opacity-60 mt-1">Runs ready for output</div>
                 </div>
 
                 <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4">
@@ -412,7 +412,7 @@
                     <div class="stat-figure text-primary text-2xl"><i class="fa-solid fa-receipt"></i></div>
                     <div class="stat-title text-[10px] font-bold uppercase tracking-wider opacity-60">Completed Tickets</div>
                     <div class="stat-value text-2xl font-black font-mono text-primary">@Model.RepCompletedTickets</div>
-                    <div class="stat-desc opacity-70">Dispatched loading slips</div>
+                    <div class="stat-desc opacity-70">Receipts with stock deducted</div>
                 </div>
 
                 <div class="stat p-5">
@@ -432,89 +432,6 @@
                 </a>
             </div>
 
-            <!-- Supermarket debtors recorded on this rep's dispatch routes -->
-            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
-                <div class="flex items-center justify-between border-b border-base-200 pb-3 flex-wrap gap-2">
-                    <h2 class="font-bold text-sm text-base-content flex items-center gap-2">
-                        <i class="fa-solid fa-store text-error"></i> Supermarket Debtors by Route
-                    </h2>
-                    <div class="flex items-center gap-2">
-                        <span class="badge badge-error badge-soft badge-xs font-bold font-mono">₦@Model.MyRouteDebtors.Sum(d => d.TotalDebt).ToString("N0") owed</span>
-                        <span class="badge badge-neutral badge-xs font-mono font-bold">@Model.MyRouteDebtors.Count dispatches</span>
-                    </div>
-                </div>
-
-                <p class="text-[11px] opacity-70">
-                    Debts recorded at reconciliation for dispatches you created. Settled stores are excluded; the account balance is the store's total running credit.
-                </p>
-
-                @if (Model.MyRouteDebtors.Any())
-                {
-                    @foreach (var routeGroup in Model.MyRouteDebtors.GroupBy(d => d.RouteName))
-                    {
-                        <div class="space-y-2">
-                            <div class="flex items-center justify-between gap-2 pt-1">
-                                <h3 class="text-[11px] font-black uppercase tracking-wider text-base-content flex items-center gap-1.5">
-                                    <i class="fa-solid fa-route text-primary text-[10px]"></i> @routeGroup.Key
-                                </h3>
-                                <span class="badge badge-ghost badge-xs font-mono font-bold">₦@routeGroup.Sum(d => d.TotalDebt).ToString("N0")</span>
-                            </div>
-
-                            @foreach (var dispatch in routeGroup)
-                            {
-                                <div class="rounded-xl border border-base-300 bg-base-200/40 p-3 space-y-2">
-                                    <div class="flex items-center justify-between gap-2 flex-wrap">
-                                        <div class="flex items-center gap-2 flex-wrap">
-                                            <span class="font-mono font-bold text-xs text-base-content">@dispatch.RouteSheetRef</span>
-                                            <span class="text-[10px] opacity-60 font-mono">@dispatch.RouteDate.ToString("yyyy-MM-dd")</span>
-                                            <span class="badge badge-xs font-bold @(dispatch.Status == "Reconciled" ? "badge-success" : "badge-info")">@dispatch.Status</span>
-                                        </div>
-                                        <span class="font-mono font-bold text-xs text-error">₦@dispatch.TotalDebt.ToString("N0")</span>
-                                    </div>
-
-                                    <div class="overflow-x-auto">
-                                        <table class="table table-xs w-full text-[11px]">
-                                            <thead>
-                                                <tr class="opacity-60 uppercase text-[9px] tracking-wider">
-                                                    <th class="py-1.5 pl-2">Supermarket</th>
-                                                    <th>Contact</th>
-                                                    <th class="text-right">Dispatch Debt</th>
-                                                    <th class="text-right">Account Balance</th>
-                                                    <th class="text-right pr-2">Recorded</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody class="divide-y divide-base-200">
-                                                @foreach (var line in dispatch.Debtors)
-                                                {
-                                                    <tr class="hover:bg-base-100/60">
-                                                        <td class="py-1.5 pl-2 font-semibold text-base-content">@line.AccountName</td>
-                                                        <td class="text-[10px] opacity-70">
-                                                            @(string.IsNullOrWhiteSpace(line.ContactPerson) ? "—" : line.ContactPerson)
-                                                            @if (!string.IsNullOrWhiteSpace(line.PhoneNumber))
-                                                            {
-                                                                <span> &bull; @line.PhoneNumber</span>
-                                                            }
-                                                        </td>
-                                                        <td class="text-right font-mono font-bold text-error">₦@line.DebtAmount.ToString("N0")</td>
-                                                        <td class="text-right font-mono">₦@line.CurrentOutstandingCredit.ToString("N0")</td>
-                                                        <td class="text-right pr-2 text-[10px] opacity-60 font-mono">@line.RecordedAt.ToString("MMM dd, HH:mm")</td>
-                                                    </tr>
-                                                }
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-                    }
-                }
-                else
-                {
-                    <div class="p-4 rounded-xl bg-base-200/60 border border-base-300 text-xs opacity-70">
-                        No outstanding supermarket debts on your routes.
-                    </div>
-                }
-            </div>
         </div>
     }
 
@@ -720,7 +637,7 @@
                     s => s.Periods.ToDictionary(p => p.Key, p => p.Value)),
                 json));
 
-            // Stage-specific grouped breakdowns (the eight lifecycle KPI cards).
+            // Stage-specific grouped breakdowns (the seven lifecycle KPI cards).
             // Shape: stageData[scope][metric][period] -> { rows, total, ... }
             const stageData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
                 overview.StageDrillDownScopes.ToDictionary(
@@ -748,7 +665,6 @@
             const metricLabels = {
                 'OrdersPlaced': 'Orders Placed',
                 'Produced': 'Produced',
-                'Loaded': 'Loaded',
                 'FactoryDefects': 'Factory Defects',
                 'Sold': 'Sold',
                 'Returned': 'Closing Stock',
@@ -760,7 +676,6 @@
             const metricGrouping = {
                 'OrdersPlaced': 'By Sales Rep & Product Category',
                 'Produced': 'By Product Category',
-                'Loaded': 'By Sales Rep, Vehicle & Product Category',
                 'FactoryDefects': 'By Product Category',
                 'Sold': 'By Sales Rep & Product Category',
                 'Returned': 'By Sales Rep & Product Category',
@@ -781,13 +696,6 @@
                 'Produced': [
                     { key: 'categoryLabel', label: 'Product Category', type: 'badge' },
                     { key: 'metricValue', label: 'Produced', type: 'qty', highlight: true },
-                    { key: 'sharePercent', label: 'Share', type: 'share' }
-                ],
-                'Loaded': [
-                    { key: 'groupLabel', label: 'Sales Rep', type: 'text' },
-                    { key: 'groupSubLabel', label: 'Route / Vehicle', type: 'subtext' },
-                    { key: 'categoryLabel', label: 'Product Category', type: 'badge' },
-                    { key: 'metricValue', label: 'Loaded', type: 'qty', highlight: true },
                     { key: 'sharePercent', label: 'Share', type: 'share' }
                 ],
                 'FactoryDefects': [
@@ -852,15 +760,6 @@
                     { key: 'unitLabel', label: 'Unit', type: 'subtext' },
                     { key: 'status', label: 'Status', type: 'status' }
                 ],
-                'Loaded': [
-                    { key: 'reference', label: 'Route Sheet', type: 'ref' },
-                    { key: 'product', label: 'Product', type: 'product' },
-                    { key: 'category', label: 'Category', type: 'badge' },
-                    { key: 'quantity', label: 'Loaded', type: 'qty', highlight: true },
-                    { key: 'secondaryQuantity', label: 'Requested', type: 'qty' },
-                    { key: 'amount', label: 'Stock Value', type: 'money' },
-                    { key: 'status', label: 'Dispatch', type: 'status' }
-                ],
                 'FactoryDefects': [
                     { key: 'reference', label: 'Batch #', type: 'ref' },
                     { key: 'product', label: 'Product', type: 'product' },
@@ -875,7 +774,7 @@
                     { key: 'quantity', label: 'Sold', type: 'qty', highlight: true },
                     { key: 'unitPrice', label: 'Unit Price', type: 'money' },
                     { key: 'amount', label: 'Value', type: 'money' },
-                    { key: 'status', label: 'Dispatch', type: 'status' }
+                    { key: 'status', label: 'Reconciliation', type: 'status' }
                 ],
                 'Returned': [
                     { key: 'reference', label: 'Route Sheet', type: 'ref' },
@@ -883,7 +782,7 @@
                     { key: 'category', label: 'Category', type: 'badge' },
                     { key: 'quantity', label: 'Closing Stock', type: 'qty', highlight: true },
                     { key: 'secondaryQuantity', label: 'Loaded', type: 'qty' },
-                    { key: 'status', label: 'Dispatch', type: 'status' }
+                    { key: 'status', label: 'Reconciliation', type: 'status' }
                 ],
                 'Damaged': [
                     { key: 'reference', label: 'Route Sheet', type: 'ref' },
@@ -892,7 +791,7 @@
                     { key: 'quantity', label: 'Damaged', type: 'qty', highlight: true },
                     { key: 'secondaryQuantity', label: 'Loaded', type: 'qty' },
                     { key: 'amount', label: 'Write-off Value', type: 'money' },
-                    { key: 'status', label: 'Dispatch', type: 'status' }
+                    { key: 'status', label: 'Reconciliation', type: 'status' }
                 ],
                 'CustomerReturns': [
                     { key: 'reference', label: 'Return #', type: 'ref' },

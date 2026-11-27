@@ -10,6 +10,7 @@ CREATE TABLE [dbo].[Orders]
     [SalesRepName]        NVARCHAR (150) NULL,
     [PosTerminalId]       INT            NULL,
     [PosTerminalCode]     NVARCHAR (20)  NULL,
+    [ProductRepositoryId] INT            NULL,
     [BookedByType]        INT            NOT NULL CONSTRAINT [DF_Orders_BookedByType] DEFAULT (0),
     [CreatedByUserId]     INT            NULL,
     [SubTotal]            DECIMAL (18, 2) NOT NULL CONSTRAINT [DF_Orders_SubTotal] DEFAULT (0),
@@ -23,10 +24,8 @@ CREATE TABLE [dbo].[Orders]
     [ClosedAt]            DATETIME2 (3)  NULL,
     [OrderDate]           DATETIME2 (3)  NOT NULL CONSTRAINT [DF_Orders_OrderDate] DEFAULT (SYSUTCDATETIME()),
     [TargetDeliveryDate]  DATETIME2 (3)  NOT NULL CONSTRAINT [DF_Orders_TargetDeliveryDate] DEFAULT (SYSUTCDATETIME()),
-    [IsPrintedForLoading] BIT            NOT NULL CONSTRAINT [DF_Orders_IsPrintedForLoading] DEFAULT (0),
-    [PrintedAt]           DATETIME2 (3)  NULL,
-    [VerifiedByLoaderName] NVARCHAR (150) NULL,
-    [LoadedAt]            DATETIME2 (3)  NULL,
+    [StockDeductedAt]     DATETIME2 (3)  NULL,
+    [StockDeductedBy]     NVARCHAR (150) NULL,
     [Notes]               NVARCHAR (500) NOT NULL CONSTRAINT [DF_Orders_Notes] DEFAULT (N''),
     [CreatedAt]           DATETIME2 (3)  NOT NULL CONSTRAINT [DF_Orders_CreatedAt] DEFAULT (SYSUTCDATETIME()),
     [UpdatedAt]           DATETIME2 (3)  NOT NULL CONSTRAINT [DF_Orders_UpdatedAt] DEFAULT (SYSUTCDATETIME()),
@@ -37,13 +36,14 @@ CREATE TABLE [dbo].[Orders]
     CONSTRAINT [FK_Orders_Customers] FOREIGN KEY ([CustomerId]) REFERENCES [dbo].[Customers] ([Id]),
     CONSTRAINT [FK_Orders_SalesReps] FOREIGN KEY ([SalesRepId]) REFERENCES [dbo].[SalesReps] ([Id]),
     CONSTRAINT [FK_Orders_PosTerminals] FOREIGN KEY ([PosTerminalId]) REFERENCES [dbo].[PosTerminals] ([Id]),
+    CONSTRAINT [FK_Orders_ProductRepositories] FOREIGN KEY ([ProductRepositoryId]) REFERENCES [dbo].[ProductRepositories] ([Id]),
     CONSTRAINT [FK_Orders_CreatedByUser] FOREIGN KEY ([CreatedByUserId]) REFERENCES [dbo].[Users] ([Id]),
     CONSTRAINT [CK_Orders_OrderType] CHECK ([OrderType] IN (0, 1)),
     CONSTRAINT [CK_Orders_CustomerCategory] CHECK ([CustomerCategory] IN (0, 1, 2, 3)),
     CONSTRAINT [CK_Orders_PaymentMethod] CHECK ([PaymentMethod] IN (0, 1, 2, 3)),
     CONSTRAINT [CK_Orders_PaymentStatus] CHECK ([PaymentStatus] IN (0, 1, 2)),
     CONSTRAINT [CK_Orders_BookedByType] CHECK ([BookedByType] IN (0, 1, 2)),
-    CONSTRAINT [CK_Orders_Status] CHECK ([Status] IN (0, 1, 2, 3, 4, 5)),
+    CONSTRAINT [CK_Orders_Status] CHECK ([Status] IN (0, 1, 2, 3, 4, 5, 6)),
     CONSTRAINT [CK_Orders_Amounts] CHECK ([SubTotal] >= 0 AND [Discount] >= 0 AND [Discount] <= [SubTotal] AND [AmountPaid] >= 0)
 );
 GO
@@ -63,6 +63,16 @@ GO
 
 CREATE NONCLUSTERED INDEX [IX_Orders_Status_TargetDeliveryDate]
     ON [dbo].[Orders] ([Status] ASC, [TargetDeliveryDate] ASC);
+GO
+
+CREATE NONCLUSTERED INDEX [IX_Orders_ProductRepositoryId]
+    ON [dbo].[Orders] ([ProductRepositoryId] ASC)
+    WHERE [ProductRepositoryId] IS NOT NULL;
+GO
+
+CREATE NONCLUSTERED INDEX [IX_Orders_StockDeductedAt]
+    ON [dbo].[Orders] ([StockDeductedAt] DESC)
+    WHERE [StockDeductedAt] IS NOT NULL;
 GO
 
 CREATE NONCLUSTERED INDEX [IX_Orders_PaymentStatus_OrderDate]

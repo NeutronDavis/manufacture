@@ -36,8 +36,4 @@ public partial class SupermarketAccount
     public virtual Customer Customer { get; set; } = null!;
 
     public virtual ICollection<SupermarketAccountPrice> SupermarketAccountPrices { get; set; } = new List<SupermarketAccountPrice>();
-
-    public virtual ICollection<RouteSheetSupermarket> RouteSheetSupermarkets { get; set; } = new List<RouteSheetSupermarket>();
-
-    public virtual ICollection<RouteSheetSupermarketDebt> RouteSheetSupermarketDebts { get; set; } = new List<RouteSheetSupermarketDebt>();
 }

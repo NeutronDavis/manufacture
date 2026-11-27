@@ -1,5 +1,4 @@
 using System.Security.Cryptography;
-using Manufacture.Library.Calculations;
 using Manufacture.Library.Data;
 using Manufacture.Library.Interfaces;
 using Manufacture.Models.Domain;
@@ -15,10 +14,6 @@ using OrderPaymentEntity = Manufacture.Models.Entities.OrderPayment;
 using PosTerminalEntity = Manufacture.Models.Entities.PosTerminal;
 using ProductionProductTypeEntity = Manufacture.Models.Entities.ProductionProductType;
 using RecipeEntity = Manufacture.Models.Entities.Recipe;
-using RouteSheetEntity = Manufacture.Models.Entities.DailyRepRouteSheet;
-using RouteSheetItemEntity = Manufacture.Models.Entities.RouteSheetItem;
-using RouteSheetSupermarketEntity = Manufacture.Models.Entities.RouteSheetSupermarket;
-using RouteSheetSupermarketDebtEntity = Manufacture.Models.Entities.RouteSheetSupermarketDebt;
 using SalesBonusRuleEntity = Manufacture.Models.Entities.SalesBonusRule;
 using SalesRepEntity = Manufacture.Models.Entities.SalesRep;
 using SupermarketAccountEntity = Manufacture.Models.Entities.SupermarketAccount;
@@ -29,10 +24,12 @@ namespace Manufacture.Services
     public class SalesService : ISalesService
     {
         private readonly ManufactureDbContext _db;
+        private readonly ProductStockLedger _stockLedger;
 
-        public SalesService(ManufactureDbContext db)
+        public SalesService(ManufactureDbContext db, ProductStockLedger stockLedger)
         {
             _db = db;
+            _stockLedger = stockLedger;
         }
 
         public async Task<List<Customer>> GetCustomersAsync(
@@ -95,6 +92,7 @@ namespace Manufacture.Services
                 .AsNoTracking()
                 .Include(t => t.AssignedEmployee)
                 .Include(t => t.AssignedUser)
+                .Include(t => t.ProductRepository)
                 .AsQueryable();
 
             if (!includeInactive)
@@ -112,6 +110,7 @@ namespace Manufacture.Services
                 .AsNoTracking()
                 .Include(t => t.AssignedEmployee)
                 .Include(t => t.AssignedUser)
+                .Include(t => t.ProductRepository)
                 .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
             return terminal == null ? null : MapTerminal(terminal);
         }
@@ -127,12 +126,14 @@ namespace Manufacture.Services
             }
 
             var employee = await ResolveSalesEmployeeAsync(terminal.AssignedEmployeeId, cancellationToken);
+            var repository = await ResolveProductRepositoryAsync(terminal.ProductRepositoryId, cancellationToken);
             var entity = new PosTerminalEntity
             {
                 TerminalCode = code,
                 TerminalName = NormalizeRequired(terminal.TerminalName, "Terminal name"),
                 AssignedEmployeeId = employee?.Id,
                 AssignedUserId = terminal.AssignedUserId,
+                ProductRepositoryId = repository?.Id,
                 CashAccountName = string.IsNullOrWhiteSpace(terminal.CashAccountName) ? "Bakery Cash Drawer" : terminal.CashAccountName.Trim(),
                 TransferAccountName = string.IsNullOrWhiteSpace(terminal.TransferAccountName) ? "FirstBank - 3021948291" : terminal.TransferAccountName.Trim(),
                 PosBankAccountName = string.IsNullOrWhiteSpace(terminal.PosBankAccountName) ? "Moniepoint POS - 9028129" : terminal.PosBankAccountName.Trim(),
@@ -144,6 +145,7 @@ namespace Manufacture.Services
             _db.PosTerminals.Add(entity);
             await _db.SaveChangesAsync(cancellationToken);
             entity.AssignedEmployee = employee;
+            entity.ProductRepository = repository;
             return MapTerminal(entity);
         }
 
@@ -154,6 +156,7 @@ namespace Manufacture.Services
             var entity = await _db.PosTerminals
                 .Include(t => t.AssignedEmployee)
                 .Include(t => t.AssignedUser)
+                .Include(t => t.ProductRepository)
                 .FirstOrDefaultAsync(t => t.Id == terminal.Id, cancellationToken);
 
             if (entity == null)
@@ -162,6 +165,7 @@ namespace Manufacture.Services
             }
 
             var employee = await ResolveSalesEmployeeAsync(terminal.AssignedEmployeeId, cancellationToken);
+            var repository = await ResolveProductRepositoryAsync(terminal.ProductRepositoryId, cancellationToken);
             var code = NormalizeRequired(terminal.TerminalCode, "Terminal code").ToUpperInvariant();
             if (await _db.PosTerminals.AnyAsync(t => t.TerminalCode == code && t.Id != terminal.Id, cancellationToken))
             {
@@ -173,6 +177,8 @@ namespace Manufacture.Services
             entity.AssignedEmployeeId = employee?.Id;
             entity.AssignedEmployee = employee;
             entity.AssignedUserId = terminal.AssignedUserId;
+            entity.ProductRepositoryId = repository?.Id;
+            entity.ProductRepository = repository;
             entity.CashAccountName = NormalizeRequired(terminal.CashAccountName, "Cash account name");
             entity.TransferAccountName = NormalizeRequired(terminal.TransferAccountName, "Transfer account name");
             entity.PosBankAccountName = NormalizeRequired(terminal.PosBankAccountName, "POS bank account name");
@@ -375,9 +381,25 @@ namespace Manufacture.Services
             PosTerminalEntity? terminal = null;
             if (!isVendor)
             {
-                terminal = string.IsNullOrWhiteSpace(dto.PosTerminalCode)
-                    ? null
-                    : await _db.PosTerminals.FirstOrDefaultAsync(t => t.TerminalCode == dto.PosTerminalCode, cancellationToken);
+                if (string.IsNullOrWhiteSpace(dto.PosTerminalCode))
+                {
+                    throw new InvalidOperationException("Select a POS terminal for this sale.");
+                }
+
+                terminal = await _db.PosTerminals
+                    .Include(t => t.ProductRepository)
+                    .FirstOrDefaultAsync(t => t.TerminalCode == dto.PosTerminalCode && t.IsActive, cancellationToken)
+                    ?? throw new InvalidOperationException("The selected POS terminal is not active.");
+
+                if (!terminal.ProductRepositoryId.HasValue || terminal.ProductRepository is null)
+                {
+                    throw new InvalidOperationException("Link a product repository to this terminal before selling.");
+                }
+
+                if (!terminal.ProductRepository.IsActive)
+                {
+                    throw new InvalidOperationException("The product repository linked to this terminal is inactive.");
+                }
             }
 
             SalesRepEntity? salesRep;
@@ -414,11 +436,6 @@ namespace Manufacture.Services
                 }
             }
 
-            if (!isVendor && orderType != OrderType.PreOrder && salesRep == null)
-            {
-                throw new InvalidOperationException("Select a sales representative for this order.");
-            }
-
             var paymentMethod = isVendor || orderType == OrderType.PreOrder
                 ? PaymentMethod.CreditOwing
                 : ParsePaymentMethod(dto.PaymentMethod);
@@ -432,10 +449,23 @@ namespace Manufacture.Services
             }
 
             var orderItems = new List<OrderItemEntity>();
+            var repositoryProductIds = terminal?.ProductRepositoryId is int repoId
+                ? await _db.ProductRepositoryStocks
+                    .Where(s => s.ProductRepositoryId == repoId)
+                    .Select(s => s.RecipeId)
+                    .ToListAsync(cancellationToken)
+                : new List<int>();
+
             foreach (var input in itemInputs)
             {
                 var recipe = await _db.Recipes.FirstOrDefaultAsync(r => r.Id == input.RecipeId && r.IsActive, cancellationToken)
                     ?? throw new InvalidOperationException("One or more selected products are no longer available.");
+
+                if (terminal != null && !repositoryProductIds.Contains(recipe.Id))
+                {
+                    throw new InvalidOperationException(
+                        $"'{recipe.Name}' is not part of the product directory linked to POS {terminal.TerminalCode}.");
+                }
 
                 var unitPrice = customPrices.TryGetValue(recipe.Id, out var customPrice)
                     ? customPrice
@@ -472,6 +502,7 @@ namespace Manufacture.Services
                 SalesRepName = salesRep?.FullName,
                 PosTerminalId = terminal?.Id,
                 PosTerminalCode = terminal?.TerminalCode,
+                ProductRepositoryId = terminal?.ProductRepositoryId,
                 BookedByType = isVendor ? (int)OrderBookedByType.Customer : (int)OrderBookedByType.Staff,
                 CreatedByUserId = currentUserId,
                 SubTotal = subTotal,
@@ -479,11 +510,10 @@ namespace Manufacture.Services
                 AmountPaid = amountPaid,
                 PaymentMethod = (int)paymentMethod,
                 PaymentStatus = (int)paymentStatus,
-                Status = orderType == OrderType.PreOrder ? (int)OrderStatus.Pending : (int)OrderStatus.ReadyToLoad,
-                ClosedAt = paymentStatus == OrderPaymentStatus.Completed ? DateTime.UtcNow : null,
+                Status = (int)OrderStatus.Pending,
+                ClosedAt = null,
                 OrderDate = DateTime.UtcNow,
                 TargetDeliveryDate = dto.TargetDeliveryDate == default ? DateTime.UtcNow : dto.TargetDeliveryDate,
-                IsPrintedForLoading = false,
                 Notes = dto.Notes?.Trim() ?? string.Empty,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -549,7 +579,9 @@ namespace Manufacture.Services
                 return false;
             }
 
-            if (order.Status == (int)OrderStatus.Dispatched || order.Status == (int)OrderStatus.Cancelled)
+            if (order.Status == (int)OrderStatus.Completed
+                || order.Status == (int)OrderStatus.Dispatched
+                || order.Status == (int)OrderStatus.Cancelled)
             {
                 return false;
             }
@@ -572,41 +604,69 @@ namespace Manufacture.Services
             return true;
         }
 
-        public async Task<bool> MarkPrintedForLoadingAsync(int orderId, CancellationToken cancellationToken = default)
+        public async Task<bool> DeductAndCompleteOrderAsync(
+            int orderId,
+            string performedBy,
+            CancellationToken cancellationToken = default)
         {
-            var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
+            var order = await _db.Orders
+                .Include(o => o.OrderItems)
+                .Include(o => o.PosTerminal)
+                .ThenInclude(t => t!.ProductRepository)
+                .FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
+
             if (order == null)
             {
                 return false;
             }
 
-            order.IsPrintedForLoading = true;
-            order.PrintedAt = DateTime.UtcNow;
-            if (order.Status == (int)OrderStatus.Pending || order.Status == (int)OrderStatus.InProduction)
+            if (order.StockDeductedAt.HasValue)
             {
-                order.Status = (int)OrderStatus.ReadyToLoad;
-            }
-            order.UpdatedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync(cancellationToken);
-            return true;
-        }
-
-        public async Task<bool> VerifyAndDispatchAsync(
-            int orderId,
-            string loaderName,
-            CancellationToken cancellationToken = default)
-        {
-            var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
-            if (order == null || !order.IsPrintedForLoading)
-            {
-                return false;
+                return true;
             }
 
-            order.VerifiedByLoaderName = string.IsNullOrWhiteSpace(loaderName) ? "Loading Supervisor" : loaderName.Trim();
-            order.LoadedAt = DateTime.UtcNow;
-            order.Status = (int)OrderStatus.Dispatched;
+            if (order.Status == (int)OrderStatus.Cancelled)
+            {
+                throw new InvalidOperationException("A cancelled order cannot be completed.");
+            }
+
+            var repositoryId = order.ProductRepositoryId
+                ?? order.PosTerminal?.ProductRepositoryId
+                ?? throw new InvalidOperationException("Link a product repository to this order's POS terminal before printing.");
+
+            var actor = string.IsNullOrWhiteSpace(performedBy) ? "Sales" : performedBy.Trim();
+            await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
+
+            foreach (var item in order.OrderItems)
+            {
+                var quantity = item.Quantity + item.BonusQuantity;
+                if (quantity <= 0)
+                {
+                    continue;
+                }
+
+                await _stockLedger.ApplyAsync(
+                    repositoryId,
+                    item.RecipeId,
+                    ProductStockMovementType.SaleOut,
+                    quantity,
+                    "Order",
+                    order.Id,
+                    order.OrderNumber,
+                    actor,
+                    $"POS sale {order.OrderNumber}",
+                    cancellationToken);
+            }
+
+            order.ProductRepositoryId = repositoryId;
+            order.StockDeductedAt = DateTime.UtcNow;
+            order.StockDeductedBy = actor;
+            order.Status = (int)OrderStatus.Completed;
+            order.ClosedAt = DateTime.UtcNow;
             order.UpdatedAt = DateTime.UtcNow;
+
             await _db.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
             return true;
         }
 
@@ -1029,533 +1089,6 @@ namespace Manufacture.Services
             return true;
         }
 
-        public async Task<List<DailyRepRouteSheet>> GetRouteSheetsAsync(
-            DateTime? date = null,
-            int? repId = null,
-            RouteSheetStatus? status = null,
-            CancellationToken cancellationToken = default)
-        {
-            var query = _db.DailyRepRouteSheets
-                .AsNoTracking()
-                .Include(s => s.RouteSheetItems)
-                .Include(s => s.RouteSheetSupermarkets)
-                .ThenInclude(x => x.SupermarketAccount)
-                .Include(s => s.RouteSheetSupermarketDebts)
-                .ThenInclude(x => x.SupermarketAccount)
-                .Include(s => s.SalesRep)
-                .Include(s => s.Vehicle)
-                .Include(s => s.FleetDispatch)
-                .ThenInclude(f => f!.Vehicle)
-                .AsQueryable();
-
-            if (date.HasValue)
-            {
-                var day = DateOnly.FromDateTime(date.Value);
-                query = query.Where(s => s.RouteDate == day);
-            }
-
-            if (repId.HasValue && repId.Value > 0)
-            {
-                query = query.Where(s => s.SalesRepId == repId.Value);
-            }
-
-            if (status.HasValue)
-            {
-                query = query.Where(s => s.Status == (int)status.Value);
-            }
-
-            var sheets = await query
-                .OrderByDescending(s => s.RouteDate)
-                .ThenByDescending(s => s.Id)
-                .ToListAsync(cancellationToken);
-
-            return sheets.Select(MapRouteSheet).ToList();
-        }
-
-        public async Task<DailyRepRouteSheet?> GetRouteSheetAsync(int id, CancellationToken cancellationToken = default)
-        {
-            var sheet = await _db.DailyRepRouteSheets
-                .AsNoTracking()
-                .Include(s => s.RouteSheetItems)
-                .Include(s => s.RouteSheetSupermarkets)
-                .ThenInclude(x => x.SupermarketAccount)
-                .Include(s => s.RouteSheetSupermarketDebts)
-                .ThenInclude(x => x.SupermarketAccount)
-                .Include(s => s.SalesRep)
-                .Include(s => s.Vehicle)
-                .Include(s => s.FleetDispatch)
-                .ThenInclude(f => f!.Vehicle)
-                .FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
-
-            return sheet == null ? null : MapRouteSheet(sheet);
-        }
-
-        public async Task<DailyRepRouteSheet> CreateRouteSheetAsync(
-            int repId,
-            DateTime date,
-            Dictionary<int, int>? requestedQuantities = null,
-            IReadOnlyCollection<int>? supermarketAccountIds = null,
-            int? fleetDispatchId = null,
-            CancellationToken cancellationToken = default)
-        {
-            var rep = await _db.SalesReps
-                .Include(r => r.Vehicle)
-                .Include(r => r.PosTerminal)
-                .FirstOrDefaultAsync(r => r.Id == repId, cancellationToken)
-                ?? throw new InvalidOperationException("Sales representative not found.");
-
-            var routeDate = DateOnly.FromDateTime(date);
-
-            // A sales rep may create more than one route sheet per day.
-
-            // A daily route must ride an existing, newly created delivery dispatch.
-            if (!fleetDispatchId.HasValue || fleetDispatchId.Value <= 0)
-            {
-                throw new InvalidOperationException("Select a delivery dispatch for this route sheet.");
-            }
-
-            var fleetDispatch = await _db.FleetDispatches
-                .Include(d => d.Vehicle)
-                .FirstOrDefaultAsync(d => d.Id == fleetDispatchId.Value, cancellationToken)
-                ?? throw new InvalidOperationException("The selected delivery dispatch was not found.");
-
-            if (fleetDispatch.Status != (int)FleetDispatchStatus.Planned)
-            {
-                throw new InvalidOperationException("Only planned delivery dispatches can be linked to a route sheet.");
-            }
-
-            var fleetDispatchAlreadyLinked = await _db.DailyRepRouteSheets
-                .AnyAsync(s => s.FleetDispatchId == fleetDispatch.Id, cancellationToken);
-            if (!FleetDispatchRules.IsAvailableForRouteSheet(
-                    (FleetDispatchStatus)fleetDispatch.Status,
-                    fleetDispatchAlreadyLinked))
-            {
-                throw new InvalidOperationException("That delivery dispatch is already linked to another route sheet.");
-            }
-
-            var previousSheet = await _db.DailyRepRouteSheets
-                .AsNoTracking()
-                .Include(s => s.RouteSheetItems)
-                .Include(s => s.RouteSheetSupermarkets)
-                .Where(s => s.SalesRepId == repId && s.RouteDate < routeDate)
-                .OrderByDescending(s => s.RouteDate)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            var recipes = await _db.Recipes
-                .AsNoTracking()
-                .Include(r => r.ProductionProductType)
-                .ThenInclude(p => p!.ProductionCategory)
-                .Where(r => r.IsActive)
-                .OrderBy(r => r.Name)
-                .ToListAsync(cancellationToken);
-
-            var sheet = new RouteSheetEntity
-            {
-                RouteSheetRef = await GenerateRouteSheetRefAsync(date, cancellationToken),
-                RouteDate = routeDate,
-                SalesRepId = rep.Id,
-                RouteName = rep.RouteName,
-                VehicleId = fleetDispatch.VehicleId,
-                VehicleRegistration = fleetDispatch.Vehicle?.RegistrationNumber,
-                FleetDispatchId = fleetDispatch.Id,
-                PosTerminalId = rep.PosTerminalId,
-                PosTerminalCode = rep.PosTerminal?.TerminalCode,
-                PreviousAccountBalance = 0m,
-                Status = (int)RouteSheetStatus.Ordered,
-                Notes = $"Daily route order for {rep.FullName} · {fleetDispatch.DispatchRef}",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            foreach (var recipe in recipes)
-            {
-                var yesterday = previousSheet?.RouteSheetItems
-                    .FirstOrDefault(i => i.RecipeId == recipe.Id)?.ClosingStockQty ?? 0;
-
-                var requested = 0;
-                requestedQuantities?.TryGetValue(recipe.Id, out requested);
-
-                sheet.RouteSheetItems.Add(new RouteSheetItemEntity
-                {
-                    RecipeId = recipe.Id,
-                    ProductCode = recipe.Code,
-                    ProductName = recipe.Name,
-                    Category = (int)MapProductType(recipe.ProductionProductType),
-                    UnitSellingPrice = recipe.SellingPrice,
-                    RepOrderRequestedQty = Math.Max(0, requested),
-                    YesterdayClosingStock = yesterday,
-                    TodayNewlyLoadedQty = 0,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
-                });
-            }
-
-            // A null selection inherits the previous day's supermarket round, so the
-            // next-day sheet created by reconciliation keeps the same stops. An
-            // explicit (possibly empty) selection replaces it.
-            var participantIds = supermarketAccountIds == null
-                ? previousSheet?.RouteSheetSupermarkets.Select(x => x.SupermarketAccountId).Distinct().ToList()
-                  ?? new List<int>()
-                : supermarketAccountIds.Distinct().ToList();
-
-            if (participantIds.Count > 0)
-            {
-                var supermarkets = await _db.SupermarketAccounts
-                    .Where(a => participantIds.Contains(a.Id) && a.IsActive)
-                    .OrderBy(a => a.AccountName)
-                    .ToListAsync(cancellationToken);
-
-                foreach (var supermarket in supermarkets)
-                {
-                    sheet.RouteSheetSupermarkets.Add(new RouteSheetSupermarketEntity
-                    {
-                        SupermarketAccountId = supermarket.Id,
-                        SupermarketAccount = supermarket,
-                        CreatedAt = DateTime.UtcNow
-                    });
-                }
-            }
-
-            _db.DailyRepRouteSheets.Add(sheet);
-            await _db.SaveChangesAsync(cancellationToken);
-            sheet.SalesRep = rep;
-            sheet.FleetDispatch = fleetDispatch;
-            return MapRouteSheet(sheet);
-        }
-
-        public async Task<bool> UpdateRouteSheetSupermarketsAsync(
-            int sheetId,
-            IReadOnlyCollection<int> accountIds,
-            CancellationToken cancellationToken = default)
-        {
-            var sheet = await _db.DailyRepRouteSheets
-                .Include(s => s.RouteSheetSupermarkets)
-                .FirstOrDefaultAsync(s => s.Id == sheetId, cancellationToken);
-
-            if (sheet == null || sheet.Status != (int)RouteSheetStatus.Ordered)
-            {
-                return false;
-            }
-
-            var requestedIds = (accountIds ?? Array.Empty<int>()).Distinct().ToList();
-            var validIds = requestedIds.Count == 0
-                ? new List<int>()
-                : await _db.SupermarketAccounts
-                    .Where(a => requestedIds.Contains(a.Id) && a.IsActive)
-                    .Select(a => a.Id)
-                    .ToListAsync(cancellationToken);
-
-            var existingIds = sheet.RouteSheetSupermarkets
-                .Select(x => x.SupermarketAccountId)
-                .ToHashSet();
-
-            var toRemove = sheet.RouteSheetSupermarkets
-                .Where(x => !validIds.Contains(x.SupermarketAccountId))
-                .ToList();
-
-            if (toRemove.Count > 0)
-            {
-                _db.RouteSheetSupermarkets.RemoveRange(toRemove);
-            }
-
-            foreach (var id in validIds.Where(id => !existingIds.Contains(id)))
-            {
-                sheet.RouteSheetSupermarkets.Add(new RouteSheetSupermarketEntity
-                {
-                    RouteSheetId = sheet.Id,
-                    SupermarketAccountId = id,
-                    CreatedAt = DateTime.UtcNow
-                });
-            }
-
-            sheet.UpdatedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync(cancellationToken);
-            return true;
-        }
-
-        public async Task<bool> SaveRouteSheetSupermarketDebtsAsync(
-            int routeSheetId,
-            IReadOnlyDictionary<int, decimal> debtAmounts,
-            IReadOnlyCollection<int> settledAccountIds,
-            string recordedBy,
-            CancellationToken cancellationToken = default)
-        {
-            var sheet = await _db.DailyRepRouteSheets
-                .Include(s => s.RouteSheetSupermarkets)
-                .Include(s => s.RouteSheetSupermarketDebts)
-                .FirstOrDefaultAsync(s => s.Id == routeSheetId, cancellationToken);
-
-            // Debt is only written between gate sign-off and reconciliation.
-            if (sheet == null || sheet.Status != (int)RouteSheetStatus.LoadedOnRoute)
-            {
-                return false;
-            }
-
-            var participantIds = sheet.RouteSheetSupermarkets
-                .Select(x => x.SupermarketAccountId)
-                .ToHashSet();
-
-            if (participantIds.Count == 0)
-            {
-                return false;
-            }
-
-            var settled = (settledAccountIds ?? Array.Empty<int>()).ToHashSet();
-            var amounts = debtAmounts ?? new Dictionary<int, decimal>();
-
-            var accounts = await _db.SupermarketAccounts
-                .Include(a => a.Customer)
-                .Where(a => participantIds.Contains(a.Id))
-                .ToListAsync(cancellationToken);
-
-            await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
-
-            var editor = string.IsNullOrWhiteSpace(recordedBy) ? "Sales Reconciliation" : recordedBy.Trim();
-
-            foreach (var account in accounts)
-            {
-                amounts.TryGetValue(account.Id, out var requested);
-                var isSettled = settled.Contains(account.Id);
-                var debt = isSettled ? 0m : Math.Max(0m, requested);
-
-                var existing = sheet.RouteSheetSupermarketDebts
-                    .FirstOrDefault(d => d.SupermarketAccountId == account.Id);
-
-                // Nothing owed and nothing recorded yet: leave no noise row.
-                if (existing == null && !isSettled && debt <= 0m)
-                {
-                    continue;
-                }
-
-                var delta = RouteSupermarketDebtCalculator.CalculateCreditDelta(
-                    existing?.AppliedCredit ?? 0m,
-                    isSettled,
-                    debt);
-
-                if (existing == null)
-                {
-                    existing = new RouteSheetSupermarketDebtEntity
-                    {
-                        RouteSheetId = sheet.Id,
-                        SupermarketAccountId = account.Id,
-                        IsSettled = isSettled,
-                        DebtAmount = debt,
-                        AppliedCredit = 0m,
-                        RecordedBy = editor,
-                        RecordedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
-                    };
-                    sheet.RouteSheetSupermarketDebts.Add(existing);
-                }
-                else
-                {
-                    existing.IsSettled = isSettled;
-                    existing.DebtAmount = debt;
-                    existing.RecordedBy = editor;
-                    existing.UpdatedAt = DateTime.UtcNow;
-                }
-
-                existing.AppliedCredit = Math.Max(0m, existing.AppliedCredit + delta);
-
-                if (delta != 0m)
-                {
-                    account.CurrentOutstandingCredit = Math.Max(0m, account.CurrentOutstandingCredit + delta);
-                    account.Customer.OutstandingBalance = Math.Max(0m, account.Customer.OutstandingBalance + delta);
-                    account.UpdatedAt = DateTime.UtcNow;
-                    account.Customer.UpdatedAt = DateTime.UtcNow;
-                }
-            }
-
-            await _db.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-            return true;
-        }
-
-        public async Task<List<SalesRepRouteDebtorDto>> GetSalesRepRouteDebtorsAsync(
-            int salesRepId,
-            CancellationToken cancellationToken = default)
-        {
-            if (salesRepId <= 0)
-            {
-                return new List<SalesRepRouteDebtorDto>();
-            }
-
-            var rows = await _db.RouteSheetSupermarketDebts
-                .AsNoTracking()
-                .Include(d => d.RouteSheet)
-                .ThenInclude(s => s.SalesRep)
-                .Include(d => d.SupermarketAccount)
-                .Where(d => !d.IsSettled
-                    && d.DebtAmount > 0
-                    && d.RouteSheet.SalesRepId == salesRepId)
-                .ToListAsync(cancellationToken);
-
-            return rows
-                .GroupBy(d => d.RouteSheet)
-                .Select(group => new SalesRepRouteDebtorDto
-                {
-                    RouteSheetId = group.Key.Id,
-                    RouteSheetRef = group.Key.RouteSheetRef,
-                    RouteDate = group.Key.RouteDate.ToDateTime(TimeOnly.MinValue),
-                    RouteName = group.Key.RouteName,
-                    SalesRepName = group.Key.SalesRep?.FullName ?? string.Empty,
-                    Status = ((RouteSheetStatus)group.Key.Status).ToString(),
-                    Debtors = group
-                        .OrderBy(d => d.SupermarketAccount.AccountName)
-                        .Select(d => new SalesRepRouteDebtorLineDto
-                        {
-                            SupermarketAccountId = d.SupermarketAccountId,
-                            AccountName = d.SupermarketAccount.AccountName,
-                            ContactPerson = d.SupermarketAccount.ContactPerson,
-                            PhoneNumber = d.SupermarketAccount.PhoneNumber,
-                            DebtAmount = d.DebtAmount,
-                            CurrentOutstandingCredit = d.SupermarketAccount.CurrentOutstandingCredit,
-                            CreditLimit = d.SupermarketAccount.CreditLimit,
-                            RecordedBy = d.RecordedBy,
-                            RecordedAt = d.RecordedAt
-                        })
-                        .ToList()
-                })
-                .OrderBy(dto => dto.RouteName)
-                .ThenByDescending(dto => dto.RouteDate)
-                .ThenByDescending(dto => dto.RouteSheetId)
-                .ToList();
-        }
-
-        public async Task<bool> SignOffDispatchAsync(
-            int sheetId,
-            Dictionary<int, int> loadedQuantities,
-            string dispatcherName,
-            string notes,
-            CancellationToken cancellationToken = default)
-        {
-            var sheet = await _db.DailyRepRouteSheets
-                .Include(s => s.RouteSheetItems)
-                .FirstOrDefaultAsync(s => s.Id == sheetId, cancellationToken);
-
-            if (sheet == null || sheet.Status != (int)RouteSheetStatus.Ordered)
-            {
-                return false;
-            }
-
-            foreach (var item in sheet.RouteSheetItems)
-            {
-                if (loadedQuantities.TryGetValue(item.RecipeId, out var loaded))
-                {
-                    item.TodayNewlyLoadedQty = Math.Max(0, loaded);
-                    item.UpdatedAt = DateTime.UtcNow;
-                }
-            }
-
-            sheet.SignedOffByDispatcher = string.IsNullOrWhiteSpace(dispatcherName) ? "Loading Supervisor" : dispatcherName.Trim();
-            sheet.SignedOffAt = DateTime.UtcNow;
-            sheet.Status = (int)RouteSheetStatus.LoadedOnRoute;
-            sheet.Notes = string.IsNullOrWhiteSpace(notes) ? sheet.Notes : notes.Trim();
-            sheet.UpdatedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync(cancellationToken);
-            return true;
-        }
-
-        public async Task<bool> ReconcileDailyRepAccountAsync(
-            ReconciliationInputDto input,
-            CancellationToken cancellationToken = default)
-        {
-            var sheet = await _db.DailyRepRouteSheets
-                .Include(s => s.RouteSheetItems)
-                .Include(s => s.SalesRep)
-                .FirstOrDefaultAsync(s => s.Id == input.RouteSheetId, cancellationToken);
-
-            if (sheet == null)
-            {
-                return false;
-            }
-
-            await using var transaction = await _db.Database.BeginTransactionAsync(cancellationToken);
-
-            foreach (var item in sheet.RouteSheetItems)
-            {
-                input.SoldQuantities.TryGetValue(item.RecipeId, out var sold);
-                input.ReturnedQuantities.TryGetValue(item.RecipeId, out var returned);
-                input.DamagedQuantities.TryGetValue(item.RecipeId, out var damaged);
-                input.ReplacementQuantities.TryGetValue(item.RecipeId, out var replacements);
-
-                item.QtySold = Math.Max(0, sold);
-                item.ClosingStockQty = Math.Max(0, returned);
-                item.QtyDamaged = Math.Max(0, damaged);
-                item.QtyReplacementIssued = Math.Max(0, replacements);
-                item.UpdatedAt = DateTime.UtcNow;
-            }
-
-            sheet.CashCollected = Math.Max(0m, input.CashCollected);
-            sheet.BankTransferCollected = Math.Max(0m, input.BankTransferCollected);
-            sheet.PosTerminalCollected = Math.Max(0m, input.PosTerminalCollected);
-            sheet.TotalExpectedSalesRevenue = sheet.RouteSheetItems.Sum(i => i.QtySold * i.UnitSellingPrice);
-            sheet.ReconciledBy = string.IsNullOrWhiteSpace(input.CashierName) ? "Main Cashier" : input.CashierName.Trim();
-            sheet.ReconciledAt = DateTime.UtcNow;
-            sheet.Status = (int)RouteSheetStatus.Reconciled;
-            sheet.Notes = string.IsNullOrWhiteSpace(input.Notes) ? sheet.Notes : input.Notes.Trim();
-            sheet.UpdatedAt = DateTime.UtcNow;
-
-            await _db.SaveChangesAsync(cancellationToken);
-
-            var nextDate = sheet.RouteDate.AddDays(1);
-            var nextSheet = await _db.DailyRepRouteSheets
-                .Include(s => s.RouteSheetItems)
-                .FirstOrDefaultAsync(
-                    s => s.SalesRepId == sheet.SalesRepId && s.RouteDate == nextDate,
-                    cancellationToken);
-
-            // Do not auto-create the next day's sheet: every new route sheet must be
-            // linked to a freshly created delivery dispatch. Only closing stock rolls
-            // forward; prior debt never carries into another reconciliation.
-            if (nextSheet != null)
-            {
-                nextSheet.UpdatedAt = DateTime.UtcNow;
-                foreach (var current in sheet.RouteSheetItems)
-                {
-                    var next = nextSheet.RouteSheetItems.FirstOrDefault(i => i.RecipeId == current.RecipeId);
-                    if (next != null)
-                    {
-                        next.YesterdayClosingStock = current.ClosingStockQty;
-                        next.UpdatedAt = DateTime.UtcNow;
-                    }
-                }
-                await _db.SaveChangesAsync(cancellationToken);
-            }
-
-            await transaction.CommitAsync(cancellationToken);
-            return true;
-        }
-
-        public async Task<bool> DeleteRouteSheetAsync(
-            int sheetId,
-            string deletedBy,
-            CancellationToken cancellationToken = default)
-        {
-            var sheet = await _db.DailyRepRouteSheets
-                .Include(s => s.RouteSheetItems)
-                .FirstOrDefaultAsync(s => s.Id == sheetId, cancellationToken);
-
-            if (sheet == null || sheet.Status != (int)RouteSheetStatus.Ordered)
-            {
-                return false;
-            }
-
-            _db.RouteSheetItems.RemoveRange(sheet.RouteSheetItems);
-            _db.DailyRepRouteSheets.Remove(sheet);
-            _db.AuditLogs.Add(new AuditLogEntity
-            {
-                Action = "Delete",
-                EntityName = "DailyRepRouteSheet",
-                EntityId = sheet.Id.ToString(),
-                NewValues = $"Deleted route sheet {sheet.RouteSheetRef} by {deletedBy}.",
-                OccurredAt = DateTime.UtcNow
-            });
-
-            await _db.SaveChangesAsync(cancellationToken);
-            return true;
-        }
-
         public async Task<List<CustomerReturn>> GetCustomerReturnsAsync(
             DateTime? date = null,
             int? salesRepId = null,
@@ -1626,21 +1159,10 @@ namespace Manufacture.Services
 
             _db.CustomerReturns.Add(entity);
 
-            if (input.ReplacementQuantity > 0 && input.SalesRepId.HasValue)
+            if (input.ReplacementQuantity > 0)
             {
-                var today = DateOnly.FromDateTime(DateTime.UtcNow);
-                var sheet = await _db.DailyRepRouteSheets
-                    .Include(s => s.RouteSheetItems)
-                    .FirstOrDefaultAsync(
-                        s => s.SalesRepId == input.SalesRepId.Value && s.RouteDate == today,
-                        cancellationToken);
-
-                var item = sheet?.RouteSheetItems.FirstOrDefault(i => i.RecipeId == input.RecipeId);
-                if (item != null)
-                {
-                    item.QtyReplacementIssued += input.ReplacementQuantity;
-                    item.UpdatedAt = DateTime.UtcNow;
-                }
+                // Replacements are counted by the rep during the new reconciliation;
+                // no route-sheet counter is maintained here anymore.
             }
             else
             {
@@ -1752,6 +1274,12 @@ namespace Manufacture.Services
                 customer = await _db.Customers.FirstOrDefaultAsync(c => c.Id == dto.CustomerId, cancellationToken);
             }
 
+            if (customer == null && dto.CustomerId <= 0 && string.IsNullOrWhiteSpace(dto.CustomerName))
+            {
+                customer = await _db.Customers
+                    .FirstOrDefaultAsync(c => c.MemberCode == "WLK-001" && c.IsActive, cancellationToken);
+            }
+
             var name = string.IsNullOrWhiteSpace(dto.CustomerName)
                 ? "Walk-In Counter Customer"
                 : dto.CustomerName.Trim();
@@ -1840,6 +1368,22 @@ namespace Manufacture.Services
                 || employee.Department.Contains("Sales", StringComparison.OrdinalIgnoreCase);
         }
 
+        private async Task<Manufacture.Models.Entities.ProductRepository?> ResolveProductRepositoryAsync(
+            int? repositoryId,
+            CancellationToken cancellationToken)
+        {
+            if (!repositoryId.HasValue || repositoryId.Value <= 0)
+            {
+                throw new InvalidOperationException("Select the product repository (directory) this POS should sell from.");
+            }
+
+            var repository = await _db.ProductRepositories
+                .FirstOrDefaultAsync(r => r.Id == repositoryId.Value && r.IsActive, cancellationToken)
+                ?? throw new InvalidOperationException("Select an active product repository for this terminal.");
+
+            return repository;
+        }
+
         private async Task<Dictionary<int, decimal>> GetCustomPricesAsync(
             int customerId,
             CancellationToken cancellationToken)
@@ -1921,26 +1465,6 @@ namespace Manufacture.Services
                 .AsNoTracking()
                 .Where(r => r.ReturnNumber.StartsWith(prefix))
                 .Select(r => r.ReturnNumber)
-                .ToListAsync(cancellationToken);
-
-            var next = existing
-                .Select(n => n[prefix.Length..])
-                .Select(n => int.TryParse(n, out var value) ? value : 0)
-                .DefaultIfEmpty(0)
-                .Max() + 1;
-
-            return $"{prefix}{next:000}";
-        }
-
-        private async Task<string> GenerateRouteSheetRefAsync(
-            DateTime date,
-            CancellationToken cancellationToken)
-        {
-            var prefix = $"RTE-{date:yyyyMMdd}-";
-            var existing = await _db.DailyRepRouteSheets
-                .AsNoTracking()
-                .Where(s => s.RouteSheetRef.StartsWith(prefix))
-                .Select(s => s.RouteSheetRef)
                 .ToListAsync(cancellationToken);
 
             var next = existing
@@ -2054,6 +1578,8 @@ namespace Manufacture.Services
                 AssignedEmployeeCode = terminal.AssignedEmployee?.StaffCode,
                 AssignedUserId = terminal.AssignedUserId,
                 AssignedUserName = terminal.AssignedUser?.Name,
+                ProductRepositoryId = terminal.ProductRepositoryId,
+                ProductRepositoryName = terminal.ProductRepository?.Name,
                 CashAccountName = terminal.CashAccountName,
                 TransferAccountName = terminal.TransferAccountName,
                 PosBankAccountName = terminal.PosBankAccountName,
@@ -2146,10 +1672,9 @@ namespace Manufacture.Services
                 ClosedAt = order.ClosedAt,
                 OrderDate = order.OrderDate,
                 TargetDeliveryDate = order.TargetDeliveryDate,
-                IsPrintedForLoading = order.IsPrintedForLoading,
-                PrintedAt = order.PrintedAt,
-                VerifiedByLoaderName = order.VerifiedByLoaderName,
-                LoadedAt = order.LoadedAt,
+                ProductRepositoryId = order.ProductRepositoryId,
+                StockDeductedAt = order.StockDeductedAt,
+                StockDeductedBy = order.StockDeductedBy,
                 Notes = order.Notes
             };
 
@@ -2209,84 +1734,6 @@ namespace Manufacture.Services
                 IsActive = account.IsActive,
                 CustomAgreedPrices = account.SupermarketAccountPrices
                     .ToDictionary(p => p.RecipeId, p => p.AgreedPrice)
-            };
-        }
-
-        private static DailyRepRouteSheet MapRouteSheet(RouteSheetEntity sheet)
-        {
-            return new DailyRepRouteSheet
-            {
-                Id = sheet.Id,
-                RouteSheetRef = sheet.RouteSheetRef,
-                Date = sheet.RouteDate.ToDateTime(TimeOnly.MinValue),
-                RepId = sheet.SalesRepId,
-                RepName = sheet.SalesRep?.FullName ?? string.Empty,
-                RepCode = sheet.SalesRep?.RepCode ?? string.Empty,
-                RouteName = sheet.RouteName,
-                VehicleRegNumber = sheet.VehicleRegistration ?? sheet.Vehicle?.RegistrationNumber ?? string.Empty,
-                PosTerminalCode = sheet.PosTerminalCode ?? string.Empty,
-                FleetDispatchId = sheet.FleetDispatchId,
-                FleetDispatchRef = sheet.FleetDispatch?.DispatchRef ?? string.Empty,
-                FleetDispatchStatus = sheet.FleetDispatch == null ? string.Empty : ((FleetDispatchStatus)sheet.FleetDispatch.Status).ToString(),
-                FleetDispatchVehicleRegNumber = sheet.FleetDispatch?.Vehicle?.RegistrationNumber ?? sheet.VehicleRegistration ?? string.Empty,
-                FleetDispatchDriverName = sheet.FleetDispatch?.DriverName ?? string.Empty,
-                FleetDispatchDate = sheet.FleetDispatch == null ? null : sheet.FleetDispatch.DispatchDate.ToDateTime(TimeOnly.MinValue),
-                PreviousAccountBalance = sheet.PreviousAccountBalance,
-                CashCollected = sheet.CashCollected,
-                BankTransferCollected = sheet.BankTransferCollected,
-                PosTerminalCollected = sheet.PosTerminalCollected,
-                Status = (RouteSheetStatus)sheet.Status,
-                SignedOffByDispatcher = sheet.SignedOffByDispatcher,
-                SignedOffAt = sheet.SignedOffAt,
-                ReconciledBy = sheet.ReconciledBy,
-                ReconciledAt = sheet.ReconciledAt,
-                Notes = sheet.Notes,
-                Supermarkets = sheet.RouteSheetSupermarkets
-                    .OrderBy(x => x.SupermarketAccount.AccountName)
-                    .Select(x => new RouteSheetSupermarketLink
-                    {
-                        SupermarketAccountId = x.SupermarketAccountId,
-                        AccountName = x.SupermarketAccount.AccountName,
-                        ContactPerson = x.SupermarketAccount.ContactPerson,
-                        PhoneNumber = x.SupermarketAccount.PhoneNumber,
-                        CurrentOutstandingCredit = x.SupermarketAccount.CurrentOutstandingCredit,
-                        CreditLimit = x.SupermarketAccount.CreditLimit,
-                        IsActive = x.SupermarketAccount.IsActive
-                    })
-                    .ToList(),
-                SupermarketDebts = sheet.RouteSheetSupermarketDebts
-                    .OrderBy(d => d.SupermarketAccount.AccountName)
-                    .Select(d => new RouteSheetSupermarketDebt
-                    {
-                        Id = d.Id,
-                        RouteSheetId = d.RouteSheetId,
-                        SupermarketAccountId = d.SupermarketAccountId,
-                        AccountName = d.SupermarketAccount.AccountName,
-                        IsSettled = d.IsSettled,
-                        DebtAmount = d.DebtAmount,
-                        AppliedCredit = d.AppliedCredit,
-                        RecordedBy = d.RecordedBy,
-                        RecordedAt = d.RecordedAt
-                    })
-                    .ToList(),
-                Items = sheet.RouteSheetItems
-                    .OrderBy(i => i.Id)
-                    .Select(i => new RouteSKUItem
-                    {
-                        ProductId = i.RecipeId,
-                        ProductCode = i.ProductCode,
-                        ProductName = i.ProductName,
-                        Category = (ProductType)i.Category,
-                        UnitSellingPrice = i.UnitSellingPrice,
-                        RepOrderRequestedQty = i.RepOrderRequestedQty,
-                        YesterdayClosingStock = i.YesterdayClosingStock,
-                        TodayNewlyLoadedQty = i.TodayNewlyLoadedQty,
-                        QtySold = i.QtySold,
-                        QtyReturned = i.ClosingStockQty,
-                        QtyDamaged = i.QtyDamaged,
-                        QtyReplacementIssued = i.QtyReplacementIssued
-                    })
-                    .ToList()
             };
         }
 

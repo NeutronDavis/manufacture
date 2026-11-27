@@ -1,578 +1,272 @@
 @page "{id:int}"
+@using Manufacture.Models.Domain
 @model Manufacture.Pages.Production.Batches.DetailsModel
 @{
-    ViewData["Title"] = $"Batch {Model.Batch.BatchNumber} - Details";
-    var batch = Model.Batch;
-    var recipe = Model.Recipe;
-    var labels = Model.CategoryLabels;
-    var unitLabel = string.IsNullOrWhiteSpace(batch.OutputUnitLabel) ? "units" : batch.OutputUnitLabel;
-    var isPending = batch.ActualQuantity == 0 || batch.Status != Manufacture.Models.Domain.BatchStatus.Completed;
+    ViewData["Title"] = $"Batch {Model.Batch.BatchNumber}";
+    var isCompleted = Model.Batch.Status == BatchStatus.Completed;
+    var statusBadge = Model.Batch.Status switch
+    {
+        BatchStatus.Completed => "badge-success",
+        BatchStatus.Cancelled => "badge-error",
+        BatchStatus.Baking => "badge-info",
+        BatchStatus.InMixing => "badge-warning",
+        _ => "badge-neutral"
+    };
 }
 
-<div class="space-y-6">
-    <!-- Breadcrumb & Top Bar -->
+<div class="space-y-6 w-full">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <div class="text-xs breadcrumbs text-base-content/60 mb-1">
-                <ul>
-                    <li><a asp-page="/Dashboard/Index">Dashboard</a></li>
-                    <li><a asp-page="/Production/Batches/Index">Batches</a></li>
-                    <li class="font-mono text-primary font-bold">@batch.BatchNumber</li>
-                </ul>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Production/Batches/Index" class="hover:underline">Batches</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">@Model.Batch.BatchNumber</span>
             </div>
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
-                    <i class="fa-solid fa-layer-group text-lg"></i>
-                </div>
-                <div>
-                    <div class="flex items-center gap-2">
-                        <h1 class="text-xl font-black text-base-content tracking-tight">@batch.BatchNumber</h1>
-                        @switch (batch.ProductCategory)
-                        {
-                            case Manufacture.Models.Domain.ProductType.Water:
-                                <span class="badge badge-info badge-soft badge-xs font-bold gap-1">
-                                    <i class="fa-solid fa-bottle-water text-[9px]"></i> Water
-                                </span>
-                                break;
-                            case Manufacture.Models.Domain.ProductType.Popcorn:
-                                <span class="badge badge-warning badge-soft badge-xs font-bold gap-1">
-                                    <i class="fa-solid fa-bowl-food text-[9px]"></i> Popcorn
-                                </span>
-                                break;
-                            default:
-                                <span class="badge badge-error badge-soft badge-xs font-bold gap-1">
-                                    <i class="fa-solid fa-bread-slice text-[9px]"></i> Bread
-                                </span>
-                                break;
-                        }
-
-                        @switch (batch.Status)
-                        {
-                            case Manufacture.Models.Domain.BatchStatus.Completed:
-                                <span class="badge badge-success badge-sm font-bold gap-1">
-                                    <i class="fa-solid fa-circle-check text-[9px]"></i> Completed
-                                </span>
-                                break;
-                            case Manufacture.Models.Domain.BatchStatus.Baking:
-                                <span class="badge badge-warning badge-sm font-bold gap-1 animate-pulse">
-                                    <i class="fa-solid fa-fire-burner text-[9px]"></i> In Baking / Oven
-                                </span>
-                                break;
-                            case Manufacture.Models.Domain.BatchStatus.InMixing:
-                                <span class="badge badge-info badge-sm font-bold gap-1 animate-pulse">
-                                    <i class="fa-solid fa-blender text-[9px]"></i> In Mixing
-                                </span>
-                                break;
-                            default:
-                                <span class="badge badge-neutral badge-sm font-bold gap-1">
-                                    <i class="fa-regular fa-clock text-[9px]"></i> Planned
-                                </span>
-                                break;
-                        }
-                    </div>
-                    <p class="text-xs text-base-content/60">
-                        @batch.RecipeName &bull; Production Date: @batch.ProductionDate.ToString("yyyy-MM-dd") &bull; @batch.Shift
-                        @if (!string.IsNullOrEmpty(batch.LinkedOrderNumber))
-                        {
-                            <span>&bull; Order: <strong class="text-base-content font-mono">@batch.LinkedOrderNumber</strong> (@batch.CustomerName)</span>
-                        }
-                        else
-                        {
-                            <span>&bull; <span class="badge badge-ghost badge-xs text-[9px] opacity-60">Make-to-Stock</span></span>
-                        }
-                    </p>
-                </div>
+            <div class="flex items-center gap-2">
+                <h1 class="text-2xl font-black tracking-tight">@Model.Batch.BatchNumber</h1>
+                <span class="badge @statusBadge badge-sm font-bold">@Model.Batch.Status</span>
             </div>
+            <p class="text-xs opacity-70 mt-0.5">
+                @Model.Batch.ProductionDate.ToString("yyyy-MM-dd") · @Model.Batch.Shift · @Model.Batch.BakerInCharge
+            </p>
         </div>
-
         <div class="flex items-center gap-2">
-            <a asp-page="/Production/Batches/Index" class="btn btn-ghost btn-sm rounded-xl font-bold gap-1.5 text-xs">
-                <i class="fa-solid fa-arrow-left"></i> Back to Batches
-            </a>
-            <a asp-page="/Production/Batches/Create" class="btn btn-primary btn-sm rounded-xl font-bold gap-1.5 text-xs shadow-xs">
+            <a asp-page="/Production/Batches/Index" class="btn btn-sm btn-outline rounded-xl">Back</a>
+            <a asp-page="/Production/Batches/Create" class="btn btn-sm btn-primary rounded-xl gap-2 font-bold">
                 <i class="fa-solid fa-plus"></i> New Batch
             </a>
         </div>
     </div>
 
-    <!-- 4 High-Impact KPI Metric Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- 1. Logged Batch Material Cost -->
-        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4">
-            <div class="flex items-center justify-between pb-2">
-                <span class="text-xs font-bold uppercase tracking-wider text-base-content/60">Logged Batch Cost</span>
-                <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs">
-                    <i class="fa-solid fa-coins"></i>
-                </div>
-            </div>
-            <div class="text-2xl font-black font-mono text-base-content">
-                ₦@batch.TotalBatchCost.ToString("N0")
-            </div>
-            <div class="text-[11px] text-base-content/60 mt-1 flex items-center gap-1.5 font-mono">
-                <span>Input:</span>
-                <span class="font-bold text-base-content">@batch.BatchInputQuantity.ToString("0.##") @batch.BatchInputUnitLabel</span>
-            </div>
-        </div>
-
-        <!-- 2. Target vs Rep Demand -->
-        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4">
-            <div class="flex items-center justify-between pb-2">
-                <span class="text-xs font-bold uppercase tracking-wider text-base-content/60">Target Planned</span>
-                <div class="w-8 h-8 rounded-lg bg-info/10 text-info flex items-center justify-center text-xs">
-                    <i class="fa-solid fa-bullseye"></i>
-                </div>
-            </div>
-            <div class="text-2xl font-black font-mono text-base-content">
-                @batch.TargetQuantity.ToString("N0") <span class="text-xs font-normal opacity-60">@unitLabel</span>
-            </div>
-            <div class="text-[11px] text-base-content/60 mt-1 flex items-center gap-1.5">
-                <span class="badge badge-primary badge-soft badge-xs font-mono font-bold">
-                    Rep Demand: @Model.RepDemand
-                </span>
-            </div>
-        </div>
-
-        <!-- 3. Actual Output Produced -->
-        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4">
-            <div class="flex items-center justify-between pb-2">
-                <span class="text-xs font-bold uppercase tracking-wider text-base-content/60">Actual Output</span>
-                <div class="w-8 h-8 rounded-lg @(isPending ? "bg-warning/10 text-warning" : "bg-success/10 text-success") flex items-center justify-center text-xs">
-                    <i class="fa-solid @(isPending ? "fa-hourglass-half" : "fa-boxes-stacked")"></i>
-                </div>
-            </div>
-            @if (batch.ActualQuantity > 0)
+    @if (TempData["SuccessMessage"] is string success)
+    {
+        <div class="alert alert-success rounded-2xl text-sm font-semibold">@success</div>
+    }
+    @if (TempData["ErrorMessage"] is string error)
+    {
+        <div class="alert alert-error rounded-2xl text-sm font-semibold">@error</div>
+    }
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-error rounded-2xl text-sm">
+            @foreach (var item in ViewData.ModelState.Values.SelectMany(v => v.Errors))
             {
-                <div class="text-2xl font-black font-mono text-success">
-                    @batch.ActualQuantity.ToString("N0") <span class="text-xs font-normal opacity-60">@unitLabel</span>
-                </div>
-                <div class="text-[11px] text-base-content/60 mt-1 flex items-center gap-1.5">
-                    @if (batch.Variance > 0)
-                    {
-                        <span class="badge badge-success badge-xs font-mono font-bold">+@batch.Variance extra</span>
-                    }
-                    else if (batch.Variance < 0)
-                    {
-                        <span class="badge badge-error badge-xs font-mono font-bold">@batch.Variance short</span>
-                    }
-                    else
-                    {
-                        <span class="badge badge-neutral badge-xs font-mono font-bold">100% On Target</span>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="text-2xl font-black font-mono text-warning">
-                    0 <span class="text-xs font-normal opacity-60">@unitLabel</span>
-                </div>
-                <div class="text-[11px] text-warning font-semibold mt-1">
-                    Pending Output Recording
-                </div>
+                <div>@item.ErrorMessage</div>
             }
         </div>
+    }
 
-        <!-- 4. Calculated Unit Cost -->
-        <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-4">
-            <div class="flex items-center justify-between pb-2">
-                <span class="text-xs font-bold uppercase tracking-wider text-base-content/60">Unit Production Cost</span>
-                <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center text-xs">
-                    <i class="fa-solid fa-receipt"></i>
-                </div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="card bg-base-100 border border-base-300 rounded-2xl">
+            <div class="card-body p-4">
+                <div class="text-[10px] uppercase font-bold opacity-60">Product Lines</div>
+                <div class="text-2xl font-black font-mono">@Model.Batch.Lines.Count</div>
+                <div class="text-[10px] opacity-60 truncate">@Model.Batch.ProductSummary</div>
             </div>
-            @if (batch.CalculatedUnitCost > 0)
+        </div>
+        <div class="card bg-base-100 border border-base-300 rounded-2xl">
+            <div class="card-body p-4">
+                <div class="text-[10px] uppercase font-bold opacity-60">Target Units</div>
+                <div class="text-2xl font-black font-mono">@Model.Batch.TargetQuantity.ToString("N0")</div>
+                <div class="text-[10px] opacity-60">Across all lines</div>
+            </div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 rounded-2xl">
+            <div class="card-body p-4">
+                <div class="text-[10px] uppercase font-bold opacity-60">Actual Units</div>
+                <div class="text-2xl font-black font-mono text-success">@Model.Batch.ActualQuantity.ToString("N0")</div>
+                <div class="text-[10px] opacity-60">@(isCompleted ? "Recorded" : "Pending outcome")</div>
+            </div>
+        </div>
+        <div class="card bg-base-100 border border-base-300 rounded-2xl">
+            <div class="card-body p-4">
+                <div class="text-[10px] uppercase font-bold opacity-60">Material Cost</div>
+                <div class="text-2xl font-black font-mono">₦@Model.Batch.TotalBatchCost.ToString("N0")</div>
+                <div class="text-[10px] opacity-60">Unit cost ₦@Model.Batch.CalculatedUnitCost.ToString("N2")</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 rounded-2xl">
+        <div class="card-body p-5 space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="font-black text-sm">Product Output Lines</h2>
+                @if (!isCompleted && Model.Batch.Status != BatchStatus.Cancelled)
+                {
+                    <button type="button" class="btn btn-sm btn-primary rounded-xl gap-2 font-bold" onclick="document.getElementById('actualDialog').showModal()">
+                        <i class="fa-solid fa-clipboard-check"></i> Register Actual Outcome
+                    </button>
+                }
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="table table-sm text-xs w-full">
+                    <thead>
+                        <tr class="text-[10px] uppercase opacity-60">
+                            <th>Product</th>
+                            <th class="text-right">Target</th>
+                            <th class="text-right">Actual</th>
+                            <th class="text-right">Variance</th>
+                            <th class="text-right">Yield</th>
+                            <th class="text-right">Input Batch</th>
+                            <th class="text-right">Material Cost</th>
+                            <th class="text-right">Unit Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var line in Model.Batch.Lines)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="font-bold">@line.RecipeName</div>
+                                    <div class="font-mono text-[10px] opacity-60">@line.ProductCode</div>
+                                </td>
+                                <td class="text-right font-mono">@line.TargetQuantity.ToString("N0") <span class="opacity-60">@line.OutputUnitLabel</span></td>
+                                <td class="text-right font-mono font-bold text-success">@line.ActualQuantity.ToString("N0")</td>
+                                <td class="text-right font-mono @(line.Variance < 0 ? "text-error" : "text-success")">@line.Variance.ToString("+0;-0;0")</td>
+                                <td class="text-right font-mono">@line.YieldPercent.ToString("N1")%</td>
+                                <td class="text-right font-mono">@line.BatchInputQuantity.ToString("N2") <span class="opacity-60">@line.BatchInputUnitLabel</span></td>
+                                <td class="text-right font-mono">₦@line.TotalBatchCost.ToString("N0")</td>
+                                <td class="text-right font-mono">₦@line.CalculatedUnitCost.ToString("N2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (isCompleted)
             {
-                <div class="text-2xl font-black font-mono text-amber-900">
-                    ₦@batch.CalculatedUnitCost.ToString("N2") <span class="text-xs font-normal opacity-60">/ @unitLabel</span>
-                </div>
-                <div class="text-[11px] text-base-content/60 mt-1 flex items-center justify-between font-mono">
-                    <span>Plan: ₦@batch.ExpectedUnitCost.ToString("N2")</span>
-                    @if (batch.CostVariancePerUnit < 0)
-                    {
-                        <span class="text-success font-bold">-₦@Math.Abs(batch.CostVariancePerUnit).ToString("N2")</span>
-                    }
-                    else if (batch.CostVariancePerUnit > 0)
-                    {
-                        <span class="text-error font-bold">+₦@batch.CostVariancePerUnit.ToString("N2")</span>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="text-2xl font-black font-mono text-base-content/40">
-                    In Run
-                </div>
-                <div class="text-[11px] text-base-content/50 mt-1 font-mono">
-                    Plan: ₦@batch.ExpectedUnitCost.ToString("N2") / @unitLabel
+                <div class="rounded-xl bg-success/10 border border-success/30 p-3 text-xs text-success font-semibold">
+                    <i class="fa-solid fa-warehouse mr-1"></i>
+                    Actual output has been posted to the default factory product repository. Movement history is available in Product Repositories.
                 </div>
             }
         </div>
     </div>
 
-    <!-- Main Grid: Left Details & Right Actual Output Entry -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        
-        <!-- Left Side: Batch Specs & Recipe Formulation (7 Cols) -->
-        <div class="lg:col-span-7 space-y-6">
-            
-            <!-- Batch Execution Details Card -->
-            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-4">
-                <h2 class="font-black text-sm text-base-content flex items-center gap-2">
-                    <i class="fa-solid fa-clipboard-list text-primary"></i> Batch Execution Parameters
-                </h2>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                    <div class="p-3 rounded-xl bg-base-200/60 border border-base-300/80">
-                        <span class="text-[10px] uppercase font-bold opacity-60">Product Formulation</span>
-                        <div class="font-bold text-sm text-base-content mt-0.5">@batch.RecipeName</div>
-                        <div class="text-[11px] opacity-70">Code: @(recipe?.Code ?? "N/A") &bull; Selling Price: ₦@(recipe?.SellingPrice.ToString("N0") ?? "0")</div>
-                    </div>
-
-                    <div class="p-3 rounded-xl bg-base-200/60 border border-base-300/80">
-                        <span class="text-[10px] uppercase font-bold opacity-60">Shift & Operator</span>
-                        <div class="font-bold text-sm text-base-content mt-0.5">@batch.Shift</div>
-                        <div class="text-[11px] opacity-70">Operator in Charge: <strong>@batch.BakerInCharge</strong></div>
-                    </div>
-
-                    <div class="p-3 rounded-xl bg-base-200/60 border border-base-300/80">
-                        <span class="text-[10px] uppercase font-bold opacity-60">Production Schedule</span>
-                        <div class="font-bold text-sm text-base-content mt-0.5">@batch.ProductionDate.ToString("MMMM dd, yyyy")</div>
-                        <div class="text-[11px] opacity-70">Logged By: @batch.LoggedBy</div>
-                    </div>
-
-                    <div class="p-3 rounded-xl bg-base-200/60 border border-base-300/80">
-                        <span class="text-[10px] uppercase font-bold opacity-60">Input Scaling</span>
-                        <div class="font-bold text-sm text-base-content mt-0.5">@batch.BatchInputQuantity.ToString("0.##") @batch.BatchInputUnitLabel</div>
-                        <div class="text-[11px] opacity-70">Target: @batch.TargetQuantity @unitLabel</div>
-                    </div>
-
-                    <div class="p-3 rounded-xl bg-base-200/60 border border-base-300/80 sm:col-span-2">
-                        <span class="text-[10px] uppercase font-bold opacity-60 flex items-center gap-1.5">
-                            <i class="fa-solid fa-file-invoice text-primary"></i> Linked Customer Pre-Order / Sales Order
-                        </span>
-                        @if (batch.LinkedOrderId.HasValue && !string.IsNullOrEmpty(batch.LinkedOrderNumber))
-                        {
-                            <div class="flex items-center justify-between flex-wrap gap-2 mt-1">
-                                <div class="flex items-center gap-2">
-                                    <span class="font-bold text-sm text-base-content font-mono">@batch.LinkedOrderNumber</span>
-                                    <span class="badge badge-primary badge-soft badge-xs font-bold">@batch.CustomerName</span>
-                                </div>
-                                <a asp-page="/Sales/Orders/Receipt" asp-route-id="@batch.LinkedOrderId" class="btn btn-xs btn-outline btn-primary rounded-xl font-bold gap-1 text-[11px]">
-                                    <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> View Order Receipt
-                                </a>
-                            </div>
-                        }
-                        else
-                        {
-                            <div class="flex items-center gap-2 mt-1">
-                                <span class="badge badge-ghost badge-sm text-[10px] font-semibold opacity-70">Make-to-Stock / Floor Inventory</span>
-                                <span class="text-[11px] opacity-60">Not assigned to a specific customer order. Output transfers to general warehouse dispatch.</span>
-                            </div>
-                        }
-                    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="card bg-base-100 border border-base-300 rounded-2xl">
+            <div class="card-body p-5 space-y-3">
+                <h2 class="font-black text-sm">Batch Parameters</h2>
+                <div class="grid grid-cols-2 gap-3 text-xs">
+                    <div><div class="opacity-60 text-[10px] uppercase">Production date</div><div class="font-semibold">@Model.Batch.ProductionDate.ToString("yyyy-MM-dd")</div></div>
+                    <div><div class="opacity-60 text-[10px] uppercase">Shift</div><div class="font-semibold">@Model.Batch.Shift</div></div>
+                    <div><div class="opacity-60 text-[10px] uppercase">Baker / operator</div><div class="font-semibold">@Model.Batch.BakerInCharge</div></div>
+                    <div><div class="opacity-60 text-[10px] uppercase">Logged by</div><div class="font-semibold">@Model.Batch.LoggedBy</div></div>
+                    <div><div class="opacity-60 text-[10px] uppercase">Expected unit cost</div><div class="font-mono">₦@Model.Batch.ExpectedUnitCost.ToString("N2")</div></div>
+                    <div><div class="opacity-60 text-[10px] uppercase">Completed</div><div class="font-mono">@(Model.Batch.CompletedAt?.ToString("yyyy-MM-dd HH:mm") ?? "—")</div></div>
                 </div>
-
-                @if (!string.IsNullOrWhiteSpace(batch.Notes))
+                @if (!string.IsNullOrWhiteSpace(Model.Batch.Notes))
                 {
-                    <div class="pt-3 border-t border-base-200 text-xs">
-                        <span class="text-[10px] uppercase font-bold opacity-60">Shift Notes & Observations</span>
-                        <p class="mt-1 text-base-content/80 leading-relaxed bg-base-200/40 p-3 rounded-xl border border-base-300/60 font-sans">
-                            @batch.Notes
-                        </p>
-                    </div>
+                    <div class="text-xs"><span class="opacity-60">Notes:</span> @Model.Batch.Notes</div>
                 }
             </div>
+        </div>
 
-            <!-- Bill of Materials (BOM) Scaled Table -->
-            @if (recipe != null && recipe.Ingredients.Any())
-            {
-                <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl overflow-hidden">
-                    <div class="p-5 border-b border-base-200 flex items-center justify-between">
-                        <div>
-                            <h2 class="font-black text-sm text-base-content flex items-center gap-2">
-                                <i class="fa-solid fa-wheat-awn text-primary"></i> Scaled Raw Material Formulation
-                            </h2>
-                            <p class="text-xs text-base-content/60 mt-0.5">
-                                Ingredient allocation scaled for @batch.BatchInputQuantity.ToString("0.##") @batch.BatchInputUnitLabel
-                            </p>
-                        </div>
-                        <span class="badge badge-neutral badge-xs font-mono font-bold">@recipe.Ingredients.Count Ingredients</span>
+        <div class="card bg-base-100 border border-base-300 rounded-2xl">
+            <div class="card-body p-5 space-y-3">
+                <div class="flex items-center justify-between">
+                    <h2 class="font-black text-sm">Defects</h2>
+                    <span class="badge badge-error badge-sm">@Model.TotalBatchDefects unit(s)</span>
+                </div>
+                @if (Model.BatchDefects.Count > 0)
+                {
+                    <div class="space-y-1 text-xs">
+                        @foreach (var defect in Model.BatchDefects)
+                        {
+                            <div class="flex justify-between rounded-lg bg-base-200 px-2 py-1">
+                                <span>@(string.IsNullOrWhiteSpace(defect.ProductName) ? "Product" : defect.ProductName) · @defect.DefectReason</span>
+                                <span class="font-mono font-bold">@defect.Quantity</span>
+                            </div>
+                        }
                     </div>
-
-                    <div class="overflow-x-auto">
-                        <table class="table table-xs w-full">
-                            <thead>
-                                <tr class="bg-base-200/60 text-base-content/70">
-                                    <th>Ingredient</th>
-                                    <th class="text-right">Scaled Batch Qty</th>
-                                    <th class="text-right">Unit Price</th>
-                                    <th class="text-right">Line Material Cost</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var ing in recipe.Ingredients)
+                }
+                @if (!isCompleted)
+                {
+                    <form method="post" asp-page-handler="LogDefects" class="space-y-2 border-t border-base-200 pt-3">
+                        <input type="hidden" name="DefectInput.BatchId" value="@Model.Batch.Id" />
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <select name="DefectInput.RecipeId" class="select select-sm select-bordered rounded-xl">
+                                @foreach (var line in Model.Batch.Lines)
                                 {
-                                    var scaledQty = ing.QuantityPerUnit > 0 
-                                        ? (ing.QuantityPerUnit * batch.TargetQuantity) 
-                                        : (ing.QuantityPerBatch * batch.BatchInputQuantity);
-                                    var lineCost = scaledQty * ing.IngredientUnitCost;
-                                    <tr class="hover:bg-base-200/40">
-                                        <td class="font-bold text-base-content">@ing.IngredientName</td>
-                                        <td class="text-right font-mono font-medium">@scaledQty.ToString("0.###") <span class="text-[10px] opacity-60">@ing.Unit</span></td>
-                                        <td class="text-right font-mono opacity-70">₦@ing.IngredientUnitCost.ToString("N2")</td>
-                                        <td class="text-right font-mono font-bold text-base-content">₦@lineCost.ToString("N0")</td>
-                                    </tr>
+                                    <option value="@line.RecipeId" selected="@(line.RecipeId == Model.DefectInput.RecipeId)">@line.RecipeName</option>
                                 }
-                            </tbody>
-                            <tfoot class="bg-base-200/60 font-bold font-mono">
+                            </select>
+                            <input type="number" min="0" name="DefectInput.Quantity" class="input input-sm input-bordered rounded-xl" placeholder="Qty" />
+                            <input type="text" name="DefectInput.Reason" class="input input-sm input-bordered rounded-xl" placeholder="Reason" />
+                        </div>
+                        <button type="submit" class="btn btn-xs btn-outline rounded-lg">Save Defect</button>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 rounded-2xl">
+        <div class="card-body p-5 space-y-4">
+            <h2 class="font-black text-sm">Scaled Bill of Materials</h2>
+            @foreach (var line in Model.Batch.Lines)
+            {
+                if (!Model.LineRecipes.TryGetValue(line.RecipeId, out var recipe))
+                {
+                    continue;
+                }
+                <div class="rounded-xl border border-base-200 p-3">
+                    <div class="font-bold text-xs mb-2">@recipe.Name <span class="font-mono opacity-60">(@recipe.Code)</span></div>
+                    <table class="table table-xs text-[11px]">
+                        <thead>
+                            <tr class="opacity-60"><th>Ingredient</th><th class="text-right">Per unit</th><th class="text-right">For target</th><th class="text-right">Unit cost</th><th class="text-right">Line cost</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ingredient in recipe.Ingredients)
+                            {
+                                var perUnit = ingredient.QuantityPerUnit;
+                                var forTarget = perUnit * line.TargetQuantity;
                                 <tr>
-                                    <td colspan="3" class="text-right font-sans uppercase text-[10px] tracking-wider opacity-70">Total Batch Ingredients:</td>
-                                    <td class="text-right text-primary font-black">₦@batch.TotalBatchCost.ToString("N0")</td>
+                                    <td>@ingredient.IngredientName</td>
+                                    <td class="text-right font-mono">@perUnit.ToString("N3") @ingredient.Unit</td>
+                                    <td class="text-right font-mono">@forTarget.ToString("N2") @ingredient.Unit</td>
+                                    <td class="text-right font-mono">₦@ingredient.IngredientUnitCost.ToString("N2")</td>
+                                    <td class="text-right font-mono">₦@(Math.Round(forTarget * ingredient.IngredientUnitCost, 2)).ToString("N2")</td>
                                 </tr>
-                            </tfoot>
-                        </table>
-                    </div>
+                            }
+                        </tbody>
+                    </table>
                 </div>
             }
-
         </div>
-
-        <!-- Right Side: Interactive Actual Output Entry Card (5 Cols) -->
-        <div class="lg:col-span-5 space-y-6 lg:sticky lg:top-20">
-            
-            <div class="card bg-base-100 border @(isPending ? "border-amber-300 ring-2 ring-amber-400/30" : "border-base-300") shadow-xs rounded-2xl p-6 space-y-5">
-                
-                <div class="flex items-center justify-between border-b border-base-200 pb-3">
-                    <div>
-                        <h2 class="font-black text-sm text-base-content flex items-center gap-2">
-                            <i class="fa-solid fa-pen-to-square @(isPending ? "text-warning" : "text-success")"></i>
-                            @(isPending ? "Record Actual Batch Output" : "Actual Output Audit & Revision")
-                        </h2>
-                        <p class="text-[11px] text-base-content/60 mt-0.5">
-                            @(isPending 
-                                ? "Batch has no actual output yet. Enter finished yield below to calculate true unit cost." 
-                                : "Actual yield is recorded. You may adjust figures if a recount is necessary.")
-                        </p>
-                    </div>
-                    @if (isPending)
-                    {
-                        <span class="badge badge-warning badge-xs font-bold gap-1 animate-pulse">
-                            <i class="fa-solid fa-clock text-[9px]"></i> Awaiting Output
-                        </span>
-                    }
-                    else
-                    {
-                        <span class="badge badge-success badge-xs font-bold gap-1">
-                            <i class="fa-solid fa-check text-[9px]"></i> Finalized
-                        </span>
-                    }
-                </div>
-
-                <!-- Form to Record / Update Actual Output -->
-                <form method="post" asp-page-handler="RecordActual" class="space-y-4">
-                    <input type="hidden" asp-for="OutputInput.BatchId" />
-
-                    <!-- Actual Quantity Produced Input -->
-                    <div class="form-control w-full">
-                        <label class="label pb-1.5 flex justify-between items-center">
-                            <span class="label-text font-bold text-xs text-base-content">
-                                Actual Output Produced (@unitLabel) <span class="text-error">*</span>
-                            </span>
-                            <span class="text-[10px] opacity-60 font-mono">Target: @batch.TargetQuantity</span>
-                        </label>
-                        <div class="join w-full">
-                            <input type="number" min="0" asp-for="OutputInput.ActualQuantity" id="actualInputQty" 
-                                   class="input input-bordered input-sm join-item w-full font-mono font-black text-base bg-base-200 border-base-300 rounded-l-xl focus:bg-base-100 focus:border-primary text-primary" 
-                                   placeholder="e.g. @batch.TargetQuantity" required oninput="calculateDetailsLive()" />
-                            <span class="join-item bg-base-200 border border-base-300 border-l-0 font-mono text-xs font-bold px-3.5 flex items-center">
-                                @unitLabel
-                            </span>
-                        </div>
-                    </div>
-
-                    <!-- Batch Status Dropdown -->
-                    <div class="form-control w-full">
-                        <label class="label pb-1.5">
-                            <span class="label-text font-bold text-xs text-base-content">Batch Status</span>
-                        </label>
-                        <select asp-for="OutputInput.Status" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
-                            <option value="Completed">Completed (Ready for POS Dispatch)</option>
-                            <option value="Baking">In Baking / In Production</option>
-                            <option value="InMixing">In Mixing / Prepping</option>
-                        </select>
-                    </div>
-
-                    <!-- Baker / Operator Confirmation -->
-                    <div class="form-control w-full">
-                        <label class="label pb-1.5">
-                            <span class="label-text font-bold text-xs text-base-content">Confirmed By (Operator / Supervisor)</span>
-                        </label>
-                        <input type="text" asp-for="OutputInput.BakerInCharge" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" placeholder="e.g. Emeka Obi" />
-                    </div>
-
-                    <!-- Shift Notes / Observations -->
-                    <div class="form-control w-full">
-                        <label class="label pb-1.5">
-                            <span class="label-text font-bold text-xs text-base-content">Completion Notes &amp; Variance Remarks</span>
-                        </label>
-                        <textarea asp-for="OutputInput.ShiftNotes" rows="2" class="textarea textarea-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary leading-relaxed" placeholder="e.g. Good golden crust, 2 loaves lost to oven burn; scale confirmed."></textarea>
-                    </div>
-
-                    <!-- Live Calculation Feedback Card -->
-                    <div class="rounded-2xl bg-amber-50/80 border border-amber-200 p-4 space-y-3 font-mono text-xs">
-                        <div class="flex items-center justify-between">
-                            <span class="text-[10px] uppercase font-bold text-amber-900 tracking-wider">Calculated Unit Cost:</span>
-                            <span class="text-base font-black text-amber-900" id="liveUnitCost">
-                                @(batch.CalculatedUnitCost > 0 ? $"₦{batch.CalculatedUnitCost:N2}" : "—")
-                            </span>
-                        </div>
-                        <div class="flex items-center justify-between text-[11px] pt-1.5 border-t border-amber-200/60">
-                            <span class="opacity-70 font-sans">Yield Compliance:</span>
-                            <span class="font-bold text-base-content" id="liveCompliance">
-                                @(batch.TargetQuantity > 0 && batch.ActualQuantity > 0 ? $"{((decimal)batch.ActualQuantity / batch.TargetQuantity * 100m):F1}%" : "—")
-                            </span>
-                        </div>
-                        <div class="flex items-center justify-between text-[11px]">
-                            <span class="opacity-70 font-sans">Yield Variance:</span>
-                            <span class="font-bold" id="liveVariance">
-                                @(batch.Variance != 0 ? $"{batch.Variance:+0;-0;0} {unitLabel}" : "0 On Target")
-                            </span>
-                        </div>
-                        <div class="flex items-center justify-between text-[11px] text-success">
-                            <span class="opacity-70 font-sans">Inventory Impact:</span>
-                            <span class="font-bold" id="liveInventoryEffect">+@batch.ActualQuantity @unitLabel to POS</span>
-                        </div>
-                    </div>
-
-                    <!-- Submit Button -->
-                    <button type="submit" class="btn btn-primary w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
-                        <i class="fa-solid fa-floppy-disk text-xs"></i> Save Actual Output &amp; Complete Batch
-                    </button>
-                </form>
-
-            </div>
-
-            <!-- Defects Logged -->
-            <div class="card bg-base-100 border border-error/30 shadow-xs rounded-2xl p-6 space-y-4">
-                <div class="flex items-center justify-between border-b border-base-200 pb-3">
-                    <div>
-                        <h2 class="font-black text-sm text-base-content flex items-center gap-2">
-                            <i class="fa-solid fa-triangle-exclamation text-error"></i> Defects Logged
-                        </h2>
-                        <p class="text-[11px] text-base-content/60 mt-0.5">
-                            Record the total defective units from this batch.
-                        </p>
-                    </div>
-                    <span class="badge @(Model.TotalBatchDefects > 0 ? "badge-error" : "badge-ghost") badge-xs font-bold font-mono">
-                        @Model.TotalBatchDefects.ToString("N0") @unitLabel
-                    </span>
-                </div>
-
-                @if (Model.BatchDefects.Any())
-                {
-                    var defect = Model.BatchDefects.First();
-                    <div class="rounded-xl bg-error/5 border border-error/20 p-3 text-xs space-y-1">
-                        <div class="flex items-center justify-between">
-                            <span class="opacity-60">Total Defected</span>
-                            <span class="font-black font-mono text-error">@Model.TotalBatchDefects.ToString("N0") @unitLabel</span>
-                        </div>
-                        @if (!string.IsNullOrWhiteSpace(defect.DefectReason))
-                        {
-                            <div class="text-[11px] opacity-70">Reason: @defect.DefectReason</div>
-                        }
-                        <div class="text-[10px] opacity-50">
-                            Last logged by @defect.RecordedBy on @defect.RecordedAt.ToString("yyyy-MM-dd HH:mm")
-                        </div>
-                    </div>
-                }
-
-                <form method="post" asp-page-handler="LogDefects" class="space-y-3">
-                    <input type="hidden" asp-for="DefectInput.BatchId" />
-                    <div class="form-control w-full">
-                        <label class="label pb-1.5">
-                            <span class="label-text font-bold text-xs text-base-content">Total Defective Units (@unitLabel)</span>
-                        </label>
-                        <div class="join w-full">
-                            <input type="number" min="0" asp-for="DefectInput.Quantity"
-                                   class="input input-bordered input-sm join-item w-full font-mono font-bold bg-base-200 border-base-300 rounded-l-xl text-xs focus:bg-base-100 focus:border-error" />
-                            <span class="join-item bg-base-200 border border-base-300 border-l-0 font-mono text-[10px] font-bold px-3 flex items-center">
-                                @unitLabel
-                            </span>
-                        </div>
-                        <span class="text-[10px] opacity-60 mt-1">Enter 0 to clear the defect log for this batch.</span>
-                    </div>
-
-                    <div class="form-control w-full">
-                        <label class="label pb-1.5">
-                            <span class="label-text font-bold text-xs text-base-content">Defect Reason / Notes</span>
-                        </label>
-                        <textarea asp-for="DefectInput.Reason" rows="2" maxlength="250"
-                                  class="textarea textarea-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-error leading-relaxed"
-                                  placeholder="e.g. Oven burn, underweight, damaged during packing"></textarea>
-                    </div>
-
-                    <button type="submit" class="btn btn-error w-full rounded-xl font-bold py-2 text-xs shadow-xs gap-2">
-                        <i class="fa-solid fa-floppy-disk text-xs"></i> Save Defects Logged
-                    </button>
-                </form>
-            </div>
-
-            <!-- Category Standard Benchmark Tip -->
-            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 text-xs space-y-2">
-                <div class="font-bold text-base-content flex items-center gap-2">
-                    <i class="fa-regular fa-lightbulb text-warning"></i> Production Standard Benchmark
-                </div>
-                <p class="text-[11px] opacity-70 leading-relaxed">
-                    @labels.ProductionStandardTip
-                </p>
-            </div>
-
-        </div>
-
     </div>
 </div>
 
-@section Scripts {
-<script>
-    const batchId = @batch.Id;
-    const targetQty = @batch.TargetQuantity;
-    const materialCost = @batch.TotalBatchCost;
-    const unitLabel = '@unitLabel';
-
-    function calculateDetailsLive() {
-        const actual = parseInt(document.getElementById('actualInputQty').value) || 0;
-        const liveUnitCostEl = document.getElementById('liveUnitCost');
-        const liveComplianceEl = document.getElementById('liveCompliance');
-        const liveVarianceEl = document.getElementById('liveVariance');
-        const liveInventoryEffectEl = document.getElementById('liveInventoryEffect');
-
-        if (actual > 0) {
-            const unitCost = (materialCost / actual).toFixed(2);
-            liveUnitCostEl.innerText = `₦${unitCost} / ${unitLabel}`;
-
-            if (targetQty > 0) {
-                const comp = ((actual / targetQty) * 100).toFixed(1);
-                liveComplianceEl.innerText = `${comp}%`;
-
-                const diff = actual - targetQty;
-                if (diff > 0) {
-                    liveVarianceEl.className = 'font-bold text-success';
-                    liveVarianceEl.innerText = `+${diff} ${unitLabel} (Surplus)`;
-                } else if (diff < 0) {
-                    liveVarianceEl.className = 'font-bold text-error';
-                    liveVarianceEl.innerText = `${diff} ${unitLabel} (Shortfall)`;
-                } else {
-                    liveVarianceEl.className = 'font-bold text-base-content';
-                    liveVarianceEl.innerText = `0 ${unitLabel} (On Target)`;
+<dialog id="actualDialog" class="modal">
+    <div class="modal-box max-w-2xl rounded-2xl">
+        <h3 class="font-black text-lg">Register Actual Outcome</h3>
+        <p class="text-xs opacity-70 mt-1">Enter the actual output for every product line. Saving completes the batch and posts stock to the default factory repository.</p>
+        <form method="post" asp-page-handler="RecordActuals" class="space-y-3 mt-4">
+            <input type="hidden" name="ActualsInput.BatchId" value="@Model.Batch.Id" />
+            <div class="space-y-2">
+                @for (var i = 0; i < Model.Batch.Lines.Count; i++)
+                {
+                    var line = Model.Batch.Lines[i];
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center rounded-xl border border-base-300 p-2">
+                        <input type="hidden" name="ActualsInput.Lines[@i].LineId" value="@line.Id" />
+                        <div class="sm:col-span-2">
+                            <div class="font-bold text-xs">@line.RecipeName</div>
+                            <div class="text-[10px] opacity-60">Target @line.TargetQuantity.ToString("N0") @line.OutputUnitLabel</div>
+                        </div>
+                        <label class="form-control">
+                            <span class="label-text text-[10px] font-bold uppercase opacity-60">Actual output</span>
+                            <input type="number" min="0" name="ActualsInput.Lines[@i].ActualQuantity" value="@line.ActualQuantity" class="input input-sm input-bordered rounded-xl text-right font-mono" required />
+                        </label>
+                    </div>
                 }
-            }
-
-            liveInventoryEffectEl.innerText = `+${actual.toLocaleString()} ${unitLabel} to POS`;
-        } else {
-            liveUnitCostEl.innerText = '—';
-            liveComplianceEl.innerText = '0.0%';
-            liveVarianceEl.innerText = '—';
-            liveInventoryEffectEl.innerText = `+0 ${unitLabel} to POS`;
-        }
-    }
-</script>
-}
+            </div>
+            <div class="modal-action">
+                <button type="button" class="btn btn-sm btn-ghost rounded-xl" onclick="document.getElementById('actualDialog').close()">Cancel</button>
+                <button type="submit" class="btn btn-sm btn-primary rounded-xl font-bold">Save Actual Output</button>
+            </div>
+        </form>
+    </div>
+</dialog>

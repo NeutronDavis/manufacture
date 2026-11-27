@@ -146,11 +146,10 @@
                         <tr class="opacity-60 uppercase text-[10px] tracking-wider border-b border-base-200 bg-base-200/50">
                             <th class="py-3 pl-4">Batch #</th>
                             <th>Date / Shift</th>
-                            <th>Category &amp; Product</th>
+                            <th>Products</th>
                             <th>Operator / Baker</th>
-                            <th>Input Batch Size</th>
-                            <th>Target</th>
-                            <th>Actual Output</th>
+                            <th>Total Target</th>
+                            <th>Total Actual</th>
                             <th>Yield Variance</th>
                             <th>Status</th>
                             <th class="text-center pr-4">Action</th>
@@ -172,7 +171,7 @@
                                 data-cost="@batch.TotalBatchCost"
                                 data-actual="@batch.ActualQuantity"
                                 data-target="@batch.TargetQuantity"
-                                data-search="@batch.BatchNumber.ToLower() @batch.RecipeName.ToLower() @batch.BakerInCharge.ToLower() @batch.Shift.ToLower() @categoryName.ToLower() @batch.Status.ToString().ToLower()">
+                                data-search="@batch.BatchNumber.ToLower() @batch.ProductSummary.ToLower() @batch.BakerInCharge.ToLower() @batch.Shift.ToLower() @categoryName.ToLower() @batch.Status.ToString().ToLower()">
                                 <td class="font-mono text-xs font-black py-3 pl-4">
                                     <a asp-page="/Production/Batches/Details" asp-route-id="@batch.Id" class="text-primary hover:underline flex items-center gap-1.5" title="View batch details">
                                         <i class="fa-solid fa-arrow-up-right-from-square text-[9px] opacity-60"></i>
@@ -184,25 +183,31 @@
                                     <span class="text-[10px] opacity-60">@batch.Shift</span>
                                 </td>
                                 <td>
-                                    <div class="font-bold text-base-content">@batch.RecipeName</div>
-                                    <span class="badge @catBadgeClass badge-xs font-mono font-bold mt-1">@categoryName</span>
+                                    <div class="font-bold text-base-content">@batch.ProductSummary</div>
+                                    <div class="flex flex-wrap gap-1 mt-1">
+                                        @foreach (var line in batch.Lines.Take(3))
+                                        {
+                                            <span class="badge @catBadgeClass badge-xs font-mono font-bold">@line.RecipeName</span>
+                                        }
+                                        @if (batch.Lines.Count > 3)
+                                        {
+                                            <span class="badge badge-ghost badge-xs">+@(batch.Lines.Count - 3)</span>
+                                        }
+                                    </div>
+                                    <div class="text-[10px] opacity-60 mt-1">@categoryName · @batch.Lines.Count line(s)</div>
                                 </td>
                                 <td class="opacity-80">@batch.BakerInCharge</td>
                                 <td class="font-mono font-bold text-base-content">
-                                    @batch.BatchInputQuantity.ToString("0.##")
-                                    <span class="text-[10px] opacity-60 font-normal">@(string.IsNullOrWhiteSpace(batch.BatchInputUnitLabel) ? "input" : batch.BatchInputUnitLabel)</span>
-                                </td>
-                                <td class="font-mono font-bold text-base-content">
-                                    @batch.TargetQuantity.ToString("N0") <span class="text-[10px] opacity-60 font-normal">@unitLabel</span>
+                                    @batch.TargetQuantity.ToString("N0") <span class="text-[10px] opacity-60 font-normal">units</span>
                                 </td>
                                 <td class="font-mono font-black text-base-content">
                                     @if (batch.ActualQuantity > 0)
                                     {
-                                        <span>@batch.ActualQuantity.ToString("N0") <span class="text-[10px] font-normal opacity-60">@unitLabel</span></span>
+                                        <span>@batch.ActualQuantity.ToString("N0") <span class="text-[10px] font-normal opacity-60">units</span></span>
                                     }
                                     else
                                     {
-                                        <span class="badge badge-warning badge-soft badge-xs font-mono font-bold">0 @unitLabel</span>
+                                        <span class="badge badge-warning badge-soft badge-xs font-mono font-bold">0 units</span>
                                     }
                                 </td>
                                 <td>

@@ -25,6 +25,8 @@ public partial class Order
 
     public string? PosTerminalCode { get; set; }
 
+    public int? ProductRepositoryId { get; set; }
+
     public int BookedByType { get; set; }
 
     public int? CreatedByUserId { get; set; }
@@ -51,13 +53,9 @@ public partial class Order
 
     public DateTime TargetDeliveryDate { get; set; }
 
-    public bool IsPrintedForLoading { get; set; }
+    public DateTime? StockDeductedAt { get; set; }
 
-    public DateTime? PrintedAt { get; set; }
-
-    public string? VerifiedByLoaderName { get; set; }
-
-    public DateTime? LoadedAt { get; set; }
+    public string? StockDeductedBy { get; set; }
 
     public string Notes { get; set; } = null!;
 
@@ -78,6 +76,8 @@ public partial class Order
     public virtual ICollection<OrderPayment> OrderPayments { get; set; } = new List<OrderPayment>();
 
     public virtual PosTerminal? PosTerminal { get; set; }
+
+    public virtual ProductRepository? ProductRepository { get; set; }
 
     public virtual ICollection<ProductionBatch> ProductionBatches { get; set; } = new List<ProductionBatch>();
 

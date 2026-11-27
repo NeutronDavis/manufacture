@@ -5,6 +5,7 @@ CREATE TABLE [dbo].[PosTerminals]
     [TerminalName]           NVARCHAR (100) NOT NULL,
     [AssignedEmployeeId]     INT            NULL,
     [AssignedUserId]         INT            NULL,
+    [ProductRepositoryId]    INT            NULL,
     [CashAccountName]        NVARCHAR (100) NOT NULL CONSTRAINT [DF_PosTerminals_CashAccountName] DEFAULT (N'Bakery Cash Drawer'),
     [TransferAccountName]    NVARCHAR (120) NOT NULL CONSTRAINT [DF_PosTerminals_TransferAccountName] DEFAULT (N'FirstBank - 3021948291'),
     [PosBankAccountName]     NVARCHAR (120) NOT NULL CONSTRAINT [DF_PosTerminals_PosBankAccountName] DEFAULT (N'Moniepoint POS - 9028129'),
@@ -15,7 +16,8 @@ CREATE TABLE [dbo].[PosTerminals]
     CONSTRAINT [PK_PosTerminals] PRIMARY KEY CLUSTERED ([Id] ASC),
     CONSTRAINT [UQ_PosTerminals_TerminalCode] UNIQUE ([TerminalCode]),
     CONSTRAINT [FK_PosTerminals_Employees] FOREIGN KEY ([AssignedEmployeeId]) REFERENCES [dbo].[Employees] ([Id]),
-    CONSTRAINT [FK_PosTerminals_Users] FOREIGN KEY ([AssignedUserId]) REFERENCES [dbo].[Users] ([Id]) ON DELETE SET NULL
+    CONSTRAINT [FK_PosTerminals_Users] FOREIGN KEY ([AssignedUserId]) REFERENCES [dbo].[Users] ([Id]) ON DELETE SET NULL,
+    CONSTRAINT [FK_PosTerminals_ProductRepositories] FOREIGN KEY ([ProductRepositoryId]) REFERENCES [dbo].[ProductRepositories] ([Id])
 );
 GO
 
@@ -27,4 +29,9 @@ GO
 CREATE NONCLUSTERED INDEX [IX_PosTerminals_AssignedEmployeeId]
     ON [dbo].[PosTerminals] ([AssignedEmployeeId] ASC)
     WHERE [AssignedEmployeeId] IS NOT NULL;
+GO
+
+CREATE NONCLUSTERED INDEX [IX_PosTerminals_ProductRepositoryId]
+    ON [dbo].[PosTerminals] ([ProductRepositoryId] ASC)
+    WHERE [ProductRepositoryId] IS NOT NULL;
 GO

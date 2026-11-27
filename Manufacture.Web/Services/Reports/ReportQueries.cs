@@ -106,13 +106,13 @@ namespace Manufacture.Services.Reports
         {
             var start = ctx.Filters.StartDate.Date;
             var end = ctx.Filters.EndDate.Date.AddDays(1);
-            var items = await db.RouteSheetItems.AsNoTracking()
-                .Include(i => i.RouteSheet)
+            var items = await db.SalesReconciliationItems.AsNoTracking()
+                .Include(i => i.SalesReconciliation)
                 .Include(i => i.Recipe).ThenInclude(r => r.ProductionProductType).ThenInclude(p => p!.ProductionCategory)
-                .Where(i => i.RouteSheet.RouteDate >= DateOnly.FromDateTime(start) && i.RouteSheet.RouteDate < DateOnly.FromDateTime(end))
+                .Where(i => i.SalesReconciliation.ReconciliationDate >= DateOnly.FromDateTime(start) && i.SalesReconciliation.ReconciliationDate < DateOnly.FromDateTime(end))
                 .ToListAsync(ct);
             var batches = await db.ProductionBatches.AsNoTracking()
-                .Include(b => b.Recipe).ThenInclude(r => r.ProductionProductType).ThenInclude(p => p!.ProductionCategory)
+                .Include(b => b.ProductionBatchItems).ThenInclude(i => i.Recipe).ThenInclude(r => r.ProductionProductType).ThenInclude(p => p!.ProductionCategory)
                 .Where(b => b.ProductionDate >= start && b.ProductionDate < end && b.Status != (int)BatchStatus.Cancelled)
                 .ToListAsync(ct);
             var defects = await db.ProductionDefects.AsNoTracking()
@@ -130,18 +130,21 @@ namespace Manufacture.Services.Reports
                 var c = item.Recipe?.ProductionProductType?.ProductionCategory;
                 var id = c?.Id ?? 0;
                 Row(rows, id, "Category", c?.Name ?? "Uncategorised");
-                Add(rows, id, "Orders", item.RepOrderRequestedQty);
-                Add(rows, id, "Loaded", item.TodayNewlyLoadedQty);
+                Add(rows, id, "Orders", item.QtySold);
+                Add(rows, id, "Loaded", item.OpeningStock);
                 Add(rows, id, "Sold", item.QtySold);
-                Add(rows, id, "Closing", item.ClosingStockQty);
+                Add(rows, id, "Closing", item.ClosingStock ?? 0);
                 Add(rows, id, "Damaged", item.QtyDamaged);
             }
             foreach (var batch in batches)
             {
-                var c = batch.Recipe?.ProductionProductType?.ProductionCategory;
-                var id = c?.Id ?? 0;
-                Row(rows, id, "Category", c?.Name ?? "Uncategorised");
-                Add(rows, id, "Produced", batch.ActualQuantity);
+                foreach (var line in batch.ProductionBatchItems)
+                {
+                    var c = line.Recipe?.ProductionProductType?.ProductionCategory;
+                    var id = c?.Id ?? 0;
+                    Row(rows, id, "Category", c?.Name ?? "Uncategorised");
+                    Add(rows, id, "Produced", line.ActualQuantity);
+                }
             }
             foreach (var defect in defects)
             {
@@ -454,17 +457,16 @@ namespace Manufacture.Services.Reports
             {
                 ["order"] = o.OrderNumber, ["date"] = o.OrderDate, ["customer"] = o.CustomerName,
                 ["rep"] = o.SalesRepName ?? "Unassigned", ["status"] = o.Status.ToString(),
-                ["printed"] = o.IsPrintedForLoading ? "Yes" : "No",
-                ["toPrinted"] = o.PrintedAt.HasValue ? Math.Round((o.PrintedAt.Value - o.OrderDate).TotalHours, 1) : 0m,
-                ["toLoaded"] = o.LoadedAt.HasValue ? Math.Round((o.LoadedAt.Value - o.OrderDate).TotalHours, 1) : 0m,
+                ["printed"] = o.StockDeductedAt.HasValue ? "Yes" : "No",
+                ["toPrinted"] = o.StockDeductedAt.HasValue ? Math.Round((o.StockDeductedAt.Value - o.OrderDate).TotalHours, 1) : 0m,
+                ["toLoaded"] = 0m,
                 ["toClosed"] = o.ClosedAt.HasValue ? Math.Round((o.ClosedAt.Value - o.OrderDate).TotalHours, 1) : 0m
             }).ToList();
             return Build(ctx, [
                 ReportViewColumnDto.Text("order", "Order"), ReportViewColumnDto.Date("date", "Date"),
                 ReportViewColumnDto.Text("customer", "Customer"), ReportViewColumnDto.Text("rep", "Sales Rep"),
-                ReportViewColumnDto.Text("status", "Status"), ReportViewColumnDto.Text("printed", "Printed"),
-                ReportViewColumnDto.Number("toPrinted", "Hours to Print"), ReportViewColumnDto.Number("toLoaded", "Hours to Load"),
-                ReportViewColumnDto.Number("toClosed", "Hours to Close")
+                ReportViewColumnDto.Text("status", "Status"), ReportViewColumnDto.Text("printed", "Stock Deducted"),
+                ReportViewColumnDto.Number("toPrinted", "Hours to Deduct"), ReportViewColumnDto.Number("toClosed", "Hours to Close")
             ], rows);
         }
 
@@ -1253,15 +1255,15 @@ namespace Manufacture.Services.Reports
         private static async Task<List<Dictionary<string, object?>>> FleetVehicleCostRows(ManufactureDbContext db, ReportQueryContext ctx, CancellationToken ct)
         {
             var start = ctx.Filters.StartDate.Date; var end = ctx.Filters.EndDate.Date.AddDays(1);
-            var sheets = await db.DailyRepRouteSheets.AsNoTracking().Include(s => s.Vehicle).Include(s => s.RouteSheetItems)
-                .Where(s => s.RouteDate >= DateOnly.FromDateTime(start) && s.RouteDate <= DateOnly.FromDateTime(ctx.Filters.EndDate.Date)).ToListAsync(ct);
+            var sheets = await db.SalesReconciliations.AsNoTracking().Include(s => s.SalesReconciliationItems)
+                .Where(s => s.ReconciliationDate >= DateOnly.FromDateTime(start) && s.ReconciliationDate <= DateOnly.FromDateTime(ctx.Filters.EndDate.Date)).ToListAsync(ct);
             var fuel = await db.FuelLogs.AsNoTracking().Where(f => f.FuelDate >= start && f.FuelDate < end).ToListAsync(ct);
             var maintenance = await db.MaintenanceLogs.AsNoTracking().Where(m => m.ServiceDate >= DateOnly.FromDateTime(start) && m.ServiceDate <= DateOnly.FromDateTime(ctx.Filters.EndDate.Date)).ToListAsync(ct);
             var vehicles = await db.Vehicles.AsNoTracking().Include(v => v.AssignedEmployee).ToListAsync(ct);
             var rows = vehicles.Select(v =>
             {
-                var vehicleSheets = sheets.Where(s => s.VehicleId == v.Id).ToList();
-                var units = vehicleSheets.Sum(s => s.RouteSheetItems.Sum(i => i.QtySold));
+                var vehicleSheets = sheets.Where(s => string.Equals(s.VehicleRegistration, v.RegistrationNumber, StringComparison.OrdinalIgnoreCase)).ToList();
+                var units = vehicleSheets.Sum(s => s.SalesReconciliationItems.Sum(i => i.QtySold));
                 var fuelCost = fuel.Where(f => f.VehicleId == v.Id).Sum(f => f.TotalCost ?? f.LitresDispensed * f.PricePerLitre);
                 var maintenanceCost = maintenance.Where(m => m.VehicleId == v.Id).Sum(m => m.Cost);
                 var total = fuelCost + maintenanceCost;
@@ -1884,8 +1886,8 @@ namespace Manufacture.Services.Reports
         {
             var orders = await db.Orders.AsNoTracking().Include(o => o.OrderPayments).ToListAsync(ct);
             var paymentDifference = orders.Sum(o => o.AmountPaid - o.OrderPayments.Sum(p => p.Amount));
-            var routeSheets = await db.DailyRepRouteSheets.AsNoTracking().Include(s => s.RouteSheetItems).ToListAsync(ct);
-            var routeDifference = routeSheets.Sum(s => s.TotalExpectedSalesRevenue - s.RouteSheetItems.Sum(i => i.ExpectedItemRevenue ?? 0m));
+            var reconciliations = await db.SalesReconciliations.AsNoTracking().Include(s => s.SalesReconciliationItems).ToListAsync(ct);
+            var routeDifference = reconciliations.Sum(s => s.TotalExpectedRevenue - s.SalesReconciliationItems.Sum(i => i.ExpectedRevenue ?? 0m));
             var customers = await db.Customers.AsNoTracking().ToListAsync(ct);
             var openBalances = orders.Where(o => o.CustomerId > 0).GroupBy(o => o.CustomerId).ToDictionary(g => g.Key, g => g.Sum(o => o.BalanceDue ?? 0m));
             var customerDifference = customers.Sum(c => c.OutstandingBalance - openBalances.GetValueOrDefault(c.Id));
@@ -1898,7 +1900,7 @@ namespace Manufacture.Services.Reports
             var rows = new List<Dictionary<string, object?>>
             {
                 IntegrityRow("Order AmountPaid vs payment rows", paymentDifference, "High"),
-                IntegrityRow("Route expected revenue vs item totals", routeDifference, "High"),
+                IntegrityRow("Reconciliation expected revenue vs item totals", routeDifference, "High"),
                 IntegrityRow("Customer outstanding vs open orders", customerDifference, "Medium"),
                 IntegrityRow("Inventory quantity vs last movement balance", inventoryDifference, "High"),
                 IntegrityRow("Payroll run net vs record net", payrollDifference, "High")
@@ -1912,16 +1914,16 @@ namespace Manufacture.Services.Reports
         private static async Task<ReportViewResultDto> ExecutiveAlerts(ManufactureDbContext db, ReportQueryContext ctx, CancellationToken ct)
         {
             var lowStock = await db.InventoryItems.CountAsync(i => i.IsActive && i.QuantityInStock <= i.ReorderThreshold, ct);
-            var shortLoads = await db.RouteSheetItems.CountAsync(i => i.RepOrderRequestedQty > i.TodayNewlyLoadedQty, ct);
-            var damage = await db.RouteSheetItems.CountAsync(i => i.QtyDamaged > 0, ct);
+            var finishedGoodsLow = await db.ProductRepositoryStocks.CountAsync(s => s.QuantityOnHand <= s.ReorderThreshold, ct);
+            var damage = await db.SalesReconciliationItems.CountAsync(i => i.QtyDamaged > 0, ct);
             var receivables = await db.Orders.CountAsync(o => (o.BalanceDue ?? 0m) > 0, ct);
             var serviceDue = await db.Vehicles.CountAsync(v => v.IsActive && (!v.LastServiceDate.HasValue || v.LastServiceDate < DateOnly.FromDateTime(DateTime.UtcNow.Date.AddDays(-90))), ct);
             var negativeVariance = await db.ProductionBatches.CountAsync(b => b.Status != (int)BatchStatus.Cancelled && b.ActualQuantity < b.TargetQuantity, ct);
             var rows = new List<Dictionary<string, object?>>
             {
-                AlertRow("Low-stock items", "Inventory", lowStock, "Normal"),
-                AlertRow("Ordered > loaded lines", "Dispatch", shortLoads, "High"),
-                AlertRow("Route damage lines", "Sales", damage, "Medium"),
+                AlertRow("Low-stock raw materials", "Inventory", lowStock, "Normal"),
+                AlertRow("Finished products below threshold", "Production", finishedGoodsLow, "High"),
+                AlertRow("Reconciliation damage lines", "Sales", damage, "Medium"),
                 AlertRow("Orders with outstanding balance", "Receivables", receivables, "High"),
                 AlertRow("Vehicles past service threshold", "Fleet", serviceDue, "Medium"),
                 AlertRow("Batches below target", "Production", negativeVariance, "Medium")
@@ -1991,10 +1993,10 @@ namespace Manufacture.Services.Reports
 
             var start = DateOnly.FromDateTime(ctx.Filters.StartDate.Date);
             var end = DateOnly.FromDateTime(ctx.Filters.EndDate.Date);
-            var routeItems = await db.RouteSheetItems.AsNoTracking()
-                .Include(i => i.RouteSheet)
+            var routeItems = await db.SalesReconciliationItems.AsNoTracking()
+                .Include(i => i.SalesReconciliation)
                 .Include(i => i.Recipe).ThenInclude(r => r.ProductionProductType).ThenInclude(p => p!.ProductionCategory)
-                .Where(i => i.RouteSheet.RouteDate >= start && i.RouteSheet.RouteDate <= end)
+                .Where(i => i.SalesReconciliation.ReconciliationDate >= start && i.SalesReconciliation.ReconciliationDate <= end)
                 .ToListAsync(ct);
             foreach (var group in routeItems.GroupBy(i => i.RecipeId))
             {
@@ -2003,28 +2005,27 @@ namespace Manufacture.Services.Reports
                 Ensure(group.Key, category?.Name ?? "Uncategorised", first.ProductName, first.ProductCode);
                 var row = rows[group.Key];
                 row["categoryId"] = category?.Id ?? 0;
-                row["loaded"] = group.Sum(i => i.TodayNewlyLoadedQty);
+                row["loaded"] = group.Sum(i => i.OpeningStock);
                 row["sold"] = group.Sum(i => i.QtySold);
-                row["closing"] = group.Sum(i => i.ClosingStockQty);
+                row["closing"] = group.Sum(i => i.ClosingStock ?? 0);
                 row["damaged"] = group.Sum(i => i.QtyDamaged);
-                var routeRevenue = group.Sum(i => i.QtySold * i.UnitSellingPrice);
+                var routeRevenue = group.Sum(i => i.QtySold * i.UnitPrice);
                 if (routeRevenue > 0) row["revenue"] = routeRevenue;
             }
 
             var batches = await db.ProductionBatches.AsNoTracking()
-                .Include(b => b.Recipe).ThenInclude(r => r.ProductionProductType).ThenInclude(p => p!.ProductionCategory)
+                .Include(b => b.ProductionBatchItems).ThenInclude(i => i.Recipe).ThenInclude(r => r.ProductionProductType).ThenInclude(p => p!.ProductionCategory)
                 .Where(b => b.ProductionDate >= ctx.Filters.StartDate.Date
                     && b.ProductionDate < ctx.Filters.EndDate.Date.AddDays(1)
                     && b.Status != (int)BatchStatus.Cancelled)
                 .ToListAsync(ct);
-            foreach (var group in batches.GroupBy(b => b.RecipeId))
+            foreach (var line in batches.SelectMany(b => b.ProductionBatchItems))
             {
-                var first = group.First();
-                var category = first.Recipe?.ProductionProductType?.ProductionCategory;
-                Ensure(group.Key, category?.Name ?? "Uncategorised", first.RecipeName, first.Recipe?.Code ?? string.Empty);
-                var row = rows[group.Key];
+                var category = line.Recipe?.ProductionProductType?.ProductionCategory;
+                Ensure(line.RecipeId, category?.Name ?? "Uncategorised", line.RecipeName, line.ProductCode);
+                var row = rows[line.RecipeId];
                 row["categoryId"] = category?.Id ?? 0;
-                row["produced"] = group.Sum(b => b.ActualQuantity);
+                row["produced"] = ReportFormatter.Numeric(row["produced"]) + line.ActualQuantity;
             }
 
             var returns = await db.CustomerReturns.AsNoTracking()
@@ -2078,26 +2079,26 @@ namespace Manufacture.Services.Reports
         {
             var start = DateOnly.FromDateTime(ctx.Filters.StartDate.Date);
             var end = DateOnly.FromDateTime(ctx.Filters.EndDate.Date);
-            var query = db.DailyRepRouteSheets.AsNoTracking().Include(s => s.SalesRep).Include(s => s.RouteSheetItems).Where(s => s.RouteDate >= start && s.RouteDate <= end);
+            var query = db.SalesReconciliations.AsNoTracking().Include(s => s.SalesRep).Include(s => s.SalesReconciliationItems)
+                .Where(s => s.ReconciliationDate >= start && s.ReconciliationDate <= end);
             if (ctx.Role == "SalesRep" && ctx.CurrentSalesRepId.HasValue) query = query.Where(s => s.SalesRepId == ctx.CurrentSalesRepId);
             var sheets = await query.ToListAsync(ct);
             return sheets.GroupBy(s => new { s.SalesRepId, RepName = s.SalesRep?.FullName ?? "Unassigned", s.RouteName })
                 .Select(g =>
                 {
-                    var orders = g.Sum(s => s.RouteSheetItems.Sum(i => i.RepOrderRequestedQty));
-                    var loaded = g.Sum(s => s.RouteSheetItems.Sum(i => i.TodayNewlyLoadedQty));
-                    var sold = g.Sum(s => s.RouteSheetItems.Sum(i => i.QtySold));
-                    var closing = g.Sum(s => s.RouteSheetItems.Sum(i => i.ClosingStockQty));
-                    var damaged = g.Sum(s => s.RouteSheetItems.Sum(i => i.QtyDamaged));
-                    var revenue = g.Sum(s => s.RouteSheetItems.Sum(i => i.QtySold * i.UnitSellingPrice));
-                    var collected = g.Sum(s => s.CashCollected + s.BankTransferCollected + s.PosTerminalCollected);
-                    var outstanding = g.Sum(s => s.NewOutstandingAccountBalance ?? 0m);
+                    var loaded = g.Sum(s => s.SalesReconciliationItems.Sum(i => i.OpeningStock));
+                    var sold = g.Sum(s => s.SalesReconciliationItems.Sum(i => i.QtySold));
+                    var closing = g.Sum(s => s.SalesReconciliationItems.Sum(i => i.ClosingStock ?? 0));
+                    var damaged = g.Sum(s => s.SalesReconciliationItems.Sum(i => i.QtyDamaged));
+                    var revenue = g.Sum(s => s.SalesReconciliationItems.Sum(i => i.QtySold * i.UnitPrice));
+                    var collected = g.Sum(s => s.CashHandedOver + s.PosTerminalReceipts);
+                    var outstanding = g.Sum(s => s.Variance ?? 0m);
                     return new Dictionary<string, object?>
                     {
                         ["rep"] = g.Key.RepName, ["route"] = g.Key.RouteName,
-                        ["orders"] = orders, ["loaded"] = loaded, ["sold"] = sold, ["closing"] = closing, ["damaged"] = damaged,
+                        ["orders"] = sold, ["loaded"] = loaded, ["sold"] = sold, ["closing"] = closing, ["damaged"] = damaged,
                         ["revenue"] = revenue, ["collected"] = collected, ["outstanding"] = outstanding,
-                        ["fill"] = Ratio(loaded, orders), ["sell"] = Ratio(sold, loaded), ["damage"] = Ratio(damaged, loaded)
+                        ["fill"] = 100m, ["sell"] = Ratio(sold, loaded), ["damage"] = Ratio(damaged, loaded)
                     };
                 }).OrderByDescending(r => ReportFormatter.Numeric(r["sold"])).ToList();
         }
@@ -2106,24 +2107,24 @@ namespace Manufacture.Services.Reports
         {
             var start = DateOnly.FromDateTime(ctx.Filters.StartDate.Date);
             var end = DateOnly.FromDateTime(ctx.Filters.EndDate.Date);
-            var query = db.RouteSheetItems.AsNoTracking().Include(i => i.RouteSheet).ThenInclude(s => s.SalesRep)
+            var query = db.SalesReconciliationItems.AsNoTracking().Include(i => i.SalesReconciliation).ThenInclude(s => s.SalesRep)
                 .Include(i => i.Recipe).ThenInclude(r => r.ProductionProductType).ThenInclude(p => p!.ProductionCategory)
-                .Where(i => i.RouteSheet.RouteDate >= start && i.RouteSheet.RouteDate <= end);
-            if (ctx.Role == "SalesRep" && ctx.CurrentSalesRepId.HasValue) query = query.Where(i => i.RouteSheet.SalesRepId == ctx.CurrentSalesRepId);
+                .Where(i => i.SalesReconciliation.ReconciliationDate >= start && i.SalesReconciliation.ReconciliationDate <= end);
+            if (ctx.Role == "SalesRep" && ctx.CurrentSalesRepId.HasValue) query = query.Where(i => i.SalesReconciliation.SalesRepId == ctx.CurrentSalesRepId);
             var items = await query.ToListAsync(ct);
             return items
                 .Where(i => ctx.Filters.CategoryId is null || i.Recipe?.ProductionProductType?.ProductionCategoryId == ctx.Filters.CategoryId)
-                .GroupBy(i => new { i.RouteSheet.SalesRepId, Rep = i.RouteSheet.SalesRep?.FullName ?? "Unassigned", i.RecipeId, i.ProductName })
+                .GroupBy(i => new { i.SalesReconciliation.SalesRepId, Rep = i.SalesReconciliation.SalesRep?.FullName ?? "Unassigned", i.RecipeId, i.ProductName })
                 .Select(g =>
                 {
-                    var requested = g.Sum(i => i.RepOrderRequestedQty); var loaded = g.Sum(i => i.TodayNewlyLoadedQty);
-                    var sold = g.Sum(i => i.QtySold); var closing = g.Sum(i => i.ClosingStockQty); var damaged = g.Sum(i => i.QtyDamaged);
-                    var price = g.First().UnitSellingPrice;
+                    var loaded = g.Sum(i => i.OpeningStock);
+                    var sold = g.Sum(i => i.QtySold); var closing = g.Sum(i => i.ClosingStock ?? 0); var damaged = g.Sum(i => i.QtyDamaged);
+                    var price = g.First().UnitPrice;
                     return new Dictionary<string, object?>
                     {
                         ["rep"] = g.Key.Rep, ["sku"] = g.Key.ProductName,
-                        ["requested"] = requested, ["loaded"] = loaded, ["sold"] = sold, ["closing"] = closing, ["damaged"] = damaged,
-                        ["short"] = Math.Max(0, requested - loaded), ["fill"] = Ratio(loaded, requested),
+                        ["requested"] = sold, ["loaded"] = loaded, ["sold"] = sold, ["closing"] = closing, ["damaged"] = damaged,
+                        ["short"] = 0, ["fill"] = 100m,
                         ["closingValue"] = closing * price, ["damagedValue"] = damaged * price,
                         ["damage"] = Ratio(damaged, loaded)
                     };

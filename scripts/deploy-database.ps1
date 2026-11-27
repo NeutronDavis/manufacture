@@ -35,7 +35,8 @@ try {
         /Action:Publish `
         /SourceFile:$dacpac `
         /TargetConnectionString:"Server=$Server;Database=$Database;Trusted_Connection=True;TrustServerCertificate=True;Encrypt=False;" `
-        /p:BlockOnPossibleDataLoss=False
+        /p:BlockOnPossibleDataLoss=False `
+        /p:DropObjectsNotInSource=True
 }
 finally {
     Pop-Location

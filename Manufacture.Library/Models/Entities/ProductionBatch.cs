@@ -9,7 +9,7 @@ public partial class ProductionBatch
 
     public string BatchNumber { get; set; } = null!;
 
-    public int RecipeId { get; set; }
+    public int? RecipeId { get; set; }
 
     public string RecipeName { get; set; } = null!;
 
@@ -55,6 +55,8 @@ public partial class ProductionBatch
 
     public string LoggedBy { get; set; } = null!;
 
+    public DateTime? CompletedAt { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
@@ -65,7 +67,9 @@ public partial class ProductionBatch
 
     public virtual ProductionProductType? ProductionProductType { get; set; }
 
+    public virtual ICollection<ProductionBatchItem> ProductionBatchItems { get; set; } = new List<ProductionBatchItem>();
+
     public virtual ICollection<ProductionDefect> ProductionDefects { get; set; } = new List<ProductionDefect>();
 
-    public virtual Recipe Recipe { get; set; } = null!;
+    public virtual Recipe? Recipe { get; set; } = null!;
 }

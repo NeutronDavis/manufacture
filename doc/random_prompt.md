@@ -300,3 +300,64 @@ in that case i like to include a dropdown of the newly created `Delivery dispatc
 
 
 - concerning the product category and the product type 
+- at the Recipes/Costing page, the product type shpuld be rus to genereate the Product code, that means the product type 
+- the product type field should come first before the product name 
+Note at the Settings/Production page, when registering a product type thre is a field for product type Name that means that when selecting the product type field in the /Recipes/Create page it should purplate the product name field with the product type name , Baseline, output Unit Noun fields too. this also means that the product type field will come first in the form  so the form must be rearange
+
+- ill go with option 1, but remember `Baseline Unit` and `Output Unit Noun` field too must be auto-filled when seletting the Product type 
+
+- the /Inventory/Items/Create page seems to have a little missconduct
+- i want this form to be more realistic
+when an inventory is registerd into the system
+First we need the item name item code and what if 10 carton of suger was brought in the unit price for one carton and it unit of measurment 
+
+## Majour update 
+
+- first, the scenerio of how the production works:
+-The factroy should have a product repository that tracks all the product that is produced in the factory, some of this product will be not remain in the factory stor, they will be transfared to a mall where customers will can easily buy them. In all this, the system should be able to know how many product that is avialable and a trashole should be available for each product produced so the production guys can easily take note and prepare for a batch production
+
+- the production batch form in `/Production/Batches/Create` page should be able to take in multiple *Product Recipe* and and they should be *Target Quantity* for each of the multiple selected *Product Recipe*, they will be no *Actual Output Produced* field in the form.
+- Now, After doing so, and after the production batch is over, they should be a button to register  actual outcome value for each selected produced product in that batch, when a user clickes on the button, it should being out a dialog listing out each selected product and a field to enter each of thier *Actual Output Produced* value.
+- After entering the actual value for each product in the dialogue, the save action button in the dialogue should update the batch production actual value for each selected product and also increment the product in the factory product repository and not the mall, they should be history for every factory product repository increment for tracking purpose.
+
+this means that they will be a UI redesign to fit the new idea
+
+- they should be a product item repositry setup at the Production module for the admin to set up where products will be sent to. the user can manage and add multiple reprsitory but the systemshould be able to know the total number of items accross all the repository
+
+## Salse rep update
+
+- they will be a reconsilation page for sales reps to key in for closing stock pointing to the list of product that was avilable during open stock with a field for them to key in the total sold for that day 
+Note during the reconcilation, that is where the sales rep can enter the `Qty Sold` `Damaged` and `Replacement` the Active Stock should show which is the closing stock of yesterday and it save as the opening stock for today
+- the cash collectionin the reconsilation page should only be `Cash Handed Over` and `POS Terminal Receipts`
+- note the recosilation page for sales rep POS in the mall should list out only the unique product items in the mall directory and the same to the sales rep POS in the factory
+- this means at the `/Sales/Terminals` page when creating a POS in `/Sales/Terminals/Create`, it should contain a link up filed to the the product item directories listing out the directories in a dropdown for selection
+- remove the Route Dispatch Bay including it's databse model
+- the reconsilation databse model should be created and page should be for each sales rep so each of them can do thier reconsilation
+- now, the bis question is `at what point will the items in the each repository be deducted
+- i want it to be deducted when the sales rep has placed the order and printed a recipt
+- the `/Sales/Orders/Create` page the will be looking simple
+- all sales done in the `/Sales/Orders/Create` page will be deducted form the repositry where the sales rep POS is asigned to.
+- here is the scenerio for the order placement by salse rep:
+- when an order is placed, the page redirect to `/Sales/Orders/Receipt/` to print the page recipt, in that page remove the `Store Loader Sign-Off & Dispatch ` section also remove the `Gate Loading Rule:` alert.
+- at the `/Sales/Orders` page remove `Loading Slip` column and `Dispatch` column. Note the order should not be marked as printed or not printed anymore
+
+- i want a seperate design for the `/Sales/Orders/Create` page, the `Channel & Customer Account` section is not realy nessasary 
+- the `Product Basket & Quantities` section, the input should be a searchable dropdown 
+- the `POS Register Terminal` fiels should be ontop of the page same with `Order Flow Type` takse off the rest
+- in the `Order Settlement Summary` section include the Remarks field incase the sales rep want to attash a note to the order
+- just give it a very new look and simple point of sales looks
+
+## Let's finish what we have started 
+
+- I surgest that the `LOADED` KPI in the `/Dashboard` page should be taksen off, becasue the app is not doing dispatch anymore, it's only order and reconsilation where orther information are inside 
+
+- At the /Sales/Orders/Create page , the `Search Product` shuld take a longer lenth than the `Quantity` field and the `Quantity` field should.
+- in  the /Sales/Orders/Create page, the selected  POS Register Terminal should load only the Search Product in the Directory assigned to it
+- the Add button in the  /Sales/Orders/Create page is not adding the selected item
+- at the `Order Settlement Summary` section, the `Payment Method` and the `Remarks` field should be of total lenght of  `Discount (₦)` and `Amount Paid (₦)` just to make things be in uniform
+
+
+- In the /Sales/Reconciliation page, there is no vehicle attached to a reconsilation so remove the vehicle at the right side card
+
+
+- at the /Production/Batches/Details page, if the all the selected actual fields has 0 or no value dont save 

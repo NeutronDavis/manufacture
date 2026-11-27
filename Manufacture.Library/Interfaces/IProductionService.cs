@@ -31,6 +31,12 @@ namespace Manufacture.Library.Interfaces
         bool SoftDeleteRecipe(int id);
 
         /// <summary>
+        /// Builds the next unused product code for a product type, for example
+        /// <c>BRD-001</c>. Exclude the current recipe when regenerating on edit.
+        /// </summary>
+        string GenerateRecipeCode(int productionProductTypeId, int? excludeRecipeId = null);
+
+        /// <summary>
         /// Returns a human-readable reason when the recipe cannot be permanently
         /// deleted because linked records exist; otherwise returns <c>null</c>.
         /// </summary>
@@ -39,13 +45,13 @@ namespace Manufacture.Library.Interfaces
 
         List<ProductionBatch> GetAllBatches();
         ProductionBatch? GetBatchById(int id);
-        ProductionBatch CreateBatch(ProductionBatchDto dto, string loggedBy);
+        ProductionBatch CreateBatch(ProductionBatchCreateDto dto, string loggedBy);
         ProductionBatch LogDailyProduction(DailyProductionEntryDto dto, string loggedBy);
         bool UpdateBatchStatus(int id, BatchStatus status, int actualQuantity);
-        ProductionBatch? RecordBatchActualOutput(int id, int actualQuantity, BatchStatus status, string? notes = null, string? bakerInCharge = null);
+        ProductionBatch? RecordBatchActuals(int id, IReadOnlyDictionary<int, int> actualQuantitiesByLineId, string recordedBy);
 
         List<ProductionDefectDto> GetBatchDefects(int batchId);
-        ProductionDefectDto? SaveBatchDefects(int batchId, int quantity, string? reason, string recordedBy);
+        ProductionDefectDto? SaveBatchDefects(int batchId, int recipeId, int quantity, string? reason, string recordedBy);
 
         decimal CalculateBatchMaterialCost(int recipeId, decimal batchInputQuantity);
         decimal CalculateRunUnitCost(decimal totalBatchMaterialCost, decimal actualYieldQuantity);

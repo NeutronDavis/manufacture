@@ -228,6 +228,10 @@
                                         <i class="fa-solid fa-layer-group text-[11px] w-3.5 text-center"></i>
                                         <span>Mixing Batches</span>
                                     </a>
+                                    <a asp-page="/Production/Repositories/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Production/Repositories") ? "erp-nav-active" : "")">
+                                        <i class="fa-solid fa-warehouse text-[11px] w-3.5 text-center"></i>
+                                        <span>Product Repositories</span>
+                                    </a>
                                 }
                             </div>
                         </details>
@@ -314,10 +318,6 @@
                                 }
                                 @if (userRole == "SuperAdmin" || userRole == "SalesRep")
                                 {
-                                    <a asp-page="/Sales/Dispatch/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Sales/Dispatch") ? "erp-nav-active" : "")">
-                                        <i class="fa-solid fa-truck-ramp-box text-[11px] w-3.5 text-center"></i>
-                                        <span>Route Dispatch Bay</span>
-                                    </a>
                                     <a asp-page="/Sales/Reconciliation/Index" class="erp-nav-sub-item @(currentPath.StartsWith("/Sales/Reconciliation") ? "erp-nav-active" : "")">
                                         <i class="fa-solid fa-scale-balanced text-[11px] w-3.5 text-center"></i>
                                         <span>Sales Reconciliation</span>

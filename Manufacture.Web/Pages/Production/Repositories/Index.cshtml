@@ -1,0 +1,130 @@
+@page
+@using Manufacture.Models.DTOs
+@model Manufacture.Pages.Production.Repositories.IndexModel
+@{
+    ViewData["Title"] = "Product Repositories";
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1 flex items-center gap-1.5 font-medium">
+                <a asp-page="/Dashboard/Index" class="hover:underline">Dashboard</a>
+                <span>&gt;</span>
+                <a asp-page="/Production/Index" class="hover:underline">Production</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">Product Repositories</span>
+            </div>
+            <h1 class="text-2xl font-black tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-warehouse text-primary"></i> Product Repositories
+            </h1>
+            <p class="text-xs opacity-70 mt-0.5">Finished-goods locations, per-product thresholds, transfers and stock movement history.</p>
+        </div>
+        @if (Model.CanEdit)
+        {
+            <a asp-page="/Production/Repositories/Create" class="btn btn-sm btn-primary rounded-xl gap-2 font-bold">
+                <i class="fa-solid fa-plus"></i> New Repository
+            </a>
+        }
+    </div>
+
+    <div class="stats stats-vertical sm:stats-horizontal bg-base-100 border border-base-300 rounded-2xl w-full">
+        <div class="stat">
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Repositories</div>
+            <div class="stat-value text-2xl font-mono">@Model.Repositories.Count</div>
+        </div>
+        <div class="stat">
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Products Tracked</div>
+            <div class="stat-value text-2xl font-mono">@Model.GrandSkuCount</div>
+        </div>
+        <div class="stat">
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Total Units Across Repositories</div>
+            <div class="stat-value text-2xl font-mono">@Model.GrandTotalUnits.ToString("N0")</div>
+        </div>
+        <div class="stat">
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Low-Stock Rows</div>
+            <div class="stat-value text-2xl font-mono text-error">@Model.GrandLowStockCount</div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        @foreach (var repo in Model.Repositories)
+        {
+            <a asp-page="/Production/Repositories/Details" asp-route-id="@repo.Id"
+               class="card bg-base-100 border border-base-300 rounded-2xl hover:border-primary transition">
+                <div class="card-body p-5 space-y-3">
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <div class="font-mono text-[10px] opacity-60">@repo.Code</div>
+                            <h2 class="font-black text-base">@repo.Name</h2>
+                        </div>
+                        <div class="flex flex-col items-end gap-1">
+                            <span class="badge badge-sm @(repo.LocationType == ProductRepositoryLocationType.Factory ? "badge-neutral" : "badge-info")">@repo.LocationType</span>
+                            @if (repo.IsDefaultProductionOutput)
+                            {
+                                <span class="badge badge-success badge-sm">Default output</span>
+                            }
+                            @if (!repo.IsActive)
+                            {
+                                <span class="badge badge-error badge-sm">Inactive</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="rounded-xl bg-base-200 p-2">
+                            <div class="text-[10px] uppercase opacity-60">SKUs</div>
+                            <div class="font-mono font-bold">@repo.SkuCount</div>
+                        </div>
+                        <div class="rounded-xl bg-base-200 p-2">
+                            <div class="text-[10px] uppercase opacity-60">Units</div>
+                            <div class="font-mono font-bold">@repo.TotalUnits.ToString("N0")</div>
+                        </div>
+                        <div class="rounded-xl bg-base-200 p-2">
+                            <div class="text-[10px] uppercase opacity-60">Low</div>
+                            <div class="font-mono font-bold @(repo.LowStockCount > 0 ? "text-error" : "")">@repo.LowStockCount</div>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(repo.Address))
+                    {
+                        <p class="text-[11px] opacity-60"><i class="fa-solid fa-location-dot mr-1"></i>@repo.Address</p>
+                    }
+                </div>
+            </a>
+        }
+    </div>
+
+    <div class="card bg-base-100 border border-base-300 rounded-2xl">
+        <div class="card-body p-5">
+            <h2 class="font-black text-sm mb-3">Total Product Stock Across All Repositories</h2>
+            <div class="overflow-x-auto">
+                <table class="table table-sm text-xs">
+                    <thead>
+                        <tr class="text-[10px] uppercase opacity-60">
+                            <th>Product</th>
+                            <th>Code</th>
+                            <th class="text-right">Repositories</th>
+                            <th class="text-right">Total On Hand</th>
+                            <th class="text-right">Total Threshold</th>
+                            <th class="text-right">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var total in Model.Totals)
+                        {
+                            <tr>
+                                <td class="font-bold">@total.ProductName</td>
+                                <td class="font-mono text-[11px]">@total.ProductCode</td>
+                                <td class="text-right font-mono">@total.RepositoryCount</td>
+                                <td class="text-right font-mono font-bold">@total.TotalQuantityOnHand.ToString("N0") @total.OutputUnit</td>
+                                <td class="text-right font-mono">@total.TotalThreshold.ToString("N0")</td>
+                                <td class="text-right">
+                                    <span class="badge badge-sm @(total.IsLowStock ? "badge-error" : "badge-success")">@(total.IsLowStock ? "Low" : "OK")</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

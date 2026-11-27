@@ -9,61 +9,48 @@ namespace Manufacture.Pages.Sales.Reconciliation
 {
     public class IndexModel : PageModel
     {
+        private readonly ISalesReconciliationService _reconciliationService;
         private readonly ISalesService _salesService;
-        private readonly RbacCache _rbacService;
+        private readonly RbacCache _rbac;
 
         public IndexModel(
+            ISalesReconciliationService reconciliationService,
             ISalesService salesService,
-            RbacCache rbacService)
+            RbacCache rbac)
         {
+            _reconciliationService = reconciliationService;
             _salesService = salesService;
-            _rbacService = rbacService;
+            _rbac = rbac;
         }
 
-        public List<DailyRepRouteSheet> RouteSheets { get; set; } = new();
-        public DailyRepRouteSheet? SelectedSheet { get; set; }
-        public List<CustomerReturn> CustomerReturns { get; set; } = new();
-        public List<Customer> Customers { get; set; } = new();
-        public List<Recipe> Products { get; set; } = new();
+        public List<ReconciliationSummaryDto> Sheets { get; set; } = new();
+        public SalesReconciliationDto? Selected { get; set; }
         public List<SalesRepProfile> SalesReps { get; set; } = new();
-
-        [BindProperty(SupportsGet = true)]
+        public DateOnly FilterDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
         public int? SheetId { get; set; }
-
-        [BindProperty(SupportsGet = true)]
-        public DateTime? FilterDate { get; set; }
-
-        [BindProperty]
-        public CustomerReturnInputDto ReturnInput { get; set; } = new();
-
-        public decimal GrossSales => SelectedSheet?.TotalExpectedSalesRevenue ?? 0m;
-        public decimal CustomerReturnValue => CustomerReturns.Sum(r => r.RefundAmount);
-        public decimal DamagedValue => SelectedSheet?.Items.Sum(i => i.QtyDamaged * i.UnitSellingPrice) ?? 0m;
-        public decimal NetRevenue => GrossSales - CustomerReturnValue - DamagedValue;
-
+        public int? RepFilter { get; set; }
         public bool CanEdit { get; set; }
-        public bool CanSaveDebts { get; set; }
         public bool IsSalesRep { get; set; }
         public SalesRepProfile? CurrentSalesRep { get; set; }
         public string UserRole { get; set; } = string.Empty;
-        public string DefaultCashierName { get; set; } = "Chief Cashier";
+        public string DefaultReconcilerName { get; set; } = string.Empty;
 
-        public async Task<IActionResult> OnGetAsync(CancellationToken cancellationToken = default)
+        [BindProperty]
+        public SaveReconciliationDto SaveInput { get; set; } = new();
+
+        public async Task<IActionResult> OnGetAsync(int? sheetId, DateTime? filterDate, int? repId, CancellationToken cancellationToken = default)
         {
             UserRole = HttpContext.Session.GetString("UserRole") ?? "SuperAdmin";
-            DefaultCashierName = HttpContext.Session.GetString("UserName") ?? "Chief Cashier";
-            if (!_rbacService.HasAccess(UserRole, "Sales") && !_rbacService.HasAccess(UserRole, "Reports"))
+            if (!_rbac.HasAccess(UserRole, "Sales") && !_rbac.HasAccess(UserRole, "Reports"))
             {
-                TempData["ErrorMessage"] = "Access Denied: You do not have permission to access Sales Reconciliation.";
                 return RedirectToPage("/Dashboard/Index");
             }
 
+            DefaultReconcilerName = HttpContext.Session.GetString("UserName") ?? "Sales Rep";
             IsSalesRep = string.Equals(UserRole, "SalesRep", StringComparison.OrdinalIgnoreCase);
-            CanEdit = UserRole == "SuperAdmin"
-                || IsSalesRep
-                || _rbacService.CanEdit(UserRole, "Sales");
+            FilterDate = DateOnly.FromDateTime(filterDate?.Date ?? DateTime.UtcNow.Date);
+            SheetId = sheetId;
 
-            int? repFilter = null;
             if (IsSalesRep)
             {
                 var userId = HttpContext.Session.GetInt32("UserId");
@@ -74,157 +61,144 @@ namespace Manufacture.Pages.Sales.Reconciliation
 
                 if (CurrentSalesRep == null)
                 {
-                    TempData["ErrorMessage"] = "Your sales rep login is not linked to an active sales representative profile.";
-                    return RedirectToPage("/Sales/Index");
+                    TempData["ErrorMessage"] = "Your login is not linked to a sales representative profile.";
+                    return Page();
                 }
 
-                // Sales reps can only reconcile their own daily route sheets.
-                repFilter = CurrentSalesRep.Id;
+                RepFilter = CurrentSalesRep.Id;
+                CanEdit = true;
+            }
+            else
+            {
+                SalesReps = await _salesService.GetSalesRepsAsync(cancellationToken: cancellationToken);
+                RepFilter = repId;
+                CanEdit = UserRole == "SuperAdmin" || _rbac.CanEdit(UserRole, "Sales");
             }
 
-            var date = FilterDate ?? (IsSalesRep ? DateTime.UtcNow.Date : (DateTime?)null);
-            RouteSheets = await _salesService.GetRouteSheetsAsync(date, repFilter, null, cancellationToken);
-            Customers = await _salesService.GetCustomersAsync(cancellationToken: cancellationToken);
-            Products = await _salesService.GetSellableProductsAsync(cancellationToken);
-            SalesReps = await _salesService.GetSalesRepsAsync(cancellationToken: cancellationToken);
-            if (IsSalesRep && CurrentSalesRep != null)
+            Sheets = await _reconciliationService.ListAsync(FilterDate, RepFilter, cancellationToken);
+
+            var selectedSummary = sheetId.HasValue
+                ? Sheets.FirstOrDefault(s => s.Id == sheetId.Value)
+                : Sheets.FirstOrDefault();
+
+            if (selectedSummary != null)
             {
-                SalesReps = SalesReps.Where(r => r.Id == CurrentSalesRep.Id).ToList();
+                SheetId = selectedSummary.Id;
+                Selected = await _reconciliationService.GetAsync(selectedSummary.Id, cancellationToken);
             }
 
-            if (SheetId.HasValue && SheetId.Value > 0)
-            {
-                var requested = await _salesService.GetRouteSheetAsync(SheetId.Value, cancellationToken);
-                if (requested != null && (!IsSalesRep || requested.RepId == CurrentSalesRep?.Id))
-                {
-                    SelectedSheet = requested;
-                }
-            }
-            else if (RouteSheets.Any())
-            {
-                SelectedSheet = RouteSheets.FirstOrDefault(s => s.Status == RouteSheetStatus.LoadedOnRoute) ?? RouteSheets.First();
-                SheetId = SelectedSheet.Id;
-            }
-
-            if (SelectedSheet == null && RouteSheets.Any())
-            {
-                SelectedSheet = RouteSheets.FirstOrDefault(s => s.Status == RouteSheetStatus.LoadedOnRoute) ?? RouteSheets.First();
-                SheetId = SelectedSheet.Id;
-            }
-
-            CustomerReturns = await _salesService.GetCustomerReturnsAsync(date ?? SelectedSheet?.Date, SelectedSheet?.RepId, cancellationToken);
-            CanSaveDebts = CanEdit && SelectedSheet?.Status == RouteSheetStatus.LoadedOnRoute;
             return Page();
         }
 
-        public async Task<IActionResult> OnPostReconcileAsync(ReconciliationInputDto input, CancellationToken cancellationToken = default)
-        {
-            if (!await CanManageSheetAsync(input.RouteSheetId, cancellationToken))
-            {
-                TempData["ErrorMessage"] = "You can only reconcile your own daily route sheets.";
-                return RedirectToPage(new { sheetId = input.RouteSheetId, filterDate = FilterDate });
-            }
-
-            var userName = HttpContext.Session.GetString("UserName") ?? "Chief Cashier";
-            if (string.IsNullOrWhiteSpace(input.CashierName))
-            {
-                input.CashierName = userName;
-            }
-
-            var success = await _salesService.ReconcileDailyRepAccountAsync(input, cancellationToken);
-            TempData[success ? "SuccessMessage" : "ErrorMessage"] = success
-                ? $"Sales reconciliation for route sheet #{input.RouteSheetId} completed. Unsold closing stock rolled into the next day."
-                : $"Failed to reconcile route sheet #{input.RouteSheetId}.";
-
-            return RedirectToPage(new { sheetId = input.RouteSheetId, filterDate = FilterDate });
-        }
-
-        public async Task<IActionResult> OnPostSaveSupermarketDebtsAsync(
-            int routeSheetId,
-            Dictionary<int, decimal>? debtAmounts,
-            List<int>? settledSupermarketIds,
-            CancellationToken cancellationToken = default)
+        public async Task<IActionResult> OnPostStartAsync(DateTime? filterDate, int? repId, CancellationToken cancellationToken = default)
         {
             var role = HttpContext.Session.GetString("UserRole") ?? string.Empty;
-            var canEdit = role == "SuperAdmin"
-                || string.Equals(role, "SalesRep", StringComparison.OrdinalIgnoreCase)
-                || _rbacService.CanEdit(role, "Sales");
+            var (currentRep, _) = await ResolveCurrentRepAsync(cancellationToken);
+            var rep = string.Equals(role, "SalesRep", StringComparison.OrdinalIgnoreCase)
+                ? currentRep
+                : (repId.HasValue ? await _salesService.GetSalesRepAsync(repId.Value, cancellationToken) : null);
 
-            if (!canEdit || !await CanManageSheetAsync(routeSheetId, cancellationToken))
+            if (rep == null)
             {
-                TempData["ErrorMessage"] = "You do not have permission to record supermarket debts on this route sheet.";
-                return RedirectToPage(new { sheetId = routeSheetId, filterDate = FilterDate });
+                TempData["ErrorMessage"] = "Select a sales representative to start a reconciliation.";
+                return RedirectToPage();
             }
 
-            var recordedBy = HttpContext.Session.GetString("UserName") ?? "Chief Cashier";
-            var success = await _salesService.SaveRouteSheetSupermarketDebtsAsync(
-                routeSheetId,
-                debtAmounts ?? new Dictionary<int, decimal>(),
-                settledSupermarketIds ?? new List<int>(),
-                recordedBy,
-                cancellationToken);
-
-            TempData[success ? "SuccessMessage" : "ErrorMessage"] = success
-                ? "Supermarket dispatch debts saved and account balances updated."
-                : "Could not save supermarket debts. The route sheet must be dispatched (signed off) and not yet reconciled.";
-
-            return RedirectToPage(new { sheetId = routeSheetId, filterDate = FilterDate });
+            var date = DateOnly.FromDateTime(filterDate?.Date ?? DateTime.UtcNow.Date);
+            var sheet = await _reconciliationService.GetOrCreateAsync(rep.Id, date, cancellationToken);
+            return RedirectToPage(new { sheetId = sheet.Id, filterDate = sheet.ReconciliationDate.ToString("yyyy-MM-dd") });
         }
 
-        public async Task<IActionResult> OnPostRecordReturnAsync(CancellationToken cancellationToken = default)
+        public async Task<IActionResult> OnPostSaveAsync(CancellationToken cancellationToken = default)
         {
-            ReturnInput.RecordedBy = HttpContext.Session.GetString("UserName") ?? "Sales";
-
-            var role = HttpContext.Session.GetString("UserRole") ?? string.Empty;
-            if (string.Equals(role, "SalesRep", StringComparison.OrdinalIgnoreCase))
+            if (!await CanManageAsync(SaveInput.Id, cancellationToken))
             {
-                var currentRep = await GetCurrentSalesRepAsync(cancellationToken);
-                if (currentRep == null)
-                {
-                    TempData["ErrorMessage"] = "Your sales rep login is not linked to an active sales representative profile.";
-                    return RedirectToPage(new { sheetId = SheetId, filterDate = FilterDate });
-                }
-
-                ReturnInput.SalesRepId = currentRep.Id;
+                return Forbid();
             }
 
             try
             {
-                await _salesService.RecordCustomerReturnAsync(ReturnInput, cancellationToken);
-                TempData["SuccessMessage"] = "Customer return recorded successfully.";
+                var sheet = await _reconciliationService.SaveDraftAsync(SaveInput, cancellationToken);
+                TempData["SuccessMessage"] = $"Draft saved for {sheet.RepName} · {sheet.ReconciliationDate:yyyy-MM-dd}.";
+                return RedirectToPage(new { sheetId = sheet.Id, filterDate = sheet.ReconciliationDate.ToString("yyyy-MM-dd") });
             }
             catch (InvalidOperationException ex)
             {
                 TempData["ErrorMessage"] = ex.Message;
+                return RedirectToPage(new { sheetId = SaveInput.Id });
+            }
+        }
+
+        public async Task<IActionResult> OnPostReconcileAsync(CancellationToken cancellationToken = default)
+        {
+            if (!await CanManageAsync(SaveInput.Id, cancellationToken))
+            {
+                return Forbid();
             }
 
-            return RedirectToPage(new { sheetId = SheetId, filterDate = FilterDate });
+            try
+            {
+                var actor = HttpContext.Session.GetString("UserName") ?? "Sales";
+                var sheet = await _reconciliationService.ReconcileAsync(SaveInput, actor, cancellationToken);
+                TempData["SuccessMessage"] = $"Reconciliation {sheet.ReconciliationNumber} closed. Closing stock rolls into the next sheet.";
+                return RedirectToPage(new { sheetId = sheet.Id, filterDate = sheet.ReconciliationDate.ToString("yyyy-MM-dd") });
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["ErrorMessage"] = ex.Message;
+                return RedirectToPage(new { sheetId = SaveInput.Id });
+            }
         }
 
-        private async Task<SalesRepProfile?> GetCurrentSalesRepAsync(CancellationToken cancellationToken)
+        public async Task<IActionResult> OnPostSyncAsync(int id, CancellationToken cancellationToken = default)
         {
-            var userId = HttpContext.Session.GetInt32("UserId");
-            return userId.HasValue
-                ? await _salesService.GetSalesRepByUserIdAsync(userId.Value, cancellationToken)
-                : null;
+            if (!await CanManageAsync(id, cancellationToken))
+            {
+                return Forbid();
+            }
+
+            try
+            {
+                var sheet = await _reconciliationService.SyncProductsAsync(id, cancellationToken);
+                TempData["SuccessMessage"] = "Repository products synchronized.";
+                return RedirectToPage(new { sheetId = sheet.Id });
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["ErrorMessage"] = ex.Message;
+                return RedirectToPage(new { sheetId = id });
+            }
         }
 
-        private async Task<bool> CanManageSheetAsync(int sheetId, CancellationToken cancellationToken)
+        private async Task<(SalesRepProfile? Rep, int? UserId)> ResolveCurrentRepAsync(CancellationToken cancellationToken)
         {
             var role = HttpContext.Session.GetString("UserRole") ?? string.Empty;
-            if (!string.Equals(role, "SalesRep", StringComparison.OrdinalIgnoreCase))
+            var userId = HttpContext.Session.GetInt32("UserId");
+
+            if (string.Equals(role, "SalesRep", StringComparison.OrdinalIgnoreCase) && userId.HasValue)
             {
-                return true;
+                return (await _salesService.GetSalesRepByUserIdAsync(userId.Value, cancellationToken), userId);
             }
 
-            var currentRep = await GetCurrentSalesRepAsync(cancellationToken);
-            if (currentRep == null)
+            return (null, userId);
+        }
+
+        private async Task<bool> CanManageAsync(int sheetId, CancellationToken cancellationToken)
+        {
+            var role = HttpContext.Session.GetString("UserRole") ?? string.Empty;
+            var sheet = await _reconciliationService.GetAsync(sheetId, cancellationToken);
+            if (sheet == null)
             {
                 return false;
             }
 
-            var sheet = await _salesService.GetRouteSheetAsync(sheetId, cancellationToken);
-            return sheet != null && sheet.RepId == currentRep.Id;
+            if (string.Equals(role, "SalesRep", StringComparison.OrdinalIgnoreCase))
+            {
+                var (rep, _) = await ResolveCurrentRepAsync(cancellationToken);
+                return rep != null && rep.Id == sheet.SalesRepId;
+            }
+
+            return role == "SuperAdmin" || _rbac.CanEdit(role, "Sales");
         }
     }
 }

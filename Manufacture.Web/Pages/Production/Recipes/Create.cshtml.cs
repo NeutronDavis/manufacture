@@ -28,6 +28,7 @@ namespace Manufacture.Pages.Production.Recipes
         public List<Ingredient> AvailableIngredients { get; set; } = new();
         public List<Recipe> ExistingRecipes { get; set; } = new();
         public List<ProductionProductType> ProductTypes { get; set; } = new();
+        public Dictionary<int, string> NextCodes { get; set; } = new();
 
         public void OnGet()
         {
@@ -38,6 +39,25 @@ namespace Manufacture.Pages.Production.Recipes
         public IActionResult OnPost()
         {
             LoadFormData();
+
+            var selectedProductType = ProductTypes
+                .FirstOrDefault(p => p.Id == RecipeInput.ProductionProductTypeId);
+            if (selectedProductType != null)
+            {
+                if (string.IsNullOrWhiteSpace(RecipeInput.Name))
+                {
+                    // Fallback for browsers without JavaScript: still prefill the
+                    // name from the product type.
+                    RecipeInput.Name = selectedProductType.Name;
+                    ModelState.Remove("RecipeInput.Name");
+                }
+
+                RecipeInput.ProductType = selectedProductType.Name;
+                RecipeInput.BaselineUnit = selectedProductType.Baseline;
+                RecipeInput.OutputUnit = selectedProductType.OutputUnitNoun;
+                RecipeInput.Code = _productionService.GenerateRecipeCode(selectedProductType.Id);
+                ModelState.Remove("RecipeInput.Code");
+            }
 
             var yield = RecipeInput.ExpectedYield > 0 ? RecipeInput.ExpectedYield : 1m;
             foreach (var ing in RecipeInput.Ingredients)
@@ -96,8 +116,15 @@ namespace Manufacture.Pages.Production.Recipes
         private void LoadFormData()
         {
             AvailableIngredients = _productionService.GetAllIngredients();
-            ExistingRecipes = _productionService.GetAllRecipes();
+            ExistingRecipes = _productionService.GetAllRecipes(includeInactive: true);
             ProductTypes = _productionService.GetProductTypes();
+
+            var existingCodes = ExistingRecipes.Select(recipe => recipe.Code).ToList();
+            NextCodes = ProductTypes.ToDictionary(
+                productType => productType.Id,
+                productType => RecipeCodeGenerator.NextCode(
+                    RecipeCodeGenerator.PrefixFor(productType.Name),
+                    existingCodes));
         }
 
         private void SeedDefaults(bool preserveInput = false)
@@ -111,11 +138,14 @@ namespace Manufacture.Pages.Production.Recipes
 
             var productType = ProductTypes.FirstOrDefault(p => p.Name == "Bread") ?? ProductTypes.FirstOrDefault();
             RecipeInput.ProductionProductTypeId = productType?.Id ?? 0;
+            RecipeInput.Name = productType?.Name ?? "Bread";
             RecipeInput.ProductType = productType?.Name ?? "Bread";
             RecipeInput.BaselineUnit = productType?.Baseline ?? "1 Bag of Flour (50 kg)";
             RecipeInput.ExpectedYield = 200m;
             RecipeInput.OutputUnit = productType?.OutputUnitNoun ?? "loaves";
-            RecipeInput.Code = "BRD-NEW";
+            RecipeInput.Code = productType != null && NextCodes.TryGetValue(productType.Id, out var nextCode)
+                ? nextCode
+                : "GEN-001";
         }
 
         private void ApplyProductTypeDefaults()

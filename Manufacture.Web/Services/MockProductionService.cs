@@ -831,10 +831,10 @@ namespace Manufacture.Services
             var inputQty = batch.BatchInputQuantity > 0 ? batch.BatchInputQuantity : (batch.FlourBagsUsed > 0 ? batch.FlourBagsUsed : 1m);
             if (batch.TotalBatchCost <= 0)
             {
-                batch.TotalBatchCost = CalculateBatchMaterialCost(batch.RecipeId, inputQty);
+                batch.TotalBatchCost = CalculateBatchMaterialCost(batch.RecipeId ?? 0, inputQty);
             }
 
-            var recipe = GetRecipeById(batch.RecipeId);
+            var recipe = GetRecipeById(batch.RecipeId ?? 0);
             var overhead = (recipe?.PackagingCost ?? 0m) + (recipe?.LaborAndOverheadPerUnit ?? 0m);
 
             if (batch.ExpectedUnitCost <= 0 && recipe != null)

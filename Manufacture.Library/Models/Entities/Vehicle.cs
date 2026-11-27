@@ -41,8 +41,6 @@ public partial class Vehicle
 
     public virtual ICollection<CharterBooking> CharterBookings { get; set; } = new List<CharterBooking>();
 
-    public virtual ICollection<DailyRepRouteSheet> DailyRepRouteSheets { get; set; } = new List<DailyRepRouteSheet>();
-
     public virtual ICollection<FleetDispatch> FleetDispatches { get; set; } = new List<FleetDispatch>();
 
     public virtual ICollection<FuelLog> FuelLogs { get; set; } = new List<FuelLog>();

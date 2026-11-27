@@ -15,6 +15,7 @@ namespace Manufacture.Pages.Sales.Orders
         }
 
         public Order Order { get; set; } = new();
+        public bool AutoPrint { get; set; }
 
         public async Task<IActionResult> OnGetAsync(int id, CancellationToken cancellationToken = default)
         {
@@ -25,31 +26,29 @@ namespace Manufacture.Pages.Sales.Orders
             }
 
             Order = order;
+            AutoPrint = TempData["AutoPrint"] != null;
             return Page();
         }
 
-        public async Task<IActionResult> OnPostMarkPrintedAsync(int id, CancellationToken cancellationToken = default)
+        public async Task<IActionResult> OnPostPrintAndDeductAsync(int id, CancellationToken cancellationToken = default)
         {
-            await _salesService.MarkPrintedForLoadingAsync(id, cancellationToken);
-            TempData["SuccessMessage"] = "Order slip marked as printed. Loading authorized.";
-            return RedirectToPage(new { id });
-        }
-
-        public async Task<IActionResult> OnPostDispatchOrderAsync(
-            int id,
-            string loaderName,
-            CancellationToken cancellationToken = default)
-        {
-            if (string.IsNullOrWhiteSpace(loaderName))
+            try
             {
-                TempData["ErrorMessage"] = "Loader name is required to complete dispatch sign-off.";
-                return RedirectToPage(new { id });
-            }
+                var actor = HttpContext.Session.GetString("UserName") ?? "Sales";
+                var success = await _salesService.DeductAndCompleteOrderAsync(id, actor, cancellationToken);
+                if (!success)
+                {
+                    TempData["ErrorMessage"] = "Order was not found.";
+                    return RedirectToPage(new { id });
+                }
 
-            var success = await _salesService.VerifyAndDispatchAsync(id, loaderName, cancellationToken);
-            TempData[success ? "SuccessMessage" : "ErrorMessage"] = success
-                ? $"Stock verified and dispatched by {loaderName}. Order status updated to Dispatched."
-                : "Cannot dispatch order: order slip must be printed first.";
+                TempData["SuccessMessage"] = "Receipt printed. Stock was deducted from the POS repository.";
+                TempData["AutoPrint"] = true;
+            }
+            catch (InvalidOperationException ex)
+            {
+                TempData["ErrorMessage"] = ex.Message;
+            }
 
             return RedirectToPage(new { id });
         }

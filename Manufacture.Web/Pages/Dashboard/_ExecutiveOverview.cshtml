@@ -14,16 +14,15 @@
     string TimeframeLabel(KpiPeriodCardDto period) =>
         period.Key == "This Week" ? "This Week (Sun–Sat)" : period.Label;
 
-    // All eight stages in strict pipeline order.
+    // All seven stages in strict pipeline order.
     var stageColumns = new (string Label, Func<LifecycleTotalsDto, int> Select, string Subtitle, string Tone, string BgTone, string BorderTone)[]
     {
         ("Orders Placed",        t => t.OrdersPlaced,    "Booked in the order register", "text-info",      "bg-info/10",      "border-info/30"),
         ("Produced",             t => t.Produced,        "Plant manufactured",      "text-primary",   "bg-primary/10",   "border-primary/30"),
-        ("Loaded",               t => t.Loaded,          "Physical truck loading",  "text-secondary", "bg-secondary/10", "border-secondary/30"),
-        ("Factory Defects",      t => t.FactoryDefects,  "Rejected before loading", "text-warning",   "bg-warning/10",   "border-warning/30"),
-        ("Sold",                 t => t.Sold,            "Route verified volume",   "text-success",   "bg-success/10",   "border-success/30"),
+        ("Factory Defects",      t => t.FactoryDefects,  "Rejected before dispatch", "text-warning",   "bg-warning/10",   "border-warning/30"),
+        ("Sold",                 t => t.Sold,            "Reconciled sales volume",  "text-success",   "bg-success/10",   "border-success/30"),
         ("Closing Stock",        t => t.Returned,        "Rolls into tomorrow",     "text-accent",    "bg-accent/10",    "border-accent/30"),
-        ("Damaged",              t => t.Damaged,         "In-transit write-off",    "text-error",     "bg-error/10",     "border-error/30"),
+        ("Damaged",              t => t.Damaged,         "Write-off during the day", "text-error",     "bg-error/10",     "border-error/30"),
         ("Returns",              t => t.CustomerReturns, "Prior-sale replacements", "text-neutral",   "bg-neutral/10",   "border-neutral/30")
     };
 
@@ -31,7 +30,6 @@
     {
         LifecycleMetric.OrdersPlaced => totals.OrdersPlaced,
         LifecycleMetric.Produced => totals.Produced,
-        LifecycleMetric.Loaded => totals.Loaded,
         LifecycleMetric.FactoryDefects => totals.FactoryDefects,
         LifecycleMetric.Sold => totals.Sold,
         LifecycleMetric.Returned => totals.Returned,
@@ -39,11 +37,6 @@
         LifecycleMetric.CustomerReturns => totals.CustomerReturns,
         _ => 0
     };
-
-    decimal FillRate(LifecycleTotalsDto t) => t.OrdersPlaced <= 0 ? 0m : Math.Round(t.Loaded / (decimal)t.OrdersPlaced * 100m, 1);
-    decimal SellThrough(LifecycleTotalsDto t) => t.Loaded <= 0 ? 0m : Math.Round(t.Sold / (decimal)t.Loaded * 100m, 1);
-    decimal DamageRate(LifecycleTotalsDto t) => t.Loaded <= 0 ? 0m : Math.Round(t.Damaged / (decimal)t.Loaded * 100m, 1);
-    decimal CollectionRate(LifecycleTotalsDto t) => t.ExpectedRevenue <= 0 ? 0m : Math.Round(t.Collected / t.ExpectedRevenue * 100m, 1);
 
     @* string HealthTone(decimal value, decimal good, decimal warn) =>
         value >= good ? "text-success" : value >= warn ? "text-warning" : "text-error"; *@
@@ -64,7 +57,7 @@
                         <i class="fa-solid fa-chart-pie text-primary"></i> Executive Operational Overview
                     </h2>
                     <p class="text-xs opacity-65 mt-1">
-                        Database-backed lifecycle from rep request through production, loading, sales, closing stock, transit damage and customer returns.
+                        Database-backed lifecycle from rep request through production, sales, closing stock, damage and customer returns.
                     </p>
                 </div>
 
@@ -88,17 +81,16 @@
 
             <details class="collapse collapse-arrow bg-base-200/40 border border-base-300 rounded-xl">
                 <summary class="collapse-title min-h-0 py-2.5 px-4 text-[11px] font-bold text-base-content/70">
-                    <i class="fa-solid fa-circle-info text-primary mr-1.5"></i> How to read the eight-stage pipeline
+                    <i class="fa-solid fa-circle-info text-primary mr-1.5"></i> How to read the seven-stage pipeline
                 </summary>
                 <div class="collapse-content px-4 pb-3">
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-x-5 gap-y-2 text-[10px] leading-relaxed opacity-70">
                         <div><strong>Orders Placed</strong> — sales orders booked in the register.</div>
                         <div><strong>Produced</strong> — actual factory output for the period.</div>
-                        <div><strong>Loaded</strong> — stock physically released to the trucks.</div>
-                        <div><strong>Factory Defects</strong> — production losses before loading.</div>
-                        <div><strong>Sold</strong> — verified route sales reported by reps.</div>
+                        <div><strong>Factory Defects</strong> — production losses before dispatch.</div>
+                        <div><strong>Sold</strong> — verified sales reported by reps.</div>
                         <div><strong>Closing Stock</strong> — good unsold stock rolled into tomorrow.</div>
-                        <div><strong>Damaged</strong> — loaded stock spoiled before sale and written off.</div>
+                        <div><strong>Damaged</strong> — stock spoiled before sale and written off.</div>
                         <div><strong>Returns</strong> — prior-sale customer returns replaced with fresh stock.</div>
                     </div>
                 </div>
@@ -115,11 +107,6 @@
         var alerts = overview.AlertsByPeriod.GetValueOrDefault(period.Key) ?? new List<ExecutiveAlertDto>();
         var isDefault = period.Key == defaultPeriod.Key;
 
-        var fillRateVal = FillRate(totals);
-        var sellThroughVal = SellThrough(totals);
-        var damageRateVal = DamageRate(totals);
-        var collectionRateVal = CollectionRate(totals);
-
         var tenderSum = tender.Total + tender.Outstanding;
         if (tenderSum <= 0) { tenderSum = totals.ExpectedRevenue > 0 ? totals.ExpectedRevenue : 1m; }
 
@@ -134,34 +121,22 @@
                                 <i class="fa-solid fa-arrows-split-up-and-left text-primary"></i> Lifecycle Flow &bull; @TimeframeLabel(period)
                             </h2>
                             <p class="text-[11px] opacity-65 mt-0.5">
-                                Strict 8-stage operational pipeline from rep request through production, loading, factory rejects, sales, closing stock, transit damage and customer returns. Click any stage to open its grouped breakdown.
+                                Strict 7-stage operational pipeline from rep request through production, factory rejects, sales, closing stock, damage and customer returns. Click any stage to open its grouped breakdown.
                             </p>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="badge badge-primary badge-soft badge-sm font-bold">@period.RepCount Sales Reps Active</span>
-                            <span class="badge badge-ghost border border-base-300 badge-sm font-bold">8 Stages &bull; Click for records</span>
+                            <span class="badge badge-ghost border border-base-300 badge-sm font-bold">7 Stages &bull; Click for records</span>
                         </div>
                     </div>
 
-                    <!-- 8-Stage Sequential Pipeline Cards: clicking a stage opens its grouped side panel. -->
-                    <div class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2.5">
+                    <!-- 7-Stage Sequential Pipeline Cards: clicking a stage opens its grouped side panel. -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2.5">
                         @for (int i = 0; i < Model.Stages.Count; i++)
                         {
                             var stage = Model.Stages[i];
                             var stageCol = stageColumns[i];
                             var stageVal = StageValue(totals, stage.Metric);
-                            var stageNum = i + 1;
-                            var stageHint = i switch
-                            {
-                                1 => $"{(totals.OrdersPlaced > 0 ? Math.Round(totals.Produced / (decimal)totals.OrdersPlaced * 100m, 1) : 0m):0.0}% of requests",
-                                2 => $"{FillRate(totals):0.0}% of requests",
-                                3 => $"{(totals.Produced > 0 ? Math.Round(totals.FactoryDefects / (decimal)totals.Produced * 100m, 1) : 0m):0.0}% defect rate",
-                                4 => $"{SellThrough(totals):0.0}% sell-through",
-                                5 => $"{(totals.Loaded > 0 ? Math.Round(totals.Returned / (decimal)totals.Loaded * 100m, 1) : 0m):0.0}% of loaded",
-                                6 => $"{DamageRate(totals):0.0}% of loaded",
-                                7 => $"{(totals.Sold > 0 ? Math.Round(totals.CustomerReturns / (decimal)totals.Sold * 100m, 1) : 0m):0.0}% of sold",
-                                _ => "Rep requests"
-                            };
 
                             <div class="relative group cursor-pointer"
                                  title="@stageCol.Subtitle"
@@ -421,7 +396,7 @@
             <div id="drill-records-groups" class="space-y-4"></div>
         </div>
 
-        <!-- VIEW 0: Stage-specific grouped breakdown (the eight KPI cards) -->
+        <!-- VIEW 0: Stage-specific grouped breakdown (the seven KPI cards) -->
         <div id="drill-stage-container" class="space-y-3 hidden">
             <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-base-200 bg-base-200/40 px-4 py-2.5">
                 <div class="flex items-center gap-2">

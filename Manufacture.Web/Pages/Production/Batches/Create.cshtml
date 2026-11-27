@@ -1,19 +1,23 @@
 @page
+@using System.Text.Json
+@using Manufacture.Models.DTOs
 @model Manufacture.Pages.Production.Batches.CreateModel
 @{
     ViewData["Title"] = "Record Production Batch";
-    var recipesJson = System.Text.Json.JsonSerializer.Serialize(Model.Recipes.Select(recipe => new
+    var recipeJson = JsonSerializer.Serialize(Model.Recipes.Select(r => new
     {
-        id = recipe.Id,
-        name = recipe.Name,
-        code = recipe.Code,
-        categoryName = string.IsNullOrWhiteSpace(recipe.CategoryName) ? recipe.ProductType.ToString() : recipe.CategoryName,
-        baseline = recipe.Baseline,
-        expectedYield = recipe.ExpectedYield,
-        outputUnit = recipe.OutputUnit,
-        sellingPrice = recipe.SellingPrice,
-        materialCostPerBaseline = recipe.TotalBatchCost
+        id = r.Id,
+        name = r.Name,
+        code = r.Code,
+        expectedYield = r.ExpectedYield,
+        outputUnit = r.OutputUnit,
+        baseline = string.IsNullOrWhiteSpace(r.Baseline) ? "Batch" : r.Baseline,
+        materialCost = r.TotalBatchCost,
+        category = r.CategoryName
     }));
+    var stockJson = JsonSerializer.Serialize(Model.FactoryStock.ToDictionary(
+        s => s.RecipeId,
+        s => new { available = s.QuantityOnHand, threshold = s.ReorderThreshold }));
 }
 
 <div class="space-y-6 w-full">
@@ -24,343 +28,217 @@
                 <span>&gt;</span>
                 <a asp-page="/Production/Batches/Index" class="hover:underline">Batches</a>
                 <span>&gt;</span>
-                <span class="text-primary font-bold">Record Batch</span>
+                <span class="text-primary font-bold">New Batch</span>
             </div>
-            <h1 class="text-2xl font-black text-base-content tracking-tight flex items-center gap-2">
+            <h1 class="text-2xl font-black tracking-tight flex items-center gap-2">
                 <i class="fa-solid fa-layer-group text-primary"></i> Record Production Batch
             </h1>
-            <p class="text-xs opacity-70 mt-0.5">
-                Record a shift-based production run from available stock. Costs are calculated from the recipe and current material prices.
-            </p>
+            <p class="text-xs opacity-70 mt-0.5">Plan multiple products in one run. Actual output is recorded after the batch is complete.</p>
         </div>
-        <a asp-page="/Production/Batches/Index" class="btn btn-sm btn-outline border-base-300 rounded-xl text-xs gap-1.5 font-semibold">
-            <i class="fa-solid fa-arrow-left text-xs"></i> Back to Batches
-        </a>
+        <a asp-page="/Production/Batches/Index" class="btn btn-sm btn-outline rounded-xl">Back to Batches</a>
     </div>
 
-    <form method="post" id="batchForm" class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-        <div class="xl:col-span-8 card bg-base-100 border border-base-300 shadow-xs rounded-2xl">
-            <div class="card-body p-6 space-y-5">
-                <div class="flex items-center justify-between border-b border-base-200 pb-3">
-                    <div class="flex items-center gap-2.5 font-bold text-sm text-base-content">
-                        <div class="w-8 h-8 rounded-xl bg-primary text-primary-content flex items-center justify-center text-xs">
-                            <i class="fa-solid fa-industry"></i>
-                        </div>
-                        Batch &amp; Shift Details
-                    </div>
-                    <span class="badge badge-neutral badge-xs font-bold uppercase tracking-wider">Shift Log</span>
-                </div>
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div class="alert alert-error rounded-2xl text-sm">
+            <div class="flex flex-col gap-1">
+                @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                {
+                    <span>@error.ErrorMessage</span>
+                }
+            </div>
+        </div>
+    }
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div class="form-control sm:col-span-2">
-                        <label class="label pb-1.5"><span class="label-text font-bold text-xs">Product Recipe <span class="text-error">*</span></span></label>
-                        <select asp-for="BatchInput.RecipeId" id="recipeSelect" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary" required onchange="onRecipeChanged(true)">
-                            @foreach (var recipe in Model.Recipes)
-                            {
-                                <option value="@recipe.Id">@recipe.Name (@recipe.Code)</option>
-                            }
-                        </select>
-                        <div id="recipeBaselineHint" class="text-[11px] opacity-60 mt-1.5 font-mono"></div>
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label pb-1.5"><span class="label-text font-bold text-xs">Production Shift <span class="text-error">*</span></span></label>
-                        <select asp-for="BatchInput.Shift" id="shiftSelect" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary" required>
-                            @foreach (var shift in Model.Shifts)
-                            {
-                                var timeText = shift.StartTime.HasValue && shift.EndTime.HasValue
-                                    ? $" ({shift.StartTime.Value.ToString(@"hh\:mm")} - {shift.EndTime.Value.ToString(@"hh\:mm")})"
-                                    : string.Empty;
-                                <option value="@shift.Name">@shift.Name@timeText</option>
-                            }
-                        </select>
-                        @if (Model.Shifts.Count == 0)
+    <form method="post" id="batchForm" class="space-y-6">
+        <div class="card bg-base-100 border border-base-300 rounded-2xl">
+            <div class="card-body p-5 grid grid-cols-1 md:grid-cols-4 gap-4">
+                <label class="form-control">
+                    <span class="label-text text-[10px] font-bold uppercase opacity-60">Shift</span>
+                    <select asp-for="BatchInput.Shift" class="select select-sm select-bordered rounded-xl">
+                        @foreach (var shift in Model.Shifts)
                         {
-                            <span class="text-[10px] text-warning mt-1">No shifts configured. Add shifts in Settings → Production Shifts.</span>
+                            <option value="@shift.Name">@shift.Name</option>
                         }
-                    </div>
+                        @if (!Model.Shifts.Any())
+                        {
+                            <option value="Morning Shift">Morning Shift</option>
+                        }
+                    </select>
+                </label>
+                <label class="form-control">
+                    <span class="label-text text-[10px] font-bold uppercase opacity-60">Baker / Operator</span>
+                    <input asp-for="BatchInput.BakerInCharge" class="input input-sm input-bordered rounded-xl" required />
+                </label>
+                <label class="form-control">
+                    <span class="label-text text-[10px] font-bold uppercase opacity-60">Production Date</span>
+                    <input asp-for="BatchInput.ProductionDate" type="date" value="@Model.BatchInput.ProductionDate.ToString("yyyy-MM-dd")" class="input input-sm input-bordered rounded-xl" />
+                </label>
+                <label class="form-control">
+                    <span class="label-text text-[10px] font-bold uppercase opacity-60">Output Repository</span>
+                    <input type="text" value="@Model.FactoryRepositoryName" class="input input-sm input-bordered rounded-xl" disabled />
+                    <span class="label-text-alt text-[10px] opacity-60">Default factory repository</span>
+                </label>
+                <label class="form-control md:col-span-4">
+                    <span class="label-text text-[10px] font-bold uppercase opacity-60">Notes</span>
+                    <input asp-for="BatchInput.Notes" class="input input-sm input-bordered rounded-xl" placeholder="Optional production notes" />
+                </label>
+            </div>
+        </div>
 
-                    <div class="form-control">
-                        <label class="label pb-1.5"><span class="label-text font-bold text-xs">Baker / Operator in Charge <span class="text-error">*</span></span></label>
-                        <input type="text" asp-for="BatchInput.BakerInCharge" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary" placeholder="e.g. Emeka Obi" required />
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label pb-1.5"><span class="label-text font-bold text-xs">Production Date</span></label>
-                        <input type="date" asp-for="BatchInput.ProductionDate" class="input input-bordered input-sm w-full bg-base-200 border-base-300 rounded-xl text-xs focus:bg-base-100 focus:border-primary" required />
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label pb-1.5"><span class="label-text font-bold text-xs">Batch Status</span></label>
-                        <select asp-for="BatchInput.Status" class="select select-bordered select-sm w-full bg-base-200 border-base-300 rounded-xl text-xs font-medium focus:bg-base-100 focus:border-primary">
-                            <option value="Completed">Completed - Ready for POS</option>
-                            <option value="Baking">In Production / Baking / Filling</option>
-                            <option value="InMixing">In Mixing / Prepping</option>
-                            <option value="Planned">Planned</option>
-                        </select>
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label pb-1.5"><span class="label-text font-bold text-xs">Input Batch Size <span class="text-error">*</span></span></label>
-                        <div class="join w-full">
-                            <input type="number" step="0.1" min="0.1" asp-for="BatchInput.BatchInputQuantity" id="batchInputQuantity" class="input input-bordered input-sm join-item w-full bg-base-200 border-base-300 rounded-l-xl text-xs font-mono font-bold focus:bg-base-100 focus:border-primary" oninput="onInputQuantityChanged()" required />
-                            <span id="inputBatchUnitTag" class="join-item bg-base-200 border border-base-300 border-l-0 font-mono text-[10px] font-bold px-3 flex items-center">batch</span>
-                        </div>
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label pb-1.5"><span class="label-text font-bold text-xs">Target Quantity <span class="text-error">*</span></span></label>
-                        <div class="join w-full">
-                            <input type="number" min="1" asp-for="BatchInput.TargetQuantity" id="targetQtyInput" class="input input-bordered input-sm join-item w-full bg-base-200 border-base-300 rounded-l-xl text-xs font-mono font-bold focus:bg-base-100 focus:border-primary" oninput="recalculateCosts()" required />
-                            <span id="targetOutputUnitTag" class="join-item bg-base-200 border border-base-300 border-l-0 font-mono text-[10px] font-bold px-3 flex items-center">units</span>
-                        </div>
-                    </div>
-
-                    <div class="form-control">
-                        <div class="flex items-center justify-between pb-1.5">
-                            <label class="label p-0"><span class="label-text font-bold text-xs">Actual Output Produced</span></label>
-                            <span class="text-[10px] opacity-60 font-mono">Optional — update after run</span>
-                        </div>
-                        <div class="join w-full">
-                            <input type="number" min="0" asp-for="BatchInput.ActualQuantity" id="actualQtyInput" class="input input-bordered input-sm join-item w-full bg-base-200 border-base-300 rounded-l-xl text-xs font-mono font-black text-primary focus:bg-base-100 focus:border-primary" oninput="recalculateCosts()" />
-                            <span id="actualOutputUnitTag" class="join-item bg-base-200 border border-base-300 border-l-0 font-mono text-[10px] font-bold px-3 flex items-center">units</span>
-                        </div>
-                    </div>
-
-                    <div class="form-control">
-                        <label class="label pb-1.5"><span class="label-text font-bold text-xs">Shift Notes / Observations</span></label>
-                        <textarea asp-for="BatchInput.Notes" class="textarea textarea-bordered w-full bg-base-200 border-base-300 rounded-xl text-xs leading-relaxed focus:bg-base-100 focus:border-primary" rows="3" placeholder="e.g. Clean run; dough weight checked; golden finish."></textarea>
-                    </div>
+        <div class="card bg-base-100 border border-base-300 rounded-2xl">
+            <div class="card-body p-5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="font-black text-sm">Product Lines</h2>
+                    <button type="button" id="addLine" class="btn btn-xs btn-primary rounded-lg font-bold">
+                        <i class="fa-solid fa-plus"></i> Add Product
+                    </button>
                 </div>
 
-                <div id="variancePanel" class="alert alert-info rounded-2xl text-xs py-3 flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-2.5">
-                        <i class="fa-solid fa-calculator text-base" id="varianceIcon"></i>
-                        <span id="varianceText" class="font-medium">Enter target and actual output to see yield variance.</span>
-                    </div>
-                    <span id="varianceBadge" class="badge badge-neutral badge-xs font-mono font-bold">0 VARIANCE</span>
+                <div id="lineRows" class="space-y-3">
+                    @for (var i = 0; i < Model.BatchInput.Lines.Count; i++)
+                    {
+                        var line = Model.BatchInput.Lines[i];
+                        <div class="line-row rounded-xl border border-base-300 p-3 grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                            <label class="form-control md:col-span-5">
+                                <span class="label-text text-[10px] font-bold uppercase opacity-60">Product Recipe</span>
+                                <select name="BatchInput.Lines[@i].RecipeId" class="select select-sm select-bordered rounded-xl recipe-select" required>
+                                    <option value="">Select product…</option>
+                                    @foreach (var recipe in Model.Recipes)
+                                    {
+                                        <option value="@recipe.Id" selected="@(recipe.Id == line.RecipeId)">@recipe.Name (@recipe.Code)</option>
+                                    }
+                                </select>
+                            </label>
+                            <label class="form-control md:col-span-2">
+                                <span class="label-text text-[10px] font-bold uppercase opacity-60">Target Qty</span>
+                                <input type="number" min="1" name="BatchInput.Lines[@i].TargetQuantity" value="@line.TargetQuantity" class="input input-sm input-bordered rounded-xl target-input" required />
+                            </label>
+                            <div class="md:col-span-2 text-[11px] leading-tight">
+                                <div class="opacity-60">Available</div>
+                                <div class="font-mono font-bold stock-available">—</div>
+                                <div class="opacity-60">Threshold <span class="font-mono stock-threshold">—</span></div>
+                            </div>
+                            <div class="md:col-span-2 text-[11px] leading-tight">
+                                <div class="opacity-60">Est. material cost</div>
+                                <div class="font-mono font-bold line-cost">₦0</div>
+                                <div class="opacity-60 unit-hint"></div>
+                            </div>
+                            <div class="md:col-span-1 text-right">
+                                <button type="button" class="btn btn-xs btn-ghost text-error remove-line" title="Remove line">✕</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="flex items-center justify-end gap-6 border-t border-base-200 pt-3 text-xs">
+                    <div>Total target: <span id="totalTarget" class="font-mono font-bold">0</span></div>
+                    <div>Estimated material cost: <span id="totalCost" class="font-mono font-bold">₦0</span></div>
                 </div>
             </div>
         </div>
 
-        <div class="xl:col-span-4 space-y-6 xl:sticky xl:top-20">
-            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-6 space-y-5">
-                <div class="flex items-center justify-between border-b border-base-200 pb-3">
-                    <h2 class="font-black text-sm text-base-content flex items-center gap-2">
-                        <i class="fa-solid fa-calculator text-primary"></i> Live Cost Preview
-                    </h2>
-                    <span class="badge badge-success badge-xs font-bold gap-1"><i class="fa-solid fa-bolt text-[9px]"></i> Live</span>
-                </div>
-
-                <div class="rounded-2xl bg-amber-50/70 border border-amber-200/80 p-4 space-y-3">
-                    <div>
-                        <div class="text-[10px] uppercase font-bold text-amber-900 tracking-wider">Batch Material Cost</div>
-                        <div class="text-xl font-black font-mono text-base-content" id="displayTotalMaterialCost">₦0</div>
-                        <div class="text-[10px] opacity-60 font-mono mt-0.5" id="displayMaterialFormula">Scale: 1.0 batch</div>
-                    </div>
-                    <div class="pt-2 border-t border-amber-200/60">
-                        <div class="text-[10px] uppercase font-bold text-amber-900 tracking-wider">Actual Unit Production Cost</div>
-                        <div class="text-2xl font-black font-mono text-amber-800" id="displayActualUnitCost">₦0.00</div>
-                        <div class="text-[11px] font-mono flex items-center justify-between mt-1">
-                            <span class="opacity-70">Planned unit cost:</span>
-                            <span class="font-bold text-base-content" id="displayExpectedUnitCost">₦0.00</span>
-                        </div>
-                        <div class="text-[11px] font-mono flex items-center justify-between mt-0.5">
-                            <span class="opacity-70">Cost variance:</span>
-                            <span class="font-bold" id="displayCostVariance">—</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="space-y-2.5 text-xs font-mono">
-                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
-                        <span class="font-sans opacity-70">Yield Compliance:</span>
-                        <span class="font-bold text-base-content" id="yieldComplianceDisplay">100.0%</span>
-                    </div>
-                    <div class="p-3 rounded-xl bg-base-200 border border-base-300 flex items-center justify-between">
-                        <span class="font-sans opacity-70">Inventory Effect:</span>
-                        <span class="font-bold text-success" id="inventoryEffectDisplay">+0 units to POS</span>
-                    </div>
-                </div>
-
-                <p class="text-[11px] opacity-70 leading-relaxed">
-                    Saving this batch records the material cost against the recipe and adds finished goods for POS dispatch.
-                </p>
-
-                <div class="space-y-2 pt-2 border-t border-base-200">
-                    <button type="submit" class="btn btn-neutral w-full rounded-xl font-bold py-2.5 text-xs shadow-xs gap-2">
-                        <i class="fa-solid fa-circle-check text-success text-xs"></i> Save Batch Record
-                    </button>
-                    <a asp-page="/Production/Batches/Index" class="btn btn-ghost w-full rounded-xl text-xs font-semibold">Cancel</a>
-                </div>
-            </div>
-
-            <div class="card bg-base-100 border border-base-300 shadow-xs rounded-2xl p-5 text-xs space-y-2">
-                <div class="font-bold text-base-content flex items-center gap-2">
-                    <i class="fa-regular fa-lightbulb text-warning"></i> Recipe Baseline
-                </div>
-                <p class="text-[11px] opacity-70 leading-relaxed" id="productionBaselineTip">
-                    Select a recipe to see its baseline batch and expected output.
-                </p>
-            </div>
+        <div class="flex justify-end gap-2">
+            <a asp-page="/Production/Batches/Index" class="btn btn-sm btn-outline rounded-xl">Cancel</a>
+            <button type="submit" class="btn btn-sm btn-primary rounded-xl font-bold px-6">Create Batch</button>
         </div>
     </form>
 </div>
 
 @section Scripts {
-<script>
-    const allRecipes = @Html.Raw(recipesJson);
-    const calculationUrl = '@Url.Page("/Production/Batches/Create", "Calculation")';
-    let calcTimer = null;
+    <script>
+        const recipes = @Html.Raw(recipeJson);
+        const stock = @Html.Raw(stockJson);
+        const recipeById = Object.fromEntries(recipes.map(r => [String(r.id), r]));
+        const money = value => '₦' + Math.round(value).toLocaleString();
 
-    function naira(value, decimals) {
-        const d = decimals === undefined ? 2 : decimals;
-        return '₦' + (value || 0).toLocaleString('en-US', {
-            minimumFractionDigits: d, maximumFractionDigits: d
+        function reindexRows() {
+            document.querySelectorAll('.line-row').forEach((row, index) => {
+                row.querySelectorAll('select, input').forEach(input => {
+                    if (!input.name) return;
+                    input.name = input.name.replace(/Lines\[\d+\]/, `Lines[${index}]`);
+                });
+            });
+        }
+
+        function updateRow(row) {
+            const select = row.querySelector('.recipe-select');
+            const targetInput = row.querySelector('.target-input');
+            const recipe = recipeById[select.value];
+            const target = parseInt(targetInput.value || '0', 10);
+            const availableEl = row.querySelector('.stock-available');
+            const thresholdEl = row.querySelector('.stock-threshold');
+            const costEl = row.querySelector('.line-cost');
+            const unitEl = row.querySelector('.unit-hint');
+
+            if (!recipe) {
+                availableEl.textContent = '—';
+                thresholdEl.textContent = '—';
+                costEl.textContent = '₦0';
+                unitEl.textContent = '';
+                recalcTotals();
+                return;
+            }
+
+            const info = stock[String(recipe.id)] || { available: 0, threshold: 0 };
+            availableEl.textContent = `${Number(info.available || 0).toLocaleString()} ${recipe.outputUnit}`;
+            thresholdEl.textContent = `${Number(info.threshold || 0).toLocaleString()}`;
+
+            const inputQty = recipe.expectedYield > 0 ? target / recipe.expectedYield : 1;
+            const cost = recipe.materialCost * inputQty;
+            costEl.textContent = money(cost);
+            unitEl.textContent = target > 0 ? `${money(cost / target)} / ${recipe.outputUnit}` : '';
+
+            recalcTotals();
+        }
+
+        function recalcTotals() {
+            let targets = 0;
+            let cost = 0;
+            document.querySelectorAll('.line-row').forEach(row => {
+                targets += parseInt(row.querySelector('.target-input')?.value || '0', 10);
+                const recipe = recipeById[row.querySelector('.recipe-select')?.value];
+                const target = parseInt(row.querySelector('.target-input')?.value || '0', 10);
+                if (recipe) {
+                    const inputQty = recipe.expectedYield > 0 ? target / recipe.expectedYield : 1;
+                    cost += recipe.materialCost * inputQty;
+                }
+            });
+            document.getElementById('totalTarget').textContent = targets.toLocaleString();
+            document.getElementById('totalCost').textContent = money(cost);
+        }
+
+        function wireRow(row) {
+            row.querySelector('.recipe-select').addEventListener('change', () => {
+                const recipe = recipeById[row.querySelector('.recipe-select').value];
+                if (recipe && parseInt(row.querySelector('.target-input').value || '0', 10) <= 0) {
+                    row.querySelector('.target-input').value = Math.max(1, Math.round(recipe.expectedYield));
+                }
+                updateRow(row);
+            });
+            row.querySelector('.target-input').addEventListener('input', () => updateRow(row));
+            row.querySelector('.remove-line').addEventListener('click', () => {
+                if (document.querySelectorAll('.line-row').length <= 1) return;
+                row.remove();
+                reindexRows();
+                recalcTotals();
+            });
+            updateRow(row);
+        }
+
+        document.querySelectorAll('.line-row').forEach(wireRow);
+
+        document.getElementById('addLine').addEventListener('click', () => {
+            const template = document.querySelector('.line-row');
+            const clone = template.cloneNode(true);
+            clone.querySelector('.recipe-select').value = '';
+            clone.querySelector('.target-input').value = '';
+            document.getElementById('lineRows').appendChild(clone);
+            reindexRows();
+            wireRow(clone);
         });
-    }
 
-    function currentRecipe() {
-        const recipeId = parseInt(document.getElementById('recipeSelect')?.value) || 0;
-        return allRecipes.find(recipe => recipe.id === recipeId) || null;
-    }
-
-    function onRecipeChanged(resetQuantities) {
-        const recipe = currentRecipe();
-        if (!recipe) return;
-
-        document.getElementById('recipeBaselineHint').innerText =
-            `${recipe.baseline || 'Baseline batch'} → ${recipe.expectedYield.toLocaleString()} ${recipe.outputUnit}`;
-        document.getElementById('inputBatchUnitTag').innerText = 'batch';
-        document.getElementById('targetOutputUnitTag').innerText = recipe.outputUnit;
-        document.getElementById('actualOutputUnitTag').innerText = recipe.outputUnit;
-        document.getElementById('productionBaselineTip').innerHTML =
-            `<strong>${recipe.categoryName}</strong> • ${recipe.baseline || 'Baseline batch'} • Expected yield: <strong>${recipe.expectedYield.toLocaleString()} ${recipe.outputUnit}</strong>`;
-
-        if (resetQuantities) {
-            document.getElementById('batchInputQuantity').value = '1';
-            const plannedYield = Math.round(recipe.expectedYield);
-            document.getElementById('targetQtyInput').value = plannedYield;
-            document.getElementById('actualQtyInput').value = plannedYield;
-        }
-
-        fetchCalculation(resetQuantities);
-    }
-
-    function onInputQuantityChanged() {
-        recalculateCosts();
-        fetchCalculation(false);
-    }
-
-    function fetchCalculation(resetQuantities) {
-        const recipe = currentRecipe();
-        if (!recipe) return;
-
-        clearTimeout(calcTimer);
-        calcTimer = setTimeout(() => {
-            const inputQty = parseFloat(document.getElementById('batchInputQuantity').value) || 1;
-            const actualQty = parseInt(document.getElementById('actualQtyInput').value) || 0;
-
-            fetch(`${calculationUrl}&recipeId=${recipe.id}&batchInputQuantity=${inputQty}&actualYieldQuantity=${actualQty}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        recalculateCosts();
-                        return;
-                    }
-
-                    if (resetQuantities) {
-                        document.getElementById('targetQtyInput').value = data.plannedYield;
-                        document.getElementById('actualQtyInput').value = data.plannedYield;
-                    } else if (!document.getElementById('targetQtyInput').value || parseInt(document.getElementById('targetQtyInput').value) <= 0) {
-                        document.getElementById('targetQtyInput').value = data.plannedYield;
-                    }
-
-                    renderCosts(data);
-                })
-                .catch(() => recalculateCosts());
-        }, 200);
-    }
-
-    function recalculateCosts(serverData) {
-        const recipe = currentRecipe();
-        if (!recipe) return;
-
-        const inputQty = parseFloat(document.getElementById('batchInputQuantity').value) || 1;
-        const target = parseInt(document.getElementById('targetQtyInput').value) || 0;
-        const actual = parseInt(document.getElementById('actualQtyInput').value) || 0;
-
-        const totalMaterialCost = serverData?.totalBatchMaterialCost
-            ?? (recipe.materialCostPerBaseline || 0) * inputQty;
-        const plannedYield = (recipe.expectedYield || 1) * inputQty;
-        const expectedUnitCost = serverData?.expectedUnitProductionCost
-            ?? (plannedYield > 0 ? totalMaterialCost / plannedYield : 0);
-        const actualUnitCost = serverData?.actualUnitProductionCost
-            ?? (actual > 0 ? totalMaterialCost / actual : 0);
-
-        document.getElementById('displayTotalMaterialCost').innerText = naira(totalMaterialCost, 0);
-        document.getElementById('displayMaterialFormula').innerText = `Scale: ${inputQty.toFixed(1)} × ${recipe.baseline || 'batch'}`;
-        document.getElementById('displayActualUnitCost').innerHTML = actual > 0
-            ? `${naira(actualUnitCost, 2)} <span class="text-xs font-normal text-slate-600">/ ${recipe.outputUnit}</span>`
-            : `<span class="opacity-40">—</span>`;
-        document.getElementById('displayExpectedUnitCost').innerText = naira(expectedUnitCost, 2);
-
-        const costVarianceEl = document.getElementById('displayCostVariance');
-        if (actual > 0) {
-            const diff = actualUnitCost - expectedUnitCost;
-            if (diff > 0.01) {
-                costVarianceEl.className = 'font-bold text-error';
-                costVarianceEl.innerText = `+${naira(diff, 2)} / unit`;
-            } else if (diff < -0.01) {
-                costVarianceEl.className = 'font-bold text-success';
-                costVarianceEl.innerText = `-${naira(Math.abs(diff), 2)} / unit`;
-            } else {
-                costVarianceEl.className = 'font-bold opacity-70';
-                costVarianceEl.innerText = naira(0, 2);
-            }
-        } else {
-            costVarianceEl.className = 'font-bold opacity-40';
-            costVarianceEl.innerText = '—';
-        }
-
-        const compliance = target > 0 ? ((actual / target) * 100).toFixed(1) : '100.0';
-        document.getElementById('yieldComplianceDisplay').innerText = `${compliance}%`;
-        document.getElementById('inventoryEffectDisplay').innerText = `+${actual.toLocaleString()} ${recipe.outputUnit} to POS`;
-
-        const variancePanel = document.getElementById('variancePanel');
-        const varianceText = document.getElementById('varianceText');
-        const varianceIcon = document.getElementById('varianceIcon');
-        const varianceBadge = document.getElementById('varianceBadge');
-
-        if (target > 0) {
-            const variance = actual - target;
-            variancePanel.className = 'alert rounded-2xl text-xs py-3 flex items-center justify-between gap-3 transition-all';
-
-            if (variance > 0) {
-                variancePanel.classList.add('alert-success');
-                varianceIcon.className = 'fa-solid fa-circle-check text-base';
-                varianceText.innerText = `Extra output: +${variance} ${recipe.outputUnit} above target. Unit cost is lower than planned.`;
-                varianceBadge.className = 'badge badge-success badge-xs font-mono font-bold';
-                varianceBadge.innerText = `+${variance} EXTRA`;
-            } else if (variance < 0) {
-                variancePanel.classList.add('alert-warning');
-                varianceIcon.className = 'fa-solid fa-triangle-exclamation text-base';
-                varianceText.innerText = `Shortfall: ${Math.abs(variance)} ${recipe.outputUnit} below target. Unit cost is higher than planned.`;
-                varianceBadge.className = 'badge badge-warning badge-xs font-mono font-bold';
-                varianceBadge.innerText = `${variance} SHORT`;
-            } else {
-                variancePanel.classList.add('alert-info');
-                varianceIcon.className = 'fa-solid fa-circle-info text-base';
-                varianceText.innerText = `Exact match: target yield achieved with 0 variance.`;
-                varianceBadge.className = 'badge badge-info badge-xs font-mono font-bold';
-                varianceBadge.innerText = '0 VARIANCE';
-            }
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        onRecipeChanged(false);
-        recalculateCosts();
-    });
-</script>
+        reindexRows();
+        recalcTotals();
+    </script>
 }

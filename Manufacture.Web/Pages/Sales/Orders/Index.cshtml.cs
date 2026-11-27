@@ -17,7 +17,6 @@ namespace Manufacture.Pages.Sales.Orders
         public bool IsSalesRep { get; set; }
         public bool IsProductionManager { get; set; }
         public bool CanCreatePosOrder => !IsProductionManager;
-        public bool CanPrintSlip => !IsProductionManager;
         public SalesRepProfile? CurrentSalesRep { get; set; }
         public string UserRole { get; set; } = string.Empty;
 

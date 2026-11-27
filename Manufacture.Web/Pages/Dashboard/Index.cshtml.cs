@@ -41,12 +41,11 @@ namespace Manufacture.Pages.Dashboard
             _dbSalesService = dbSalesService;
         }
 
-        /// <summary>The eight-stage lifecycle shown on the executive quick-overview.</summary>
+        /// <summary>The seven-stage lifecycle shown on the executive quick-overview.</summary>
         public IReadOnlyList<LifecycleStage> Stages { get; } = new[]
         {
             new LifecycleStage("Orders Placed", "fa-solid fa-receipt", "info", LifecycleMetric.OrdersPlaced),
             new LifecycleStage("Produced", "fa-solid fa-bread-slice", "primary", LifecycleMetric.Produced),
-            new LifecycleStage("Loaded", "fa-solid fa-truck-ramp-box", "secondary", LifecycleMetric.Loaded),
             new LifecycleStage("Factory Defects", "fa-solid fa-ban", "warning", LifecycleMetric.FactoryDefects),
             new LifecycleStage("Sold", "fa-solid fa-basket-shopping", "success", LifecycleMetric.Sold),
             new LifecycleStage("Closing Stock", "fa-solid fa-warehouse", "accent", LifecycleMetric.Returned),
@@ -76,10 +75,9 @@ namespace Manufacture.Pages.Dashboard
 
         // Sales Rep
         public PosTerminal? AssignedTerminal { get; set; }
-        public List<Order> UnprintedOrders { get; set; } = new();
+        public List<Order> PendingOrders { get; set; } = new();
         public List<Order> RepTodayOrders { get; set; } = new();
-        public List<SalesRepRouteDebtorDto> MyRouteDebtors { get; set; } = new();
-        public int RepCompletedTickets => RepTodayOrders.Count(o => o.Status == OrderStatus.Dispatched);
+        public int RepCompletedTickets => RepTodayOrders.Count(o => o.Status == OrderStatus.Completed);
 
         // Vendor / Supermarket Client
         public Customer? VendorAccount { get; set; }
@@ -170,17 +168,16 @@ namespace Manufacture.Pages.Dashboard
                             && o.OrderDate.Date == DateTime.UtcNow.Date
                             && o.Status != OrderStatus.Cancelled)
                         .ToList();
-                    UnprintedOrders = orders
-                        .Where(o => o.SalesRepId == currentSalesRep.Id && !o.IsPrintedForLoading)
+                    PendingOrders = orders
+                        .Where(o => o.SalesRepId == currentSalesRep.Id && o.StockDeductedAt == null && o.Status != OrderStatus.Cancelled)
                         .ToList();
-                    MyRouteDebtors = await _dbSalesService.GetSalesRepRouteDebtorsAsync(currentSalesRep.Id, cancellationToken);
                 }
             }
             else
             {
                 var terminals = _salesService.GetAllTerminals();
                 AssignedTerminal = terminals.FirstOrDefault(t => t.TerminalCode == "POS-01") ?? terminals.FirstOrDefault();
-                UnprintedOrders = _salesService.GetAllOrders().Where(o => !o.IsPrintedForLoading).ToList();
+                PendingOrders = _salesService.GetAllOrders().Where(o => o.StockDeductedAt == null && o.Status != OrderStatus.Cancelled).ToList();
                 RepTodayOrders = _salesService.GetAllOrders().Where(o => o.OrderDate.Date == DateTime.UtcNow.Date).ToList();
             }
 

@@ -10,11 +10,13 @@ namespace Manufacture.Pages.Sales.Terminals
     {
         private readonly ISalesService _salesService;
         private readonly IEmployeeService _employeeService;
+        private readonly IProductRepositoryService _repositoryService;
 
-        public CreateModel(ISalesService salesService, IEmployeeService employeeService)
+        public CreateModel(ISalesService salesService, IEmployeeService employeeService, IProductRepositoryService repositoryService)
         {
             _salesService = salesService;
             _employeeService = employeeService;
+            _repositoryService = repositoryService;
         }
 
         [BindProperty]
@@ -29,16 +31,20 @@ namespace Manufacture.Pages.Sales.Terminals
         };
 
         public List<EmployeeDto> EligibleEmployees { get; set; } = new();
+        public List<Manufacture.Models.DTOs.ProductRepositoryDto> ProductRepositories { get; set; } = new();
 
         public async Task OnGetAsync(CancellationToken cancellationToken = default)
         {
             await LoadEmployeesAsync(cancellationToken);
+            await LoadRepositoriesAsync(cancellationToken);
             var all = await _salesService.GetTerminalsAsync(includeInactive: true, cancellationToken);
             var nextNum = all.Any() ? all.Max(t => t.Id) + 1 : 1;
             Terminal.TerminalCode = $"POS-{nextNum:00}";
             Terminal.TerminalName = $"Checkout Register #{nextNum}";
             Terminal.CashAccountName = $"Cash Till #{nextNum}";
             Terminal.PosBankAccountName = $"Moniepoint POS #{nextNum:00} - 9028129";
+            Terminal.ProductRepositoryId ??= ProductRepositories.FirstOrDefault(r => r.IsDefaultProductionOutput)?.Id
+                ?? ProductRepositories.FirstOrDefault()?.Id;
         }
 
         public async Task<IActionResult> OnPostAsync(CancellationToken cancellationToken = default)
@@ -47,6 +53,7 @@ namespace Manufacture.Pages.Sales.Terminals
             {
                 ModelState.AddModelError("Terminal.TerminalName", "Terminal name is required.");
                 await LoadEmployeesAsync(cancellationToken);
+                await LoadRepositoriesAsync(cancellationToken);
                 return Page();
             }
 
@@ -60,6 +67,7 @@ namespace Manufacture.Pages.Sales.Terminals
             {
                 ModelState.AddModelError(string.Empty, ex.Message);
                 await LoadEmployeesAsync(cancellationToken);
+                await LoadRepositoriesAsync(cancellationToken);
                 return Page();
             }
         }
@@ -71,6 +79,11 @@ namespace Manufacture.Pages.Sales.Terminals
                 .Where(e => e.Department.Contains("Sales", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(e => e.FullName)
                 .ToList();
+        }
+
+        private async Task LoadRepositoriesAsync(CancellationToken cancellationToken)
+        {
+            ProductRepositories = await _repositoryService.GetRepositoriesAsync(includeInactive: false, cancellationToken);
         }
     }
 }

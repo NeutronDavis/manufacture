@@ -15,6 +15,8 @@ public partial class PosTerminal
 
     public int? AssignedUserId { get; set; }
 
+    public int? ProductRepositoryId { get; set; }
+
     public string CashAccountName { get; set; } = null!;
 
     public string TransferAccountName { get; set; } = null!;
@@ -31,9 +33,11 @@ public partial class PosTerminal
 
     public virtual User? AssignedUser { get; set; }
 
-    public virtual ICollection<DailyRepRouteSheet> DailyRepRouteSheets { get; set; } = new List<DailyRepRouteSheet>();
+    public virtual ProductRepository? ProductRepository { get; set; }
 
     public virtual ICollection<Order> Orders { get; set; } = new List<Order>();
+
+    public virtual ICollection<SalesReconciliation> SalesReconciliations { get; set; } = new List<SalesReconciliation>();
 
     public virtual ICollection<SalesRep> SalesReps { get; set; } = new List<SalesRep>();
 }

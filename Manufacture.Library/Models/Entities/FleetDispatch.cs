@@ -35,8 +35,6 @@ public partial class FleetDispatch
 
     public virtual User? CreatedByUser { get; set; }
 
-    public virtual DailyRepRouteSheet? DailyRepRouteSheet { get; set; }
-
     public virtual Employee? DriverEmployee { get; set; }
 
     public virtual ICollection<FleetDispatchStop> FleetDispatchStops { get; set; } = new List<FleetDispatchStop>();

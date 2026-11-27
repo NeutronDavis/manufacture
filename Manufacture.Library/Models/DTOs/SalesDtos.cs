@@ -16,7 +16,6 @@ namespace Manufacture.Models.DTOs
     {
         public string OrderType { get; set; } = "ImmediateSale"; // ImmediateSale / PreOrder
         public int CustomerId { get; set; }
-        [Required]
         public string CustomerName { get; set; } = string.Empty;
         public string CustomerCategory { get; set; } = "WalkIn";
         public string PosTerminalCode { get; set; } = "POS-01";
@@ -51,34 +50,12 @@ namespace Manufacture.Models.DTOs
         [Required]
         public string TerminalName { get; set; } = string.Empty;
         public int? AssignedUserId { get; set; }
+        public int? ProductRepositoryId { get; set; }
+        public string? ProductRepositoryName { get; set; }
         public string CashAccountName { get; set; } = "Bakery Cash Drawer";
         public string TransferAccountName { get; set; } = "FirstBank - 3021948291";
         public string PosBankAccountName { get; set; } = "Moniepoint POS - 9028129";
         public bool IsActive { get; set; } = true;
-    }
-
-    public class SignOffLoadingInputDto
-    {
-        public int RouteSheetId { get; set; }
-        public Dictionary<int, int> LoadedQuantities { get; set; } = new();
-        public string DispatcherName { get; set; } = "Loading Bay Supervisor";
-        public string Notes { get; set; } = string.Empty;
-    }
-
-    public class ReconciliationInputDto
-    {
-        public int RouteSheetId { get; set; }
-        public Dictionary<int, int> SoldQuantities { get; set; } = new();
-        public Dictionary<int, int> ReturnedQuantities { get; set; } = new();
-        public Dictionary<int, int> DamagedQuantities { get; set; } = new();
-        public Dictionary<int, int> ReplacementQuantities { get; set; } = new();
-
-        public decimal CashCollected { get; set; }
-        public decimal BankTransferCollected { get; set; }
-        public decimal PosTerminalCollected { get; set; }
-
-        public string CashierName { get; set; } = "Main Cashier";
-        public string Notes { get; set; } = string.Empty;
     }
 
     public class SetCustomPriceInputDto
@@ -180,35 +157,5 @@ namespace Manufacture.Models.DTOs
 
         public string Description { get; set; } = string.Empty;
         public bool IsActive { get; set; } = true;
-    }
-
-    /// <summary>
-    /// One dispatch (route sheet) on the SalesRep dashboard with the supermarkets
-    /// still owing money for that dispatch.
-    /// </summary>
-    public class SalesRepRouteDebtorDto
-    {
-        public int RouteSheetId { get; set; }
-        public string RouteSheetRef { get; set; } = string.Empty;
-        public DateTime RouteDate { get; set; }
-        public string RouteName { get; set; } = string.Empty;
-        public string SalesRepName { get; set; } = string.Empty;
-        public string Status { get; set; } = string.Empty;
-        public List<SalesRepRouteDebtorLineDto> Debtors { get; set; } = new();
-
-        public decimal TotalDebt => Debtors.Sum(d => d.DebtAmount);
-    }
-
-    public class SalesRepRouteDebtorLineDto
-    {
-        public int SupermarketAccountId { get; set; }
-        public string AccountName { get; set; } = string.Empty;
-        public string ContactPerson { get; set; } = string.Empty;
-        public string PhoneNumber { get; set; } = string.Empty;
-        public decimal DebtAmount { get; set; }
-        public decimal CurrentOutstandingCredit { get; set; }
-        public decimal CreditLimit { get; set; }
-        public string RecordedBy { get; set; } = string.Empty;
-        public DateTime RecordedAt { get; set; }
     }
 }

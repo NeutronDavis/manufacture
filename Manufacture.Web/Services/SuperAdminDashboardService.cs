@@ -232,9 +232,10 @@ namespace Manufacture.Services
             var endExclusive = window.EffectiveEnd.AddDays(1);
             var batches = _db.ProductionBatches
                 .AsNoTracking()
-                .Include(batch => batch.Recipe)
-                    .ThenInclude(recipe => recipe.ProductionProductType)
-                        .ThenInclude(productType => productType!.ProductionCategory)
+                .Include(batch => batch.ProductionBatchItems)
+                    .ThenInclude(item => item.Recipe)
+                        .ThenInclude(recipe => recipe.ProductionProductType)
+                            .ThenInclude(productType => productType!.ProductionCategory)
                 .Where(batch => batch.ProductionDate >= window.Start
                     && batch.ProductionDate < endExclusive
                     && batch.Status != (int)BatchStatus.Cancelled)
@@ -243,28 +244,31 @@ namespace Manufacture.Services
             var sources = new List<BatchDetailSource>();
             foreach (var batch in batches)
             {
-                var category = batch.Recipe?.ProductionProductType?.ProductionCategory;
-                var itemCategoryId = category?.Id ?? 0;
-                if (categoryId.HasValue && itemCategoryId != categoryId.Value) continue;
-
-                sources.Add(new BatchDetailSource
+                foreach (var line in batch.ProductionBatchItems)
                 {
-                    BatchId = batch.Id,
-                    BatchNumber = batch.BatchNumber,
-                    ProductName = batch.RecipeName,
-                    CategoryId = itemCategoryId,
-                    Category = category?.Name ?? "Uncategorised",
-                    Unit = string.IsNullOrWhiteSpace(batch.OutputUnitLabel)
-                        ? batch.Recipe?.OutputUnit ?? "units"
-                        : batch.OutputUnitLabel,
-                    TargetQuantity = batch.TargetQuantity,
-                    ActualQuantity = batch.ActualQuantity,
-                    Shift = batch.Shift,
-                    Baker = batch.BakerInCharge,
-                    Status = ((BatchStatus)batch.Status).ToString(),
-                    Date = batch.ProductionDate.Date,
-                    UnitPrice = batch.Recipe?.SellingPrice ?? 0m
-                });
+                    var category = line.Recipe?.ProductionProductType?.ProductionCategory;
+                    var itemCategoryId = category?.Id ?? 0;
+                    if (categoryId.HasValue && itemCategoryId != categoryId.Value) continue;
+
+                    sources.Add(new BatchDetailSource
+                    {
+                        BatchId = batch.Id,
+                        BatchNumber = batch.BatchNumber,
+                        ProductName = line.RecipeName,
+                        CategoryId = itemCategoryId,
+                        Category = category?.Name ?? "Uncategorised",
+                        Unit = string.IsNullOrWhiteSpace(line.OutputUnitLabel)
+                            ? line.Recipe?.OutputUnit ?? "units"
+                            : line.OutputUnitLabel,
+                        TargetQuantity = line.TargetQuantity,
+                        ActualQuantity = line.ActualQuantity,
+                        Shift = batch.Shift,
+                        Baker = batch.BakerInCharge,
+                        Status = ((BatchStatus)batch.Status).ToString(),
+                        Date = batch.ProductionDate.Date,
+                        UnitPrice = line.Recipe?.SellingPrice ?? 0m
+                    });
+                }
             }
 
             return SuperAdminKpiDetailBuilder.BuildProduced(sources, window.Key, window.DateLabel, scopeLabel);
@@ -277,31 +281,31 @@ namespace Manufacture.Services
             string scopeLabel)
         {
             var minStatus = metric == LifecycleMetric.Loaded
-                ? (int)RouteSheetStatus.LoadedOnRoute
-                : (int)RouteSheetStatus.Reconciled;
+                ? (int)SalesReconciliationStatus.Draft
+                : (int)SalesReconciliationStatus.Reconciled;
 
             var startDate = DateOnly.FromDateTime(window.Start);
             var endDate = DateOnly.FromDateTime(window.EffectiveEnd);
 
-            var sheets = _db.DailyRepRouteSheets
+            var sheets = _db.SalesReconciliations
                 .AsNoTracking()
                 .Include(sheet => sheet.SalesRep)
-                .Include(sheet => sheet.Vehicle)
-                .Include(sheet => sheet.RouteSheetItems)
+                .Include(sheet => sheet.PosTerminal)
+                .Include(sheet => sheet.SalesReconciliationItems)
                     .ThenInclude(item => item.Recipe)
                         .ThenInclude(recipe => recipe.ProductionProductType)
                             .ThenInclude(productType => productType!.ProductionCategory)
-                .Where(sheet => sheet.RouteDate >= startDate
-                    && sheet.RouteDate <= endDate
+                .Where(sheet => sheet.ReconciliationDate >= startDate
+                    && sheet.ReconciliationDate <= endDate
                     && sheet.Status >= minStatus)
                 .ToList();
 
             var sources = new List<DispatchLineSource>();
             foreach (var sheet in sheets)
             {
-                var vehicle = sheet.VehicleRegistration ?? sheet.Vehicle?.RegistrationNumber ?? string.Empty;
+                var vehicle = sheet.VehicleRegistration;
 
-                foreach (var item in sheet.RouteSheetItems)
+                foreach (var item in sheet.SalesReconciliationItems)
                 {
                     var category = item.Recipe?.ProductionProductType?.ProductionCategory;
                     var itemCategoryId = category?.Id ?? 0;
@@ -310,25 +314,25 @@ namespace Manufacture.Services
                     sources.Add(new DispatchLineSource
                     {
                         RouteSheetId = sheet.Id,
-                        RouteSheetRef = sheet.RouteSheetRef,
-                        RouteDate = sheet.RouteDate,
+                        RouteSheetRef = sheet.ReconciliationNumber,
+                        RouteDate = sheet.ReconciliationDate,
                         Status = sheet.Status,
                         RepId = sheet.SalesRepId,
                         RepName = sheet.SalesRep?.FullName ?? "Unassigned Rep",
                         Route = sheet.RouteName,
                         Vehicle = vehicle,
-                        Terminal = sheet.PosTerminalCode ?? string.Empty,
+                        Terminal = sheet.PosTerminal?.TerminalCode ?? string.Empty,
                         ProductName = item.ProductName,
                         ProductCode = item.ProductCode,
                         CategoryId = itemCategoryId,
                         Category = category?.Name ?? "Uncategorised",
                         Unit = item.Recipe?.OutputUnit ?? "units",
-                        RequestedQty = item.RepOrderRequestedQty,
-                        LoadedQty = item.TodayNewlyLoadedQty,
+                        RequestedQty = item.QtySold,
+                        LoadedQty = item.OpeningStock,
                         SoldQty = item.QtySold,
-                        ClosingStockQty = item.ClosingStockQty,
+                        ClosingStockQty = item.ClosingStock ?? 0,
                         DamagedQty = item.QtyDamaged,
-                        UnitPrice = item.UnitSellingPrice
+                        UnitPrice = item.UnitPrice
                     });
                 }
             }
@@ -434,34 +438,32 @@ namespace Manufacture.Services
             var startDate = DateOnly.FromDateTime(start);
             var endDate = DateOnly.FromDateTime(endExclusive.AddDays(-1));
 
-            var sheets = _db.DailyRepRouteSheets
+            var sheets = _db.SalesReconciliations
                 .AsNoTracking()
                 .Include(sheet => sheet.SalesRep)
-                .Include(sheet => sheet.Vehicle)
                 .Include(sheet => sheet.PosTerminal)
-                .Include(sheet => sheet.RouteSheetItems)
+                .Include(sheet => sheet.SalesReconciliationItems)
                     .ThenInclude(item => item.Recipe)
                         .ThenInclude(recipe => recipe.ProductionProductType)
                             .ThenInclude(productType => productType!.ProductionCategory)
-                .Where(sheet => sheet.RouteDate >= startDate && sheet.RouteDate <= endDate)
+                .Where(sheet => sheet.ReconciliationDate >= startDate && sheet.ReconciliationDate <= endDate)
                 .ToList();
 
             foreach (var sheet in sheets)
             {
-                var date = sheet.RouteDate.ToDateTime(TimeOnly.MinValue);
+                var date = sheet.ReconciliationDate.ToDateTime(TimeOnly.MinValue);
                 var repName = sheet.SalesRep?.FullName ?? "Unassigned Rep";
                 var route = sheet.RouteName;
-                var vehicle = sheet.VehicleRegistration ?? sheet.Vehicle?.RegistrationNumber ?? string.Empty;
-                var terminal = sheet.PosTerminalCode ?? sheet.PosTerminal?.TerminalCode ?? string.Empty;
+                var vehicle = sheet.VehicleRegistration;
+                var terminal = sheet.PosTerminal?.TerminalCode ?? string.Empty;
 
-                foreach (var item in sheet.RouteSheetItems)
+                foreach (var item in sheet.SalesReconciliationItems)
                 {
                     var category = item.Recipe?.ProductionProductType?.ProductionCategory;
 
-                    // Verified quantities only exist after reconciliation. A sheet
-                    // still on the road must not book sales, closing stock, damage
-                    // or revenue; its loading quantities are already counted.
-                    var isReconciled = sheet.Status >= (int)RouteSheetStatus.Reconciled;
+                    // Verified quantities only exist after reconciliation. A draft
+                    // sheet must not book sales, closing stock, damage or revenue.
+                    var isReconciled = sheet.Status >= (int)SalesReconciliationStatus.Reconciled;
 
                     facts.Add(new DashboardFact
                     {
@@ -477,12 +479,12 @@ namespace Manufacture.Services
                         ProductionCategoryId = category?.Id ?? 0,
                         ProductionCategoryName = category?.Name ?? "Uncategorised",
                         OutputUnit = item.Recipe?.OutputUnit ?? "units",
-                        UnitPrice = item.UnitSellingPrice,
-                        Loaded = item.TodayNewlyLoadedQty,
+                        UnitPrice = item.UnitPrice,
+                        Loaded = item.OpeningStock,
                         Sold = isReconciled ? item.QtySold : 0,
-                        ClosingStock = isReconciled ? item.ClosingStockQty : 0,
+                        ClosingStock = isReconciled ? item.ClosingStock ?? 0 : 0,
                         Damaged = isReconciled ? item.QtyDamaged : 0,
-                        ExpectedRevenue = isReconciled ? item.QtySold * item.UnitSellingPrice : 0m
+                        ExpectedRevenue = isReconciled ? item.QtySold * item.UnitPrice : 0m
                     });
                 }
 
@@ -494,12 +496,11 @@ namespace Manufacture.Services
                     Route = route,
                     VehicleRegistration = vehicle,
                     Terminal = terminal,
-                    Cash = sheet.CashCollected,
-                    Transfer = sheet.BankTransferCollected,
-                    PosBank = sheet.PosTerminalCollected,
-                    Outstanding = sheet.NewOutstandingAccountBalance
-                        ?? sheet.TotalExpectedSalesRevenue
-                            - sheet.CashCollected - sheet.BankTransferCollected - sheet.PosTerminalCollected,
+                    Cash = sheet.CashHandedOver,
+                    Transfer = 0m,
+                    PosBank = sheet.PosTerminalReceipts,
+                    Outstanding = sheet.Variance
+                        ?? sheet.TotalExpectedRevenue - sheet.CashHandedOver - sheet.PosTerminalReceipts,
                     IsFinanceOnly = true
                 });
             }
@@ -546,9 +547,10 @@ namespace Manufacture.Services
 
             var batches = _db.ProductionBatches
                 .AsNoTracking()
-                .Include(batch => batch.Recipe)
-                    .ThenInclude(recipe => recipe.ProductionProductType)
-                        .ThenInclude(productType => productType!.ProductionCategory)
+                .Include(batch => batch.ProductionBatchItems)
+                    .ThenInclude(item => item.Recipe)
+                        .ThenInclude(recipe => recipe.ProductionProductType)
+                            .ThenInclude(productType => productType!.ProductionCategory)
                 .Where(batch => batch.ProductionDate >= start
                     && batch.ProductionDate < endExclusive
                     && batch.Status != (int)BatchStatus.Cancelled)
@@ -556,24 +558,27 @@ namespace Manufacture.Services
 
             foreach (var batch in batches)
             {
-                var category = batch.Recipe?.ProductionProductType?.ProductionCategory;
-                facts.Add(new DashboardFact
+                foreach (var line in batch.ProductionBatchItems)
                 {
-                    Date = batch.ProductionDate.Date,
-                    RepId = 0,
-                    RepName = "Plant",
-                    RecipeId = batch.RecipeId,
-                    ProductCode = batch.Recipe?.Code ?? string.Empty,
-                    ProductName = batch.RecipeName,
-                    ProductionCategoryId = category?.Id ?? 0,
-                    ProductionCategoryName = category?.Name ?? "Uncategorised",
-                    OutputUnit = string.IsNullOrWhiteSpace(batch.OutputUnitLabel)
-                        ? batch.Recipe?.OutputUnit ?? "units"
-                        : batch.OutputUnitLabel,
-                    UnitPrice = batch.Recipe?.SellingPrice ?? 0m,
-                    Produced = batch.ActualQuantity,
-                    IsPlantLevel = true
-                });
+                    var category = line.Recipe?.ProductionProductType?.ProductionCategory;
+                    facts.Add(new DashboardFact
+                    {
+                        Date = batch.ProductionDate.Date,
+                        RepId = 0,
+                        RepName = "Plant",
+                        RecipeId = line.RecipeId,
+                        ProductCode = line.Recipe?.Code ?? line.ProductCode,
+                        ProductName = line.RecipeName,
+                        ProductionCategoryId = category?.Id ?? 0,
+                        ProductionCategoryName = category?.Name ?? "Uncategorised",
+                        OutputUnit = string.IsNullOrWhiteSpace(line.OutputUnitLabel)
+                            ? line.Recipe?.OutputUnit ?? "units"
+                            : line.OutputUnitLabel,
+                        UnitPrice = line.Recipe?.SellingPrice ?? 0m,
+                        Produced = line.ActualQuantity,
+                        IsPlantLevel = true
+                    });
+                }
             }
 
             var defects = _db.ProductionDefects

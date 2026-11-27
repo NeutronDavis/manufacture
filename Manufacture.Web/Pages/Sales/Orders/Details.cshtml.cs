@@ -185,7 +185,7 @@ namespace Manufacture.Pages.Sales.Orders
         }
 
         private static bool IsOpenStatus(OrderStatus status) =>
-            status is not (OrderStatus.Dispatched or OrderStatus.Cancelled);
+            status is not (OrderStatus.Completed or OrderStatus.Cancelled);
 
         private void LoadRole()
         {

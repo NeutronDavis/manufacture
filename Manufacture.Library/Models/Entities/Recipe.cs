@@ -35,13 +35,17 @@ public partial class Recipe
 
     public virtual ICollection<ProductionBatch> ProductionBatches { get; set; } = new List<ProductionBatch>();
 
+    public virtual ICollection<ProductionBatchItem> ProductionBatchItems { get; set; } = new List<ProductionBatchItem>();
+
     public virtual ProductionProductType? ProductionProductType { get; set; }
 
     public virtual ICollection<ProductionDefect> ProductionDefects { get; set; } = new List<ProductionDefect>();
 
     public virtual ICollection<RecipeIngredient> RecipeIngredients { get; set; } = new List<RecipeIngredient>();
 
-    public virtual ICollection<RouteSheetItem> RouteSheetItems { get; set; } = new List<RouteSheetItem>();
+    public virtual ICollection<ProductRepositoryMovement> ProductRepositoryMovements { get; set; } = new List<ProductRepositoryMovement>();
+
+    public virtual ICollection<ProductRepositoryStock> ProductRepositoryStocks { get; set; } = new List<ProductRepositoryStock>();
 
     public virtual ICollection<SalesBonusRule> SalesBonusRules { get; set; } = new List<SalesBonusRule>();
 

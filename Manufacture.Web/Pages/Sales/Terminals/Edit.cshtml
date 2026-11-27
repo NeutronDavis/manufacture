@@ -133,6 +133,18 @@
                         </select>
                         <span class="text-[11px] text-base-content/50 mt-1">Responsible user authorized to log in and sign off daily drawer balances.</span>
                     </div>
+
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-semibold text-xs">Product Repository / Directory *</span></label>
+                        <select asp-for="Terminal.ProductRepositoryId" class="select select-bordered select-sm w-full" required>
+                            <option value="">-- Select repository --</option>
+                            @foreach (var repo in Model.ProductRepositories)
+                            {
+                                <option value="@repo.Id">@repo.Name (@repo.Code) · @repo.LocationType</option>
+                            }
+                        </select>
+                        <span class="text-[11px] text-base-content/50 mt-1">This POS can only sell products stocked in the selected repository.</span>
+                    </div>
                 </div>
             </div>
 

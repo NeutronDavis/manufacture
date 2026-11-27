@@ -17,7 +17,7 @@
                 <i class="fa-solid fa-cash-register text-primary"></i> Sales & POS Operations Hub
             </h1>
             <p class="text-xs opacity-70 mt-0.5">
-                POS checkout terminals, multi-account revenue routing, pre-order demand, and loading verification.
+                POS checkout terminals, repository stock, pre-order demand, and daily reconciliation.
             </p>
         </div>
         <div class="flex items-center gap-2">
@@ -43,53 +43,30 @@
             <div class="stat-figure text-base-content text-2xl"><i class="fa-solid fa-receipt"></i></div>
             <div class="stat-title text-[10px] uppercase font-bold opacity-60">Recent Orders</div>
             <div class="stat-value text-2xl font-black font-mono text-base-content">@Model.RecentOrders.Count</div>
-            <div class="stat-desc opacity-70">Processed loading slips</div>
+            <div class="stat-desc opacity-70">Orders ready for receipt</div>
         </div>
 
 <div class="stat p-5">
-            <div class="stat-figure text-info text-2xl"><i class="fa-solid fa-print"></i></div>
-            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Loading Slips Issued</div>
-            <div class="stat-value text-2xl font-black font-mono text-info">
-                @Model.RecentOrders.Count(o => o.IsPrintedForLoading)
+            <div class="stat-figure text-success text-2xl"><i class="fa-solid fa-boxes-stacked"></i></div>
+            <div class="stat-title text-[10px] uppercase font-bold opacity-60">Stock-Deducted Orders</div>
+            <div class="stat-value text-2xl font-black font-mono text-success">
+                @Model.RecentOrders.Count(o => o.StockDeductedAt != null)
             </div>
-            <div class="stat-desc font-semibold text-success">Verified for gate exit</div>
+            <div class="stat-desc font-semibold text-success">Receipt printed &amp; stock posted</div>
         </div>
     </div>
 
-    <!-- Route Sales, Dispatch & Credit Reconciliation Modules -->
+    <!-- Sales & Reconciliation Modules -->
     <div>
         <div class="flex items-center justify-between mb-3">
             <h2 class="text-sm font-black text-base-content flex items-center gap-2">
-                <i class="fa-solid fa-route text-primary"></i> Route Sales & Daily Credit Management
+                <i class="fa-solid fa-scale-balanced text-primary"></i> Sales &amp; Daily Settlement
             </h2>
-            <span class="text-xs text-base-content/60">Independent Dispatch &bull; Aggregated Drawer &bull; Agreed Supermarket Pricing</span>
+            <span class="text-xs text-base-content/60">Per-rep reconciliation &bull; Repository stock &bull; Agreed supermarket pricing</span>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <!-- 1. Route Dispatch Bay -->
-            <div class="card bg-base-100 border border-base-300 shadow-xs hover:shadow-md hover:border-primary transition-all duration-200 rounded-2xl p-6 flex flex-col justify-between">
-                <div class="space-y-3">
-                    <div class="flex items-center justify-between">
-                        <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg">
-                            <i class="fa-solid fa-truck-ramp-box"></i>
-                        </div>
-                        <span class="badge badge-primary badge-sm font-semibold">Step 1: Dispatch</span>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-base text-base-content">Route Loading & Dispatch</h3>
-                        <p class="text-xs text-base-content/70 mt-1 leading-relaxed">
-                            Separation of order request vs. physical loading verification. Warehouse bay staff sign-off and printable vehicle gate-passes.
-                        </p>
-                    </div>
-                </div>
-                <div class="pt-4 border-t border-base-200 mt-4">
-                    <a asp-page="/Sales/Dispatch/Index" class="btn btn-primary btn-sm w-full gap-2 font-bold">
-                        <i class="fa-solid fa-clipboard-check text-xs"></i> Open Dispatch Bay
-                    </a>
-                </div>
-            </div>
-
-            <!-- 2. Sales Reconciliation -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- 1. Sales Reconciliation -->
             <div class="card bg-base-100 border border-base-300 shadow-xs hover:shadow-md hover:border-warning transition-all duration-200 rounded-2xl p-6 flex flex-col justify-between">
                 <div class="space-y-3">
                     <div class="flex items-center justify-between">
@@ -206,7 +183,7 @@
                     <div class="w-7 h-7 rounded-lg bg-primary text-primary-content flex items-center justify-center text-xs font-bold shadow-xs">
                         <i class="fa-solid fa-receipt"></i>
                     </div>
-                    <span>Recent Sales Orders & Loading Slips</span>
+                    <span>Recent Sales Orders & Receipts</span>
                 </div>
                 <a asp-page="/Sales/Orders/Index" class="btn btn-xs btn-outline border-base-300 rounded-lg text-xs font-semibold">
                     View Complete Order Register &rarr;
@@ -223,7 +200,7 @@
                             <th>Sales Rep</th>
                             <th>Gross Total (₦)</th>
                             <th>Payment Channel</th>
-                            <th>Slip Status</th>
+                            <th>Stock Status</th>
                             <th class="text-right pr-4">Action</th>
                         </tr>
                     </thead>
@@ -242,16 +219,16 @@
                                     <span class="badge badge-ghost border border-base-300 text-[10px] font-mono font-semibold">@order.PaymentMethod</span>
                                 </td>
                                 <td>
-                                    @if (order.IsPrintedForLoading)
+                                    @if (order.StockDeductedAt != null)
                                     {
                                         <span class="badge badge-success badge-xs font-bold gap-1">
-                                            <i class="fa-solid fa-check text-[9px]"></i> Printed
+                                            <i class="fa-solid fa-check text-[9px]"></i> Deducted
                                         </span>
                                     }
                                     else
                                     {
                                         <span class="badge badge-warning badge-xs font-bold gap-1">
-                                            <i class="fa-solid fa-clock text-[9px]"></i> Unprinted
+                                            <i class="fa-solid fa-clock text-[9px]"></i> Pending
                                         </span>
                                     }
                                 </td>

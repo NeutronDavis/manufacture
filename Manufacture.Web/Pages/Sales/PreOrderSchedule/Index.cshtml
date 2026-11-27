@@ -95,10 +95,8 @@
         <div class="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
             <button type="button" onclick="setPreOrderFilter('all', this)" class="btn btn-xs btn-neutral rounded-lg font-bold preorder-filter-pill">All Pre-Orders</button>
             <button type="button" onclick="setPreOrderFilter('production', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg preorder-filter-pill">In Production</button>
-            <button type="button" onclick="setPreOrderFilter('ready', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg preorder-filter-pill">Ready To Load</button>
-            <button type="button" onclick="setPreOrderFilter('dispatched', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg preorder-filter-pill">Dispatched</button>
-            <button type="button" onclick="setPreOrderFilter('printed', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg preorder-filter-pill">Slip Printed</button>
-            <button type="button" onclick="setPreOrderFilter('unprinted', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg preorder-filter-pill">Unprinted</button>
+            <button type="button" onclick="setPreOrderFilter('ready', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg preorder-filter-pill">Ready</button>
+            <button type="button" onclick="setPreOrderFilter('completed', this)" class="btn btn-xs btn-ghost border border-base-300 rounded-lg preorder-filter-pill">Completed</button>
         </div>
     </div>
 
@@ -125,8 +123,6 @@
                             <th>Payment Channel</th>
                             <th>Gross Total</th>
                             <th>Order Status</th>
-                            <th>Loading Slip</th>
-                            <th>Dispatch</th>
                             <th class="text-right pr-4">Action</th>
                         </tr>
                     </thead>
@@ -140,8 +136,7 @@
                                 data-order="@o.OrderNumber.ToLower()"
                                 data-items="@itemsSummary"
                                 data-target="@o.TargetDeliveryDate.ToString("yyyy-MM-dd")"
-                                data-status="@statusText"
-                                data-printed="@(o.IsPrintedForLoading ? "printed" : "unprinted")">
+                                data-status="@statusText">
 
                                 <td class="font-mono text-xs font-bold pl-4 py-3 text-base-content">
                                     <span class="badge badge-neutral badge-xs font-mono font-bold">@o.OrderNumber</span>
@@ -176,46 +171,25 @@
                                     &#8358;@o.TotalAmount.ToString("N0")
                                 </td>
                                 <td class="py-3">
-                                    <span class="badge @(o.Status == OrderStatus.Dispatched ? "badge-neutral" : o.Status == OrderStatus.ReadyToLoad ? "badge-info" : o.Status == OrderStatus.InProduction ? "badge-warning" : "badge-ghost") badge-xs font-bold">
+                                    <span class="badge @(o.Status == OrderStatus.Completed ? "badge-success" : o.Status == OrderStatus.ReadyToLoad ? "badge-info" : o.Status == OrderStatus.InProduction ? "badge-warning" : "badge-ghost") badge-xs font-bold">
                                         @o.Status
                                     </span>
                                 </td>
-                                <td class="py-3">
-                                    @if (o.IsPrintedForLoading)
-                                    {
-                                        <span class="badge badge-success badge-xs font-bold gap-1">
-                                            <i class="fa-solid fa-check text-[9px]"></i> Printed
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge badge-warning badge-xs font-bold gap-1">
-                                            <i class="fa-solid fa-clock text-[9px]"></i> Unprinted
-                                        </span>
-                                    }
-                                </td>
-                                <td class="py-3">
-                                    @if (o.Status == OrderStatus.Dispatched)
-                                    {
-                                        <span class="badge badge-neutral badge-xs font-bold">Dispatched</span>
-                                        @if (!string.IsNullOrWhiteSpace(o.VerifiedByLoaderName))
-                                        {
-                                            <div class="text-[10px] opacity-60">By: @o.VerifiedByLoaderName</div>
-                                        }
-                                    }
-                                    else if (o.Status == OrderStatus.ReadyToLoad)
-                                    {
-                                        <span class="badge badge-info badge-xs font-bold">Ready To Load</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge badge-ghost badge-xs">@o.Status</span>
-                                    }
-                                </td>
                                 <td class="text-right pr-4 py-3">
-                                    <a asp-page="/Sales/PreOrderSchedule/Details" asp-route-id="@o.Id" class="btn btn-xs btn-ghost rounded-lg gap-1 font-semibold" title="Open pre-order details">
-                                        <i class="fa-solid fa-eye text-[10px]"></i> Details
-                                    </a>
+                                    <div class="flex items-center justify-end gap-1">
+                                        <a asp-page="/Sales/PreOrderSchedule/Details" asp-route-id="@o.Id" class="btn btn-xs btn-ghost rounded-lg gap-1 font-semibold" title="Open pre-order details">
+                                            <i class="fa-solid fa-eye text-[10px]"></i> Details
+                                        </a>
+                                        @if (o.StockDeductedAt == null && o.Status != OrderStatus.Cancelled)
+                                        {
+                                            <form method="post" asp-page="/Sales/Orders/Receipt" asp-page-handler="PrintAndDeduct">
+                                                <input type="hidden" name="id" value="@o.Id" />
+                                                <button type="submit" class="btn btn-xs btn-primary rounded-lg gap-1 font-bold">
+                                                    <i class="fa-solid fa-boxes-stacked text-[10px]"></i> Collect &amp; Deduct
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
                                 </td>
                             </tr>
                         }
@@ -267,7 +241,6 @@
             const items = row.getAttribute('data-items') || '';
             const target = row.getAttribute('data-target') || '';
             const status = row.getAttribute('data-status') || '';
-            const printed = row.getAttribute('data-printed') || '';
 
             const matchesQuery = !query || orderNum.includes(query) || items.includes(query) || target.includes(query);
 
@@ -275,13 +248,9 @@
             if (activePreOrderFilter === 'production') {
                 matchesFilter = status === 'inproduction' || status === 'pending';
             } else if (activePreOrderFilter === 'ready') {
-                matchesFilter = status === 'readytoload';
-            } else if (activePreOrderFilter === 'dispatched') {
-                matchesFilter = status === 'dispatched';
-            } else if (activePreOrderFilter === 'printed') {
-                matchesFilter = printed === 'printed';
-            } else if (activePreOrderFilter === 'unprinted') {
-                matchesFilter = printed === 'unprinted';
+                matchesFilter = status === 'readytoload' || status === 'confirmed';
+            } else if (activePreOrderFilter === 'completed') {
+                matchesFilter = status === 'completed';
             }
 
             if (matchesQuery && matchesFilter) {

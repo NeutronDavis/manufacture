@@ -63,18 +63,41 @@
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="space-y-1.5 sm:col-span-2">
+                            <label class="text-xs font-semibold text-slate-700" for="RecipeInput_ProductionProductTypeId">Product Type <span class="text-rose-500">*</span></label>
+                            <select asp-for="RecipeInput.ProductionProductTypeId" id="RecipeInput_ProductionProductTypeId"
+                                    class="select select-sm select-bordered w-full rounded-lg text-xs"
+                                    onchange="syncProductTypeDefaults()">
+                                @foreach (var type in Model.ProductTypes)
+                                {
+                                    <option value="@type.Id" data-baseline="@type.Baseline" data-output-unit="@type.OutputUnitNoun">
+                                        @type.Name (@type.CategoryName)
+                                    </option>
+                                }
+                            </select>
+                            <p class="text-[10px] text-slate-400 leading-snug">
+                                Drives the product name, code, baseline unit, and output unit below.
+                            </p>
+                        </div>
+
                         <div class="space-y-1.5">
                             <label class="text-xs font-semibold text-slate-700" for="RecipeInput_Name">Product Name <span class="text-rose-500">*</span></label>
                             <input type="text" asp-for="RecipeInput.Name" id="RecipeInput_Name"
                                    class="input input-sm input-bordered w-full rounded-lg text-xs"
                                    placeholder="e.g. Jumbo Family Bread" required />
+                            <p class="text-[10px] text-slate-400 leading-snug">
+                                Prefilled from the selected product type; rename to match this SKU.
+                            </p>
                         </div>
 
                         <div class="space-y-1.5">
                             <label class="text-xs font-semibold text-slate-700" for="RecipeInput_Code">Product Code <span class="text-rose-500">*</span></label>
                             <input type="text" asp-for="RecipeInput.Code" id="RecipeInput_Code"
-                                   class="input input-sm input-bordered w-full rounded-lg text-xs font-mono uppercase"
-                                   placeholder="e.g. BRD-JMB" required />
+                                   class="input input-sm input-bordered w-full rounded-lg text-xs font-mono uppercase bg-slate-100"
+                                   readonly required />
+                            <p class="text-[10px] text-slate-400 leading-snug">
+                                Auto-generated from the selected product type.
+                            </p>
                         </div>
 
                         <div class="space-y-1.5 sm:col-span-2">
@@ -98,21 +121,7 @@
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="space-y-1.5">
-                            <label class="text-xs font-semibold text-slate-700" for="RecipeInput_ProductionProductTypeId">Product Type <span class="text-rose-500">*</span></label>
-                            <select asp-for="RecipeInput.ProductionProductTypeId" id="RecipeInput_ProductionProductTypeId"
-                                    class="select select-sm select-bordered w-full rounded-lg text-xs"
-                                    onchange="syncBaselineDefaults()">
-                                @foreach (var type in Model.ProductTypes)
-                                {
-                                    <option value="@type.Id" data-baseline="@type.Baseline" data-output-unit="@type.OutputUnitNoun">
-                                        @type.Name (@type.CategoryName)
-                                    </option>
-                                }
-                            </select>
-                        </div>
-
-                        <div class="space-y-1.5">
+                        <div class="space-y-1.5 sm:col-span-2">
                             <label class="text-xs font-semibold text-slate-700" for="RecipeInput_BaselineUnit">Baseline Unit</label>
                             <input type="text" asp-for="RecipeInput.BaselineUnit" id="RecipeInput_BaselineUnit"
                                    class="input input-sm input-bordered w-full rounded-lg text-xs bg-slate-100"
@@ -316,6 +325,9 @@
             baseline = p.Baseline,
             outputUnit = p.OutputUnitNoun
         })));
+
+    // Next available code per product type, for example BRD-001.
+    const nextCodes = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.NextCodes));
 
     // Entered as (materialId, qty, quantityUnit) — qty is per BATCH.
     let rowsData = [];
@@ -669,10 +681,16 @@
         document.getElementById('marginWarning').classList.toggle('hidden', margin >= 0);
     }
 
-    // When the product type changes, populate the read-only baseline/output fields.
-    function syncBaselineDefaults() {
+    // When the product type changes, populate the product identity fields.
+    function syncProductTypeDefaults() {
         const type = currentProductType();
         if (!type) return;
+
+        const nameInput = document.getElementById('RecipeInput_Name');
+        if (nameInput) nameInput.value = type.name;
+
+        const codeInput = document.getElementById('RecipeInput_Code');
+        if (codeInput) codeInput.value = nextCodes[String(type.id)] || '';
 
         document.getElementById('RecipeInput_BaselineUnit').value = type.baseline;
         document.getElementById('RecipeInput_OutputUnit').value = type.outputUnit;
@@ -688,7 +706,13 @@
         if (badge && type) badge.innerText = type.outputUnit;
     }
 
+    const preserveInput = @((!ViewData.ModelState.IsValid).ToString().ToLowerInvariant());
+
     document.addEventListener('DOMContentLoaded', () => {
+        // On a failed postback keep the admin's entered name/code instead of
+        // overwriting them with the product type defaults.
+        if (!preserveInput) syncProductTypeDefaults();
+
         renderBaselineHint();
         // Seed the first two materials so the form is not empty on open.
         if (inventoryMaterials.length > 0) {

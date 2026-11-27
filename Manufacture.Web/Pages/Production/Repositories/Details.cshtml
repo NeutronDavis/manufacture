@@ -1,0 +1,220 @@
+@page "{id:int}"
+@using Manufacture.Models.DTOs
+@model Manufacture.Pages.Production.Repositories.DetailsModel
+@{
+    ViewData["Title"] = Model.Repository.Name;
+}
+
+<div class="space-y-6 w-full">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="text-xs opacity-60 mb-1">
+                <a asp-page="/Production/Repositories/Index" class="hover:underline">Product Repositories</a>
+                <span>&gt;</span>
+                <span class="text-primary font-bold">@Model.Repository.Code</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <h1 class="text-2xl font-black tracking-tight">@Model.Repository.Name</h1>
+                <span class="badge badge-sm @(Model.Repository.LocationType == ProductRepositoryLocationType.Factory ? "badge-neutral" : "badge-info")">@Model.Repository.LocationType</span>
+                @if (Model.Repository.IsDefaultProductionOutput)
+                {
+                    <span class="badge badge-success badge-sm">Default output</span>
+                }
+                @if (!Model.Repository.IsActive)
+                {
+                    <span class="badge badge-error badge-sm">Inactive</span>
+                }
+            </div>
+            <p class="text-xs opacity-70 mt-0.5">@Model.Repository.Address · @Model.Repository.SkuCount SKU(s) · @Model.Repository.TotalUnits.ToString("N0") unit(s)</p>
+        </div>
+        <div class="flex items-center gap-2">
+            @if (Model.CanEdit)
+            {
+                <a asp-page="/Production/Repositories/Edit" asp-route-id="@Model.RepositoryId" class="btn btn-sm btn-outline rounded-xl">Edit</a>
+                <form method="post" asp-page-handler="Toggle">
+                    <button type="submit" class="btn btn-sm @(Model.Repository.IsActive ? "btn-warning" : "btn-success") rounded-xl">
+                        @(Model.Repository.IsActive ? "Deactivate" : "Activate")
+                    </button>
+                </form>
+            }
+            <a asp-page="/Production/Repositories/Index" class="btn btn-sm btn-ghost rounded-xl">Back</a>
+        </div>
+    </div>
+
+    @if (TempData["SuccessMessage"] is string success)
+    {
+        <div class="alert alert-success rounded-2xl text-sm font-semibold">@success</div>
+    }
+    @if (TempData["ErrorMessage"] is string error)
+    {
+        <div class="alert alert-error rounded-2xl text-sm font-semibold">@error</div>
+    }
+
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
+        <div class="xl:col-span-8 space-y-6">
+            <div class="card bg-base-100 border border-base-300 rounded-2xl">
+                <div class="card-body p-5 space-y-3">
+                    <h2 class="font-black text-sm">Product Stock &amp; Thresholds</h2>
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm text-xs">
+                            <thead>
+                                <tr class="text-[10px] uppercase opacity-60">
+                                    <th>Product</th>
+                                    <th class="text-right">On Hand</th>
+                                    <th class="text-right">Threshold</th>
+                                    <th class="text-right">Status</th>
+                                    <th class="text-right">Adjust</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.Stock)
+                                {
+                                    <tr>
+                                        <td>
+                                            <div class="font-bold">@item.ProductName</div>
+                                            <div class="font-mono text-[10px] opacity-60">@item.ProductCode · @item.OutputUnit</div>
+                                        </td>
+                                        <td class="text-right font-mono font-bold">@item.QuantityOnHand.ToString("N0")</td>
+                                        <td class="text-right font-mono">@item.ReorderThreshold.ToString("N0")</td>
+                                        <td class="text-right">
+                                            <span class="badge badge-sm @(item.IsLowStock ? "badge-error" : "badge-success")">@(item.IsLowStock ? "Low" : "OK")</span>
+                                        </td>
+                                        <td class="text-right">
+                                            @if (Model.CanEdit)
+                                            {
+                                                <form method="post" asp-page-handler="Adjust" class="flex items-center justify-end gap-1">
+                                                    <input type="hidden" name="AdjustInput.RecipeId" value="@item.RecipeId" />
+                                                    <input type="number" min="0" step="0.001" name="AdjustInput.NewQuantity" value="@item.QuantityOnHand" class="input input-xs input-bordered w-20 text-right font-mono" />
+                                                    <input type="number" min="0" step="0.001" name="AdjustInput.ReorderThreshold" value="@item.ReorderThreshold" class="input input-xs input-bordered w-20 text-right font-mono" />
+                                                    <button type="submit" class="btn btn-xs btn-outline rounded-lg">Set</button>
+                                                </form>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                                @if (Model.Stock.Count == 0)
+                                {
+                                    <tr><td colspan="5" class="text-center py-6 opacity-50">No products in this repository yet.</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card bg-base-100 border border-base-300 rounded-2xl">
+                <div class="card-body p-5 space-y-3">
+                    <h2 class="font-black text-sm">Movement History</h2>
+                    <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                        <table class="table table-xs text-[11px]">
+                            <thead>
+                                <tr class="text-[10px] uppercase opacity-60">
+                                    <th>Date</th>
+                                    <th>Product</th>
+                                    <th>Type</th>
+                                    <th class="text-right">Qty</th>
+                                    <th class="text-right">Balance</th>
+                                    <th>Reference</th>
+                                    <th>By</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var movement in Model.Movements)
+                                {
+                                    <tr>
+                                        <td class="font-mono">@movement.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td>@movement.ProductName</td>
+                                        <td>
+                                            <span class="badge badge-xs @(movement.IsInbound ? "badge-success" : "badge-warning")">@movement.MovementLabel</span>
+                                        </td>
+                                        <td class="text-right font-mono @(movement.IsInbound ? "text-success" : "text-error")">@(movement.IsInbound ? "+" : "-")@movement.Quantity.ToString("N0")</td>
+                                        <td class="text-right font-mono font-bold">@movement.BalanceAfter.ToString("N0")</td>
+                                        <td class="font-mono text-[10px]">@movement.ReferenceType @movement.ReferenceNumber</td>
+                                        <td class="text-[10px]">@movement.PerformedBy</td>
+                                    </tr>
+                                }
+                                @if (Model.Movements.Count == 0)
+                                {
+                                    <tr><td colspan="7" class="text-center py-5 opacity-50">No movements yet.</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="xl:col-span-4 space-y-6">
+            @if (Model.CanEdit)
+            {
+                <div class="card bg-base-100 border border-base-300 rounded-2xl">
+                    <div class="card-body p-5 space-y-3">
+                        <h2 class="font-black text-sm">Add / Set Up Product</h2>
+                        <form method="post" asp-page-handler="AddStock" class="space-y-3">
+                            <label class="form-control">
+                                <span class="label-text text-[10px] font-bold uppercase opacity-60">Product</span>
+                                <select name="AddInput.RecipeId" class="select select-sm select-bordered rounded-xl" required>
+                                    <option value="">Select product…</option>
+                                    @foreach (var product in Model.AllProducts)
+                                    {
+                                        <option value="@product.RecipeId">@product.Name (@product.Code)</option>
+                                    }
+                                </select>
+                            </label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="form-control">
+                                    <span class="label-text text-[10px] font-bold uppercase opacity-60">Quantity</span>
+                                    <input type="number" min="0" step="0.001" name="AddInput.Quantity" value="0" class="input input-sm input-bordered rounded-xl text-right font-mono" />
+                                </label>
+                                <label class="form-control">
+                                    <span class="label-text text-[10px] font-bold uppercase opacity-60">Threshold</span>
+                                    <input type="number" min="0" step="0.001" name="AddInput.Threshold" value="20" class="input input-sm input-bordered rounded-xl text-right font-mono" />
+                                </label>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-primary rounded-xl w-full font-bold">Save Product</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card bg-base-100 border border-base-300 rounded-2xl">
+                    <div class="card-body p-5 space-y-3">
+                        <h2 class="font-black text-sm">Transfer Stock</h2>
+                        <form method="post" asp-page-handler="Transfer" class="space-y-3">
+                            <label class="form-control">
+                                <span class="label-text text-[10px] font-bold uppercase opacity-60">To Repository</span>
+                                <select asp-for="TransferInput.ToRepositoryId" class="select select-sm select-bordered rounded-xl" required>
+                                    <option value="">Select destination…</option>
+                                    @foreach (var destination in Model.Destinations)
+                                    {
+                                        <option value="@destination.Id">@destination.Name (@destination.Code)</option>
+                                    }
+                                </select>
+                            </label>
+                            <label class="form-control">
+                                <span class="label-text text-[10px] font-bold uppercase opacity-60">Product</span>
+                                <select asp-for="TransferInput.RecipeId" class="select select-sm select-bordered rounded-xl" required>
+                                    <option value="">Select product…</option>
+                                    @foreach (var item in Model.Stock)
+                                    {
+                                        <option value="@item.RecipeId">@item.ProductName — @item.QuantityOnHand.ToString("N0") available</option>
+                                    }
+                                </select>
+                            </label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="form-control">
+                                    <span class="label-text text-[10px] font-bold uppercase opacity-60">Quantity</span>
+                                    <input asp-for="TransferInput.Quantity" type="number" min="0.001" step="0.001" class="input input-sm input-bordered rounded-xl text-right font-mono" required />
+                                </label>
+                                <label class="form-control">
+                                    <span class="label-text text-[10px] font-bold uppercase opacity-60">Notes</span>
+                                    <input asp-for="TransferInput.Notes" class="input input-sm input-bordered rounded-xl" placeholder="Transfer note" />
+                                </label>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-neutral rounded-xl w-full font-bold">Transfer</button>
+                        </form>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>

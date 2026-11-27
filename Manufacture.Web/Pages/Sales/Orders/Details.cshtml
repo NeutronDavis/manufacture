@@ -23,8 +23,17 @@
             @if (Model.CanManageSales)
             {
                 <a asp-page="/Sales/Orders/Receipt" asp-route-id="@order.Id" class="btn btn-sm btn-outline rounded-xl text-xs font-semibold gap-1.5">
-                    <i class="fa-solid fa-print text-xs"></i> Receipt / Loading Slip
+                    <i class="fa-solid fa-print text-xs"></i> Receipt
                 </a>
+                @if (order.StockDeductedAt == null && order.Status != OrderStatus.Cancelled)
+                {
+                    <form method="post" asp-page="/Sales/Orders/Receipt" asp-page-handler="PrintAndDeduct">
+                        <input type="hidden" name="id" value="@order.Id" />
+                        <button type="submit" class="btn btn-sm btn-primary rounded-xl text-xs font-bold gap-1.5">
+                            <i class="fa-solid fa-boxes-stacked text-xs"></i> Complete Sale &amp; Deduct
+                        </button>
+                    </form>
+                }
             }
             <a asp-page="/Sales/Orders/Index" class="btn btn-sm btn-ghost rounded-xl text-xs font-semibold">Back to Orders</a>
         </div>

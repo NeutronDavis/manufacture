@@ -10,17 +10,20 @@ namespace Manufacture.Pages.Sales.Terminals
     {
         private readonly ISalesService _salesService;
         private readonly IEmployeeService _employeeService;
+        private readonly IProductRepositoryService _repositoryService;
 
-        public EditModel(ISalesService salesService, IEmployeeService employeeService)
+        public EditModel(ISalesService salesService, IEmployeeService employeeService, IProductRepositoryService repositoryService)
         {
             _salesService = salesService;
             _employeeService = employeeService;
+            _repositoryService = repositoryService;
         }
 
         [BindProperty]
         public PosTerminal Terminal { get; set; } = new();
 
         public List<EmployeeDto> EligibleEmployees { get; set; } = new();
+        public List<Manufacture.Models.DTOs.ProductRepositoryDto> ProductRepositories { get; set; } = new();
 
         [TempData]
         public string? SuccessMessage { get; set; }
@@ -39,6 +42,7 @@ namespace Manufacture.Pages.Sales.Terminals
 
             Terminal = term;
             await LoadEmployeesAsync(cancellationToken);
+            await LoadRepositoriesAsync(cancellationToken);
             return Page();
         }
 
@@ -48,6 +52,7 @@ namespace Manufacture.Pages.Sales.Terminals
             {
                 ModelState.AddModelError("Terminal.TerminalName", "Terminal name is required.");
                 await LoadEmployeesAsync(cancellationToken);
+                await LoadRepositoriesAsync(cancellationToken);
                 return Page();
             }
 
@@ -68,6 +73,7 @@ namespace Manufacture.Pages.Sales.Terminals
             {
                 ModelState.AddModelError(string.Empty, ex.Message);
                 await LoadEmployeesAsync(cancellationToken);
+                await LoadRepositoriesAsync(cancellationToken);
                 return Page();
             }
         }
@@ -79,6 +85,11 @@ namespace Manufacture.Pages.Sales.Terminals
                 .Where(e => e.Department.Contains("Sales", StringComparison.OrdinalIgnoreCase))
                 .OrderBy(e => e.FullName)
                 .ToList();
+        }
+
+        private async Task LoadRepositoriesAsync(CancellationToken cancellationToken)
+        {
+            ProductRepositories = await _repositoryService.GetRepositoriesAsync(includeInactive: false, cancellationToken);
         }
     }
 }

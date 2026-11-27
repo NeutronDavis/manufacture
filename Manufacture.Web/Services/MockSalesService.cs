@@ -9,7 +9,6 @@ namespace Manufacture.Services
         private readonly List<PosTerminal> _terminals = new();
         private readonly List<Order> _orders = new();
         private readonly List<SalesRepProfile> _reps = new();
-        private readonly List<DailyRepRouteSheet> _routeSheets = new();
         private readonly List<SupermarketAccount> _supermarketAccounts = new();
 
         private readonly MockProductionService? _productionService;
@@ -27,7 +26,6 @@ namespace Manufacture.Services
             SeedInitialData();
             SeedReps(userService, logisticsService);
             SeedSupermarketAccounts();
-            SeedRouteSheets();
         }
 
         private void SeedInitialData()
@@ -103,10 +101,6 @@ namespace Manufacture.Services
                     TargetDeliveryDate = DateTime.UtcNow,
                     Discount = 0,
                     AmountPaid = 14000,
-                    IsPrintedForLoading = true,
-                    PrintedAt = DateTime.UtcNow.AddHours(-3),
-                    VerifiedByLoaderName = "Kelechi Nnamdi",
-                    LoadedAt = DateTime.UtcNow.AddHours(-2),
                     Items = new List<OrderItem>
                     {
                         new() { Id = 1, OrderId = 1, RecipeId = 1, ProductName = "Jumbo Family Bread", Quantity = 10, UnitPrice = 1400 }
@@ -129,10 +123,6 @@ namespace Manufacture.Services
                     TargetDeliveryDate = DateTime.UtcNow,
                     Discount = 5000,
                     AmountPaid = 135000,
-                    IsPrintedForLoading = true,
-                    PrintedAt = DateTime.UtcNow.AddHours(-2),
-                    VerifiedByLoaderName = "Kelechi Nnamdi",
-                    LoadedAt = DateTime.UtcNow.AddHours(-1),
                     Items = new List<OrderItem>
                     {
                         new() { Id = 2, OrderId = 2, RecipeId = 1, ProductName = "Jumbo Family Bread", Quantity = 100, UnitPrice = 1400 }
@@ -155,7 +145,6 @@ namespace Manufacture.Services
                     TargetDeliveryDate = DateTime.UtcNow.AddDays(1),
                     Discount = 0,
                     AmountPaid = 0,
-                    IsPrintedForLoading = false,
                     Items = new List<OrderItem>
                     {
                         new() { Id = 3, OrderId = 3, RecipeId = 1, ProductName = "Jumbo Family Bread", Quantity = 80, UnitPrice = 1400 },
@@ -179,8 +168,6 @@ namespace Manufacture.Services
                     TargetDeliveryDate = DateTime.UtcNow,
                     Discount = 2000,
                     AmountPaid = 97000,
-                    IsPrintedForLoading = true,
-                    PrintedAt = DateTime.UtcNow.AddMinutes(-30),
                     Items = new List<OrderItem>
                     {
                         new() { Id = 5, OrderId = 4, RecipeId = 2, ProductName = "Medium Loaf Bread", Quantity = 110, UnitPrice = 900 }
@@ -451,31 +438,6 @@ namespace Manufacture.Services
             return order;
         }
 
-        public bool MarkPrintedForLoading(int orderId)
-        {
-            var order = GetOrderById(orderId);
-            if (order == null) return false;
-            order.IsPrintedForLoading = true;
-            order.PrintedAt = DateTime.UtcNow;
-            if (order.Status == OrderStatus.InProduction || order.Status == OrderStatus.Pending)
-            {
-                order.Status = OrderStatus.ReadyToLoad;
-            }
-            return true;
-        }
-
-        public bool VerifyAndDispatchByLoader(int orderId, string loaderName)
-        {
-            var order = GetOrderById(orderId);
-            if (order == null) return false;
-            // Rule: cannot dispatch without printing
-            if (!order.IsPrintedForLoading) return false;
-
-            order.VerifiedByLoaderName = loaderName;
-            order.LoadedAt = DateTime.UtcNow;
-            order.Status = OrderStatus.Dispatched;
-            return true;
-        }
 
         /// <summary>
         /// Aggregates demand from Sales Rep orders placed (active pre-orders & pending dispatches)
@@ -810,279 +772,5 @@ namespace Manufacture.Services
             };
         }
 
-        private void SeedRouteSheets()
-        {
-            var skus = GetCatalogSkus();
-            var today = DateTime.UtcNow.Date;
-
-            // Sheet 1: Babatunde Alabi - Loaded & out on route
-            var rep1 = _reps.FirstOrDefault(r => r.Id == 1) ?? _reps.First();
-            var sheet1 = new DailyRepRouteSheet
-            {
-                Id = 1,
-                RouteSheetRef = $"RTE-{today:yyyyMMdd}-001",
-                Date = today,
-                RepId = rep1.Id,
-                RepName = rep1.FullName,
-                RepCode = "REP-001",
-                VehicleRegNumber = rep1.VehicleRegistration,
-                RouteName = rep1.RouteName,
-                PosTerminalCode = rep1.PosTerminalCode,
-                PreviousAccountBalance = 0m,
-                Status = RouteSheetStatus.LoadedOnRoute,
-                SignedOffByDispatcher = "Kelechi Nnamdi (Dispatch Mgr)",
-                SignedOffAt = today.AddHours(7).AddMinutes(30),
-                Notes = "Morning wholesale & supermarket dispatch.",
-                Items = skus.Select(sku =>
-                {
-                    int yest = sku.Id == 1 ? 12 : (sku.Id == 2 ? 8 : 0);
-                    int loaded = sku.Id == 1 ? 88 : (sku.Id == 2 ? 92 : (sku.Id == 6 ? 40 : (sku.Id == 7 ? 50 : 0)));
-                    return new RouteSKUItem
-                    {
-                        ProductId = sku.Id,
-                        ProductCode = sku.Code,
-                        ProductName = sku.Name,
-                        Category = sku.Category,
-                        UnitSellingPrice = sku.Price,
-                        RepOrderRequestedQty = loaded + 10,
-                        YesterdayClosingStock = yest,
-                        TodayNewlyLoadedQty = loaded
-                    };
-                }).ToList()
-            };
-
-            // Sheet 2: Chiamaka Nwosu - Order placed, waiting for loading verification
-            var rep2 = _reps.FirstOrDefault(r => r.Id == 2) ?? _reps.Skip(1).FirstOrDefault() ?? _reps.First();
-            var sheet2 = new DailyRepRouteSheet
-            {
-                Id = 2,
-                RouteSheetRef = $"RTE-{today:yyyyMMdd}-002",
-                Date = today,
-                RepId = rep2.Id,
-                RepName = rep2.FullName,
-                RepCode = "REP-002",
-                VehicleRegNumber = rep2.VehicleRegistration,
-                RouteName = rep2.RouteName,
-                PosTerminalCode = rep2.PosTerminalCode,
-                PreviousAccountBalance = 0m,
-                Status = RouteSheetStatus.Ordered,
-                Notes = "Island route: awaiting vehicle bay release.",
-                Items = skus.Select(sku =>
-                {
-                    int yest = sku.Id == 1 ? 10 : (sku.Id == 7 ? 5 : 0);
-                    int req = sku.Id == 1 ? 120 : (sku.Id == 3 ? 60 : (sku.Id == 7 ? 80 : 0));
-                    return new RouteSKUItem
-                    {
-                        ProductId = sku.Id,
-                        ProductCode = sku.Code,
-                        ProductName = sku.Name,
-                        Category = sku.Category,
-                        UnitSellingPrice = sku.Price,
-                        RepOrderRequestedQty = req,
-                        YesterdayClosingStock = yest,
-                        TodayNewlyLoadedQty = 0 // Not loaded yet
-                    };
-                }).ToList()
-            };
-
-            // Sheet 3: Ibrahim Sanni - Reconciled & Closed
-            var rep3 = _reps.FirstOrDefault(r => r.Id == 3) ?? _reps.Skip(2).FirstOrDefault() ?? _reps.First();
-            var sheet3 = new DailyRepRouteSheet
-            {
-                Id = 3,
-                RouteSheetRef = $"RTE-{today:yyyyMMdd}-003",
-                Date = today,
-                RepId = rep3.Id,
-                RepName = rep3.FullName,
-                RepCode = "REP-003",
-                VehicleRegNumber = rep3.VehicleRegistration,
-                RouteName = rep3.RouteName,
-                PosTerminalCode = rep3.PosTerminalCode,
-                PreviousAccountBalance = 0m,
-                CashCollected = 75000m,
-                BankTransferCollected = 60000m,
-                PosTerminalCollected = 14500m,
-                Status = RouteSheetStatus.Reconciled,
-                SignedOffByDispatcher = "Kelechi Nnamdi (Dispatch Mgr)",
-                SignedOffAt = today.AddHours(7).AddMinutes(15),
-                ReconciledBy = "Adekunle Johnson (SuperAdmin)",
-                ReconciledAt = today.AddHours(14).AddMinutes(45),
-                Notes = "Yaba & Surulere route: full reconciliation complete.",
-                Items = skus.Select(sku =>
-                {
-                    int loaded = sku.Id == 1 ? 80 : (sku.Id == 6 ? 150 : 0);
-                    int sold = sku.Id == 1 ? 76 : (sku.Id == 6 ? 142 : 0);
-                    int ret = sku.Id == 1 ? 3 : (sku.Id == 6 ? 8 : 0);
-                    int dmg = sku.Id == 1 ? 1 : 0;
-                    return new RouteSKUItem
-                    {
-                        ProductId = sku.Id,
-                        ProductCode = sku.Code,
-                        ProductName = sku.Name,
-                        Category = sku.Category,
-                        UnitSellingPrice = sku.Price,
-                        RepOrderRequestedQty = loaded,
-                        YesterdayClosingStock = 0,
-                        TodayNewlyLoadedQty = loaded,
-                        QtySold = sold,
-                        QtyReturned = ret,
-                        QtyDamaged = dmg
-                    };
-                }).ToList()
-            };
-
-            _routeSheets.AddRange(new[] { sheet1, sheet2, sheet3 });
-        }
-
-        public (int ActiveInventory, bool IsBalanced) CalculateRouteInventory(RouteSKUItem item)
-        {
-            var active = item.YesterdayClosingStock + item.TodayNewlyLoadedQty;
-            var isBalanced = (item.QtySold + item.QtyReturned + item.QtyDamaged) == active;
-            return (active, isBalanced);
-        }
-
-        public List<DailyRepRouteSheet> GetAllRouteSheets(DateTime? date = null, int? repId = null, RouteSheetStatus? status = null)
-        {
-            var query = _routeSheets.AsQueryable();
-            if (date.HasValue) query = query.Where(s => s.Date.Date == date.Value.Date);
-            if (repId.HasValue && repId.Value > 0) query = query.Where(s => s.RepId == repId.Value);
-            if (status.HasValue) query = query.Where(s => s.Status == status.Value);
-            return query.OrderByDescending(s => s.Date).ThenByDescending(s => s.Id).ToList();
-        }
-
-        public DailyRepRouteSheet? GetRouteSheetById(int id) =>
-            _routeSheets.FirstOrDefault(s => s.Id == id);
-
-        public DailyRepRouteSheet CreateRouteSheet(int repId, DateTime date, Dictionary<int, int>? requestedQuantities = null)
-        {
-            var rep = GetRepById(repId) ?? _reps.First();
-            var skus = GetCatalogSkus();
-
-            // Find yesterday's closing stock for this rep
-            var previousSheet = _routeSheets
-                .Where(s => s.RepId == repId && s.Date < date.Date)
-                .OrderByDescending(s => s.Date)
-                .FirstOrDefault();
-
-            var sheet = new DailyRepRouteSheet
-            {
-                Id = _routeSheets.Any() ? _routeSheets.Max(s => s.Id) + 1 : 1,
-                RouteSheetRef = $"RTE-{date:yyyyMMdd}-{_routeSheets.Count + 1:000}",
-                Date = date.Date,
-                RepId = rep.Id,
-                RepName = rep.FullName,
-                RepCode = $"REP-{rep.Id:000}",
-                VehicleRegNumber = rep.VehicleRegistration,
-                RouteName = rep.RouteName,
-                PosTerminalCode = rep.PosTerminalCode,
-                PreviousAccountBalance = 0m,
-                Status = RouteSheetStatus.Ordered,
-                Notes = $"Daily route order for {rep.FullName}"
-            };
-
-            foreach (var sku in skus)
-            {
-                int yesterdayStock = 0;
-                if (previousSheet != null)
-                {
-                    var prevItem = previousSheet.Items.FirstOrDefault(i => i.ProductId == sku.Id);
-                    if (prevItem != null)
-                    {
-                        yesterdayStock = prevItem.QtyReturned;
-                    }
-                }
-
-                int req = 0;
-                if (requestedQuantities != null && requestedQuantities.TryGetValue(sku.Id, out var r))
-                {
-                    req = r;
-                }
-
-                sheet.Items.Add(new RouteSKUItem
-                {
-                    ProductId = sku.Id,
-                    ProductCode = sku.Code,
-                    ProductName = sku.Name,
-                    Category = sku.Category,
-                    UnitSellingPrice = sku.Price,
-                    RepOrderRequestedQty = req,
-                    YesterdayClosingStock = yesterdayStock,
-                    TodayNewlyLoadedQty = 0 // Awaiting loading sign-off
-                });
-            }
-
-            _routeSheets.Add(sheet);
-            return sheet;
-        }
-
-        public bool SignOffDispatch(int sheetId, Dictionary<int, int> loadedQuantities, string dispatcherName, string notes)
-        {
-            var sheet = GetRouteSheetById(sheetId);
-            if (sheet == null) return false;
-
-            if (loadedQuantities != null)
-            {
-                foreach (var item in sheet.Items)
-                {
-                    if (loadedQuantities.TryGetValue(item.ProductId, out var loaded))
-                    {
-                        item.TodayNewlyLoadedQty = Math.Max(0, loaded);
-                    }
-                }
-            }
-
-            sheet.SignedOffByDispatcher = string.IsNullOrWhiteSpace(dispatcherName) ? "Loading Bay Supervisor" : dispatcherName;
-            sheet.SignedOffAt = DateTime.UtcNow;
-            sheet.Status = RouteSheetStatus.LoadedOnRoute;
-            if (!string.IsNullOrWhiteSpace(notes)) sheet.Notes = notes;
-
-            return true;
-        }
-
-        public bool ReconcileDailyRepAccount(ReconciliationInputDto input)
-        {
-            var sheet = GetRouteSheetById(input.RouteSheetId);
-            if (sheet == null) return false;
-
-            foreach (var item in sheet.Items)
-            {
-                input.SoldQuantities.TryGetValue(item.ProductId, out var sold);
-                input.ReturnedQuantities.TryGetValue(item.ProductId, out var returned);
-                input.DamagedQuantities.TryGetValue(item.ProductId, out var damaged);
-
-                item.QtySold = Math.Max(0, sold);
-                item.QtyReturned = Math.Max(0, returned);
-                item.QtyDamaged = Math.Max(0, damaged);
-            }
-
-            sheet.CashCollected = Math.Max(0m, input.CashCollected);
-            sheet.BankTransferCollected = Math.Max(0m, input.BankTransferCollected);
-            sheet.PosTerminalCollected = Math.Max(0m, input.PosTerminalCollected);
-
-            sheet.ReconciledBy = string.IsNullOrWhiteSpace(input.CashierName) ? "Main Cashier" : input.CashierName;
-            sheet.ReconciledAt = DateTime.UtcNow;
-            sheet.Status = RouteSheetStatus.Reconciled;
-            if (!string.IsNullOrWhiteSpace(input.Notes)) sheet.Notes = input.Notes;
-
-            // Carry over unsold closing stock for the next day's route sheet if one already exists
-            var nextDaySheet = _routeSheets
-                .Where(s => s.RepId == sheet.RepId && s.Date > sheet.Date)
-                .OrderBy(s => s.Date)
-                .FirstOrDefault();
-
-            if (nextDaySheet != null)
-            {
-                foreach (var item in sheet.Items)
-                {
-                    var nextItem = nextDaySheet.Items.FirstOrDefault(i => i.ProductId == item.ProductId);
-                    if (nextItem != null)
-                    {
-                        nextItem.YesterdayClosingStock = item.QtyReturned;
-                    }
-                }
-            }
-
-            return true;
-        }
     }
 }

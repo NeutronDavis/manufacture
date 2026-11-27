@@ -1133,15 +1133,6 @@ END
 WHERE [Purpose] IN (N'0', N'1', N'2', N'3');
 GO
 
-/* -------------------------------------------------------------------------
-   Prior debt is no longer part of daily reconciliation. Zero the legacy
-   carried-forward balances so no stale amount can reappear in reports.
-   ------------------------------------------------------------------------- */
-
-UPDATE [dbo].[DailyRepRouteSheets]
-SET [PreviousAccountBalance] = 0
-WHERE [PreviousAccountBalance] <> 0;
-GO
 
 /* -------------------------------------------------------------------------
    Fleet seed data
@@ -1303,6 +1294,46 @@ GO
    Sales & POS seed data
    ------------------------------------------------------------------------- */
 
+/* -------------------------------------------------------------------------
+   Finished-goods repositories and stock directories
+   ------------------------------------------------------------------------- */
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[ProductRepositories] WHERE [Code] = N'FAC-01')
+    INSERT INTO [dbo].[ProductRepositories] ([Code], [Name], [LocationType], [Address], [IsDefaultProductionOutput], [IsActive])
+    VALUES (N'FAC-01', N'Factory Finished Goods Store', 0, N'Factory production floor', 1, 1);
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[ProductRepositories] WHERE [Code] = N'MALL-01')
+    INSERT INTO [dbo].[ProductRepositories] ([Code], [Name], [LocationType], [Address], [IsDefaultProductionOutput], [IsActive])
+    VALUES (N'MALL-01', N'Mall Retail Store', 1, N'Mall retail outlet', 0, 1);
+
+DECLARE @DefaultRepository INT = (SELECT [Id] FROM [dbo].[ProductRepositories] WHERE [Code] = N'FAC-01');
+
+UPDATE [dbo].[PosTerminals]
+SET [ProductRepositoryId] = @DefaultRepository
+WHERE [ProductRepositoryId] IS NULL;
+
+INSERT INTO [dbo].[ProductRepositoryStocks] ([ProductRepositoryId], [RecipeId], [QuantityOnHand], [ReorderThreshold])
+SELECT @DefaultRepository, r.[Id], 0, 20
+FROM [dbo].[Recipes] r
+WHERE r.[IsActive] = 1
+  AND NOT EXISTS (
+      SELECT 1 FROM [dbo].[ProductRepositoryStocks] s
+      WHERE s.[ProductRepositoryId] = @DefaultRepository AND s.[RecipeId] = r.[Id]);
+
+/* Backfill batch lines for legacy single-recipe batches. */
+INSERT INTO [dbo].[ProductionBatchItems]
+    ([ProductionBatchId], [RecipeId], [RecipeName], [ProductCode], [TargetQuantity], [ActualQuantity],
+     [BatchInputQuantity], [BatchInputUnitLabel], [OutputUnitLabel], [TotalBatchCost],
+     [ExpectedUnitCost], [CalculatedUnitCost], [ActualRecordedAt], [CreatedAt], [UpdatedAt])
+SELECT b.[Id], b.[RecipeId], b.[RecipeName], ISNULL(r.[Code], N''), b.[TargetQuantity], b.[ActualQuantity],
+       b.[BatchInputQuantity], b.[BatchInputUnitLabel], b.[OutputUnitLabel], b.[TotalBatchCost],
+       b.[ExpectedUnitCost], b.[CalculatedUnitCost],
+       CASE WHEN b.[Status] = 3 THEN b.[CompletedAt] ELSE NULL END,
+       b.[CreatedAt], b.[UpdatedAt]
+FROM [dbo].[ProductionBatches] b
+LEFT JOIN [dbo].[Recipes] r ON r.[Id] = b.[RecipeId]
+WHERE b.[RecipeId] IS NOT NULL
+  AND NOT EXISTS (SELECT 1 FROM [dbo].[ProductionBatchItems] i WHERE i.[ProductionBatchId] = b.[Id]);
 /* Customers */
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Customers] WHERE [MemberCode] = N'WLK-001')
     INSERT INTO [dbo].[Customers] ([Name], [MemberCode], [Category], [PhoneNumber], [Address], [OutstandingBalance], [IsActive])
@@ -1399,31 +1430,32 @@ DECLARE @Product6in1 INT = (SELECT [Id] FROM [dbo].[Recipes] WHERE [Code] = N'BR
 DECLARE @ProductWater INT = (SELECT [Id] FROM [dbo].[Recipes] WHERE [Code] = N'WTR-189');
 DECLARE @ProductPopcorn INT = (SELECT [Id] FROM [dbo].[Recipes] WHERE [Code] = N'POP-40');
 
-/* Orders: an older open order and a newer completed order are deliberately included. */
+/* Orders: repository-aware sales with explicit stock deduction. */
+DECLARE @FactoryRepo INT = (SELECT [Id] FROM [dbo].[ProductRepositories] WHERE [Code] = N'FAC-01');
+
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Orders] WHERE [OrderNumber] = N'ORD-2026-001')
-    INSERT INTO [dbo].[Orders] ([OrderNumber], [OrderType], [CustomerId], [CustomerName], [CustomerCategory], [SalesRepId], [SalesRepName], [PosTerminalId], [PosTerminalCode], [SubTotal], [Discount], [AmountPaid], [PaymentMethod], [PaymentStatus], [Status], [OrderDate], [TargetDeliveryDate], [IsPrintedForLoading], [PrintedAt], [VerifiedByLoaderName], [LoadedAt], [Notes])
-    VALUES (N'ORD-2026-001', 0, @CustWalkIn, N'General Walk-in Counter', 0, @RepBabatunde, N'Babatunde Alabi', @Pos1, N'POS-01', 14000, 0, 14000, 0, 2, 4, DATEADD(DAY, -2, SYSUTCDATETIME()), DATEADD(DAY, -2, SYSUTCDATETIME()), 1, DATEADD(DAY, -2, SYSUTCDATETIME()), N'Kelechi Nnamdi', DATEADD(DAY, -2, SYSUTCDATETIME()), N'Completed walk-in counter sale');
+    INSERT INTO [dbo].[Orders] ([OrderNumber], [OrderType], [CustomerId], [CustomerName], [CustomerCategory], [SalesRepId], [SalesRepName], [PosTerminalId], [PosTerminalCode], [ProductRepositoryId], [SubTotal], [Discount], [AmountPaid], [PaymentMethod], [PaymentStatus], [Status], [OrderDate], [TargetDeliveryDate], [StockDeductedAt], [StockDeductedBy], [Notes])
+    VALUES (N'ORD-2026-001', 0, @CustWalkIn, N'General Walk-in Counter', 0, @RepBabatunde, N'Babatunde Alabi', @Pos1, N'POS-01', @FactoryRepo, 14000, 0, 14000, 0, 2, 6, DATEADD(DAY, -2, SYSUTCDATETIME()), DATEADD(DAY, -2, SYSUTCDATETIME()), DATEADD(DAY, -2, SYSUTCDATETIME()), N'Adekunle Johnson', N'Completed walk-in counter sale');
 
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Orders] WHERE [OrderNumber] = N'ORD-2026-002')
-    INSERT INTO [dbo].[Orders] ([OrderNumber], [OrderType], [CustomerId], [CustomerName], [CustomerCategory], [SalesRepId], [SalesRepName], [PosTerminalId], [PosTerminalCode], [SubTotal], [Discount], [AmountPaid], [PaymentMethod], [PaymentStatus], [Status], [OrderDate], [TargetDeliveryDate], [IsPrintedForLoading], [PrintedAt], [VerifiedByLoaderName], [LoadedAt], [Notes])
-    VALUES (N'ORD-2026-002', 0, @CustAlhaja, N'Alhaja Basirat Bread Depot', 2, @RepSegun, N'Segun Adewale', @Pos2, N'POS-02', 140000, 5000, 135000, 1, 2, 4, DATEADD(DAY, -1, SYSUTCDATETIME()), DATEADD(DAY, -1, SYSUTCDATETIME()), 1, DATEADD(DAY, -1, SYSUTCDATETIME()), N'Kelechi Nnamdi', DATEADD(DAY, -1, SYSUTCDATETIME()), N'Completed wholesale depot order');
+    INSERT INTO [dbo].[Orders] ([OrderNumber], [OrderType], [CustomerId], [CustomerName], [CustomerCategory], [SalesRepId], [SalesRepName], [PosTerminalId], [PosTerminalCode], [ProductRepositoryId], [SubTotal], [Discount], [AmountPaid], [PaymentMethod], [PaymentStatus], [Status], [OrderDate], [TargetDeliveryDate], [StockDeductedAt], [StockDeductedBy], [Notes])
+    VALUES (N'ORD-2026-002', 0, @CustAlhaja, N'Alhaja Basirat Bread Depot', 2, @RepSegun, N'Segun Adewale', @Pos2, N'POS-02', @FactoryRepo, 140000, 5000, 135000, 1, 2, 6, DATEADD(DAY, -1, SYSUTCDATETIME()), DATEADD(DAY, -1, SYSUTCDATETIME()), DATEADD(DAY, -1, SYSUTCDATETIME()), N'Adekunle Johnson', N'Completed wholesale depot order');
 
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Orders] WHERE [OrderNumber] = N'ORD-2026-003')
-    INSERT INTO [dbo].[Orders] ([OrderNumber], [OrderType], [CustomerId], [CustomerName], [CustomerCategory], [SalesRepId], [SalesRepName], [PosTerminalId], [PosTerminalCode], [SubTotal], [Discount], [AmountPaid], [PaymentMethod], [PaymentStatus], [Status], [OrderDate], [TargetDeliveryDate], [IsPrintedForLoading], [Notes])
-    VALUES (N'ORD-2026-003', 1, @CustGoodness, N'Goodness Supermarket Ikeja', 3, @RepChiamaka, N'Chiamaka Nwosu', @Pos3, N'POS-03', 157000, 0, 50000, 3, 1, 2, DATEADD(DAY, -10, SYSUTCDATETIME()), DATEADD(DAY, 1, SYSUTCDATETIME()), 0, N'Older supermarket order still open awaiting debt recovery');
+    INSERT INTO [dbo].[Orders] ([OrderNumber], [OrderType], [CustomerId], [CustomerName], [CustomerCategory], [SalesRepId], [SalesRepName], [PosTerminalId], [PosTerminalCode], [ProductRepositoryId], [SubTotal], [Discount], [AmountPaid], [PaymentMethod], [PaymentStatus], [Status], [OrderDate], [TargetDeliveryDate], [Notes])
+    VALUES (N'ORD-2026-003', 1, @CustGoodness, N'Goodness Supermarket Ikeja', 3, @RepChiamaka, N'Chiamaka Nwosu', @Pos3, N'POS-03', @FactoryRepo, 157000, 0, 50000, 3, 1, 2, DATEADD(DAY, -10, SYSUTCDATETIME()), DATEADD(DAY, 1, SYSUTCDATETIME()), N'Older supermarket order still open awaiting debt recovery');
 
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Orders] WHERE [OrderNumber] = N'ORD-2026-004')
-    INSERT INTO [dbo].[Orders] ([OrderNumber], [OrderType], [CustomerId], [CustomerName], [CustomerCategory], [SalesRepId], [SalesRepName], [PosTerminalId], [PosTerminalCode], [SubTotal], [Discount], [AmountPaid], [PaymentMethod], [PaymentStatus], [Status], [OrderDate], [TargetDeliveryDate], [IsPrintedForLoading], [PrintedAt], [Notes])
-    VALUES (N'ORD-2026-004', 1, @CustNgozi, N'Madam Ngozi Wholesalers', 2, @RepHalima, N'Halima Yusuf', @Pos3, N'POS-03', 99000, 2000, 97000, 2, 2, 3, DATEADD(HOUR, -5, SYSUTCDATETIME()), SYSUTCDATETIME(), 1, DATEADD(HOUR, -4, SYSUTCDATETIME()), N'Completed wholesale order ready to load');
+    INSERT INTO [dbo].[Orders] ([OrderNumber], [OrderType], [CustomerId], [CustomerName], [CustomerCategory], [SalesRepId], [SalesRepName], [PosTerminalId], [PosTerminalCode], [ProductRepositoryId], [SubTotal], [Discount], [AmountPaid], [PaymentMethod], [PaymentStatus], [Status], [OrderDate], [TargetDeliveryDate], [StockDeductedAt], [StockDeductedBy], [Notes])
+    VALUES (N'ORD-2026-004', 1, @CustNgozi, N'Madam Ngozi Wholesalers', 2, @RepHalima, N'Halima Yusuf', @Pos3, N'POS-03', @FactoryRepo, 99000, 2000, 97000, 2, 2, 6, DATEADD(HOUR, -5, SYSUTCDATETIME()), SYSUTCDATETIME(), DATEADD(HOUR, -4, SYSUTCDATETIME()), N'Adekunle Johnson', N'Completed wholesale order ready to load');
 
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Orders] WHERE [OrderNumber] = N'ORD-2026-005')
-    INSERT INTO [dbo].[Orders] ([OrderNumber], [OrderType], [CustomerId], [CustomerName], [CustomerCategory], [SalesRepId], [SalesRepName], [PosTerminalId], [PosTerminalCode], [SubTotal], [Discount], [AmountPaid], [PaymentMethod], [PaymentStatus], [Status], [OrderDate], [TargetDeliveryDate], [IsPrintedForLoading], [PrintedAt], [Notes])
-    VALUES (N'ORD-2026-005', 1, @CustGrandSquare, N'Grand Square Supermarket VI', 3, @RepChiamaka, N'Chiamaka Nwosu', @Pos3, N'POS-03', 62500, 0, 20000, 3, 1, 4, DATEADD(DAY, -15, SYSUTCDATETIME()), DATEADD(DAY, -14, SYSUTCDATETIME()), 1, DATEADD(DAY, -15, SYSUTCDATETIME()), N'Historical order with outstanding debt');
+    INSERT INTO [dbo].[Orders] ([OrderNumber], [OrderType], [CustomerId], [CustomerName], [CustomerCategory], [SalesRepId], [SalesRepName], [PosTerminalId], [PosTerminalCode], [ProductRepositoryId], [SubTotal], [Discount], [AmountPaid], [PaymentMethod], [PaymentStatus], [Status], [OrderDate], [TargetDeliveryDate], [StockDeductedAt], [StockDeductedBy], [Notes])
+    VALUES (N'ORD-2026-005', 1, @CustGrandSquare, N'Grand Square Supermarket VI', 3, @RepChiamaka, N'Chiamaka Nwosu', @Pos3, N'POS-03', @FactoryRepo, 62500, 0, 20000, 3, 1, 6, DATEADD(DAY, -15, SYSUTCDATETIME()), DATEADD(DAY, -14, SYSUTCDATETIME()), DATEADD(DAY, -15, SYSUTCDATETIME()), N'Adekunle Johnson', N'Historical order with outstanding debt');
 
 IF NOT EXISTS (SELECT 1 FROM [dbo].[Orders] WHERE [OrderNumber] = N'ORD-2026-006')
-    INSERT INTO [dbo].[Orders] ([OrderNumber], [OrderType], [CustomerId], [CustomerName], [CustomerCategory], [SalesRepId], [SalesRepName], [PosTerminalId], [PosTerminalCode], [SubTotal], [Discount], [AmountPaid], [PaymentMethod], [PaymentStatus], [Status], [OrderDate], [TargetDeliveryDate], [IsPrintedForLoading], [PrintedAt], [VerifiedByLoaderName], [LoadedAt], [Notes])
-    VALUES (N'ORD-2026-006', 0, @CustGoodness, N'Goodness Supermarket Ikeja', 3, @RepChiamaka, N'Chiamaka Nwosu', @Pos3, N'POS-03', 24000, 0, 24000, 1, 2, 4, DATEADD(DAY, -1, SYSUTCDATETIME()), DATEADD(DAY, -1, SYSUTCDATETIME()), 1, DATEADD(DAY, -1, SYSUTCDATETIME()), N'Kelechi Nnamdi', DATEADD(DAY, -1, SYSUTCDATETIME()), N'Newer order fully paid while an older order remains open');
-
+    INSERT INTO [dbo].[Orders] ([OrderNumber], [OrderType], [CustomerId], [CustomerName], [CustomerCategory], [SalesRepId], [SalesRepName], [PosTerminalId], [PosTerminalCode], [ProductRepositoryId], [SubTotal], [Discount], [AmountPaid], [PaymentMethod], [PaymentStatus], [Status], [OrderDate], [TargetDeliveryDate], [StockDeductedAt], [StockDeductedBy], [Notes])
+    VALUES (N'ORD-2026-006', 0, @CustGoodness, N'Goodness Supermarket Ikeja', 3, @RepChiamaka, N'Chiamaka Nwosu', @Pos3, N'POS-03', @FactoryRepo, 24000, 0, 24000, 1, 2, 6, DATEADD(DAY, -1, SYSUTCDATETIME()), DATEADD(DAY, -1, SYSUTCDATETIME()), DATEADD(DAY, -1, SYSUTCDATETIME()), N'Adekunle Johnson', N'Newer order fully paid while an older order remains open');
 DECLARE @Order1 INT = (SELECT [Id] FROM [dbo].[Orders] WHERE [OrderNumber] = N'ORD-2026-001');
 DECLARE @Order2 INT = (SELECT [Id] FROM [dbo].[Orders] WHERE [OrderNumber] = N'ORD-2026-002');
 DECLARE @Order3 INT = (SELECT [Id] FROM [dbo].[Orders] WHERE [OrderNumber] = N'ORD-2026-003');
@@ -1529,44 +1561,6 @@ IF NOT EXISTS (SELECT 1 FROM [dbo].[SupermarketAccountPrices] WHERE [Supermarket
     INSERT INTO [dbo].[SupermarketAccountPrices] ([SupermarketAccountId], [RecipeId], [AgreedPrice]) VALUES (@AcctNgozi, @ProductRound, 770);
 IF NOT EXISTS (SELECT 1 FROM [dbo].[SupermarketAccountPrices] WHERE [SupermarketAccountId] = @AcctNgozi AND [RecipeId] = @Product6in1)
     INSERT INTO [dbo].[SupermarketAccountPrices] ([SupermarketAccountId], [RecipeId], [AgreedPrice]) VALUES (@AcctNgozi, @Product6in1, 710);
-
-/* Route sheets: ordered, loaded and reconciled examples */
-IF NOT EXISTS (SELECT 1 FROM [dbo].[DailyRepRouteSheets] WHERE [RouteSheetRef] = N'RTE-2026-001')
-    INSERT INTO [dbo].[DailyRepRouteSheets] ([RouteSheetRef], [RouteDate], [SalesRepId], [RouteName], [VehicleId], [VehicleRegistration], [PosTerminalId], [PosTerminalCode], [PreviousAccountBalance], [TotalExpectedSalesRevenue], [CashCollected], [BankTransferCollected], [PosTerminalCollected], [Status], [SignedOffByDispatcher], [SignedOffAt], [Notes])
-    VALUES (N'RTE-2026-001', CONVERT(DATE, SYSUTCDATETIME()), @RepBabatunde, N'Ikeja & Ojota', (SELECT [Id] FROM [dbo].[Vehicles] WHERE [RegistrationNumber] = N'KJA-892-XA'), N'KJA-892-XA', @Pos1, N'POS-01', 22000, 106400, 75000, 15000, 5000, 1, N'Kelechi Nnamdi (Dispatch Mgr)', DATEADD(HOUR, -3, SYSUTCDATETIME()), N'Morning wholesale and supermarket dispatch.');
-
-IF NOT EXISTS (SELECT 1 FROM [dbo].[DailyRepRouteSheets] WHERE [RouteSheetRef] = N'RTE-2026-002')
-    INSERT INTO [dbo].[DailyRepRouteSheets] ([RouteSheetRef], [RouteDate], [SalesRepId], [RouteName], [VehicleId], [VehicleRegistration], [PosTerminalId], [PosTerminalCode], [PreviousAccountBalance], [Status], [Notes])
-    VALUES (N'RTE-2026-002', CONVERT(DATE, SYSUTCDATETIME()), @RepChiamaka, N'Lagos Island & Victoria Island', (SELECT [Id] FROM [dbo].[Vehicles] WHERE [RegistrationNumber] = N'KJA-892-XA'), N'KJA-892-XA', @Pos3, N'POS-03', 10000, 0, N'Island route awaiting vehicle bay release.');
-
-IF NOT EXISTS (SELECT 1 FROM [dbo].[DailyRepRouteSheets] WHERE [RouteSheetRef] = N'RTE-2026-003')
-    INSERT INTO [dbo].[DailyRepRouteSheets] ([RouteSheetRef], [RouteDate], [SalesRepId], [RouteName], [VehicleId], [VehicleRegistration], [PosTerminalId], [PosTerminalCode], [PreviousAccountBalance], [TotalExpectedSalesRevenue], [CashCollected], [BankTransferCollected], [PosTerminalCollected], [Status], [SignedOffByDispatcher], [SignedOffAt], [ReconciledBy], [ReconciledAt], [Notes])
-    VALUES (N'RTE-2026-003', DATEADD(DAY, -1, CONVERT(DATE, SYSUTCDATETIME())), @RepIbrahim, N'Yaba & Surulere', (SELECT [Id] FROM [dbo].[Vehicles] WHERE [RegistrationNumber] = N'LSR-441-YB'), N'LSR-441-YB', @Pos2, N'POS-02', 15000, 149500, 75000, 60000, 14500, 2, N'Kelechi Nnamdi (Dispatch Mgr)', DATEADD(DAY, -1, DATEADD(HOUR, 7, SYSUTCDATETIME())), N'Adekunle Johnson (SuperAdmin)', DATEADD(DAY, -1, DATEADD(HOUR, 14, SYSUTCDATETIME())), N'Yaba and Surulere route fully reconciled.');
-
-DECLARE @Sheet1 INT = (SELECT [Id] FROM [dbo].[DailyRepRouteSheets] WHERE [RouteSheetRef] = N'RTE-2026-001');
-DECLARE @Sheet2 INT = (SELECT [Id] FROM [dbo].[DailyRepRouteSheets] WHERE [RouteSheetRef] = N'RTE-2026-002');
-DECLARE @Sheet3 INT = (SELECT [Id] FROM [dbo].[DailyRepRouteSheets] WHERE [RouteSheetRef] = N'RTE-2026-003');
-
-IF NOT EXISTS (SELECT 1 FROM [dbo].[RouteSheetItems] WHERE [RouteSheetId] = @Sheet1 AND [RecipeId] = @ProductJumbo)
-    INSERT INTO [dbo].[RouteSheetItems] ([RouteSheetId], [RecipeId], [ProductCode], [ProductName], [Category], [UnitSellingPrice], [RepOrderRequestedQty], [YesterdayClosingStock], [TodayNewlyLoadedQty], [QtySold], [ClosingStockQty], [QtyDamaged], [QtyReplacementIssued])
-    VALUES (@Sheet1, @ProductJumbo, N'BRD-JMB', N'Jumbo Family Bread', 0, 1400, 98, 12, 88, 76, 20, 3, 1);
-IF NOT EXISTS (SELECT 1 FROM [dbo].[RouteSheetItems] WHERE [RouteSheetId] = @Sheet1 AND [RecipeId] = @ProductWater)
-    INSERT INTO [dbo].[RouteSheetItems] ([RouteSheetId], [RecipeId], [ProductCode], [ProductName], [Category], [UnitSellingPrice], [RepOrderRequestedQty], [YesterdayClosingStock], [TodayNewlyLoadedQty], [QtySold], [ClosingStockQty], [QtyDamaged], [QtyReplacementIssued])
-    VALUES (@Sheet1, @ProductWater, N'WTR-189', N'Purified Water 18.9L', 1, 250, 40, 0, 40, 35, 3, 2, 0);
-
-IF NOT EXISTS (SELECT 1 FROM [dbo].[RouteSheetItems] WHERE [RouteSheetId] = @Sheet2 AND [RecipeId] = @ProductJumbo)
-    INSERT INTO [dbo].[RouteSheetItems] ([RouteSheetId], [RecipeId], [ProductCode], [ProductName], [Category], [UnitSellingPrice], [RepOrderRequestedQty], [YesterdayClosingStock], [TodayNewlyLoadedQty])
-    VALUES (@Sheet2, @ProductJumbo, N'BRD-JMB', N'Jumbo Family Bread', 0, 1400, 120, 10, 0);
-IF NOT EXISTS (SELECT 1 FROM [dbo].[RouteSheetItems] WHERE [RouteSheetId] = @Sheet2 AND [RecipeId] = @ProductPopcorn)
-    INSERT INTO [dbo].[RouteSheetItems] ([RouteSheetId], [RecipeId], [ProductCode], [ProductName], [Category], [UnitSellingPrice], [RepOrderRequestedQty], [YesterdayClosingStock], [TodayNewlyLoadedQty])
-    VALUES (@Sheet2, @ProductPopcorn, N'POP-40', N'Popcorn 40g Bag', 2, 200, 80, 5, 0);
-
-IF NOT EXISTS (SELECT 1 FROM [dbo].[RouteSheetItems] WHERE [RouteSheetId] = @Sheet3 AND [RecipeId] = @ProductJumbo)
-    INSERT INTO [dbo].[RouteSheetItems] ([RouteSheetId], [RecipeId], [ProductCode], [ProductName], [Category], [UnitSellingPrice], [RepOrderRequestedQty], [YesterdayClosingStock], [TodayNewlyLoadedQty], [QtySold], [ClosingStockQty], [QtyDamaged], [QtyReplacementIssued])
-    VALUES (@Sheet3, @ProductJumbo, N'BRD-JMB', N'Jumbo Family Bread', 0, 1400, 80, 0, 80, 76, 3, 1, 0);
-IF NOT EXISTS (SELECT 1 FROM [dbo].[RouteSheetItems] WHERE [RouteSheetId] = @Sheet3 AND [RecipeId] = @ProductWater)
-    INSERT INTO [dbo].[RouteSheetItems] ([RouteSheetId], [RecipeId], [ProductCode], [ProductName], [Category], [UnitSellingPrice], [RepOrderRequestedQty], [YesterdayClosingStock], [TodayNewlyLoadedQty], [QtySold], [ClosingStockQty], [QtyDamaged], [QtyReplacementIssued])
-    VALUES (@Sheet3, @ProductWater, N'WTR-189', N'Purified Water 18.9L', 1, 250, 150, 0, 150, 142, 8, 0, 0);
 
 /* Customer returns and replacements */
 IF NOT EXISTS (SELECT 1 FROM [dbo].[CustomerReturns] WHERE [ReturnNumber] = N'RET-2026-001')
@@ -1726,4 +1720,12 @@ ON target.[RoleId] = source.[RoleId] AND target.[ModuleId] = source.[ModuleId]
 WHEN NOT MATCHED BY TARGET THEN
     INSERT ([RoleId], [ModuleId], [PermissionLevelId], [UpdatedBy])
     VALUES (source.[RoleId], source.[ModuleId], source.[PermissionLevelId], N'Seed');
+GO
+
+/* Ensure every POS terminal has a repository after seeding POS rows. */
+GO
+DECLARE @DefaultRepositoryPostSeed INT = (SELECT [Id] FROM [dbo].[ProductRepositories] WHERE [Code] = N'FAC-01');
+UPDATE [dbo].[PosTerminals]
+SET [ProductRepositoryId] = @DefaultRepositoryPostSeed
+WHERE [ProductRepositoryId] IS NULL;
 GO
