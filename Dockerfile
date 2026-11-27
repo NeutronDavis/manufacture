@@ -18,7 +18,14 @@ WORKDIR /app
 # Render passes PORT environment variable or defaults to 8080
 ENV ASPNETCORE_URLS=http://+:8080
 ENV ASPNETCORE_ENVIRONMENT=Production
+
+# Allow the Linux OpenSSL stack to negotiate the legacy TLS used by the
+# SQL Server 2014 target. See openssl.cnf. Remove once the server supports
+# TLS 1.2+ with a SHA-256 certificate.
+ENV OPENSSL_CONF=/app/openssl.cnf
+
 EXPOSE 8080
 
 COPY --from=build /app/publish .
+COPY openssl.cnf /app/openssl.cnf
 ENTRYPOINT ["dotnet", "Manufacture.Web.dll"]

@@ -1,0 +1,25 @@
+# OpenSSL compatibility profile for the legacy SQL Server target.
+#
+# SQL Server 2014 (12.0.5687.1) negotiates a legacy TLS version/cipher set and
+# presents a self-signed SHA-1 certificate. OpenSSL 3 on Linux rejects both at
+# its default security level, which surfaces as:
+#   "pre-login handshake ... SSL Provider, error: 31 - Encryption(ssl/tls)
+#    handshake failed"
+#
+# Microsoft.Data.SqlClient still uses TLS for the login packet even when the
+# connection string says Encrypt=False, so this profile lowers the OpenSSL
+# minimum protocol/security level for the container only.
+#
+# Remove this once SQL Server has TLS 1.2 enabled and a SHA-256 certificate.
+
+openssl_conf = default_conf
+
+[default_conf]
+ssl_conf = ssl_sect
+
+[ssl_sect]
+system_default = system_default_sect
+
+[system_default_sect]
+MinProtocol = TLSv1
+CipherString = ALL:@SECLEVEL=0
